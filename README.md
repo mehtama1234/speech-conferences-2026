@@ -13,3 +13,8 @@ then music/sound-events, enhancement, self-supervised, speaker-verification/anti
 
 A full per-paper analysis, and **Interspeech 2026** (Sydney, Sept 28–Oct 1), will follow when
 open proceedings publish. Pipeline: `ingest_icassp.py -> mine_themes.py -> build_page.py`.
+
+Depth target for that later pass: `FIRST_PRINCIPLES_GOAL.md` defines the no-jargon,
+first-principles standard for paper, theme, subtheme, mathematical-concept, and
+paper-family explanations. It also records the current constraint: title-only data
+is not enough for trustworthy per-paper mechanism claims.
