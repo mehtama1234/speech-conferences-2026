@@ -90,6 +90,7 @@ section{{padding:42px 0;border-top:1px solid var(--line)}}
   </div>
   <div class="note"><div class="nt">read this first — what this is and isn't</div>
   <p>ICASSP's full name is "Acoustics, <b>Speech</b>, and Signal Processing" — it is a <em>broad</em> conference, and speech is one slice of it. Right now only titles + DOIs are public for all papers (abstracts exist for just {T['with_abstract']*100//T['n_papers']}% via Semantic Scholar; IEEE gates the rest). So this is a <b>titles-only theme map</b> — a reliable read of <em>what topics are present and how much</em>, but not the per-paper problem/approach/contribution analysis that needs abstracts. That deeper pass waits for open indexing. Interspeech 2026 (Sydney, Sept 28–Oct 1) isn't published yet and joins later.</p></div>
+  <div class="why"><h3>Plain course spine</h3><p>Read <a href="course.html">Speech And Signal Processing From First Principles</a> for the everyday-word version of the big ideas: signals, speech, time, topology, learned representations, trust, evaluation, and why this matters outside speech.</p></div>
 </header>
 
 <section>
@@ -125,4 +126,5 @@ section{{padding:42px 0;border-top:1px solid var(--line)}}
 </div>
 """
 open(os.path.join(HERE, "site", "index.html"), "w", encoding="utf-8").write(P)
-print("wrote site/index.html ·", len(P)//1024, "KB · FFFD:", P.count("�"))
+open(os.path.join(HERE, "index.html"), "w", encoding="utf-8").write(P)
+print("wrote index.html + site/index.html ·", len(P)//1024, "KB · FFFD:", P.count("�"))
