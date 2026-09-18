@@ -29,10 +29,11 @@ def main():
                 "derivation_boundary":ps["boundary"],
                 "derivation_evidence":ps["derivation"],
                 "baseline_anchor":ps.get("baseline_anchor"),
+                "baseline_anchor_text":ps.get("baseline_anchor_text"),
                 "concepts":concepts,
             })
             seen.extend(c["id"] for c in concepts)
-        themes.append({k:old[k] for k in ("id","name","question","ordinary_problem","naive_failure","recurring_move","tradeoff")} | {"subthemes":subs})
+        themes.append({k:old[k] for k in ("id","name","question","ordinary_problem","naive_failure","recurring_move","tradeoff")} | {"baseline_anchor":ptheme.get("baseline_anchor"),"baseline_anchor_text":ptheme.get("baseline_anchor_text"),"subthemes":subs})
     if sorted(seen)!=sorted(old_concepts):
         raise SystemExit("organic taxonomy does not partition the baseline concepts exactly")
     out={"schema_version":2,"taxonomy_status":"analyst-authored-organically-derived-proposal","claim_boundary":"Themes and variable subthemes are derived from the named baseline paper and explicit paper-family boundary tests; this is not an official conference classification or prevalence estimate.","baseline_source":baseline,"source_boundary":"Concept definitions begin from the baseline account. Subtheme boundaries are proposed from recurring ordinary pressures, failures, mechanisms, and evidence counts; paper membership is adjudicated separately.","membership_evidence_rule":base["membership_evidence_rule"],"derivation_source":"data/speech-organic-taxonomy-proposal.json","theme_count":len(themes),"subtheme_count":sum(len(t["subthemes"]) for t in themes),"concept_count":len(seen),"themes":themes}

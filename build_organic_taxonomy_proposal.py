@@ -94,6 +94,7 @@ def main():
         anchor_id, anchor_text = BASELINE_LINK[theme["theme_id"]]
         for sub in subs:
             sub["baseline_anchor"] = anchor_id
+            sub["baseline_anchor_text"] = anchor_text
             baseline_theme=taxonomy_by_id[theme["theme_id"]]
             sub["derivation"] = f"Baseline link: {anchor_text} Ordinary pressure: {baseline_theme['ordinary_problem']} Failed shortcut: {baseline_theme['naive_failure']} Recurring paper move: {baseline_theme['recurring_move']} Neighbor test: {sub['boundary']}"
         records.append({"theme_id":theme["theme_id"],"theme":theme["theme"],"baseline_anchor":anchor_id,"baseline_anchor_text":anchor_text,"derivation_reason":theme["reason"],"subtheme_count":len(subs),"subthemes":subs})

@@ -40,7 +40,7 @@ def main() -> None:
         lines += [
             f"## {theme['name']}",
             "",
-            f"**Baseline connection:** {theme.get('baseline_source', {}).get('citation', taxonomy.get('baseline_source', {}).get('citation', ''))}",
+            f"**Baseline connection:** {theme.get('baseline_anchor_text', taxonomy.get('baseline_source', {}).get('citation', ''))}",
             f"**Ordinary problem:** {theme.get('ordinary_problem', '')}",
             f"**Why the first shortcut fails:** {theme.get('naive_failure', '')}",
             f"**Recurring move across this theme:** {theme.get('recurring_move', '')}",
@@ -55,7 +55,7 @@ def main() -> None:
             lines += [
                 f"### {subtheme['name']}",
                 "",
-                f"**Baseline link:** {subtheme.get('baseline_anchor', 'not recorded')}",
+                f"**Baseline link:** {subtheme.get('baseline_anchor_text', subtheme.get('baseline_anchor', 'not recorded'))}",
                 f"**Question:** {subtheme.get('question', '')}",
                 f"**Derivation:** {subtheme.get('derivation_evidence', '')}",
                 "",
