@@ -243,6 +243,7 @@ STEPS = [
     [sys.executable, "build_fourteenth_semantic_batch.py"],
     [sys.executable, "build_semantic_review_queue.py"],
     [sys.executable, "build_corpus_semantic_assignments.py"],
+    [sys.executable, "build_taxonomy_adjudication_queue.py"],
     [sys.executable, "build_semantic_gap_report.py"],
     [sys.executable, "build_atlas_index.py"],
     [sys.executable, "build_deep_paper_analyses.py"],
