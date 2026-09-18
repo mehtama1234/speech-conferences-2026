@@ -27,7 +27,7 @@ Themes: **8**; subthemes: **34**; complete subtheme writeups: **34**.
 | grounding-and-action | 24 | 0 | — |
 | content-planning | 15 | 0 | — |
 | waveform-and-codec-generation | 14 | 0 | — |
-| identity-and-conversion | 31 | 0 | — |
+| identity-and-conversion | 30 | 0 | — |
 | expression-and-interactive-control | 36 | 0 | — |
 | identity-and-life-stage | 64 | 0 | — |
 | clinical-markers | 74 | 0 | — |
@@ -36,7 +36,7 @@ Themes: **8**; subthemes: **34**; complete subtheme writeups: **34**.
 | crosslingual-structure | 34 | 0 | — |
 | low-resource-learning | 28 | 0 | — |
 | data-creation | 40 | 0 | — |
-| accent-dialect-and-cultural-meaning | 46 | 0 | — |
+| accent-dialect-and-cultural-meaning | 47 | 0 | — |
 | metric-and-human-targets | 40 | 0 | — |
 | robustness-and-shift | 15 | 0 | — |
 | deployment-cost | 29 | 0 | — |

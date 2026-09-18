@@ -16,8 +16,22 @@ DATA = HERE / "data"
 REPORTS = HERE / "reports"
 
 
+def taxonomy_adjudications() -> dict[tuple[str, str], dict]:
+    """Return final current-taxonomy decisions keyed by venue and paper."""
+    path = DATA / "speech-taxonomy-adjudication-queue.json"
+    if not path.exists():
+        return {}
+    payload = json.loads(path.read_text())
+    return {
+        (row.get("venue"), row.get("paper_id")): row
+        for row in payload.get("rows", [])
+        if row.get("taxonomy_review_state") == "taxonomy-adjudicated"
+    }
+
+
 def materialize(queue_path: Path, venue: str) -> list[dict]:
     queue = json.loads(queue_path.read_text())
+    adjudications = taxonomy_adjudications()
     out = []
     for row in queue.get("rows", []):
         reviewed = row.get("analyst_review") or {}
@@ -50,6 +64,16 @@ def materialize(queue_path: Path, venue: str) -> list[dict]:
                 reason = "The available title/abstract evidence leaves competing concepts or too little evidence; human semantic adjudication is required."
             boundary = row.get("review_rule") or "Machine proposal only; not a final semantic assignment."
             basis = f"machine-proposed-{row.get('evidence_depth', 'unknown')}"
+        adjudication = adjudications.get((venue, row.get("paper_id")))
+        if adjudication:
+            assignment = {
+                "theme_id": adjudication["final_theme_id"],
+                "subtheme_id": adjudication["final_subtheme_id"],
+                "concept_id": adjudication["final_concept_id"],
+            }
+            reason = adjudication["reviewer_note"]
+            basis = f"taxonomy-adjudicated-{row.get('evidence_depth', 'unknown')}"
+            boundary = "Final membership was reviewed against the current first-principles taxonomy; paper results remain author-reported unless independently reproduced."
         out.append({
             "venue": venue,
             "paper_id": row.get("paper_id"),
@@ -110,4 +134,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
