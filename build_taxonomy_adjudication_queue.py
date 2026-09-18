@@ -15,6 +15,11 @@ REPORTS = ROOT / "reports"
 
 
 def main() -> None:
+    existing = {}
+    existing_path = DATA / "speech-taxonomy-adjudication-queue.json"
+    if existing_path.exists():
+        old_payload = json.loads(existing_path.read_text())
+        existing = {row.get("paper_id"): row for row in old_payload.get("rows", []) if row.get("taxonomy_review_state") == "taxonomy-adjudicated"}
     taxonomy = json.loads((DATA / "speech-first-principles-taxonomy.json").read_text())
     concepts = {
         c["id"]: {"theme_id": t["id"], "theme_name": t["name"], "subtheme_id": s["id"], "subtheme_name": s["name"], "concept_name": c["name"], "boundary": c.get("boundary", "")}
@@ -33,7 +38,7 @@ def main() -> None:
                 continue
             review = source.get("analyst_review") or source
             concept = concepts.get(review.get("concept_id"), {})
-            rows.append({
+            row = {
                 "venue": venue,
                 "paper_id": source.get("paper_id"),
                 "title": source.get("title"),
@@ -50,7 +55,13 @@ def main() -> None:
                 "adjudication_question": "Does the captured evidence support this concept and its new subtheme boundary rather than the nearest neighboring subtheme?",
                 "final_decision": None,
                 "reviewer_note": None,
-            })
+            }
+            prior = existing.get(row["paper_id"])
+            if prior:
+                for key in ("taxonomy_review_state", "final_decision", "reviewer_note", "reviewed_sections", "final_theme_id", "final_subtheme_id", "final_concept_id"):
+                    if key in prior:
+                        row[key] = prior[key]
+            rows.append(row)
     rows.sort(key=lambda row: (row["venue"], row["paper_id"] or ""))
     payload = {
         "schema_version": 1,
@@ -58,16 +69,21 @@ def main() -> None:
         "claim_boundary": "These memberships were previously semantically reviewed against an earlier taxonomy and then normalized to the current concept parents. They are not counted as final current-taxonomy adjudications until this queue is closed.",
         "taxonomy": "data/speech-first-principles-taxonomy.json",
         "row_count": len(rows),
-        "decision_counts": {"needs-taxonomy-adjudication": len(rows)},
+        "adjudicated_count": sum(row.get("taxonomy_review_state") == "taxonomy-adjudicated" for row in rows),
+        "open_count": sum(row.get("taxonomy_review_state") != "taxonomy-adjudicated" for row in rows),
+        "decision_counts": {},
         "rows": rows,
     }
+    for row in rows:
+        key = row.get("final_decision") or row.get("taxonomy_review_state")
+        payload["decision_counts"][key] = payload["decision_counts"].get(key, 0) + 1
     (DATA / "speech-taxonomy-adjudication-queue.json").write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n")
     lines = [
         "# Taxonomy re-adjudication queue",
         "",
         payload["claim_boundary"],
         "",
-        f"Open memberships: **{len(rows)}** (INTERSPEECH and ICASSP supported rows).",
+        f"Memberships: **{len(rows)}**; adjudicated: **{payload['adjudicated_count']}**; open: **{payload['open_count']}**.",
         "",
         "Every row preserves the prior reasoning and evidence excerpt, names the current concept boundary, and asks whether the evidence supports the new parent rather than a neighboring subtheme.",
         "",
@@ -80,7 +96,7 @@ def main() -> None:
             if count:
                 lines.append(f"| {venue} | {depth} | {count} |")
     (REPORTS / "SPEECH_TAXONOMY_READJUDICATION_QUEUE.md").write_text("\n".join(lines) + "\n")
-    print(json.dumps({"status": payload["status"], "open_rows": len(rows)}))
+    print(json.dumps({"status": payload["status"], "adjudicated": payload["adjudicated_count"], "open_rows": payload["open_count"]}))
 
 
 if __name__ == "__main__":

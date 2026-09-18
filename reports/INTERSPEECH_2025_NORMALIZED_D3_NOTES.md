@@ -887,7 +887,22 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports that three of twenty decoder heads account for most hallucinations on UrbanSound and that targeted training reduces them with limited LibriSpeech WER degradation.
 - **Limits:** Non-speech corpus, head attribution, fine-tuning regime, language/model version, and WER tradeoff bound transfer; reduced hallucination is not perfect abstention or factual reliability.
 
-## 60. Is it all about race?: A Cross-examination of /s/ in a Multilingual (Nigerian) Context
+## 60. Voice Conversion Improves Cross-Domain Robustness  for Spoken Arabic Dialect Identification
+
+**Paper:** [Voice Conversion Improves Cross-Domain Robustness  for Spoken Arabic Dialect Identification](https://www.isca-archive.org/interspeech_2025/abdullah25_interspeech.html)
+**Taxonomy:** `languages-accents-and-resources / accent-dialect-and-cultural-meaning / accent-robustness`
+**Evidence:** D3 full-paper capture; PDF SHA-256 `1a900281aa9a8d251c21d3efbae0d648fecec923df8146287e0bdf38e39174f5`; full-text SHA-256 `ba28b4ee1457775a6a26feaa6b8a0a6b451b2d9a86cb8434dec21d8dba3b0711`.
+
+- **Ordinary problem:** Improve Arabic dialect identification when test speech comes from a different domain or speaker population.
+- **Why it is hard:** Dialect classifiers can exploit speaker-specific shortcuts instead of dialect evidence, causing cross-domain failure.
+- **Naive attempt:** Train a classifier on available dialect data and treat in-domain accuracy as evidence of dialect robustness.
+- **Central move:** Use voice conversion as augmentation to reduce speaker bias, then evaluate on a newly collected real-world cross-domain set.
+- **Mechanism:** Converted speech changes speaker characteristics while preserving dialect-related content; controlled experiments compare conversion with ordinary augmentation.
+- **Mathematical idea:** Cross-domain accuracy measures transfer rather than memorization; the causal explanation about speaker bias is supported by the paper’s controlled analysis but not independently verified here.
+- **What the paper reports:** The paper reports up to +34.07% cross-domain accuracy improvement and releases a model and evaluation dataset.
+- **Limits:** The result is specific to Arabic dialect identification and the released artifacts require separate access and execution checks.
+
+## 61. Is it all about race?: A Cross-examination of /s/ in a Multilingual (Nigerian) Context
 
 **Paper:** [Is it all about race?: A Cross-examination of /s/ in a Multilingual (Nigerian) Context](https://www.isca-archive.org/interspeech_2025/amoniyan25_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / accent-dialect-and-cultural-meaning / dialect-and-variety`
@@ -902,7 +917,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports a contextual analysis of /s/ in a multilingual Nigerian setting.
 - **Limits:** Community, language, sampling, annotation, and interpretation bound transfer.
 
-## 61. LID Models are Actually Accent Classifiers: Implications and Solutions for LID on Accented Speech
+## 62. LID Models are Actually Accent Classifiers: Implications and Solutions for LID on Accented Speech
 
 **Paper:** [LID Models are Actually Accent Classifiers: Implications and Solutions for LID on Accented Speech](https://www.isca-archive.org/interspeech_2025/bafna25_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / accent-dialect-and-cultural-meaning / accent-robustness`
@@ -917,7 +932,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Dutch-accented English is called Dutch in 82.6% of errors in one setting; sequence-aware systems reduce this confusion while retaining mainstream performance.
 - **Limits:** Datasets, accent categories, chunking, and aggregation define the result; it diagnoses a shortcut but does not prove cultural neutrality or universal transfer.
 
-## 62. Accent Normalization Using Self-Supervised Discrete Tokens with Non-Parallel Data
+## 63. Accent Normalization Using Self-Supervised Discrete Tokens with Non-Parallel Data
 
 **Paper:** [Accent Normalization Using Self-Supervised Discrete Tokens with Non-Parallel Data](https://www.isca-archive.org/interspeech_2025/bai25_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / accent-dialect-and-cultural-meaning / accent-robustness`
@@ -932,7 +947,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The system beats a frame-to-frame baseline on naturalness, accentedness, and timbre preservation, but post-conversion WER remains high.
 - **Limits:** Accent definitions, targets, subjective judgments, and nonparallel training bound the claim; native-like is not universally better.
 
-## 63. A Multi-Dialectal Dataset for German Dialect ASR and Dialect-to-Standard Speech Translation
+## 64. A Multi-Dialectal Dataset for German Dialect ASR and Dialect-to-Standard Speech Translation
 
 **Paper:** [A Multi-Dialectal Dataset for German Dialect ASR and Dialect-to-Standard Speech Translation](https://www.isca-archive.org/interspeech_2025/blaschke25_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / accent-dialect-and-cultural-meaning / dialect-and-variety`
@@ -947,7 +962,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports model-dependent differences: the best system sometimes normalizes dialect grammar but often stays closer to dialect constructions.
 - **Limits:** The dataset is four hours of read speech from Southeast Germany; spontaneous speech, other dialects, conversational translation, and community judgments remain open.
 
-## 64. The ML-SUPERB 2.0 Challenge: Towards Inclusive ASR Benchmarking for All Language Varieties
+## 65. The ML-SUPERB 2.0 Challenge: Towards Inclusive ASR Benchmarking for All Language Varieties
 
 **Paper:** [The ML-SUPERB 2.0 Challenge: Towards Inclusive ASR Benchmarking for All Language Varieties](https://www.isca-archive.org/interspeech_2025/chen25h_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / accent-dialect-and-cultural-meaning / accent-robustness`
@@ -962,7 +977,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The best submission reports 23% absolute LID improvement and 18% CER reduction generally, with 30.2% lower CER and 15.7% higher LID accuracy on accented/dialectal data.
 - **Limits:** Challenge submissions, test-suite composition, and hidden evaluation define the boundary; the results do not prove equal service quality for every language variety.
 
-## 65. Tonal Variation and Word Meaning in Taiwanese
+## 66. Tonal Variation and Word Meaning in Taiwanese
 
 **Paper:** [Tonal Variation and Word Meaning in Taiwanese](https://www.isca-archive.org/interspeech_2025/chuang25_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / accent-dialect-and-cultural-meaning / cultural-meaning`
@@ -977,7 +992,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Word meaning explains part of tonal variability; after accounting for it, the reported sandhi/citation difference disappears.
 - **Limits:** Speaker sample, spontaneous corpus, lexical items, tone context, and statistical model bound transfer; one tone pattern is not the whole Taiwanese system.
 
-## 66. ViToSA: Audio-Based Toxic Spans Detection on Vietnamese Speech Utterances
+## 67. ViToSA: Audio-Based Toxic Spans Detection on Vietnamese Speech Utterances
 
 **Paper:** [ViToSA: Audio-Based Toxic Spans Detection on Vietnamese Speech Utterances](https://www.isca-archive.org/interspeech_2025/do25b_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / accent-dialect-and-cultural-meaning / cultural-meaning`
@@ -992,7 +1007,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports benchmark results for Vietnamese audio toxic-span detection.
 - **Limits:** Dataset construction, annotation agreement, language, ASR errors, and social context bound the result; a benchmark score is not a complete safety policy.
 
-## 67. Tonal Contrasts in the Malipo Variety of the Mienic Language
+## 68. Tonal Contrasts in the Malipo Variety of the Mienic Language
 
 **Paper:** [Tonal Contrasts in the Malipo Variety of the Mienic Language](https://www.isca-archive.org/interspeech_2025/du25_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / accent-dialect-and-cultural-meaning / dialect-and-variety`
@@ -1007,7 +1022,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports an empirical study of tonal contrasts in a Mienic variety.
 - **Limits:** Speaker sample, elicitation design, tonal context, and language-specific scope bound transfer.
 
-## 68. Speech transcription from South Tyrolean Dialect to Standard German with Whisper
+## 69. Speech transcription from South Tyrolean Dialect to Standard German with Whisper
 
 **Paper:** [Speech transcription from South Tyrolean Dialect to Standard German with Whisper](https://www.isca-archive.org/interspeech_2025/ducceschi25_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / accent-dialect-and-cultural-meaning / dialect-and-variety`
@@ -1022,7 +1037,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports a BLEU score of 86.18 and substantial improvement over its baselines, with an existing heritage-archive use case.
 - **Limits:** Small corpus, synthetic data, dialect region, reference translations, BLEU, and deployment domain bound the claim; high translation score does not establish coverage of every speaker or dialect context.
 
-## 69. Are You Being Sarcastic? Prosodic Cues to Irony Perception in German
+## 70. Are You Being Sarcastic? Prosodic Cues to Irony Perception in German
 
 **Paper:** [Are You Being Sarcastic? Prosodic Cues to Irony Perception in German](https://www.isca-archive.org/interspeech_2025/funfgeld25_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / accent-dialect-and-cultural-meaning / cultural-meaning`
@@ -1037,7 +1052,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Prenuclear accent presence and especially L*+H nuclear accents drive irony judgments; some conditions also yield faster ironic responses.
 - **Limits:** The utterances, regions, prosodic manipulations, and binary judgment task bound the result; other languages and natural conversations remain open.
 
-## 70. A Multimodal Chinese Dataset for Cross-lingual Sarcasm Detection
+## 71. A Multimodal Chinese Dataset for Cross-lingual Sarcasm Detection
 
 **Paper:** [A Multimodal Chinese Dataset for Cross-lingual Sarcasm Detection](https://www.isca-archive.org/interspeech_2025/gao25f_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / accent-dialect-and-cultural-meaning / accent-robustness`
@@ -1052,7 +1067,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports a study of multilingual/accent robustness and its implications for ASR evaluation.
 - **Limits:** Accent labels, languages, speakers, test design, and subgroup denominators bound transfer.
 
-## 71. Audio-Based Classification and Geographic Regression of Austrian Dialects
+## 72. Audio-Based Classification and Geographic Regression of Austrian Dialects
 
 **Paper:** [Audio-Based Classification and Geographic Regression of Austrian Dialects](https://www.isca-archive.org/interspeech_2025/gutscher25_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / accent-dialect-and-cultural-meaning / dialect-and-variety`
@@ -1067,7 +1082,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The Austrian dataset covers 304 speakers at 108 locations; wav2vec 2.0 reports an average geographic test error of 66.7 km in the paper's evaluation.
 - **Limits:** Sampling density, speaker augmentation, Austrian dialect geography, split design, and recording conditions limit transfer; geographic prediction is not a complete sociolinguistic account of dialect.
 
-## 72. Are loan sequences different from foreign sequences? A perception study with Japanese listeners on coronal obstruent – high front vowel sequences
+## 73. Are loan sequences different from foreign sequences? A perception study with Japanese listeners on coronal obstruent – high front vowel sequences
 
 **Paper:** [Are loan sequences different from foreign sequences? A perception study with Japanese listeners on coronal obstruent – high front vowel sequences](https://www.isca-archive.org/interspeech_2025/hamann25_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / accent-dialect-and-cultural-meaning / cultural-meaning`
@@ -1082,7 +1097,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Thirty-nine listeners performed better on the loanword-permitted sequence, though the foreign sequence was also often discriminated; self-reported English input did not explain the result.
 - **Limits:** Online testing, sequence choices, speaker exposure, sample size, and self-report limit generalization; discrimination is not equivalent to lexical access or translation competence.
 
-## 73. On the Relationship between Accent Strength and Articulatory Features
+## 74. On the Relationship between Accent Strength and Articulatory Features
 
 **Paper:** [On the Relationship between Accent Strength and Articulatory Features](https://www.isca-archive.org/interspeech_2025/huang25h_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / accent-dialect-and-cultural-meaning / accent-robustness`
@@ -1097,7 +1112,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports dialect differences in tongue positioning, especially for rhotic and low-back vowels, and associations between derived articulatory parameters and indexed accent strength.
 - **Limits:** Read speech, two dialect groups, dictionary assumptions, inversion error, and correlation do not establish a universal accent scale or causal articulatory explanation.
 
-## 74. Lexical competition in the process of Cantonese tone merging: Diverse Impact Mechanisms Across Different Individuals and Tone Pairs
+## 75. Lexical competition in the process of Cantonese tone merging: Diverse Impact Mechanisms Across Different Individuals and Tone Pairs
 
 **Paper:** [Lexical competition in the process of Cantonese tone merging: Diverse Impact Mechanisms Across Different Individuals and Tone Pairs](https://www.isca-archive.org/interspeech_2025/li25w_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / accent-dialect-and-cultural-meaning / dialect-and-variety`
@@ -1112,7 +1127,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Competition helps maintain contrasts in some speakers, consistently inhibits one pair, has three patterns for another, and has little effect in speakers merging all three tones.
 - **Limits:** The Cantonese pairs, speaker groups, lexical measure, and production task bound the result; it is evidence about a change process, not a forecast of every speaker's future pronunciation.
 
-## 75. Prosodically Enhanced Foreign Accent Simulation by Discrete Token-based Resynthesis Only with Native Speech Corpora
+## 76. Prosodically Enhanced Foreign Accent Simulation by Discrete Token-based Resynthesis Only with Native Speech Corpora
 
 **Paper:** [Prosodically Enhanced Foreign Accent Simulation by Discrete Token-based Resynthesis Only with Native Speech Corpora](https://www.isca-archive.org/interspeech_2025/onda25b_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / accent-dialect-and-cultural-meaning / accent-robustness`
@@ -1127,7 +1142,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports that the enhanced method reproduces durational accents observed in real L2 speech.
 - **Limits:** Accent languages, speakers, duration estimator, perceptual validation, and native-corpus assumptions bound transfer; acoustic similarity is not proof of improved ASR or pedagogy.
 
-## 76. Open Universal Arabic ASR Leaderboard
+## 77. Open Universal Arabic ASR Leaderboard
 
 **Paper:** [Open Universal Arabic ASR Leaderboard](https://www.isca-archive.org/interspeech_2025/wang25_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / accent-dialect-and-cultural-meaning / dialect-and-variety`
@@ -1142,7 +1157,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports broad comparative results and identifies differences in dialect robustness, speaker adaptation, inference efficiency, and memory use.
 - **Limits:** Corpus selection, language variety, transcription conventions, model versions, and leaderboard maintenance bound the conclusion; rankings are not a causal explanation of dialect performance.
 
-## 77. Tonal Perception in Changde Mandarin
+## 78. Tonal Perception in Changde Mandarin
 
 **Paper:** [Tonal Perception in Changde Mandarin](https://www.isca-archive.org/interspeech_2025/zhang25b_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / accent-dialect-and-cultural-meaning / dialect-and-variety`
@@ -1157,7 +1172,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** T1 is high-level, T2 low-rising, T3 falling rather than level, and the T2-T3 and T2-T4 continua do not meet typical categorical-perception standards.
 - **Limits:** The Changde variety, speakers, stimuli, cue manipulation, and category criteria bound the result; it should not be generalized to Standard Mandarin or all tonal perception.
 
-## 78. The Role of Contextual Variation in Learning Cantonese Tones from Naturalistic Speech
+## 79. The Role of Contextual Variation in Learning Cantonese Tones from Naturalistic Speech
 
 **Paper:** [The Role of Contextual Variation in Learning Cantonese Tones from Naturalistic Speech](https://www.isca-archive.org/interspeech_2025/zhao25j_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / accent-dialect-and-cultural-meaning / dialect-and-variety`
@@ -1172,7 +1187,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports that contextual variation can predict which Cantonese contrasts are easier or harder to learn when invariant cues are absent.
 - **Limits:** The naturalistic corpus, tone system, acquisition comparison, and distributional measures bound the inference; a prediction from correspondence is not a direct infant-learning experiment.
 
-## 79. SpokenNativQA: Multilingual Everyday Spoken Queries for LLMs
+## 80. SpokenNativQA: Multilingual Everyday Spoken Queries for LLMs
 
 **Paper:** [SpokenNativQA: Multilingual Everyday Spoken Queries for LLMs](https://www.isca-archive.org/interspeech_2025/alam25_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / crosslingual-structure / code-switching`
@@ -1187,7 +1202,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper introduces the dataset, releases data and scripts, and reports comparative ASR and LLM results for spoken QA.
 - **Limits:** Language coverage, annotation, question domains, ASR errors, and answer scoring bound the result; a benchmark does not establish equal usefulness across all represented communities.
 
-## 80. TalTech Systems for the Interspeech 2025 ML-SUPERB 2.0 Challenge
+## 81. TalTech Systems for the Interspeech 2025 ML-SUPERB 2.0 Challenge
 
 **Paper:** [TalTech Systems for the Interspeech 2025 ML-SUPERB 2.0 Challenge](https://www.isca-archive.org/interspeech_2025/alumae25_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / crosslingual-structure / language-identification`
@@ -1202,7 +1217,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The system is competitive with challenge baselines and identifies languages needing targeted work.
 - **Limits:** Challenge data, language mix, averaging, and tuning limit all-multilingual claims.
 
-## 81. A Study of Speech Embedding Similarities Between Australian Aboriginal and High-Resource Languages
+## 82. A Study of Speech Embedding Similarities Between Australian Aboriginal and High-Resource Languages
 
 **Paper:** [A Study of Speech Embedding Similarities Between Australian Aboriginal and High-Resource Languages](https://www.isca-archive.org/interspeech_2025/ambikairajah25_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / crosslingual-structure / crosslingual-transfer`
@@ -1217,7 +1232,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports comparative embedding similarities involving Australian Aboriginal and high-resource languages and discusses implications for underrepresented-language technology.
 - **Limits:** Similarity is not a language description or a guarantee of recognition transfer; data quantity, speaker coverage, and community context limit interpretation. No independent reproduction was performed.
 
-## 82. From Context to Code-switching: Examining the Interplay of Language Proficiency and Multilingualism in Speech
+## 83. From Context to Code-switching: Examining the Interplay of Language Proficiency and Multilingualism in Speech
 
 **Paper:** [From Context to Code-switching: Examining the Interplay of Language Proficiency and Multilingualism in Speech](https://www.isca-archive.org/interspeech_2025/bhattacharya25_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / crosslingual-structure / code-switching`
@@ -1232,7 +1247,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports that parents’ primary language, secondary-school language, and self-reported higher-ability language are associated with code-switching quantity and dominant-language use, while several direct proficiency relationships are weak or inconclusive.
 - **Limits:** The analysis is observational, focused on Spanish-English Bangor Miami speakers and available self-reports; background variables may be correlated and do not establish why a speaker switched. Findings do not generalize automatically to other language pairs, communities, or tasks; no independent reproduction was performed.
 
-## 83. Adapting Whisper for low-resource Hindi-English Code-Mix speech with on-the-fly Augmentation & LLM-Synthesised Data
+## 84. Adapting Whisper for low-resource Hindi-English Code-Mix speech with on-the-fly Augmentation & LLM-Synthesised Data
 
 **Paper:** [Adapting Whisper for low-resource Hindi-English Code-Mix speech with on-the-fly Augmentation & LLM-Synthesised Data](https://www.isca-archive.org/interspeech_2025/biswas25_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / crosslingual-structure / code-switching`
@@ -1247,7 +1262,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports a 31% relative improvement over pretrained Whisper without real in-domain data for fine-tuning.
 - **Limits:** The experiments focus on Hindi-English tutorial speech and Whisper large-v2; transfer to other language pairs is proposed, not established.
 
-## 84. Teacher-Free Knowledge Distillation for Improving Short-Utterance Spoken Language Identification
+## 85. Teacher-Free Knowledge Distillation for Improving Short-Utterance Spoken Language Identification
 
 **Paper:** [Teacher-Free Knowledge Distillation for Improving Short-Utterance Spoken Language Identification](https://www.isca-archive.org/interspeech_2025/dey25_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / crosslingual-structure / language-identification`
@@ -1262,7 +1277,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports consistent Cavg improvements in same-corpus and cross-corpus short-utterance evaluations.
 - **Limits:** Languages, out-of-scope composition, duration, label updates, and corpora bound the result; better short-segment ID does not solve open-set detection generally.
 
-## 85. ADI-20: Arabic Dialect Identification dataset and models
+## 86. ADI-20: Arabic Dialect Identification dataset and models
 
 **Paper:** [ADI-20: Arabic Dialect Identification dataset and models](https://www.isca-archive.org/interspeech_2025/elleuch25_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / crosslingual-structure / language-identification`
@@ -1277,7 +1292,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Using 30% of the original data causes only a small F1 decrease in the reported experiments.
 - **Limits:** The country/dialect inventory, labels, and data collection define the boundary; conversational code-switching and unrepresented varieties remain open.
 
-## 86. Speech-to-Text Translation with Phoneme-Augmented CoT: Enhancing Cross-Lingual Transfer in Low-Resource Scenarios
+## 87. Speech-to-Text Translation with Phoneme-Augmented CoT: Enhancing Cross-Lingual Transfer in Low-Resource Scenarios
 
 **Paper:** [Speech-to-Text Translation with Phoneme-Augmented CoT: Enhancing Cross-Lingual Transfer in Low-Resource Scenarios](https://www.isca-archive.org/interspeech_2025/gallego25_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / crosslingual-structure / crosslingual-transfer`
@@ -1292,7 +1307,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports improved low-resource translation and zero-resource operation, with a small high-resource tradeoff.
 - **Limits:** Languages, phoneme recognizer, curriculum, and benchmark define the boundary; zero-resource claims depend on what other language information is available.
 
-## 87. Self-Supervised Models of Speech Processing for Haitian Creole
+## 88. Self-Supervised Models of Speech Processing for Haitian Creole
 
 **Paper:** [Self-Supervised Models of Speech Processing for Haitian Creole](https://www.isca-archive.org/interspeech_2025/havard25_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / crosslingual-structure / crosslingual-transfer`
@@ -1307,7 +1322,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports monolingual models that are competitive with or surpass larger multilingual alternatives on the tested ASR tasks.
 - **Limits:** Data volume, speakers, orthography, model size, pretraining compute, and evaluation domain limit generalization to the broader Creole speech community.
 
-## 88. NIRANTAR: Continual Learning with New Languages and Domains on Real-world Speech Data
+## 89. NIRANTAR: Continual Learning with New Languages and Domains on Real-world Speech Data
 
 **Paper:** [NIRANTAR: Continual Learning with New Languages and Domains on Real-world Speech Data](https://www.isca-archive.org/interspeech_2025/javed25_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / crosslingual-structure / crosslingual-transfer`
@@ -1322,7 +1337,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper finds that no single evaluated method performs consistently across the three scenarios.
 - **Limits:** This is a benchmark and comparative study, not proof that one method is universally best; the geography, languages, episode order, and ASR models define the boundary.
 
-## 89. Extending the Fongbe to French Speech Translation Corpus:  resources, models and benchmark
+## 90. Extending the Fongbe to French Speech Translation Corpus:  resources, models and benchmark
 
 **Paper:** [Extending the Fongbe to French Speech Translation Corpus:  resources, models and benchmark](https://www.isca-archive.org/interspeech_2025/kponou25_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / crosslingual-structure / crosslingual-transfer`
@@ -1337,7 +1352,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports corpus additions, baseline models, and benchmark results for Fongbe-to-French speech translation.
 - **Limits:** Corpus size, speakers, alignment, transcription, translation references, and split design bound generalization to Fongbe communities and other low-resource pairs.
 
-## 90. ArticulateX: End-to-End Monolingual Speech Translation in Articulator Space
+## 91. ArticulateX: End-to-End Monolingual Speech Translation in Articulator Space
 
 **Paper:** [ArticulateX: End-to-End Monolingual Speech Translation in Articulator Space](https://www.isca-archive.org/interspeech_2025/kumar25c_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / crosslingual-structure / crosslingual-transfer`
@@ -1352,7 +1367,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports speech-translation results for the articulator-space system in its tested monolingual setting.
 - **Limits:** Language, corpus, articulatory estimation, model, references, and evaluation bound generalization; an intermediate representation is not proof of human-like translation.
 
-## 91. Novel Parasitic Dual-Scale Modeling for Efficient and Accurate Multilingual Speech Translation
+## 92. Novel Parasitic Dual-Scale Modeling for Efficient and Accurate Multilingual Speech Translation
 
 **Paper:** [Novel Parasitic Dual-Scale Modeling for Efficient and Accurate Multilingual Speech Translation](https://www.isca-archive.org/interspeech_2025/le25_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / crosslingual-structure / crosslingual-transfer`
@@ -1367,7 +1382,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports multilingual translation accuracy and efficiency improvements for the tested language set.
 - **Limits:** Languages, directions, data imbalance, parameter budget, decoding, and metrics bound the result; efficiency on a benchmark is not equal quality for every language.
 
-## 92. Efficient Multilingual ASR Finetuning via LoRA Language Experts
+## 93. Efficient Multilingual ASR Finetuning via LoRA Language Experts
 
 **Paper:** [Efficient Multilingual ASR Finetuning via LoRA Language Experts](https://www.isca-archive.org/interspeech_2025/li25p_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / crosslingual-structure / crosslingual-transfer`
@@ -1382,7 +1397,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports multilingual ASR accuracy and efficiency results for LoRA language experts.
 - **Limits:** Languages, data balance, rank, routing, base model, and evaluation domains bound the claim; parameter efficiency does not guarantee fairness across languages.
 
-## 93. LIST: Language-Independent Speech Token for Multilingual Speech Synthesis with Language Models
+## 94. LIST: Language-Independent Speech Token for Multilingual Speech Synthesis with Language Models
 
 **Paper:** [LIST: Language-Independent Speech Token for Multilingual Speech Synthesis with Language Models](https://www.isca-archive.org/interspeech_2025/liu25o_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / crosslingual-structure / crosslingual-transfer`
@@ -1397,7 +1412,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports multilingual synthesis quality and cross-language token behavior for LIST.
 - **Limits:** Languages, token rate, codebook, speakers, conditioning, and evaluation metrics bound the claim; shared tokens do not guarantee equal quality.
 
-## 94. SawtArabi: A Benchmark Corpus for Arabic TTS.  Standard, Dialectal and Code-Switching
+## 95. SawtArabi: A Benchmark Corpus for Arabic TTS.  Standard, Dialectal and Code-Switching
 
 **Paper:** [SawtArabi: A Benchmark Corpus for Arabic TTS.  Standard, Dialectal and Code-Switching](https://www.isca-archive.org/interspeech_2025/lodagala25_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / crosslingual-structure / crosslingual-transfer`
@@ -1412,7 +1427,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports corpus resources and baseline TTS evaluations across the covered Arabic conditions.
 - **Limits:** Variety coverage, speaker balance, text design, switching labels, and listening tests bound generalization across Arabic communities.
 
-## 95. Can we train ASR systems on Code-switch without real code-switch data? Case study for Singapore's languages
+## 96. Can we train ASR systems on Code-switch without real code-switch data? Case study for Singapore's languages
 
 **Paper:** [Can we train ASR systems on Code-switch without real code-switch data? Case study for Singapore's languages](https://www.isca-archive.org/interspeech_2025/nguyen25_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / crosslingual-structure / code-switching`
@@ -1427,7 +1442,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The authors report improved ASR on monolingual and code-switched tests, with the largest gains for BM-EN followed by TA-EN and ZH-BM.
 - **Limits:** Synthetic phrase mixing is an approximation to spontaneous switching, and the three language pairs do not represent all multilingual communities. WER does not measure whether switches are socially or linguistically natural, and no independent reproduction was performed.
 
-## 96. Simultaneous Speech Translation Integrated Compact Multiple Sound Spot Synthesis System On A Laptop Carried Out With A Backpack
+## 97. Simultaneous Speech Translation Integrated Compact Multiple Sound Spot Synthesis System On A Laptop Carried Out With A Backpack
 
 **Paper:** [Simultaneous Speech Translation Integrated Compact Multiple Sound Spot Synthesis System On A Laptop Carried Out With A Backpack](https://www.isca-archive.org/interspeech_2025/okamoto25_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / crosslingual-structure / crosslingual-transfer`
@@ -1442,7 +1457,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports an integrated portable-system demonstration and evaluation.
 - **Limits:** Language pair, overlap conditions, hardware, latency measurement, and user setting limit generalization to broad simultaneous conversation.
 
-## 97. CS-FLEURS: A Massively Multilingual and Code-Switched Speech Dataset
+## 98. CS-FLEURS: A Massively Multilingual and Code-Switched Speech Dataset
 
 **Paper:** [CS-FLEURS: A Massively Multilingual and Code-Switched Speech Dataset](https://www.isca-archive.org/interspeech_2025/yan25c_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / crosslingual-structure / code-switching`
@@ -1457,7 +1472,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Code-switched ASR is over twice as errorful as monolingual speech, while synthetic training improves seen and unseen pairs.
 - **Limits:** Language pairs, synthetic voices, Whisper, CER, and controlled read speech limit natural-conversation claims.
 
-## 98. Nosey: Open-Source Hardware for Acoustic Nasalance
+## 99. Nosey: Open-Source Hardware for Acoustic Nasalance
 
 **Paper:** [Nosey: Open-Source Hardware for Acoustic Nasalance](https://www.isca-archive.org/interspeech_2025/dewhurst25_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / data-creation / speech-data-collection`
@@ -1472,7 +1487,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Nosey produces consistently higher raw nasalance scores, but preserves comparable phonological-environment contrasts under the tested conditions and offers a lower-cost customizable platform.
 - **Limits:** The tested speakers, microphones, baffle geometry, placement, and phonological materials bound the comparison; raw-score offsets and cross-signal bleed prevent treating Nosey and commercial values as directly interchangeable.
 
-## 99. Transcribing Oral History Recordings Using the Transcription Portal
+## 100. Transcribing Oral History Recordings Using the Transcription Portal
 
 **Paper:** [Transcribing Oral History Recordings Using the Transcription Portal](https://www.isca-archive.org/interspeech_2025/draxler25_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / data-creation / speech-data-collection`
@@ -1487,7 +1502,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports a usable multilingual portal and demonstrates it on oral-history recordings, with summarization and translation identified as future extensions.
 - **Limits:** The demonstration corpus, user effort, ASR model, correction time, and export format bound the result; a convenient workflow does not establish transcription accuracy without an error audit or independent user study.
 
-## 100. The NaijaVoices Dataset: Cultivating Large-Scale, High-Quality, Culturally-Rich Speech Data for African Languages
+## 101. The NaijaVoices Dataset: Cultivating Large-Scale, High-Quality, Culturally-Rich Speech Data for African Languages
 
 **Paper:** [The NaijaVoices Dataset: Cultivating Large-Scale, High-Quality, Culturally-Rich Speech Data for African Languages](https://www.isca-archive.org/interspeech_2025/emezue25_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / data-creation / speech-data-collection`
@@ -1502,7 +1517,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports average WER improvements of 75.86% for Whisper, 52.06% for MMS, and 42.33% for XLSR.
 - **Limits:** The corpus languages, collection process, transcription policy, and model choices bound the result; coverage of other African languages and deployment conditions remains open.
 
-## 101. Speech LLMs in Low-Resource Scenarios: Data Volume Requirements and the Impact of Pretraining on High-Resource Languages
+## 102. Speech LLMs in Low-Resource Scenarios: Data Volume Requirements and the Impact of Pretraining on High-Resource Languages
 
 **Paper:** [Speech LLMs in Low-Resource Scenarios: Data Volume Requirements and the Impact of Pretraining on High-Resource Languages](https://www.isca-archive.org/interspeech_2025/fong25_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / data-creation / speech-data-collection`
@@ -1517,7 +1532,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports that multilingual projector pretraining reduces the impact of scarce data; for Galician it reports WERs such as 13.3% on Common Voice and 19.4% on FLEURS in one configuration.
 - **Limits:** Language choice, data cleanliness, projector, LLM, benchmark split, and WER bound the claim; transfer from high-resource languages does not establish equal performance or cultural adequacy.
 
-## 102. Automatic Speech Recognition for Low-Resourced Middle Eastern Languages
+## 103. Automatic Speech Recognition for Low-Resourced Middle Eastern Languages
 
 **Paper:** [Automatic Speech Recognition for Low-Resourced Middle Eastern Languages](https://www.isca-archive.org/interspeech_2025/hameed25_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / data-creation / speech-data-collection`
@@ -1532,7 +1547,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports resources, baselines, and recognition results for the covered Middle Eastern languages.
 - **Limits:** Language selection, dialect, corpus size, transcription, speakers, and evaluation splits limit generalization across the region.
 
-## 103. Hybrid Data Sampling for ASR: Integrating Acoustic Diversity and Transcription Uncertainty
+## 104. Hybrid Data Sampling for ASR: Integrating Acoustic Diversity and Transcription Uncertainty
 
 **Paper:** [Hybrid Data Sampling for ASR: Integrating Acoustic Diversity and Transcription Uncertainty](https://www.isca-archive.org/interspeech_2025/hiruta25_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / data-creation / speech-data-collection`
@@ -1547,7 +1562,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports ASR improvements from hybrid sampling relative to the tested selection strategies.
 - **Limits:** Acoustic representation, uncertainty estimator, corpus, budget, language, and split bound the result; a sampling score is not a complete measure of data value.
 
-## 104. An Exploratory Framework for LLM-assisted Human Annotation of Speech Datasets
+## 105. An Exploratory Framework for LLM-assisted Human Annotation of Speech Datasets
 
 **Paper:** [An Exploratory Framework for LLM-assisted Human Annotation of Speech Datasets](https://www.isca-archive.org/interspeech_2025/johnson25_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / data-creation / speech-data-collection`
@@ -1562,7 +1577,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports framework behavior and exploratory annotation findings for the tested speech data tasks.
 - **Limits:** Task, annotator expertise, model, prompts, disagreement policy, and audit trail bound the result; assistance is not a substitute for label validity.
 
-## 105. Speech Annotation for A: Accuracy, Access, and Application
+## 106. Speech Annotation for A: Accuracy, Access, and Application
 
 **Paper:** [Speech Annotation for A: Accuracy, Access, and Application](https://www.isca-archive.org/interspeech_2025/li25ea_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / data-creation / speech-data-collection`
@@ -1577,7 +1592,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper presents an end-to-end bilingual clinical annotation workflow intended to reduce setup and manual effort while retaining human validation and structured metadata for downstream research.
 - **Limits:** The paper does not report a controlled user study, annotation-time reduction, inter-annotator agreement, or clinical outcome. Whisper/diarization errors and supported language choices remain boundaries; tool availability is not independent execution.
 
-## 106. The Faetar Speech Recognition Benchmark
+## 107. The Faetar Speech Recognition Benchmark
 
 **Paper:** [The Faetar Speech Recognition Benchmark](https://www.isca-archive.org/interspeech_2025/ong25_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / data-creation / speech-data-collection`
@@ -1592,7 +1607,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports the benchmark resources and baseline recognition results for Faetar.
 - **Limits:** Corpus size, speakers, dialect coverage, transcription conventions, and split design bound conclusions about the wider language community.
 
-## 107. LiRI Corpus Platform: Demonstration of a Web-Based Infrastructure for Multimodal Corpus Analysis
+## 108. LiRI Corpus Platform: Demonstration of a Web-Based Infrastructure for Multimodal Corpus Analysis
 
 **Paper:** [LiRI Corpus Platform: Demonstration of a Web-Based Infrastructure for Multimodal Corpus Analysis](https://www.isca-archive.org/interspeech_2025/vukovic25_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / data-creation / speech-data-collection`
@@ -1607,7 +1622,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper demonstrates integrated storage, synchronized querying, layered annotation, and modality-specific frontends for multimodal corpus analysis.
 - **Limits:** This is an infrastructure demonstration, not evidence that every corpus can be aligned or that research conclusions improve; supported formats, annotations, and user workflows are the boundary.
 
-## 108. AfriHuBERT: A self-supervised speech representation model for African languages
+## 109. AfriHuBERT: A self-supervised speech representation model for African languages
 
 **Paper:** [AfriHuBERT: A self-supervised speech representation model for African languages](https://www.isca-archive.org/interspeech_2025/alabi25_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / low-resource-learning / self-training-and-pseudo-labels`
@@ -1622,7 +1637,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports a representation model expanded to 1,226 African languages and evaluates its transfer against multilingual baselines.
 - **Limits:** Language coverage does not mean equal data quality or equal downstream performance; the languages, hours, speaker balance, and task results determine the practical reach. No independent reproduction was performed.
 
-## 109. Evaluating Large Language Models in Data Generation for Low-Resource Scenarios: A Case Study on Question Answering
+## 110. Evaluating Large Language Models in Data Generation for Low-Resource Scenarios: A Case Study on Question Answering
 
 **Paper:** [Evaluating Large Language Models in Data Generation for Low-Resource Scenarios: A Case Study on Question Answering](https://www.isca-archive.org/interspeech_2025/arisoy25_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / low-resource-learning / self-training-and-pseudo-labels`
@@ -1637,7 +1652,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports relative F1 gains over restricted human-annotated training in the tested text and spoken QA settings.
 - **Limits:** Prompting, filtering, language, synthetic distribution, and evaluation splits limit transfer; synthetic gains do not establish factual or linguistic quality everywhere.
 
-## 110. Better Semi-supervised Learning for Multi-domain ASR Through Incremental Retraining and Data Filtering
+## 111. Better Semi-supervised Learning for Multi-domain ASR Through Incremental Retraining and Data Filtering
 
 **Paper:** [Better Semi-supervised Learning for Multi-domain ASR Through Incremental Retraining and Data Filtering](https://www.isca-archive.org/interspeech_2025/carofilis25_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / low-resource-learning / self-training-and-pseudo-labels`
@@ -1652,7 +1667,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports up to 22.3% relative improvement on Wow and 24.8% on Fisher over random selection, with consensus strongest and NER cheaper.
 - **Limits:** The gains are bounded to the two English corpora, model ensemble, filtering thresholds, and author-reported WER; other domains and languages remain unresolved.
 
-## 111. MSDA: Combining Pseudo-labeling and Self-Supervision for Unsupervised Domain Adaptation in ASR
+## 112. MSDA: Combining Pseudo-labeling and Self-Supervision for Unsupervised Domain Adaptation in ASR
 
 **Paper:** [MSDA: Combining Pseudo-labeling and Self-Supervision for Unsupervised Domain Adaptation in ASR](https://www.isca-archive.org/interspeech_2025/damianos25_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / low-resource-learning / self-training-and-pseudo-labels`
@@ -1667,7 +1682,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports state-of-the-art results and finds the cascading combination necessary in its experiments.
 - **Limits:** The languages, pseudo-label quality, source models, and domain shifts bound the claim; robustness to severely wrong pseudo-labels remains open.
 
-## 112. Speechless: Speech Instruction Training Without Speech for Low Resource Languages
+## 113. Speechless: Speech Instruction Training Without Speech for Low Resource Languages
 
 **Paper:** [Speechless: Speech Instruction Training Without Speech for Low Resource Languages](https://www.isca-archive.org/interspeech_2025/dao25_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / low-resource-learning / few-shot-adaptation`
@@ -1682,7 +1697,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports that speech-instruction training without TTS can preserve spoken-instruction understanding and offers a simpler route for low-resource languages.
 - **Limits:** The language, synthetic text, Whisper encoder, alignment quality, and downstream command tasks bound the result; semantic alignment is not proof that pronunciation, prosody, or real user speech are fully represented.
 
-## 113. Multi-view Fusion and Parameter Perturbation for Few-Shot Class-Incremental Audio Classification
+## 114. Multi-view Fusion and Parameter Perturbation for Few-Shot Class-Incremental Audio Classification
 
 **Paper:** [Multi-view Fusion and Parameter Perturbation for Few-Shot Class-Incremental Audio Classification](https://www.isca-archive.org/interspeech_2025/fang25d_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / low-resource-learning / few-shot-adaptation`
@@ -1697,7 +1712,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports class-incremental classification results against the tested baselines.
 - **Limits:** Class order, shots, audio domains, perturbation settings, and memory protocol bound the result; benchmark retention does not establish lifelong robustness.
 
-## 114. Evaluating Wav2Vec2-Bert for Computer-Assisted Pronunciation Training for isiZulu
+## 115. Evaluating Wav2Vec2-Bert for Computer-Assisted Pronunciation Training for isiZulu
 
 **Paper:** [Evaluating Wav2Vec2-Bert for Computer-Assisted Pronunciation Training for isiZulu](https://www.isca-archive.org/interspeech_2025/fort25_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / low-resource-learning / few-shot-adaptation`
@@ -1712,7 +1727,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Native-speech transcription is strongest for the NCHLT-trained model, while the L2-trained model detects the most incorrect phonemes under the available true-negative measure; the authors release code and identify the data sources.
 - **Limits:** The results depend on three isiZulu corpora, their recording styles, and incomplete phoneme-error labels. Tone is not evaluated because it is not marked orthographically; findings do not automatically transfer to other languages or pronunciation tasks.
 
-## 115. Few-Shot Speech Deepfake Detection Adaptation with Gaussian Processes
+## 116. Few-Shot Speech Deepfake Detection Adaptation with Gaussian Processes
 
 **Paper:** [Few-Shot Speech Deepfake Detection Adaptation with Gaussian Processes](https://www.isca-archive.org/interspeech_2025/glazer25_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / low-resource-learning / few-shot-adaptation`
@@ -1727,7 +1742,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports few-shot detection adaptation results against the tested baselines.
 - **Limits:** Attack families, kernel choices, calibration, shots, and base detector limit generalization; uncertainty estimates are not automatically reliable under distribution shift.
 
-## 116. Pushing the Limits of Beam Search Decoding  for Transducer-based ASR models
+## 117. Pushing the Limits of Beam Search Decoding  for Transducer-based ASR models
 
 **Paper:** [Pushing the Limits of Beam Search Decoding  for Transducer-based ASR models](https://www.isca-archive.org/interspeech_2025/grigoryan25_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / low-resource-learning / self-training-and-pseudo-labels`
@@ -1742,7 +1757,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports decoding accuracy and efficiency findings for transducer ASR across the tested search settings.
 - **Limits:** Model, language, beam policy, pruning, hardware, and streaming setup bound the result; a better beam does not remove acoustic or language-model errors.
 
-## 117. An Effective Training Framework for Light-Weight Automatic Speech Recognition Models
+## 118. An Effective Training Framework for Light-Weight Automatic Speech Recognition Models
 
 **Paper:** [An Effective Training Framework for Light-Weight Automatic Speech Recognition Models](https://www.isca-archive.org/interspeech_2025/hannan25b_interspeech.html)
 **Taxonomy:** `languages-accents-and-resources / low-resource-learning / few-shot-adaptation`
@@ -1757,7 +1772,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports lightweight ASR accuracy and resource results for the proposed framework.
 - **Limits:** Hardware, language, model family, data, latency measurement, and compression settings limit generalization; a benchmark model is not a deployment guarantee.
 
-## 118. Discovering Directions of Uncertainty in Speech Inpainting
+## 119. Discovering Directions of Uncertainty in Speech Inpainting
 
 **Paper:** [Discovering Directions of Uncertainty in Speech Inpainting](https://www.isca-archive.org/interspeech_2025/cohen25_interspeech.html)
 **Taxonomy:** `listening-and-separation / echo-reconstruction / packet-loss-concealment`
@@ -1772,7 +1787,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Principal directions change word identity and pitch; NPPC captures diverse outputs while matching or improving dropout error.
 - **Limits:** The data, posterior approximation, audio examples, and benchmark define the result; calibration and user decision rules remain unresolved.
 
-## 119. Extended Loss: Incorporating Long Context into Training Models when using Short Audio Frames
+## 120. Extended Loss: Incorporating Long Context into Training Models when using Short Audio Frames
 
 **Paper:** [Extended Loss: Incorporating Long Context into Training Models when using Short Audio Frames](https://www.isca-archive.org/interspeech_2025/dinh25_interspeech.html)
 **Taxonomy:** `listening-and-separation / echo-reconstruction / packet-loss-concealment`
@@ -1787,7 +1802,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports reduced boundary discontinuities and improved short-frame AEC performance under the tested real-time conditions.
 - **Limits:** Echo paths, frame size, batch context, hardware, and evaluation signals bound the claim; continuity on the benchmark is not proof of every room or device.
 
-## 120. Rollback Speech: Smart Feedback Prompts for Lost Utterances in Unstable Online Calls
+## 121. Rollback Speech: Smart Feedback Prompts for Lost Utterances in Unstable Online Calls
 
 **Paper:** [Rollback Speech: Smart Feedback Prompts for Lost Utterances in Unstable Online Calls](https://www.isca-archive.org/interspeech_2025/quinterovillalobos25_interspeech.html)
 **Taxonomy:** `listening-and-separation / echo-reconstruction / packet-loss-concealment`
@@ -1802,7 +1817,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper demonstrates a WebRTC/WebSocket prototype using Whisper and NLTK keyword extraction in a simulated brief disconnection; it is a show-and-tell feasibility demonstration rather than a controlled recovery benchmark.
 - **Limits:** Two-person demonstration conditions, simulated network failure, ASR errors, keyword quality, privacy/latency trade-offs, and absence of a listening study bound the result.
 
-## 121. TS-URGENet: A Three-stage Universal Robust and Generalizable Speech Enhancement Network
+## 122. TS-URGENet: A Three-stage Universal Robust and Generalizable Speech Enhancement Network
 
 **Paper:** [TS-URGENet: A Three-stage Universal Robust and Generalizable Speech Enhancement Network](https://www.isca-archive.org/interspeech_2025/rong25_interspeech.html)
 **Taxonomy:** `listening-and-separation / echo-reconstruction / packet-loss-concealment`
@@ -1817,7 +1832,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The system ranked second in URGENT Track 1.
 - **Limits:** Challenge conditions, author-reported ranking, and no independent run limit the claim.
 
-## 122. Room Impulse Response as a Prompt for Acoustic Echo Cancellation
+## 123. Room Impulse Response as a Prompt for Acoustic Echo Cancellation
 
 **Paper:** [Room Impulse Response as a Prompt for Acoustic Echo Cancellation](https://www.isca-archive.org/interspeech_2025/zhao25b_interspeech.html)
 **Taxonomy:** `listening-and-separation / echo-reconstruction / acoustic-echo-cancellation`
@@ -1832,7 +1847,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Fusion method (d) is strongest on mismatched and real-RIR ICCRN tests; the reported real-RIR double-talk values are PESQ 2.19 and ERLE 4.79.
 - **Limits:** The selected model, fusion choices, RIRs, and author-reported tables bound the claim; independent reproduction and broad room coverage remain absent.
 
-## 123. A Three-Stage Beamforming with Harmonic Guidance for Multi-Channel Speech Enhancement
+## 124. A Three-Stage Beamforming with Harmonic Guidance for Multi-Channel Speech Enhancement
 
 **Paper:** [A Three-Stage Beamforming with Harmonic Guidance for Multi-Channel Speech Enhancement](https://www.isca-archive.org/interspeech_2025/alip25_interspeech.html)
 **Taxonomy:** `listening-and-separation / noise-enhancement / spectral-mask`
@@ -1847,7 +1862,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports improvements over a reference method on LibriSpeech-based datasets.
 - **Limits:** The evidence is benchmark-bound and the summary does not establish performance in arbitrary rooms, languages, or devices.
 
-## 124. Structured Codebook Based Hierarchical Framework for DNN for Computationally Efficient Speech Enhancement
+## 125. Structured Codebook Based Hierarchical Framework for DNN for Computationally Efficient Speech Enhancement
 
 **Paper:** [Structured Codebook Based Hierarchical Framework for DNN for Computationally Efficient Speech Enhancement](https://www.isca-archive.org/interspeech_2025/b25_interspeech.html)
 **Taxonomy:** `listening-and-separation / noise-enhancement / speech-prior-denoising`
@@ -1862,7 +1877,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The framework reduces computation while retaining comparable or improved enhancement scores over the reference systems.
 - **Limits:** One corpus and parameterized spectral targets bound the evidence; downstream ASR and perceptual benefit are not fully established.
 
-## 125. Test-Time Training for Speech Enhancement
+## 126. Test-Time Training for Speech Enhancement
 
 **Paper:** [Test-Time Training for Speech Enhancement](https://www.isca-archive.org/interspeech_2025/behera25_interspeech.html)
 **Taxonomy:** `listening-and-separation / noise-enhancement / speech-prior-denoising`
@@ -1877,7 +1892,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports consistent speech-quality improvements over its baseline on synthetic and real-world datasets.
 - **Limits:** The adaptation steps, compute budget, noise conditions, and author-reported metrics bound the result; listener benefit and long-term stability remain open.
 
-## 126. QUADS: Quantized Distillation Framework for Efficient Speech Language Understanding
+## 127. QUADS: Quantized Distillation Framework for Efficient Speech Language Understanding
 
 **Paper:** [QUADS: Quantized Distillation Framework for Efficient Speech Language Understanding](https://www.isca-archive.org/interspeech_2025/biswas25b_interspeech.html)
 **Taxonomy:** `listening-and-separation / noise-enhancement / speech-prior-denoising`
@@ -1892,7 +1907,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports 71.13% SLURP and 99.20% FSC accuracy, 60–73x lower GMACs, and 83–700x smaller models with bounded degradation.
 - **Limits:** The result depends on tasks, bit settings, and hardware interpretation of the counts; latency and energy on deployed devices remain open.
 
-## 127. Scaling and Enhancing LLM-based AVSR:  A Sparse Mixture of Projectors Approach
+## 128. Scaling and Enhancing LLM-based AVSR:  A Sparse Mixture of Projectors Approach
 
 **Paper:** [Scaling and Enhancing LLM-based AVSR:  A Sparse Mixture of Projectors Approach](https://www.isca-archive.org/interspeech_2025/cappellazzo25_interspeech.html)
 **Taxonomy:** `listening-and-separation / noise-enhancement / speech-prior-denoising`
@@ -1907,7 +1922,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The DEDR configuration reports the strongest results among the tested variants, with ablations supporting expert activation, scalability, and noise robustness.
 - **Limits:** Model size, routing policy, datasets, noise, and compute accounting bound the claim; sparse projector success does not automatically transfer to every multimodal LLM.
 
-## 128. Towards Bitrate-Efficient and Noise-Robust Speech Coding with Variable Bitrate RVQ
+## 129. Towards Bitrate-Efficient and Noise-Robust Speech Coding with Variable Bitrate RVQ
 
 **Paper:** [Towards Bitrate-Efficient and Noise-Robust Speech Coding with Variable Bitrate RVQ](https://www.isca-archive.org/interspeech_2025/chae25b_interspeech.html)
 **Taxonomy:** `listening-and-separation / noise-enhancement / nonstationary-noise`
@@ -1922,7 +1937,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports improved rate-distortion trade-offs and perceptual quality over constant-bitrate baselines in noisy conditions.
 - **Limits:** Noise conditions, bitrates, codec architecture, datasets, perceptual measures, and model sizes bound the result; a cleaner perceptual signal is not necessarily a faithful waveform.
 
-## 129. DiffDSR: Dysarthric Speech Reconstruction Using Latent Diffusion Model
+## 130. DiffDSR: Dysarthric Speech Reconstruction Using Latent Diffusion Model
 
 **Paper:** [DiffDSR: Dysarthric Speech Reconstruction Using Latent Diffusion Model](https://www.isca-archive.org/interspeech_2025/chen25m_interspeech.html)
 **Taxonomy:** `listening-and-separation / noise-enhancement / speech-prior-denoising`
@@ -1937,7 +1952,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports improved intelligibility and speaker similarity in its dysarthric speech reconstruction evaluation.
 - **Limits:** Speaker, severity, reference data, perceptual metrics, and diffusion sampling bound transfer; reconstructed speech is not clinical treatment evidence.
 
-## 130. Adaptive Knowledge Distillation for Device-Directed Speech Detection
+## 131. Adaptive Knowledge Distillation for Device-Directed Speech Detection
 
 **Paper:** [Adaptive Knowledge Distillation for Device-Directed Speech Detection](https://www.isca-archive.org/interspeech_2025/chi25b_interspeech.html)
 **Taxonomy:** `listening-and-separation / noise-enhancement / nonstationary-noise`
@@ -1952,7 +1967,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports EER improvements of 26% for keyword and 19% for keyword-free follow-up invocations, with gains across transformer and conformer students.
 - **Limits:** Invocation types, EER, teacher/student architectures, training data, and device conditions bound deployment claims; a benchmark detector cannot infer intent perfectly in every home.
 
-## 131. First Analyze Then Enhance: A Task-Aware System for Speech Separation, Denoising, and Dereverberation
+## 132. First Analyze Then Enhance: A Task-Aware System for Speech Separation, Denoising, and Dereverberation
 
 **Paper:** [First Analyze Then Enhance: A Task-Aware System for Speech Separation, Denoising, and Dereverberation](https://www.isca-archive.org/interspeech_2025/dang25_interspeech.html)
 **Taxonomy:** `listening-and-separation / noise-enhancement / nonstationary-noise`
@@ -1967,7 +1982,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** On Libri-3Mix-derived data covering eleven clean, noisy, reverberant, mixed, and combined conditions, FATE reports comparable enhancement quality while reducing unnecessary processing and avoiding overprocessing clean inputs.
 - **Limits:** The degradations are simulated and drawn from specified mixtures, noises, and rooms; real rooms, analyzer errors, and out-of-distribution combinations are not established. The reported score is author-reported and was not independently reproduced.
 
-## 132. Improved Intelligibility of Dysarthric Speech using Conditional Flow Matching
+## 133. Improved Intelligibility of Dysarthric Speech using Conditional Flow Matching
 
 **Paper:** [Improved Intelligibility of Dysarthric Speech using Conditional Flow Matching](https://www.isca-archive.org/interspeech_2025/das25b_interspeech.html)
 **Taxonomy:** `listening-and-separation / noise-enhancement / speech-prior-denoising`
@@ -1982,7 +1997,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports that discrete acoustic units improve intelligibility and converge faster than the mel-spectrogram alternative.
 - **Limits:** The result is bounded to the speakers, severity range, target voice, and tested listening/evaluation protocol; naturalness, identity preservation, and clinical benefit remain open.
 
-## 133. Objective and Subjective Evaluation of Diffusion-Based Speech  Enhancement for Dysarthric Speech
+## 134. Objective and Subjective Evaluation of Diffusion-Based Speech  Enhancement for Dysarthric Speech
 
 **Paper:** [Objective and Subjective Evaluation of Diffusion-Based Speech  Enhancement for Dysarthric Speech](https://www.isca-archive.org/interspeech_2025/degroot25_interspeech.html)
 **Taxonomy:** `listening-and-separation / noise-enhancement / speech-prior-denoising`
@@ -1997,7 +2012,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The study reports a systematic comparison rather than a single score; gains and tradeoffs depend on corpus, enhancer, and evaluation target.
 - **Limits:** The corpora, listener tests, Whisper model, and enhancement settings bound the result; a recognition gain is not automatically a clinical benefit.
 
-## 134. Multitalker Babble in English Vowel Perception Training: A Comparison between Humans and Neural Models
+## 135. Multitalker Babble in English Vowel Perception Training: A Comparison between Humans and Neural Models
 
 **Paper:** [Multitalker Babble in English Vowel Perception Training: A Comparison between Humans and Neural Models](https://www.isca-archive.org/interspeech_2025/dong25_interspeech.html)
 **Taxonomy:** `listening-and-separation / noise-enhancement / speech-prior-denoising`
@@ -2012,7 +2027,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports a comparison of human and neural-model responses in multitalker babble.
 - **Limits:** Listeners, babble construction, vowel contrasts, training duration, and model architecture bound transfer.
 
-## 135. FUSE: Universal Speech Enhancement using Multi‐Stage Fusion of Sparse Compression and Token Generation Models for the URGENT 2025 Challenge
+## 136. FUSE: Universal Speech Enhancement using Multi‐Stage Fusion of Sparse Compression and Token Generation Models for the URGENT 2025 Challenge
 
 **Paper:** [FUSE: Universal Speech Enhancement using Multi‐Stage Fusion of Sparse Compression and Token Generation Models for the URGENT 2025 Challenge](https://www.isca-archive.org/interspeech_2025/goswami25_interspeech.html)
 **Taxonomy:** `listening-and-separation / noise-enhancement / speech-prior-denoising`
@@ -2027,7 +2042,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** On the blind challenge set, the system reports DNSMOS 2.94, NISQA 3.25, UTMOS 2.19, MOS 3.44, and CER 77.09; it ranks behind the top system on several signal-level measures but leads the listed systems on perceptual measures.
 - **Limits:** The challenge mixtures, five training languages, unseen Japanese test condition, and 900-sample blind set define the evidence. The sequential three-stage inference and shift operations restrict real-time use; all results are author-reported and no independent reproduction was performed.
 
-## 136. Diffusion Buffer: Online Diffusion-based Speech Enhancement with Sub-Second Latency
+## 137. Diffusion Buffer: Online Diffusion-based Speech Enhancement with Sub-Second Latency
 
 **Paper:** [Diffusion Buffer: Online Diffusion-based Speech Enhancement with Sub-Second Latency](https://www.isca-archive.org/interspeech_2025/lay25_interspeech.html)
 **Taxonomy:** `listening-and-separation / noise-enhancement / nonstationary-noise`
@@ -2042,7 +2057,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports better results than standard diffusion baselines and GPU input-output latency around 0.3–1 seconds.
 - **Limits:** GPU/hardware assumptions, buffer size, noise mixtures, real-time scheduling, and perceptual metrics bound the result; a reported latency range is not a full conversational user study.
 
-## 137. Multistage Universal Speech Enhancement System for URGENT Challenge
+## 138. Multistage Universal Speech Enhancement System for URGENT Challenge
 
 **Paper:** [Multistage Universal Speech Enhancement System for URGENT Challenge](https://www.isca-archive.org/interspeech_2025/le25b_interspeech.html)
 **Taxonomy:** `listening-and-separation / noise-enhancement / speech-prior-denoising`
@@ -2057,7 +2072,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The system reports URGENT challenge results competitive with the compared systems; adding inpainting and self-distillation improves several quality measures, while downstream accuracy and objective metrics do not all move together.
 - **Limits:** Challenge datasets, distortion order, detector errors, resampling to 48 kHz for some modules, metric choice, and author-reported rankings bound the claim; plausible filling is not recovery of the original samples.
 
-## 138. Model as Loss: A Self-Consistent Training Paradigm
+## 139. Model as Loss: A Self-Consistent Training Paradigm
 
 **Paper:** [Model as Loss: A Self-Consistent Training Paradigm](https://www.isca-archive.org/interspeech_2025/phaye25_interspeech.html)
 **Taxonomy:** `listening-and-separation / noise-enhancement / speech-prior-denoising`
@@ -2072,7 +2087,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports better perceptual quality than pretrained feature losses and robust generalization in both in-domain and out-of-domain tests.
 - **Limits:** The encoder, training data, noise conditions, perceptual metrics, and benchmark protocols bound the result; feature agreement is not identical to intelligibility or listener preference.
 
-## 139. FlowSE: Efficient and High-Quality Speech Enhancement via Flow Matching
+## 140. FlowSE: Efficient and High-Quality Speech Enhancement via Flow Matching
 
 **Paper:** [FlowSE: Efficient and High-Quality Speech Enhancement via Flow Matching](https://www.isca-archive.org/interspeech_2025/wang25s_interspeech.html)
 **Taxonomy:** `listening-and-separation / noise-enhancement / speech-prior-denoising`
@@ -2087,7 +2102,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports improved enhancement quality against generative baselines in both its evaluated scenarios with lower inference cost.
 - **Limits:** Training data, noise conditions, step count, real-time hardware, perceptual metrics, and speaker preservation tests bound the claim; enhancement scores do not establish conversational benefit.
 
-## 140. A Novel Deep Learning Framework for Efficient Multichannel Acoustic Feedback Control
+## 141. A Novel Deep Learning Framework for Efficient Multichannel Acoustic Feedback Control
 
 **Paper:** [A Novel Deep Learning Framework for Efficient Multichannel Acoustic Feedback Control](https://www.isca-archive.org/interspeech_2025/wu25d_interspeech.html)
 **Taxonomy:** `listening-and-separation / noise-enhancement / nonstationary-noise`
@@ -2102,7 +2117,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports improved speech enhancement with lower computational demand across the proposed training strategies.
 - **Limits:** The device geometry, microphones, loudspeakers, feedback paths, training regime, and metrics bound the result; laboratory suppression does not establish stable operation for every room or device.
 
-## 141. MiSTR: Multi-Modal iEEG-to-Speech Synthesis with Transformer-Based Prosody Prediction and Neural Phase Reconstruction
+## 142. MiSTR: Multi-Modal iEEG-to-Speech Synthesis with Transformer-Based Prosody Prediction and Neural Phase Reconstruction
 
 **Paper:** [MiSTR: Multi-Modal iEEG-to-Speech Synthesis with Transformer-Based Prosody Prediction and Neural Phase Reconstruction](https://www.isca-archive.org/interspeech_2025/alradhi25_interspeech.html)
 **Taxonomy:** `listening-and-separation / perceptual-recovery / perceptual-enhancement`
@@ -2117,7 +2132,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports higher fidelity and naturalness than listed baselines and MOSA 3.38.
 - **Limits:** Dataset, subjects, protocol, learned evaluator, and paper-reported comparisons limit clinical claims.
 
-## 142. Voice-ENHANCE: Speech Restoration using a Diffusion-based Voice Conversion Framework
+## 143. Voice-ENHANCE: Speech Restoration using a Diffusion-based Voice Conversion Framework
 
 **Paper:** [Voice-ENHANCE: Speech Restoration using a Diffusion-based Voice Conversion Framework](https://www.isca-archive.org/interspeech_2025/byun25_interspeech.html)
 **Taxonomy:** `listening-and-separation / perceptual-recovery / perceptual-enhancement`
@@ -2132,7 +2147,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports that GSR+VC obtains strong objective quality scores across simulated noise, packet loss, bandwidth, reverberation, and codec conditions and compares favorably with the cited restoration systems.
 - **Limits:** Training uses a proprietary restoration corpus and evaluation uses small/simulated validation settings; non-intrusive quality proxies do not establish word correctness or speaker-faithful repair. No independent reproduction was performed.
 
-## 143. A Deformable Convolution GAN Approach for Speech Dereverberation in Cochlear Implant Users
+## 144. A Deformable Convolution GAN Approach for Speech Dereverberation in Cochlear Implant Users
 
 **Paper:** [A Deformable Convolution GAN Approach for Speech Dereverberation in Cochlear Implant Users](https://www.isca-archive.org/interspeech_2025/chiang25_interspeech.html)
 **Taxonomy:** `listening-and-separation / perceptual-recovery / perceptual-enhancement`
@@ -2147,7 +2162,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports markedly improved CI speech intelligibility by preserving envelope and transient structure.
 - **Limits:** The claim is bounded to REVERB conditions, the tested listeners, and the GAN configuration; broader hearing profiles, rooms, and independent replication remain open.
 
-## 144. Modality-Agnostic Multimodal Emotion Recognition using a Contrastive Masked Autoencoder
+## 145. Modality-Agnostic Multimodal Emotion Recognition using a Contrastive Masked Autoencoder
 
 **Paper:** [Modality-Agnostic Multimodal Emotion Recognition using a Contrastive Masked Autoencoder](https://www.isca-archive.org/interspeech_2025/chochlakis25_interspeech.html)
 **Taxonomy:** `listening-and-separation / perceptual-recovery / perceptual-enhancement`
@@ -2162,7 +2177,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports improvements over unimodal and multimodal baselines and robustness to missing modalities.
 - **Limits:** Corpus, emotion labels, missingness pattern, modality quality, and reconstruction objective bound the claim; emotion inference is not guaranteed to be socially reliable.
 
-## 145. Listen through the Sound: Generative Speech Restoration Leveraging Acoustic Context Representation
+## 146. Listen through the Sound: Generative Speech Restoration Leveraging Acoustic Context Representation
 
 **Paper:** [Listen through the Sound: Generative Speech Restoration Leveraging Acoustic Context Representation](https://www.isca-archive.org/interspeech_2025/chung25_interspeech.html)
 **Taxonomy:** `listening-and-separation / perceptual-recovery / perceptual-enhancement`
@@ -2177,7 +2192,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports better restoration and reduced performance variability with acoustic context.
 - **Limits:** The result is tied to the distortion set, CLAP features, and diffusion backbone; unseen devices, rooms, and perceptual listeners remain open.
 
-## 146. Linguistic Masking and Its Release in Simulated Electric-acoustic Hearing
+## 147. Linguistic Masking and Its Release in Simulated Electric-acoustic Hearing
 
 **Paper:** [Linguistic Masking and Its Release in Simulated Electric-acoustic Hearing](https://www.isca-archive.org/interspeech_2025/ding25_interspeech.html)
 **Taxonomy:** `listening-and-separation / perceptual-recovery / perceptual-enhancement`
@@ -2192,7 +2207,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The study reports a combined-stimulation advantage across all three masker languages and language-specific differences in release from masking.
 - **Limits:** Normal-hearing listeners, vocoder simulations, Mandarin targets, and the selected masker languages limit direct claims about real CI users and everyday rooms.
 
-## 147. Efficient Neural and Numerical Methods for High-QualityOnline Speech Spectrogram Inversion via Gradient Theorem
+## 148. Efficient Neural and Numerical Methods for High-QualityOnline Speech Spectrogram Inversion via Gradient Theorem
 
 **Paper:** [Efficient Neural and Numerical Methods for High-QualityOnline Speech Spectrogram Inversion via Gradient Theorem](https://www.isca-archive.org/interspeech_2025/fernandez25_interspeech.html)
 **Taxonomy:** `listening-and-separation / perceptual-recovery / perceptual-enhancement`
@@ -2207,7 +2222,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports a 30x smaller network, a further halving of neural cost with one-hop latency, and orders-of-magnitude solver speedup while retaining quality.
 - **Limits:** Spectrogram settings, audio domain, latency definition, and samples bound the claim; listening tests and hardware deployment remain separate checks.
 
-## 148. Vision-Integrated High-Quality Neural Speech Coding
+## 149. Vision-Integrated High-Quality Neural Speech Coding
 
 **Paper:** [Vision-Integrated High-Quality Neural Speech Coding](https://www.isca-archive.org/interspeech_2025/guo25c_interspeech.html)
 **Taxonomy:** `listening-and-separation / perceptual-recovery / perceptual-enhancement`
@@ -2222,7 +2237,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports high-quality neural coding results for the tested audio-visual conditions.
 - **Limits:** Video quality, synchronization, speakers, bitrate, decoder, and missing-video behavior bound the claim; visual assistance can introduce privacy and spoofing risks.
 
-## 149. PAST: Phonetic-Acoustic Speech Tokenizer
+## 150. PAST: Phonetic-Acoustic Speech Tokenizer
 
 **Paper:** [PAST: Phonetic-Acoustic Speech Tokenizer](https://www.isca-archive.org/interspeech_2025/hartuv25_interspeech.html)
 **Taxonomy:** `listening-and-separation / perceptual-recovery / perceptual-enhancement`
@@ -2237,7 +2252,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports tokenizer quality and downstream speech-representation results for the proposed phonetic-acoustic units.
 - **Limits:** Token rate, codebook, languages, speakers, reconstruction target, and downstream tasks bound the claim; discrete units are not automatically linguistically complete.
 
-## 150. VoiceNoNG: Robust High-Quality Speech Editing Model without Hallucinations
+## 151. VoiceNoNG: Robust High-Quality Speech Editing Model without Hallucinations
 
 **Paper:** [VoiceNoNG: Robust High-Quality Speech Editing Model without Hallucinations](https://www.isca-archive.org/interspeech_2025/huang25c_interspeech.html)
 **Taxonomy:** `listening-and-separation / perceptual-recovery / perceptual-enhancement`
@@ -2252,7 +2267,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports speech-editing quality and reduced hallucination behavior for the tested edits.
 - **Limits:** Edit type, context length, speaker set, alignment, metrics, and human judgments bound the claim; no-hallucination behavior is not guaranteed under arbitrary prompts.
 
-## 151. Benchmarking Neural Speech Codec Intelligibility with SITool
+## 152. Benchmarking Neural Speech Codec Intelligibility with SITool
 
 **Paper:** [Benchmarking Neural Speech Codec Intelligibility with SITool](https://www.isca-archive.org/interspeech_2025/leschanowsky25_interspeech.html)
 **Taxonomy:** `listening-and-separation / perceptual-recovery / perceptual-enhancement`
@@ -2267,7 +2282,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Some neural codecs outperform traditional codecs in subjective intelligibility, but objective agreement varies and scores show gender- and wordlist-specific differences.
 - **Limits:** The codec set, English tests, listener screening, and objective metrics bound the conclusion; the toolkit does not remove human evaluation.
 
-## 152. SpeechRefiner: Towards Perceptual Quality Refinement for Front-End Algorithms
+## 153. SpeechRefiner: Towards Perceptual Quality Refinement for Front-End Algorithms
 
 **Paper:** [SpeechRefiner: Towards Perceptual Quality Refinement for Front-End Algorithms](https://www.isca-archive.org/interspeech_2025/li25s_interspeech.html)
 **Taxonomy:** `listening-and-separation / perceptual-recovery / perceptual-enhancement`
@@ -2282,7 +2297,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports perceptual and signal-quality improvements for refined front-end outputs.
 - **Limits:** Front-end types, distortion, training targets, listeners, metrics, and content preservation bound the result; quality improvement is not guaranteed for unseen algorithms.
 
-## 153. HWB-Net: A Novel High-Performance and Efficient Hybrid Waveform Bandwidth Extension Method
+## 154. HWB-Net: A Novel High-Performance and Efficient Hybrid Waveform Bandwidth Extension Method
 
 **Paper:** [HWB-Net: A Novel High-Performance and Efficient Hybrid Waveform Bandwidth Extension Method](https://www.isca-archive.org/interspeech_2025/liu25d_interspeech.html)
 **Taxonomy:** `listening-and-separation / perceptual-recovery / perceptual-enhancement`
@@ -2297,7 +2312,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports quality and efficiency results for HWB-Net on bandwidth-extension tests.
 - **Limits:** Bandwidth limit, speakers, noise, training targets, metrics, and listening protocol bound the result; plausible detail is not recovered ground truth.
 
-## 154. A Neural Codec Approach for Noise-Robust Bandwidth Expansion
+## 155. A Neural Codec Approach for Noise-Robust Bandwidth Expansion
 
 **Paper:** [A Neural Codec Approach for Noise-Robust Bandwidth Expansion](https://www.isca-archive.org/interspeech_2025/liu25p_interspeech.html)
 **Taxonomy:** `listening-and-separation / perceptual-recovery / perceptual-enhancement`
@@ -2312,7 +2327,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports bandwidth-expansion quality and noise robustness for the proposed neural codec.
 - **Limits:** Noise types, bandwidth, codec rate, speakers, targets, and perceptual evaluation bound the result; plausible high-frequency detail is not ground truth.
 
-## 155. Analysis and Extension of a Near-End Listening Enhancement Method Based on Long-Term Fractile Noise Statistics
+## 156. Analysis and Extension of a Near-End Listening Enhancement Method Based on Long-Term Fractile Noise Statistics
 
 **Paper:** [Analysis and Extension of a Near-End Listening Enhancement Method Based on Long-Term Fractile Noise Statistics](https://www.isca-archive.org/interspeech_2025/villani25_interspeech.html)
 **Taxonomy:** `listening-and-separation / perceptual-recovery / perceptual-enhancement`
@@ -2327,7 +2342,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports listening-enhancement results for the proposed statistical method and its extension.
 - **Limits:** Noise type, recordings, listeners, parameter settings, and perceptual tests limit generalization; improved quality is not identical to improved intelligibility.
 
-## 156. ReSepNet: A Unified-Light Model for Recursive Speech Separation with Unknown Speaker Count
+## 157. ReSepNet: A Unified-Light Model for Recursive Speech Separation with Unknown Speaker Count
 
 **Paper:** [ReSepNet: A Unified-Light Model for Recursive Speech Separation with Unknown Speaker Count](https://www.isca-archive.org/interspeech_2025/alizadeh25_interspeech.html)
 **Taxonomy:** `listening-and-separation / source-separation / blind-source-separation`
@@ -2342,7 +2357,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports higher SI-SNR improvement than listed baselines and generalization from two/three-speaker training to four/five-speaker tests.
 - **Limits:** The evidence is synthetic WSJ0 mixtures, 8-kHz four-second windows, and a bounded count range; real rooms and end-to-end recognition are not tested. Results are author-reported.
 
-## 157. Deep-Simplex Multichannel Speech Separation
+## 158. Deep-Simplex Multichannel Speech Separation
 
 **Paper:** [Deep-Simplex Multichannel Speech Separation](https://www.isca-archive.org/interspeech_2025/avidan25_interspeech.html)
 **Taxonomy:** `listening-and-separation / source-separation / blind-source-separation`
@@ -2357,7 +2372,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports multichannel separation results with a deep-simplex approach designed for variable source conditions and compares it with established separators.
 - **Limits:** Performance depends on microphone geometry, room conditions, source count, and the reference metrics; synthetic mixtures may not represent real overlap. No independent reproduction was performed.
 
-## 158. Relative cue weighting in multilingual stop voicing production
+## 159. Relative cue weighting in multilingual stop voicing production
 
 **Paper:** [Relative cue weighting in multilingual stop voicing production](https://www.isca-archive.org/interspeech_2025/chan25_interspeech.html)
 **Taxonomy:** `listening-and-separation / source-separation / target-conditioned-separation`
@@ -2372,7 +2387,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports language-specific production for all early multilinguals, dominance-driven variation, and a salient role for closure voicing in Malaysian English.
 - **Limits:** The Malaysian speakers, three languages, stop inventory, nine correlates, and random-forest analysis bound generalization to other multilingual populations or contrasts.
 
-## 159. NeuroSpex+: Dual-Task Training of Neuro-Guided Speaker Extraction with Speech Envelope and Waveform
+## 160. NeuroSpex+: Dual-Task Training of Neuro-Guided Speaker Extraction with Speech Envelope and Waveform
 
 **Paper:** [NeuroSpex+: Dual-Task Training of Neuro-Guided Speaker Extraction with Speech Envelope and Waveform](https://www.isca-archive.org/interspeech_2025/dasilva25_interspeech.html)
 **Taxonomy:** `listening-and-separation / source-separation / target-conditioned-separation`
@@ -2387,7 +2402,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports significant improvement over baseline speaker-extraction systems.
 - **Limits:** The evidence is bounded to the recorded EEG/speech setup and tested mixtures; listener attention changes, clinical use, and independent reproduction remain open.
 
-## 160. MOPSA: Mixture of Prompt-Experts Based Speaker Adaptation for Elderly Speech Recognition
+## 161. MOPSA: Mixture of Prompt-Experts Based Speaker Adaptation for Elderly Speech Recognition
 
 **Paper:** [MOPSA: Mixture of Prompt-Experts Based Speaker Adaptation for Elderly Speech Recognition](https://www.isca-archive.org/interspeech_2025/deng25_interspeech.html)
 **Taxonomy:** `listening-and-separation / source-separation / target-conditioned-separation`
@@ -2402,7 +2417,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports relative WER/CER reductions of 4.21% and 5.40% and up to 16.12x real-time speedup over offline adaptation.
 - **Limits:** Datasets, elderly populations, prompt clusters, and Whisper versions bound the claim; broader disorders, languages, and online failure recovery remain open.
 
-## 161. Synchronous analysis of abnormal acoustic and linguistic production in Parkinson's speech
+## 162. Synchronous analysis of abnormal acoustic and linguistic production in Parkinson's speech
 
 **Paper:** [Synchronous analysis of abnormal acoustic and linguistic production in Parkinson's speech](https://www.isca-archive.org/interspeech_2025/escobargrisales25_interspeech.html)
 **Taxonomy:** `listening-and-separation / source-separation / target-conditioned-separation`
@@ -2417,7 +2432,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports coordinated acoustic and linguistic findings in Parkinson's speech.
 - **Limits:** Cohort, task, disease stage, annotation, and statistical design limit clinical generalization; association is not diagnosis or causation.
 
-## 162. IDIR: Identifying and Distilling Informative Relations for Speaker Verification
+## 163. IDIR: Identifying and Distilling Informative Relations for Speaker Verification
 
 **Paper:** [IDIR: Identifying and Distilling Informative Relations for Speaker Verification](https://www.isca-archive.org/interspeech_2025/gan25_interspeech.html)
 **Taxonomy:** `listening-and-separation / source-separation / target-conditioned-separation`
@@ -2432,7 +2447,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports improved speaker-verification performance over feature-matching distillation and stronger separation of same- and different-speaker relations.
 - **Limits:** Teacher/student architectures, pair mining, margin, dataset, and verification protocol bound the claim; relational distillation does not ensure robustness to domain, overlap, or fairness shifts.
 
-## 163. CabinSep: IR-Augmented Mask-Based MVDR for Real-Time In-car Speech Separation with Distributed Heterogeneous Arrays
+## 164. CabinSep: IR-Augmented Mask-Based MVDR for Real-Time In-car Speech Separation with Distributed Heterogeneous Arrays
 
 **Paper:** [CabinSep: IR-Augmented Mask-Based MVDR for Real-Time In-car Speech Separation with Distributed Heterogeneous Arrays](https://www.isca-archive.org/interspeech_2025/han25d_interspeech.html)
 **Taxonomy:** `listening-and-separation / source-separation / target-conditioned-separation`
@@ -2447,7 +2462,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** CabinSep reports a 17.5% relative ASR error reduction over DualSep on real recordings at 0.4 GMACs, with better behavior around speaker-zone boundaries.
 - **Limits:** Cabin geometry, array placement, impulse-response coverage, ASR backend, and compute measure constrain generalization; ASR improvement is not proof of perceptual superiority for every listener.
 
-## 164. Overlap-Adaptive Hybrid Speaker Diarization and ASR-Aware Observation Addition for MISP 2025 Challenge
+## 165. Overlap-Adaptive Hybrid Speaker Diarization and ASR-Aware Observation Addition for MISP 2025 Challenge
 
 **Paper:** [Overlap-Adaptive Hybrid Speaker Diarization and ASR-Aware Observation Addition for MISP 2025 Challenge](https://www.isca-archive.org/interspeech_2025/huang25k_interspeech.html)
 **Taxonomy:** `listening-and-separation / source-separation / blind-source-separation`
@@ -2462,7 +2477,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The system reports 9.48% CER and 11.56% cpCER and first place in both MISP tracks.
 - **Limits:** Challenge tracks, meeting conditions, and author-reported ranking limit generalization and independent reproduction.
 
-## 165. Neural Speech Extraction with Human Feedback
+## 166. Neural Speech Extraction with Human Feedback
 
 **Paper:** [Neural Speech Extraction with Human Feedback](https://www.isca-archive.org/interspeech_2025/itani25_interspeech.html)
 **Taxonomy:** `listening-and-separation / source-separation / target-conditioned-separation`
@@ -2477,7 +2492,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports neural speech extraction with human feedback.
 - **Limits:** Feedback population, mixture construction, target definition, signal metrics, and model scope bound transfer.
 
-## 166. FlowTSE: Target Speaker Extraction with Flow Matching
+## 167. FlowTSE: Target Speaker Extraction with Flow Matching
 
 **Paper:** [FlowTSE: Target Speaker Extraction with Flow Matching](https://www.isca-archive.org/interspeech_2025/navon25_interspeech.html)
 **Taxonomy:** `listening-and-separation / source-separation / target-conditioned-separation`
@@ -2492,7 +2507,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports that FlowTSE matches or outperforms strong target-speaker-extraction baselines on standard benchmarks.
 - **Limits:** Enrollment quality, speaker/noise shift, phase-vocoder design, benchmark mixtures, and signal metrics bound transfer; extraction quality is not automatically improved ASR or hearing-aid benefit.
 
-## 167. Online Audio-Visual Autoregressive Speaker Extraction
+## 168. Online Audio-Visual Autoregressive Speaker Extraction
 
 **Paper:** [Online Audio-Visual Autoregressive Speaker Extraction](https://www.isca-archive.org/interspeech_2025/pan25_interspeech.html)
 **Taxonomy:** `listening-and-separation / source-separation / target-conditioned-separation`
@@ -2507,7 +2522,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** On LRS3, the paper reports competitive separation quality with about 0.1M visual parameters and 2.1 MACs/s, and evaluates switching attention.
 - **Limits:** LRS3 faces, switching schedule, audiovisual synchronization, causal latency, and separation metrics bound transfer; benchmark separation is not a full human-attention study.
 
-## 168. Location-Aware Target Speaker Extraction for Hearing Aids
+## 169. Location-Aware Target Speaker Extraction for Hearing Aids
 
 **Paper:** [Location-Aware Target Speaker Extraction for Hearing Aids](https://www.isca-archive.org/interspeech_2025/alcalapadilla25_interspeech.html)
 **Taxonomy:** `listening-and-separation / spatial-listening / spatial-filtering`
@@ -2522,7 +2537,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports location-aware target-speaker extraction for hearing-aid scenarios.
 - **Limits:** Array geometry, motion, layout, processing, and intelligibility metric bound transfer.
 
-## 169. A Study of Real-world Audio-Visual Corpus Design and Production: A Perspective from MISP Challenges
+## 170. A Study of Real-world Audio-Visual Corpus Design and Production: A Perspective from MISP Challenges
 
 **Paper:** [A Study of Real-world Audio-Visual Corpus Design and Production: A Perspective from MISP Challenges](https://www.isca-archive.org/interspeech_2025/chen25k_interspeech.html)
 **Taxonomy:** `listening-and-separation / spatial-listening / spatial-filtering`
@@ -2537,7 +2552,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports broad adoption of the corpora by over 110 teams and identifies design strengths and limitations that affect audio-visual speech-processing comparisons.
 - **Limits:** Challenge construction, participant selection, language, room/device coverage, and annotation policy bound generalization; downloading or winning on a corpus does not prove deployment realism.
 
-## 170. SoundSculpt: Direction and Semantics Driven Ambisonic Target Sound Extraction
+## 171. SoundSculpt: Direction and Semantics Driven Ambisonic Target Sound Extraction
 
 **Paper:** [SoundSculpt: Direction and Semantics Driven Ambisonic Target Sound Extraction](https://www.isca-archive.org/interspeech_2025/chen25l_interspeech.html)
 **Taxonomy:** `listening-and-separation / spatial-listening / spatial-filtering`
@@ -2552,7 +2567,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** SoundSculpt outperforms the reported signal-processing baselines on synthetic and real ambisonic mixtures, with joint spatial-semantic conditioning helping in difficult cases.
 - **Limits:** Synthetic scene construction, ambisonic order, semantic detector quality, room conditions, and target definition bound transfer; benchmark improvement is not guaranteed perceptual source isolation in arbitrary rooms.
 
-## 171. Spatio-Spectral Diarization of Meetings by Combining TDOA-based Segmentation and Speaker Embedding-based Clustering
+## 172. Spatio-Spectral Diarization of Meetings by Combining TDOA-based Segmentation and Speaker Embedding-based Clustering
 
 **Paper:** [Spatio-Spectral Diarization of Meetings by Combining TDOA-based Segmentation and Speaker Embedding-based Clustering](https://www.isca-archive.org/interspeech_2025/cordlandwehr25_interspeech.html)
 **Taxonomy:** `listening-and-separation / spatial-listening / spatial-filtering`
@@ -2567,7 +2582,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The combined pipeline outperforms single-channel pyannote in reported compact and distributed meeting scenarios.
 - **Limits:** Layouts, datasets, overlap, and spatial cues bound the result; evaluations are author-reported.
 
-## 172. Deep learning based spatial aliasing reduction in beamforming for audio capture
+## 173. Deep learning based spatial aliasing reduction in beamforming for audio capture
 
 **Paper:** [Deep learning based spatial aliasing reduction in beamforming for audio capture](https://www.isca-archive.org/interspeech_2025/guzik25_interspeech.html)
 **Taxonomy:** `listening-and-separation / spatial-listening / spatial-filtering`
@@ -2582,7 +2597,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports reduced spatial aliasing and improved spatial/spectral capture measures for the proposed deep-learning correction in the tested scenarios.
 - **Limits:** Array geometry, source locations, reverberation, training mixtures, and scenario coverage constrain generalization; simulated or benchmark gains do not establish robustness for every microphone layout.
 
-## 173. End-to-End DOA-Guided Speech Extraction in Noisy Multi-Talker Scenarios
+## 174. End-to-End DOA-Guided Speech Extraction in Noisy Multi-Talker Scenarios
 
 **Paper:** [End-to-End DOA-Guided Speech Extraction in Noisy Multi-Talker Scenarios](https://www.isca-archive.org/interspeech_2025/jing25b_interspeech.html)
 **Taxonomy:** `listening-and-separation / spatial-listening / spatial-filtering`
@@ -2597,7 +2612,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports stronger target enhancement, interference suppression, and downstream ASR performance in the evaluated noisy multi-talker scenarios.
 - **Limits:** DOA estimation, array geometry, spatial overlap, noise type, beamwidth selection, and benchmark composition bound transfer; reported ASR gains do not establish universal spatial hearing quality.
 
-## 174. Co-Speech Motion for Virtual Agents in Dialogue Using LLM-Driven Primitive Action Selection
+## 175. Co-Speech Motion for Virtual Agents in Dialogue Using LLM-Driven Primitive Action Selection
 
 **Paper:** [Co-Speech Motion for Virtual Agents in Dialogue Using LLM-Driven Primitive Action Selection](https://www.isca-archive.org/interspeech_2025/baihaqi25b_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / grounding-and-action / interactional-feedback`
@@ -2612,7 +2627,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper presents a flexible and scalable approach, but the preserved evidence does not establish a numerical gain.
 - **Limits:** Full mechanism, baselines, human judgments, and cross-embodiment transfer require the paper's detailed evaluation; the result is not a claim of human-like motion.
 
-## 175. Fact-Controlled Diagnosis of Hallucinations in Medical Text Summarization
+## 176. Fact-Controlled Diagnosis of Hallucinations in Medical Text Summarization
 
 **Paper:** [Fact-Controlled Diagnosis of Hallucinations in Medical Text Summarization](https://www.isca-archive.org/interspeech_2025/bn25_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / grounding-and-action / referential-grounding`
@@ -2627,7 +2642,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports that general-domain detectors struggle on clinical hallucinations and evaluates specialized diagnostic approaches.
 - **Limits:** Synthetic deletion, clinical language, annotation, summarizer, and detector thresholds limit generalization; detection is not prevention or clinical validation.
 
-## 176. From Words to Waves: Analyzing Concept Formation in Speech and Text-Based Foundation Models
+## 177. From Words to Waves: Analyzing Concept Formation in Speech and Text-Based Foundation Models
 
 **Paper:** [From Words to Waves: Analyzing Concept Formation in Speech and Text-Based Foundation Models](https://www.isca-archive.org/interspeech_2025/ersoy25_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / grounding-and-action / referential-grounding`
@@ -2642,7 +2657,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports comparative latent conceptual structures across speech, text, and joint models.
 - **Limits:** Model choice, layer, analysis method, prompts, and human interpretation bound the claim; a latent cluster is not automatically a human concept.
 
-## 177. AC/DC: LLM-based Audio Comprehension via Dialogue Continuation
+## 178. AC/DC: LLM-based Audio Comprehension via Dialogue Continuation
 
 **Paper:** [AC/DC: LLM-based Audio Comprehension via Dialogue Continuation](https://www.isca-archive.org/interspeech_2025/fujita25b_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / grounding-and-action / referential-grounding`
@@ -2657,7 +2672,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Dialogue-continuation training enables zero-shot instruction following and improves reported AQA, while AAC gains are mixed.
 - **Limits:** Generated captions, benchmarks, and an LLM judge define the evidence; human usefulness for deaf or hard-of-hearing users is not established.
 
-## 178. Vela: Scalable Embeddings with Voice Large Language Models for Multimodal Retrieval
+## 179. Vela: Scalable Embeddings with Voice Large Language Models for Multimodal Retrieval
 
 **Paper:** [Vela: Scalable Embeddings with Voice Large Language Models for Multimodal Retrieval](https://www.isca-archive.org/interspeech_2025/hu25b_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / grounding-and-action / referential-grounding`
@@ -2672,7 +2687,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports that Vela outperforms traditional CLAP models and is more robust on long, complex retrieval tasks.
 - **Limits:** The abstract says code is forthcoming and the result is tied to the chosen benchmarks and prompts; open-world audio, speech-specific retrieval, and independent reproduction remain open.
 
-## 179. Language-Guided Contrastive Audio-Visual Masked Autoencoder with Automatically Generated Audio-Visual-Text Triplets from Videos
+## 180. Language-Guided Contrastive Audio-Visual Masked Autoencoder with Automatically Generated Audio-Visual-Text Triplets from Videos
 
 **Paper:** [Language-Guided Contrastive Audio-Visual Masked Autoencoder with Automatically Generated Audio-Visual-Text Triplets from Videos](https://www.isca-archive.org/interspeech_2025/ishikawa25_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / grounding-and-action / referential-grounding`
@@ -2687,7 +2702,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports up to 5.6% recall@10 improvement for retrieval and 3.2% for classification.
 - **Limits:** The video domains, caption generator, CLAP filter, and downstream tasks define the result; spoken conversation and human annotation quality outside those videos remain open.
 
-## 180. Face2VoiceSync: Lightweight Face-Voice Consistency for Text-Driven Talking Face Generation
+## 181. Face2VoiceSync: Lightweight Face-Voice Consistency for Text-Driven Talking Face Generation
 
 **Paper:** [Face2VoiceSync: Lightweight Face-Voice Consistency for Text-Driven Talking Face Generation](https://www.isca-archive.org/interspeech_2025/kang25c_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / grounding-and-action / referential-grounding`
@@ -2702,7 +2717,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports improved face-voice consistency and text-driven talking-face generation quality relative to fixed-speech baselines.
 - **Limits:** Face identities, text prompts, speech/face datasets, consistency metric, and synchronization quality bound the claim; a consistency score does not prove that a viewer will find the character natural or trustworthy.
 
-## 181. Pick and Summarize: Integrating Extractive and Abstractive Speech Summarization
+## 182. Pick and Summarize: Integrating Extractive and Abstractive Speech Summarization
 
 **Paper:** [Pick and Summarize: Integrating Extractive and Abstractive Speech Summarization](https://www.isca-archive.org/interspeech_2025/kano25_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / grounding-and-action / referential-grounding`
@@ -2717,7 +2732,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The method gives consistent gains and up to 1.4 METEOR points over a strong abstractive baseline.
 - **Limits:** The corpus, reference summaries, metric, summary length, and presentation style bound the result; lexical overlap does not prove that all important facts were preserved.
 
-## 182. Towards Human-like Multimodal Conversational Agent by Generating Engaging Speech
+## 183. Towards Human-like Multimodal Conversational Agent by Generating Engaging Speech
 
 **Paper:** [Towards Human-like Multimodal Conversational Agent by Generating Engaging Speech](https://www.isca-archive.org/interspeech_2025/kim25m_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / grounding-and-action / interactional-feedback`
@@ -2732,7 +2747,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports more engaging and contextually suitable speech than text-only baselines and shows gains from visual and audio modalities.
 - **Limits:** Dataset role-play, judge criteria, synthetic or recorded voices, conversation domain, and lack of exact-speaker replication bound the claim; engagement scores do not establish long-term human trust or natural conversation.
 
-## 183. Teaching Audio-Aware Large Language Models What Does Not Hear: Mitigating Hallucinations through Synthesized Negative Samples
+## 184. Teaching Audio-Aware Large Language Models What Does Not Hear: Mitigating Hallucinations through Synthesized Negative Samples
 
 **Paper:** [Teaching Audio-Aware Large Language Models What Does Not Hear: Mitigating Hallucinations through Synthesized Negative Samples](https://www.isca-archive.org/interspeech_2025/kuan25_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / grounding-and-action / referential-grounding`
@@ -2747,7 +2762,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports reduced hallucination behavior for the tested audio-aware models and synthesized negative-sample strategy.
 - **Limits:** Negative-sample construction, audio quality, prompts, model family, and evaluation rubric limit the claim; abstention quality is not the same as factual clinical reliability.
 
-## 184. Bridging Audio and Vision: Zero-Shot Audiovisual Segmentation by Connecting Pretrained Models
+## 185. Bridging Audio and Vision: Zero-Shot Audiovisual Segmentation by Connecting Pretrained Models
 
 **Paper:** [Bridging Audio and Vision: Zero-Shot Audiovisual Segmentation by Connecting Pretrained Models](https://www.isca-archive.org/interspeech_2025/lee25b_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / grounding-and-action / referential-grounding`
@@ -2762,7 +2777,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports zero-shot audiovisual segmentation results for the connected pretrained models.
 - **Limits:** Datasets, categories, synchronization, pretrained models, and segmentation labels bound the result; co-occurrence does not establish physical source identity.
 
-## 185. Speech-IFEval: Evaluating Instruction-Following and Quantifying Catastrophic Forgetting in Speech-Aware Language Models
+## 186. Speech-IFEval: Evaluating Instruction-Following and Quantifying Catastrophic Forgetting in Speech-Aware Language Models
 
 **Paper:** [Speech-IFEval: Evaluating Instruction-Following and Quantifying Catastrophic Forgetting in Speech-Aware Language Models](https://www.isca-archive.org/interspeech_2025/lu25c_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / grounding-and-action / speech-act`
@@ -2777,7 +2792,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports benchmark results for spoken instruction following and catastrophic forgetting.
 - **Limits:** Task suite, speech recognition quality, prompts, model families, and training order bound the conclusions; benchmark retention is not proof of reliable deployment behavior.
 
-## 186. Unified Audio-Visual Modeling for Recognizing Which Face Spoke When and What in Multi-Talker Overlapped Speech and Video
+## 187. Unified Audio-Visual Modeling for Recognizing Which Face Spoke When and What in Multi-Talker Overlapped Speech and Video
 
 **Paper:** [Unified Audio-Visual Modeling for Recognizing Which Face Spoke When and What in Multi-Talker Overlapped Speech and Video](https://www.isca-archive.org/interspeech_2025/makishima25b_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / grounding-and-action / referential-grounding`
@@ -2792,7 +2807,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The proposed model reports lower or competitive WER/VWER and strong VTER as the number of overlapping speakers rises, with tags placed before or after each transcription tested explicitly.
 - **Limits:** The evidence is bounded to constructed LRS3 mixtures, visible faces, tested overlap counts, and author-reported metrics; natural meetings, missed faces, and long-range turn structure remain open.
 
-## 187. Beat gestures made by human-like avatars affect speech perception
+## 188. Beat gestures made by human-like avatars affect speech perception
 
 **Paper:** [Beat gestures made by human-like avatars affect speech perception](https://www.isca-archive.org/interspeech_2025/maran25_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / grounding-and-action / interactional-feedback`
@@ -2807,7 +2822,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports speech-perception effects of avatar beat gestures in the tested stimuli and listener tasks.
 - **Limits:** Avatar design, gesture timing, speech material, participants, and task bound generalization; a laboratory effect is not proof of conversational benefit.
 
-## 188. The mutual exclusivity bias of bilingual visually grounded speech models
+## 189. The mutual exclusivity bias of bilingual visually grounded speech models
 
 **Paper:** [The mutual exclusivity bias of bilingual visually grounded speech models](https://www.isca-archive.org/interspeech_2025/oneata25_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / grounding-and-action / referential-grounding`
@@ -2822,7 +2837,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports mutual-exclusivity behavior and cross-language differences for the tested bilingual grounded models.
 - **Limits:** Languages, training data, object stimuli, model architecture, prompt/task design, and bias measure bound the claim; model behavior is not a direct account of child learning.
 
-## 189. Towards High-Quality LLM-Based Data for French Spontaneous Speech Simplification: an Exo-Refinement Approach
+## 190. Towards High-Quality LLM-Based Data for French Spontaneous Speech Simplification: an Exo-Refinement Approach
 
 **Paper:** [Towards High-Quality LLM-Based Data for French Spontaneous Speech Simplification: an Exo-Refinement Approach](https://www.isca-archive.org/interspeech_2025/ormaechea25_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / grounding-and-action / referential-grounding`
@@ -2837,7 +2852,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Mistral-large outperforms tested baselines, Mistral-small becomes competitive after few refinements, SARI improves, and COMET indicates semantic preservation in the reported experiments.
 - **Limits:** The languages, prompts, judges, reference simplifications, and automatic metrics bound the result; COMET and SARI are proxies, not a guarantee of accessible or faithful speech.
 
-## 190. GenECA: A General-Purpose Framework for Real-Time Adaptive Multimodal Embodied Conversational Agents
+## 191. GenECA: A General-Purpose Framework for Real-Time Adaptive Multimodal Embodied Conversational Agents
 
 **Paper:** [GenECA: A General-Purpose Framework for Real-Time Adaptive Multimodal Embodied Conversational Agents](https://www.isca-archive.org/interspeech_2025/patapati25_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / grounding-and-action / interactional-feedback`
@@ -2852,7 +2867,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports real-time adaptive-agent behavior across its tested multimodal interaction settings.
 - **Limits:** Sensors, embodiment, latency, dialogue tasks, user studies, and policy constraints bound the claim; a framework demonstration is not human-level social understanding.
 
-## 191. SNIFR : Boosting Fine-Grained Child Harmful Content Detection Through Audio-Visual Alignment with Cascaded Cross-Transformer
+## 192. SNIFR : Boosting Fine-Grained Child Harmful Content Detection Through Audio-Visual Alignment with Cascaded Cross-Transformer
 
 **Paper:** [SNIFR : Boosting Fine-Grained Child Harmful Content Detection Through Audio-Visual Alignment with Cascaded Cross-Transformer](https://www.isca-archive.org/interspeech_2025/phukan25f_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / grounding-and-action / referential-grounding`
@@ -2867,7 +2882,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports fine-grained audiovisual detection and real-time behavior for the tested harmful-content data.
 - **Limits:** Labels, age policy, modalities, cultures, false-positive costs, and latency bound the result; an automated detector is not a safeguarding decision-maker.
 
-## 192. Who Gets the Mic? Investigating Gender Bias in the Speaker Assignment of a Speech-LLM
+## 193. Who Gets the Mic? Investigating Gender Bias in the Speaker Assignment of a Speech-LLM
 
 **Paper:** [Who Gets the Mic? Investigating Gender Bias in the Speaker Assignment of a Speech-LLM](https://www.isca-archive.org/interspeech_2025/puhach25_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / grounding-and-action / interactional-feedback`
@@ -2882,7 +2897,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Bark shows gender awareness and some inclinations but no strong systematic bias under the tested prompts.
 - **Limits:** Two datasets, one model, prompt wording, and supported voices bound the conclusion; this is not a fairness guarantee.
 
-## 193. Enhancing Speech Instruction Understanding and Disambiguation in Robotics via Speech Prosody
+## 194. Enhancing Speech Instruction Understanding and Disambiguation in Robotics via Speech Prosody
 
 **Paper:** [Enhancing Speech Instruction Understanding and Disambiguation in Robotics via Speech Prosody](https://www.isca-archive.org/interspeech_2025/sasu25b_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / grounding-and-action / speech-act`
@@ -2897,7 +2912,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** On 1,540 recordings from 22 participants, the best BiLSTM reaches 95.79% overall referent accuracy, and Prosody-Transformer plus GPT-4o reaches 71.96% task-plan accuracy versus 50% for the ASR-only prompt.
 - **Limits:** The dataset is small and participants are 18–22; recorded ambiguity and candidate plans are controlled rather than open-world robot interaction. Prosody helps the tested task but does not establish safe execution in physical environments.
 
-## 194. Spoken Question Answering for Visual Queries
+## 195. Spoken Question Answering for Visual Queries
 
 **Paper:** [Spoken Question Answering for Visual Queries](https://www.isca-archive.org/interspeech_2025/shabtay25_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / grounding-and-action / referential-grounding`
@@ -2912,7 +2927,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Synthetic speech training approaches the text-trained VQA upper bound on several benchmarks; the paper reports 62% SEED-Bench accuracy for its strongest spoken variants, with TTS choice having a small effect.
 - **Limits:** Most training speech is synthesized, the spoken models remain below the text model, prompt format changes performance sharply, and transcription failures can be confused with visual-reasoning failures. No independent reproduction was performed.
 
-## 195. Discrete Audio Representations for Automated Audio Captioning
+## 196. Discrete Audio Representations for Automated Audio Captioning
 
 **Paper:** [Discrete Audio Representations for Automated Audio Captioning](https://www.isca-archive.org/interspeech_2025/tian25_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / grounding-and-action / referential-grounding`
@@ -2927,7 +2942,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports that selected audio tokenizers improve automated captioning quality, showing that representation design affects semantic generation.
 - **Limits:** Reference-caption incompleteness, metric proxy limits, dataset scope, and no broad human grounding study limit conclusions about listener usefulness.
 
-## 196. Investigating the Reasoning Abilities of Large Language Models for Understanding Spoken Language in Interpersonal Interactions
+## 197. Investigating the Reasoning Abilities of Large Language Models for Understanding Spoken Language in Interpersonal Interactions
 
 **Paper:** [Investigating the Reasoning Abilities of Large Language Models for Understanding Spoken Language in Interpersonal Interactions](https://www.isca-archive.org/interspeech_2025/aggarwal25_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / intent-and-dialogue-state / intent-in-context`
@@ -2942,7 +2957,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports that contextual and domain-knowledge prompting improves selected spoken-interaction reasoning settings, especially for larger models.
 - **Limits:** Interview distribution, transcript quality, subjective scoring, prompt sensitivity, and model-family coverage limit claims about general conversational understanding.
 
-## 197. Spoken Language Understanding on Unseen Tasks With In-Context Learning
+## 198. Spoken Language Understanding on Unseen Tasks With In-Context Learning
 
 **Paper:** [Spoken Language Understanding on Unseen Tasks With In-Context Learning](https://www.isca-archive.org/interspeech_2025/agrawal25_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / intent-and-dialogue-state / intent-in-context`
@@ -2957,7 +2972,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports improved unseen-task performance over standard approaches in its three-task evaluation.
 - **Limits:** Fine-tuning used batch size one and the task/model/data setup is narrower than general spoken reasoning.
 
-## 198. Chain-of-Thought Training for Open E2E Spoken Dialogue Systems
+## 199. Chain-of-Thought Training for Open E2E Spoken Dialogue Systems
 
 **Paper:** [Chain-of-Thought Training for Open E2E Spoken Dialogue Systems](https://www.isca-archive.org/interspeech_2025/arora25_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / intent-and-dialogue-state / dialogue-state`
@@ -2972,7 +2987,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports improvements for open end-to-end spoken dialogue modeling from chain-of-thought training and evaluates the resulting response behavior.
 - **Limits:** Reasoning traces are supervision artifacts and do not prove faithful internal reasoning; task distribution, annotation quality, and evaluation subjectivity constrain the claim. No independent reproduction was performed.
 
-## 199. Analysis of ABC Frontend Audio Systems for the NIST-SRE24
+## 200. Analysis of ABC Frontend Audio Systems for the NIST-SRE24
 
 **Paper:** [Analysis of ABC Frontend Audio Systems for the NIST-SRE24](https://www.isca-archive.org/interspeech_2025/barahona25_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / intent-and-dialogue-state / dialogue-state`
@@ -2987,7 +3002,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports comparative robustness and performance for the explored architectures and data conditions.
 - **Limits:** NIST protocol, telephone channel, language mix, training-data access, and calibration limit claims beyond the benchmark.
 
-## 200. Multimodal Fusion with Semi-Supervised Learning Minimizes Annotation Quantity for Modeling Videoconference Conversation Experience
+## 201. Multimodal Fusion with Semi-Supervised Learning Minimizes Annotation Quantity for Modeling Videoconference Conversation Experience
 
 **Paper:** [Multimodal Fusion with Semi-Supervised Learning Minimizes Annotation Quantity for Modeling Videoconference Conversation Experience](https://www.isca-archive.org/interspeech_2025/chang25c_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / intent-and-dialogue-state / dialogue-state`
@@ -3002,7 +3017,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports ROC-AUC .90 and F1 .60, and says 8% labeled data reaches 96% of the full supervised model's performance.
 - **Limits:** The labels, videoconference setting, participant population, and definition of negative experience bound the result; detection is not a causal explanation of why a conversation deteriorated.
 
-## 201. Medusa: A Multimodal Deep Fusion Multi-Stage Training Framework for Speech Emotion Recognition in Naturalistic Conditions
+## 202. Medusa: A Multimodal Deep Fusion Multi-Stage Training Framework for Speech Emotion Recognition in Naturalistic Conditions
 
 **Paper:** [Medusa: A Multimodal Deep Fusion Multi-Stage Training Framework for Speech Emotion Recognition in Naturalistic Conditions](https://www.isca-archive.org/interspeech_2025/chatzichristodoulou25_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / intent-and-dialogue-state / intent-in-context`
@@ -3017,7 +3032,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** MEDUSA ranked first in the naturalistic categorical emotion challenge task reported by the paper.
 - **Limits:** Challenge splits, annotation distributions, modalities, and ranking define the result; a leaderboard position does not establish emotion truth or cross-cultural validity.
 
-## 202. MMLoRA: Multitask Memory Parameter-Efficient Fine-Tuning for Multimodal SER
+## 203. MMLoRA: Multitask Memory Parameter-Efficient Fine-Tuning for Multimodal SER
 
 **Paper:** [MMLoRA: Multitask Memory Parameter-Efficient Fine-Tuning for Multimodal SER](https://www.isca-archive.org/interspeech_2025/fang25_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / intent-and-dialogue-state / dialogue-state`
@@ -3032,7 +3047,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports improved multimodal SER generalization over the tested parameter-efficient baselines.
 - **Limits:** Datasets, gender labels, task mix, memory policy, modalities, and expression cultures bound the result; auxiliary gender is not a complete model of individual variation.
 
-## 203. Comparison-Based Automatic Evaluation for Meeting Summarization
+## 204. Comparison-Based Automatic Evaluation for Meeting Summarization
 
 **Paper:** [Comparison-Based Automatic Evaluation for Meeting Summarization](https://www.isca-archive.org/interspeech_2025/gong25c_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / intent-and-dialogue-state / dialogue-state`
@@ -3047,7 +3062,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper presents a reference-free evaluation framework for meeting summarization and reports its ability to rank systems/prompts.
 - **Limits:** Facts, judge prompts, meeting domain, and pairwise comparison protocol bound the result; human validation and adversarial summaries remain open.
 
-## 204. Leveraging LLMs for Written to Spoken Style Data Transformation to Enhance Spoken Dialog State Tracking
+## 205. Leveraging LLMs for Written to Spoken Style Data Transformation to Enhance Spoken Dialog State Tracking
 
 **Paper:** [Leveraging LLMs for Written to Spoken Style Data Transformation to Enhance Spoken Dialog State Tracking](https://www.isca-archive.org/interspeech_2025/gulzar25_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / intent-and-dialogue-state / dialogue-state`
@@ -3062,7 +3077,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports spoken dialogue-state-tracking gains from the transformed data.
 - **Limits:** LLM prompt, domains, state schema, speech realization, annotation checks, and evaluation distribution limit the result; style conversion can silently change intent.
 
-## 205. Factors affecting the in-context learning abilities of LLMs for dialogue state tracking
+## 206. Factors affecting the in-context learning abilities of LLMs for dialogue state tracking
 
 **Paper:** [Factors affecting the in-context learning abilities of LLMs for dialogue state tracking](https://www.isca-archive.org/interspeech_2025/hegde25_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / intent-and-dialogue-state / dialogue-state`
@@ -3077,7 +3092,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports factor-level findings on in-context dialogue-state tracking.
 - **Limits:** Model family, prompt, domains, state schema, demonstration order, and context length bound the result; prompt sensitivity is not a stable conversational capability.
 
-## 206. Modeling Multi-Turn Spoken Language Understanding with Dynamic Graph Convolutional Networks
+## 207. Modeling Multi-Turn Spoken Language Understanding with Dynamic Graph Convolutional Networks
 
 **Paper:** [Modeling Multi-Turn Spoken Language Understanding with Dynamic Graph Convolutional Networks](https://www.isca-archive.org/interspeech_2025/huang25d_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / intent-and-dialogue-state / dialogue-state`
@@ -3092,7 +3107,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports multi-turn spoken-language-understanding results for the dynamic graph model.
 - **Limits:** Domains, ASR errors, graph construction, turn length, labels, and evaluation split bound the result; a graph state is not complete conversational memory.
 
-## 207. Dialogue Response Prefetching Based on Semantic Similarity and Prediction Confidence of Language Model
+## 208. Dialogue Response Prefetching Based on Semantic Similarity and Prediction Confidence of Language Model
 
 **Paper:** [Dialogue Response Prefetching Based on Semantic Similarity and Prediction Confidence of Language Model](https://www.isca-archive.org/interspeech_2025/mori25b_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / intent-and-dialogue-state / dialogue-state`
@@ -3107,7 +3122,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports that semantic-similarity confidence can reduce user-perceived latency while limiting unsafe prefetches in the tested spoken-dialogue setting.
 - **Limits:** The language model, dialogue domain, confidence calibration, and endpointing assumptions constrain generalization; lower latency is not the same as better conversation or human trust.
 
-## 208. Assessing the feasibility of Large Language Models for detecting micro-behaviors in team interactions during space missions
+## 209. Assessing the feasibility of Large Language Models for detecting micro-behaviors in team interactions during space missions
 
 **Paper:** [Assessing the feasibility of Large Language Models for detecting micro-behaviors in team interactions during space missions](https://www.isca-archive.org/interspeech_2025/raut25_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / intent-and-dialogue-state / dialogue-state`
@@ -3122,7 +3137,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Encoder-only models struggle with rare behaviors, while an instruction-tuned Llama model reports 44% macro F1 for three-way and 68% for binary classification.
 - **Limits:** Simulated missions, transcript quality, label prevalence, model prompting, and macro-F1 targets bound the finding; detected text patterns are not proof of team state or causality.
 
-## 209. Robot-assisted Recognition of Vocal Emotions in Pseudospeech for Cochlear Implanted Adolescents
+## 210. Robot-assisted Recognition of Vocal Emotions in Pseudospeech for Cochlear Implanted Adolescents
 
 **Paper:** [Robot-assisted Recognition of Vocal Emotions in Pseudospeech for Cochlear Implanted Adolescents](https://www.isca-archive.org/interspeech_2025/araizaillan25_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / prosody-and-paralinguistics / paralinguistic-state`
@@ -3137,7 +3152,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Sensitivity is similar (.36 versus .37); the robot takes longer, is less usable, but is more enjoyable and engaging.
 - **Limits:** The participants, robot, pseudospeech task, and small sample bound the result; long-term adherence and general hearing-device populations remain open.
 
-## 210. Coping with segmental–prosodic incongruity in spoken word recognition in Japanese
+## 211. Coping with segmental–prosodic incongruity in spoken word recognition in Japanese
 
 **Paper:** [Coping with segmental–prosodic incongruity in spoken word recognition in Japanese](https://www.isca-archive.org/interspeech_2025/ariga25_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / prosody-and-paralinguistics / prosodic-meaning`
@@ -3152,7 +3167,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Results suggest prosodic mispronunciation inhibits recognition at the tested delay.
 - **Limits:** Japanese materials, pitch-accent system, participants, and laboratory task limit cross-language generalization.
 
-## 211. Stress in Spoken and Whistled Greek
+## 212. Stress in Spoken and Whistled Greek
 
 **Paper:** [Stress in Spoken and Whistled Greek](https://www.isca-archive.org/interspeech_2025/batchelderschwab25_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / prosody-and-paralinguistics / prosodic-meaning`
@@ -3167,7 +3182,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** All five vowel qualities remain distinct in the whistled register, but a whistled stress correlate is not found for /i/, possibly because front vowels are already highly intense.
 - **Limits:** The Sfyria community, participants, register, minimal pairs, and acoustic cues bound the result; a ceiling interpretation and cross-language generalization remain open.
 
-## 212. Heart Rate as a Proxy Measure to Assess Human Confidence in Spoken Speech
+## 213. Heart Rate as a Proxy Measure to Assess Human Confidence in Spoken Speech
 
 **Paper:** [Heart Rate as a Proxy Measure to Assess Human Confidence in Spoken Speech](https://www.isca-archive.org/interspeech_2025/battula25_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / prosody-and-paralinguistics / paralinguistic-state`
@@ -3182,7 +3197,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports that confident speakers had an average heart rate about 10 beats per minute lower in its tested data.
 - **Limits:** The datasets, Indian demographic, 41-speaker collection, clinical and wearable references, confidence labels, and unreported general accuracy bound the claim; correlation is not a validated psychological diagnosis.
 
-## 213. Multi-Teacher Language-Aware Knowledge Distillation for Multilingual Speech Emotion Recognition
+## 214. Multi-Teacher Language-Aware Knowledge Distillation for Multilingual Speech Emotion Recognition
 
 **Paper:** [Multi-Teacher Language-Aware Knowledge Distillation for Multilingual Speech Emotion Recognition](https://www.isca-archive.org/interspeech_2025/bijoy25_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / prosody-and-paralinguistics / paralinguistic-state`
@@ -3197,7 +3212,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The student reports weighted recall 72.9 on English and unweighted recall 63.4 on Finnish, with stronger gains for sad and neutral than anger and happiness.
 - **Limits:** Languages, emotion labels, teacher quality, class balance, and recall metrics bound the claim; multilingual transfer does not prove equal performance or culturally valid emotion categories.
 
-## 214. EmoDB 2.0: A Database of Emotional Speech in a World that is not Black or White but Grey
+## 215. EmoDB 2.0: A Database of Emotional Speech in a World that is not Black or White but Grey
 
 **Paper:** [EmoDB 2.0: A Database of Emotional Speech in a World that is not Black or White but Grey](https://www.isca-archive.org/interspeech_2025/burkhardt25_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / prosody-and-paralinguistics / prosodic-meaning`
@@ -3212,7 +3227,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports an 8.1% UAR improvement for an SVM when glottogram information is incorporated in its preliminary study.
 - **Limits:** The acted German corpus, old recording conditions, rater thresholds, classifier, and preliminary evaluation bound the result; improved classification does not establish better emotion understanding.
 
-## 215. EmotionRankCLAP: Bridging Natural Language Speaking Styles and Ordinal Speech Emotion via Rank-N-Contrast
+## 216. EmotionRankCLAP: Bridging Natural Language Speaking Styles and Ordinal Speech Emotion via Rank-N-Contrast
 
 **Paper:** [EmotionRankCLAP: Bridging Natural Language Speaking Styles and Ordinal Speech Emotion via Rank-N-Contrast](https://www.isca-archive.org/interspeech_2025/chandra25_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / prosody-and-paralinguistics / prosodic-meaning`
@@ -3227,7 +3242,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports better emotion ordinality than existing emotion-CLAP systems on cross-modal retrieval.
 - **Limits:** The result depends on rating dimensions, prompt wording, and the tested emotion corpus; listener disagreement and transfer across cultures remain open.
 
-## 216. A-SMiLE: Affective Sparse Mixture-of-Experts Adapter with Multi-Task Learning for Spoken Dialogue Models
+## 217. A-SMiLE: Affective Sparse Mixture-of-Experts Adapter with Multi-Task Learning for Spoken Dialogue Models
 
 **Paper:** [A-SMiLE: Affective Sparse Mixture-of-Experts Adapter with Multi-Task Learning for Spoken Dialogue Models](https://www.isca-archive.org/interspeech_2025/chao25_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / prosody-and-paralinguistics / prosodic-meaning`
@@ -3242,7 +3257,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports improvements over text-only and other baselines on VAD prediction and response generation on DailyTalk and its 0.8-hour hard-case emotional benchmark.
 - **Limits:** The hard-case data and automatic judge define the tested notion of affective appropriateness; VAD labels simplify lived emotion and GPT-based evaluation is a proxy. The paper does not establish sustained human dialogue benefit or causal understanding of emotion; no independent reproduction was performed.
 
-## 217. The Prosodic Characteristics of Standard Chinese Rhetorical Questions in Naturalistic Settings
+## 218. The Prosodic Characteristics of Standard Chinese Rhetorical Questions in Naturalistic Settings
 
 **Paper:** [The Prosodic Characteristics of Standard Chinese Rhetorical Questions in Naturalistic Settings](https://www.isca-archive.org/interspeech_2025/chen25g_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / prosody-and-paralinguistics / prosodic-meaning`
@@ -3257,7 +3272,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Speakers tend to mark rhetorical meaning by increasing pitch and duration on the verb or modal verb, with other cues depending on sentence structure.
 - **Limits:** Standard Chinese, sentence materials, online reading, participant sample, and question interpretation bound the result; rhetorical intent is not reducible to one universal pitch rule.
 
-## 218. MIKU-PAL: An Automated and Standardized Multimodal Method for Speech Paralinguistic and Affect Labeling
+## 219. MIKU-PAL: An Automated and Standardized Multimodal Method for Speech Paralinguistic and Affect Labeling
 
 **Paper:** [MIKU-PAL: An Automated and Standardized Multimodal Method for Speech Paralinguistic and Affect Labeling](https://www.isca-archive.org/interspeech_2025/cheng25_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / prosody-and-paralinguistics / paralinguistic-state`
@@ -3272,7 +3287,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports 68.5% MELD accuracy, 0.93 Fleiss kappa, 83% human rationality ratings, and a 131.2-hour benchmark with up to 26 emotion types.
 - **Limits:** Video sources, model judgments, cultural assumptions, label taxonomy, human validation, and downstream use bound the claim; agreement or rationality is not ground-truth emotion.
 
-## 219. EmoSphere-SER: Enhancing Speech Emotion Recognition Through Spherical Representation with Auxiliary Classification
+## 220. EmoSphere-SER: Enhancing Speech Emotion Recognition Through Spherical Representation with Auxiliary Classification
 
 **Paper:** [EmoSphere-SER: Enhancing Speech Emotion Recognition Through Spherical Representation with Auxiliary Classification](https://www.isca-archive.org/interspeech_2025/cho25_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / prosody-and-paralinguistics / paralinguistic-state`
@@ -3287,7 +3302,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The reported experiments show the combined model outperforming the compared baselines and improving prediction consistency.
 - **Limits:** Emotion labels, VAD geometry, datasets, region partition, weighting, and metrics bound the result; a better coordinate prediction does not establish a speaker’s actual inner state.
 
-## 220. Developing a Top-tier Framework in Naturalistic Conditions Challenge for Categorized Emotion Prediction: From Speech Foundation Models and Learning Objective to Data Augmentation and Engineering Choices
+## 221. Developing a Top-tier Framework in Naturalistic Conditions Challenge for Categorized Emotion Prediction: From Speech Foundation Models and Learning Objective to Data Augmentation and Engineering Choices
 
 **Paper:** [Developing a Top-tier Framework in Naturalistic Conditions Challenge for Categorized Emotion Prediction: From Speech Foundation Models and Learning Objective to Data Augmentation and Engineering Choices](https://www.isca-archive.org/interspeech_2025/feng25_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / prosody-and-paralinguistics / paralinguistic-state`
@@ -3302,7 +3317,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Whisper representations outperform WavLM in the reported comparisons; audio mixing and annotation dropout improve minority-class average precision more reliably than overall accuracy, and adding secondary emotions improves the main score but can hurt minority classes.
 - **Limits:** The evidence comes from the MSP-Podcast IS25-SER challenge and validation-heavy experiments; the hidden test labels limit systematic ablation. Emotion categories and annotator distributions remain task-specific, and no independent reproduction was performed.
 
-## 221. Learning More with Less: Self-Supervised Approaches forLow-Resource Speech Emotion Recognition
+## 222. Learning More with Less: Self-Supervised Approaches forLow-Resource Speech Emotion Recognition
 
 **Paper:** [Learning More with Less: Self-Supervised Approaches forLow-Resource Speech Emotion Recognition](https://www.isca-archive.org/interspeech_2025/gong25b_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / prosody-and-paralinguistics / paralinguistic-state`
@@ -3317,7 +3332,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports F1 improvements of 10.6% in Urdu, 15.2% in German, and 13.9% in Bangla.
 - **Limits:** The reported gains depend on the selected languages, labels, augmentations, and emotion definitions; cultural validity and transfer to new languages remain open.
 
-## 222. Age-related changes in multisensory integration of emotions in an audiovisual face-prosody-semantics Stroop task
+## 223. Age-related changes in multisensory integration of emotions in an audiovisual face-prosody-semantics Stroop task
 
 **Paper:** [Age-related changes in multisensory integration of emotions in an audiovisual face-prosody-semantics Stroop task](https://www.isca-archive.org/interspeech_2025/lin25e_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / prosody-and-paralinguistics / prosodic-meaning`
@@ -3332,7 +3347,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Older adults show reduced emotion integration, especially for prosody and other nonverbal cues, with larger age differences under incongruence.
 - **Limits:** The task, emotions, participant groups, language, and interpretation of Stroop costs bound the result; laboratory conflict does not directly predict everyday communication.
 
-## 223. Multimodal Prosody Modeling: A Use Case for Multilingual Sentence Mode Prediction
+## 224. Multimodal Prosody Modeling: A Use Case for Multilingual Sentence Mode Prediction
 
 **Paper:** [Multimodal Prosody Modeling: A Use Case for Multilingual Sentence Mode Prediction](https://www.isca-archive.org/interspeech_2025/vlasenko25_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / prosody-and-paralinguistics / prosodic-meaning`
@@ -3347,7 +3362,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports multilingual multimodal prosody-modeling results for sentence-mode prediction.
 - **Limits:** Languages, labels, speaker balance, modality quality, and task definition bound the claim; sentence mode is not a complete model of intent.
 
-## 224. Rapport-Building Dialogue Strategies for Deeper Connection: Integrating Proactive Behavior, Personalization, and Aizuchi Backchannels
+## 225. Rapport-Building Dialogue Strategies for Deeper Connection: Integrating Proactive Behavior, Personalization, and Aizuchi Backchannels
 
 **Paper:** [Rapport-Building Dialogue Strategies for Deeper Connection: Integrating Proactive Behavior, Personalization, and Aizuchi Backchannels](https://www.isca-archive.org/interspeech_2025/baihaqi25_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / turn-taking-and-repair / turn-boundary`
@@ -3362,7 +3377,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The integrated strategy is reported to improve behavioral and subjective rapport measures.
 - **Limits:** The study is bounded to the robot, prompts, participants, and short interaction protocol; long-term trust, cultural variation, and causal attribution remain open.
 
-## 225. ``Dyadosyncrasy'', Idiosyncrasy and Demographic Factors in Turn-Taking
+## 226. ``Dyadosyncrasy'', Idiosyncrasy and Demographic Factors in Turn-Taking
 
 **Paper:** [``Dyadosyncrasy'', Idiosyncrasy and Demographic Factors in Turn-Taking](https://www.isca-archive.org/interspeech_2025/cavalcanti25_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / turn-taking-and-repair / turn-boundary`
@@ -3377,7 +3392,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Sex and age have smaller effects while dyad variation most strongly shapes timing; TFO decreases across sampled lifespan.
 - **Limits:** English strangers, sparse older data, topic mix, and TFO limit familiar-relationship and full-dialogue claims.
 
-## 226. Multimodal Dynamics of Hand Gestures and Pauses in Multiparty Interactions
+## 227. Multimodal Dynamics of Hand Gestures and Pauses in Multiparty Interactions
 
 **Paper:** [Multimodal Dynamics of Hand Gestures and Pauses in Multiparty Interactions](https://www.isca-archive.org/interspeech_2025/charuau25_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / turn-taking-and-repair / turn-boundary`
@@ -3392,7 +3407,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Self-adaptors align with longer pauses, utterance-final syntax shortens pauses, and most gestured pauses occur within utterances.
 - **Limits:** Corpus annotation, participant population, gesture categories, and observational design bound the result; causal cognitive interpretations remain hypotheses.
 
-## 227. Triadic Multi-party Voice Activity Projection for Turn-taking in Spoken Dialogue Systems
+## 228. Triadic Multi-party Voice Activity Projection for Turn-taking in Spoken Dialogue Systems
 
 **Paper:** [Triadic Multi-party Voice Activity Projection for Turn-taking in Spoken Dialogue Systems](https://www.isca-archive.org/interspeech_2025/elmers25_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / turn-taking-and-repair / turn-boundary`
@@ -3407,7 +3422,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Triadic VAP trained on triadic conversation outperforms the baseline across tested models, while spontaneous discussions are harder than attentive listening; the paper reports accuracy differences by conversation type.
 - **Limits:** The data are Japanese triadic discussions with controlled recording and a limited number of participants; the reduced two-bin horizon does not cover the full dyadic two-second state space. Acoustic-only prediction does not establish successful spoken-agent behavior, and no independent reproduction or user study was performed.
 
-## 228. Backchannel prediction for natural spoken dialog systems  using general speaker and listener information
+## 229. Backchannel prediction for natural spoken dialog systems  using general speaker and listener information
 
 **Paper:** [Backchannel prediction for natural spoken dialog systems  using general speaker and listener information](https://www.isca-archive.org/interspeech_2025/fukunaga25_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / turn-taking-and-repair / turn-boundary`
@@ -3422,7 +3437,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports 1.3% accuracy improvement for three classes and 0.9% for eleven classes over conventional ID embeddings.
 - **Limits:** The result is author-reported for the tested dialogue corpus and categories; natural turn timing, privacy leakage in embeddings, and user experience remain open.
 
-## 229. Gaze-Enhanced Multimodal Turn-Taking Prediction in Triadic Conversations
+## 230. Gaze-Enhanced Multimodal Turn-Taking Prediction in Triadic Conversations
 
 **Paper:** [Gaze-Enhanced Multimodal Turn-Taking Prediction in Triadic Conversations](https://www.isca-archive.org/interspeech_2025/heo25_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / turn-taking-and-repair / turn-boundary`
@@ -3437,7 +3452,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports turn-taking prediction results with gaze enhancement in triadic interaction.
 - **Limits:** Participants, camera setup, roles, task, gaze annotation, and latency bound generalization; gaze is a cue, not a deterministic intention signal.
 
-## 230. Enhancing Transcripts of Open-Source Automatic Speech Recognition Models Through Fine-Tuning with Laughter and Speech-Laugh
+## 231. Enhancing Transcripts of Open-Source Automatic Speech Recognition Models Through Fine-Tuning with Laughter and Speech-Laugh
 
 **Paper:** [Enhancing Transcripts of Open-Source Automatic Speech Recognition Models Through Fine-Tuning with Laughter and Speech-Laugh](https://www.isca-archive.org/interspeech_2025/ho25b_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / turn-taking-and-repair / repair-and-clarification`
@@ -3452,7 +3467,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports improved handling of laughter and speech-laugh in the tested ASR transcripts.
 - **Limits:** Annotation scheme, language, laughter types, model, data mixture, and transcript use case bound the result; event recognition is not a full emotion or intent analysis.
 
-## 231. Efficient and Direct Duplex Modeling for Speech-to-Speech Language Model
+## 232. Efficient and Direct Duplex Modeling for Speech-to-Speech Language Model
 
 **Paper:** [Efficient and Direct Duplex Modeling for Speech-to-Speech Language Model](https://www.isca-archive.org/interspeech_2025/hu25f_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / turn-taking-and-repair / turn-boundary`
@@ -3467,7 +3482,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports efficiency and interactive speech-to-speech results for the duplex model.
 - **Limits:** Latency, overlap, interruptions, model size, dialogue tasks, and evaluation protocol bound the result; a real-time demo is not robust open-ended conversation.
 
-## 232. Visual Cues Support Robust Turn-taking Prediction in Noise
+## 233. Visual Cues Support Robust Turn-taking Prediction in Noise
 
 **Paper:** [Visual Cues Support Robust Turn-taking Prediction in Noise](https://www.isca-archive.org/interspeech_2025/oconnorrussell25_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / turn-taking-and-repair / turn-boundary`
@@ -3482,7 +3497,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports that visual cues support more robust turn-taking prediction under noisy conditions.
 - **Limits:** Participants, camera viewpoint, interaction task, noise type, timing labels, and model latency bound the claim; a lab cue is not a universal conversational rule.
 
-## 233. FD-Bench: A Full-Duplex Benchmarking Pipeline Designed for Full Duplex Spoken Dialogue Systems
+## 234. FD-Bench: A Full-Duplex Benchmarking Pipeline Designed for Full Duplex Spoken Dialogue Systems
 
 **Paper:** [FD-Bench: A Full-Duplex Benchmarking Pipeline Designed for Full Duplex Spoken Dialogue Systems](https://www.isca-archive.org/interspeech_2025/peng25b_interspeech.html)
 **Taxonomy:** `meaning-and-interaction / turn-taking-and-repair / turn-boundary`
@@ -3497,7 +3512,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The reported benchmark finds that all three tested systems still struggle with user interruptions, frequent disruptions, and noisy conditions; the paper states that data and code will be released.
 - **Limits:** The conversations and interruptions are simulated/generated, and benchmark metrics are proxies for human experience. Release claims are not equivalent to artifact execution here; no independent reproduction or user study was performed.
 
-## 234. Pathology-Aware Speech Encoding and Data Augmentation for Dysarthric Speech Recognition
+## 235. Pathology-Aware Speech Encoding and Data Augmentation for Dysarthric Speech Recognition
 
 **Paper:** [Pathology-Aware Speech Encoding and Data Augmentation for Dysarthric Speech Recognition](https://www.isca-archive.org/interspeech_2025/baumann25_interspeech.html)
 **Taxonomy:** `people-variation-and-health / atypical-and-assistive-speech / dysarthria-and-atypical-speech`
@@ -3512,7 +3527,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The authors report 13.2% relative WER improvement from pathology-aware pre-training, up to 8.7% from synthetic data, 12.2% from OOD data, and 9.7% from semantic selection.
 - **Limits:** Etiologies, corpora, similarity model, and ratios bound the claim; improvements differ by condition and synthetic speech may not preserve clinical variation.
 
-## 235. EEG-based Voice Conversion : Hearing the Voice of Your Brain
+## 236. EEG-based Voice Conversion : Hearing the Voice of Your Brain
 
 **Paper:** [EEG-based Voice Conversion : Hearing the Voice of Your Brain](https://www.isca-archive.org/interspeech_2025/geng25b_interspeech.html)
 **Taxonomy:** `people-variation-and-health / atypical-and-assistive-speech / augmentative-communication`
@@ -3527,7 +3542,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports reliable target-voice conversion on the Single-Word-Production Dutch-iBIDS dataset.
 - **Limits:** Single words, EEG setup, target voices, and small dataset define the claim; intelligibility, privacy, consent, and real assistive communication remain open.
 
-## 236. A Silent Speech Decoding System from EEG and EMG with Heterogenous Electrode Configurations
+## 237. A Silent Speech Decoding System from EEG and EMG with Heterogenous Electrode Configurations
 
 **Paper:** [A Silent Speech Decoding System from EEG and EMG with Heterogenous Electrode Configurations](https://www.isca-archive.org/interspeech_2025/inoue25b_interspeech.html)
 **Taxonomy:** `people-variation-and-health / atypical-and-assistive-speech / augmentative-communication`
@@ -3542,7 +3557,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Accuracy is 95.3% for healthy participants and 54.5% for a patient, versus 70.1% and 13.2% for single-subject baselines.
 - **Limits:** Patient count, setup, calibration, and author-reported results limit clinical deployment claims.
 
-## 237. EEG-based Speech Decoding Based on Multi-mode Joint Modeling
+## 238. EEG-based Speech Decoding Based on Multi-mode Joint Modeling
 
 **Paper:** [EEG-based Speech Decoding Based on Multi-mode Joint Modeling](https://www.isca-archive.org/interspeech_2025/li25j_interspeech.html)
 **Taxonomy:** `people-variation-and-health / atypical-and-assistive-speech / augmentative-communication`
@@ -3557,7 +3572,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Imagined-speech accuracy rises to 34.95% from a 29.18% baseline, and channel-selected single-mode models outperform models using all channels.
 - **Limits:** The four-vowel task, participants, EEG hardware, mode definitions, and accuracy metric bound the result; it does not demonstrate unrestricted communication or clinical readiness.
 
-## 238. Synthetic Dysarthric Speech: A Supplement, Not a Substitute for Authentic Data in Dysarthric Speech Recognition
+## 239. Synthetic Dysarthric Speech: A Supplement, Not a Substitute for Authentic Data in Dysarthric Speech Recognition
 
 **Paper:** [Synthetic Dysarthric Speech: A Supplement, Not a Substitute for Authentic Data in Dysarthric Speech Recognition](https://www.isca-archive.org/interspeech_2025/li25n_interspeech.html)
 **Taxonomy:** `people-variation-and-health / atypical-and-assistive-speech / dysarthria-and-atypical-speech`
@@ -3572,7 +3587,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Across the tested Chinese dysarthric speech setup, synthetic speech alone does not replace authentic data and large synthetic additions yield only marginal gains over authentic training.
 - **Limits:** The language, seven-speaker usable subset, TTS model, data scale, ASR architecture, and speaker-independent split bound generalization; a synthetic-data result is not clinical validation.
 
-## 239. Addressing Task Conflicts in Stuttering Detection via MMoE-Based Multi-Task Learning
+## 240. Addressing Task Conflicts in Stuttering Detection via MMoE-Based Multi-Task Learning
 
 **Paper:** [Addressing Task Conflicts in Stuttering Detection via MMoE-Based Multi-Task Learning](https://www.isca-archive.org/interspeech_2025/liu25f_interspeech.html)
 **Taxonomy:** `people-variation-and-health / atypical-and-assistive-speech / dysarthria-and-atypical-speech`
@@ -3587,7 +3602,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The rule-based strategy reports a 19.9% average-F1 gain over baseline and the MMoE strategy a further 7.55% improvement.
 - **Limits:** The challenge data, symptom definitions, labels, class balance, and F1 aggregation bound the claim; benchmark gains do not establish clinical reliability or fairness.
 
-## 240. Fairness in Dysarthric Speech Synthesis: Understanding Intrinsic Bias in Dysarthric Speech Cloning using F5-TTS
+## 241. Fairness in Dysarthric Speech Synthesis: Understanding Intrinsic Bias in Dysarthric Speech Cloning using F5-TTS
 
 **Paper:** [Fairness in Dysarthric Speech Synthesis: Understanding Intrinsic Bias in Dysarthric Speech Cloning using F5-TTS](https://www.isca-archive.org/interspeech_2025/m25_interspeech.html)
 **Taxonomy:** `people-variation-and-health / atypical-and-assistive-speech / dysarthria-and-atypical-speech`
@@ -3602,7 +3617,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports severity-dependent differences in the objective measures and uses those differences to characterize intrinsic bias in F5-TTS cloning.
 - **Limits:** TORGO, reference-prompt choice, automatic metrics, severity grouping, and zero-shot model behavior bound the result; parity in proxies does not establish respectful control, consent, or listener benefit.
 
-## 241. Personalized Fine-Tuning with Controllable Synthetic Speech from LLM-Generated Transcripts for Dysarthric Speech Recognition
+## 242. Personalized Fine-Tuning with Controllable Synthetic Speech from LLM-Generated Transcripts for Dysarthric Speech Recognition
 
 **Paper:** [Personalized Fine-Tuning with Controllable Synthetic Speech from LLM-Generated Transcripts for Dysarthric Speech Recognition](https://www.isca-archive.org/interspeech_2025/wagner25_interspeech.html)
 **Taxonomy:** `people-variation-and-health / atypical-and-assistive-speech / dysarthria-and-atypical-speech`
@@ -3617,7 +3632,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports recognition results for personalized adaptation using controllable synthetic data.
 - **Limits:** Speaker cohort, dysarthria type, transcript generation, synthesis quality, and adaptation budget limit generalization or clinical claims.
 
-## 242. Semantic Processing During Spoken Word Production by Children with Cochlear Implants
+## 243. Semantic Processing During Spoken Word Production by Children with Cochlear Implants
 
 **Paper:** [Semantic Processing During Spoken Word Production by Children with Cochlear Implants](https://www.isca-archive.org/interspeech_2025/wang25l_interspeech.html)
 **Taxonomy:** `people-variation-and-health / atypical-and-assistive-speech / augmentative-communication`
@@ -3632,7 +3647,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Normal-hearing children show the typical semantic interference effect, while the implant group does not, consistent with different semantic organization or greater top-down control.
 - **Limits:** The group, age, implant history, language, task, and interpretation of interference bound the result; absence of an effect is not a direct measurement of neural organization.
 
-## 243. Subtyping Speech Errors in Childhood Speech Sound Disorders with Acoustic-to-Articulatory Speech Inversion
+## 244. Subtyping Speech Errors in Childhood Speech Sound Disorders with Acoustic-to-Articulatory Speech Inversion
 
 **Paper:** [Subtyping Speech Errors in Childhood Speech Sound Disorders with Acoustic-to-Articulatory Speech Inversion](https://www.isca-archive.org/interspeech_2025/benway25_interspeech.html)
 **Taxonomy:** `people-variation-and-health / clinical-markers / clinical-speech-marker`
@@ -3647,7 +3662,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports statistically significant articulatory differences among several perceptually salient /r/ and /s/ error subtypes and correct targets in American English.
 - **Limits:** The study is limited to selected American-English child error types and an inversion model; clinical interpretability is demonstrated for these comparisons, not established for all disorders or speakers. No independent reproduction was performed.
 
-## 244. Acoustic and Linguistic Biomarkers for Cognitive Impairment Detection from Speech
+## 245. Acoustic and Linguistic Biomarkers for Cognitive Impairment Detection from Speech
 
 **Paper:** [Acoustic and Linguistic Biomarkers for Cognitive Impairment Detection from Speech](https://www.isca-archive.org/interspeech_2025/botelho25_interspeech.html)
 **Taxonomy:** `people-variation-and-health / clinical-markers / clinical-speech-marker`
@@ -3662,7 +3677,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Selected ensembles provide the strongest reported balance across train/development data and individual classes.
 - **Limits:** Challenge data, demographic overlap, and missing metadata limit the claim; this is not clinical validation.
 
-## 245. Pitfalls and Limits in Automatic Dementia Assessment
+## 246. Pitfalls and Limits in Automatic Dementia Assessment
 
 **Paper:** [Pitfalls and Limits in Automatic Dementia Assessment](https://www.isca-archive.org/interspeech_2025/braun25_interspeech.html)
 **Taxonomy:** `people-variation-and-health / clinical-markers / clinical-speech-marker`
@@ -3677,7 +3692,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports high overall correlation but weaker behavior for healthy and mildly impaired groups and identifies overoptimistic correlations for severely impaired speakers.
 - **Limits:** This is an analysis of one standardized assessment and its data; it warns against clinical claims, not a universal ranking of dementia-screening systems.
 
-## 246. Perception of Emotional Speech by Individuals with High Borderline Personality Features
+## 247. Perception of Emotional Speech by Individuals with High Borderline Personality Features
 
 **Paper:** [Perception of Emotional Speech by Individuals with High Borderline Personality Features](https://www.isca-archive.org/interspeech_2025/chen25c_interspeech.html)
 **Taxonomy:** `people-variation-and-health / clinical-markers / clinical-speech-marker`
@@ -3692,7 +3707,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** High-feature participants were less accurate for neutral speech and high-intensity happy speech, with distinct confusion patterns and marginally higher confidence for angry speech.
 - **Limits:** Mandarin synthetic stimuli, university participants, self-report grouping, F0 manipulation, and perceptual task bound generalization; the findings do not diagnose BPD or explain all underlying causes.
 
-## 247. Predicting Adolescent Suicidal Risk from Multi-task-based Speech: An Ensemble Learning Approach
+## 248. Predicting Adolescent Suicidal Risk from Multi-task-based Speech: An Ensemble Learning Approach
 
 **Paper:** [Predicting Adolescent Suicidal Risk from Multi-task-based Speech: An Ensemble Learning Approach](https://www.isca-archive.org/interspeech_2025/chen25o_interspeech.html)
 **Taxonomy:** `people-variation-and-health / clinical-markers / clinical-speech-marker`
@@ -3707,7 +3722,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** On 600 Chinese adolescents, the paper reports test accuracy .63, recall .74, and F1 about .67.
 - **Limits:** This is a screening model on one challenge dataset, not a diagnosis or safety-tested intervention; age, language, labels, privacy, calibration, and external validation constrain the claim.
 
-## 248. Comparative Evaluation of Acoustic Feature Extraction Tools for Clinical Speech Analysis
+## 249. Comparative Evaluation of Acoustic Feature Extraction Tools for Clinical Speech Analysis
 
 **Paper:** [Comparative Evaluation of Acoustic Feature Extraction Tools for Clinical Speech Analysis](https://www.isca-archive.org/interspeech_2025/choi25h_interspeech.html)
 **Taxonomy:** `people-variation-and-health / clinical-markers / clinical-speech-marker`
@@ -3722,7 +3737,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** F0 percentile agreement is high, but F0 variation and formants can disagree or even correlate negatively; F0 mean, HNR, and MFCC1 exceed AUC .70 in the reported classification.
 - **Limits:** The clinical groups, recordings, parameter choices, and tool versions define the boundary; no clinical diagnosis or deployment safety follows from these correlations.
 
-## 249. Test-Time Training for Speech-based Depression Detection
+## 250. Test-Time Training for Speech-based Depression Detection
 
 **Paper:** [Test-Time Training for Speech-based Depression Detection](https://www.isca-archive.org/interspeech_2025/dumpala25_interspeech.html)
 **Taxonomy:** `people-variation-and-health / clinical-markers / clinical-speech-marker`
@@ -3737,7 +3752,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports substantial performance improvement under the tested shifts.
 - **Limits:** The task is a clinical screening proxy, not a diagnosis; adaptation stability, labels in deployment, privacy, and external clinical validation remain open.
 
-## 250. ADCeleb: A Longitudinal Speech Dataset from Public Figures for Early Detection of Alzheimer’s Disease
+## 251. ADCeleb: A Longitudinal Speech Dataset from Public Figures for Early Detection of Alzheimer’s Disease
 
 **Paper:** [ADCeleb: A Longitudinal Speech Dataset from Public Figures for Early Detection of Alzheimer’s Disease](https://www.isca-archive.org/interspeech_2025/gao25b_interspeech.html)
 **Taxonomy:** `people-variation-and-health / clinical-markers / clinical-speech-marker`
@@ -3752,7 +3767,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The authors report that linguistic representations are stronger earlier, while acoustic information contributes more near the year of diagnosis; fusion improves the nearer interval to 0.80 accuracy.
 - **Limits:** The corpus uses public figures, YouTube recordings, 40 AD and 40 control speakers, and imperfect observational labels. It is a dataset and baseline study, not a clinical diagnostic validation; author-reported results were not independently reproduced.
 
-## 251. Optimizing Pause Context in Fine-Tuning Pre-trained Large Language Models for Dementia Detection
+## 252. Optimizing Pause Context in Fine-Tuning Pre-trained Large Language Models for Dementia Detection
 
 **Paper:** [Optimizing Pause Context in Fine-Tuning Pre-trained Large Language Models for Dementia Detection](https://www.isca-archive.org/interspeech_2025/ke25_interspeech.html)
 **Taxonomy:** `people-variation-and-health / clinical-markers / clinical-speech-marker`
@@ -3767,7 +3782,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports that optimized between-segment pause patterns improve detection and that different tasks prefer different pause representations.
 - **Limits:** The corpus, language, age group, transcription quality, diagnostic labels, and pause definitions bound the result; this is not a validated clinical biomarker or a causal account of dementia.
 
-## 252. Leveraging Ordinal Information for Speech-based Depression Classification
+## 253. Leveraging Ordinal Information for Speech-based Depression Classification
 
 **Paper:** [Leveraging Ordinal Information for Speech-based Depression Classification](https://www.isca-archive.org/interspeech_2025/zuo25_interspeech.html)
 **Taxonomy:** `people-variation-and-health / clinical-markers / clinical-speech-marker`
@@ -3782,7 +3797,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The ordinal method outperforms reported state-of-the-art depression-detection methods in the paper's experiments.
 - **Limits:** The clinical scale, speakers, labels, dataset, threshold choices, and evaluation metrics bound the result; better ordinal prediction is not diagnosis or clinical validation.
 
-## 253. A Study on Speech Assessment with Visual Cues
+## 254. A Study on Speech Assessment with Visual Cues
 
 **Paper:** [A Study on Speech Assessment with Visual Cues](https://www.isca-archive.org/interspeech_2025/ahmed25_interspeech.html)
 **Taxonomy:** `people-variation-and-health / human-centered-accessibility / listener-effort`
@@ -3797,7 +3812,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** On LRS3-TED with DEMAND noise, the paper reports higher LCC than audio-only baselines for PESQ and STOI under seen noise.
 - **Limits:** Seen-noise conditions, proxy targets, visual availability, dataset, and correlation metric limit transfer; proxy prediction is not a listener study.
 
-## 254. Can We Trust Machine Learning? The Reliability of Features from Open-Source Speech Analysis Tools for Speech Modeling
+## 255. Can We Trust Machine Learning? The Reliability of Features from Open-Source Speech Analysis Tools for Speech Modeling
 
 **Paper:** [Can We Trust Machine Learning? The Reliability of Features from Open-Source Speech Analysis Tools for Speech Modeling](https://www.isca-archive.org/interspeech_2025/chowdhury25_interspeech.html)
 **Taxonomy:** `people-variation-and-health / human-centered-accessibility / user-control-and-consent`
@@ -3812,7 +3827,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports considerable tool variation that influences model performance across context and demographic groups.
 - **Limits:** The population, features, tools, and behavioral tasks define the boundary; the study does not identify one universally correct toolkit.
 
-## 255. EAA: Emotion-Aware Audio Large Language Models with Dual Cross-Attention and Context-Aware Instruction Tuning
+## 256. EAA: Emotion-Aware Audio Large Language Models with Dual Cross-Attention and Context-Aware Instruction Tuning
 
 **Paper:** [EAA: Emotion-Aware Audio Large Language Models with Dual Cross-Attention and Context-Aware Instruction Tuning](https://www.isca-archive.org/interspeech_2025/du25b_interspeech.html)
 **Taxonomy:** `people-variation-and-health / human-centered-accessibility / listener-effort`
@@ -3827,7 +3842,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports EAA results for emotion-aware audio large language modeling.
 - **Limits:** Labels, prompts, audio quality, model, and human agreement bound transfer.
 
-## 256. Speech stimulus design to study the neural coding of speech and the impact of cochlear synaptopathy
+## 257. Speech stimulus design to study the neural coding of speech and the impact of cochlear synaptopathy
 
 **Paper:** [Speech stimulus design to study the neural coding of speech and the impact of cochlear synaptopathy](https://www.isca-archive.org/interspeech_2025/gaudrain25_interspeech.html)
 **Taxonomy:** `people-variation-and-health / human-centered-accessibility / accessibility-fit`
@@ -3842,7 +3857,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports a design framework for controlled naturalistic stimuli suitable for studying the target coding mechanism and its impairment in cochlear synaptopathy.
 - **Limits:** Stimulus fidelity, resynthesis artifacts, listener population, language, and study protocol bound the inference; a designed cue isolates a mechanism only insofar as unedited cues remain controlled.
 
-## 257. Evaluating Speech Enhancement Performance Across Demographics and Language
+## 258. Evaluating Speech Enhancement Performance Across Demographics and Language
 
 **Paper:** [Evaluating Speech Enhancement Performance Across Demographics and Language](https://www.isca-archive.org/interspeech_2025/giraldo25_interspeech.html)
 **Taxonomy:** `people-variation-and-health / human-centered-accessibility / listener-effort`
@@ -3857,7 +3872,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports performance variation across demographics/languages and warns that model rankings on VoiceBank-DEMAND do not transfer directly.
 - **Limits:** The authors still note benchmark simplification and possible metric overfitting; dataset diversity does not by itself prove universal fairness.
 
-## 258. Towards Inclusive and Fair ASR: Insights from the SAPC Challenge for Optimizing Disordered Speech Recognition
+## 259. Towards Inclusive and Fair ASR: Insights from the SAPC Challenge for Optimizing Disordered Speech Recognition
 
 **Paper:** [Towards Inclusive and Fair ASR: Insights from the SAPC Challenge for Optimizing Disordered Speech Recognition](https://www.isca-archive.org/interspeech_2025/gohider25_interspeech.html)
 **Taxonomy:** `people-variation-and-health / human-centered-accessibility / accessibility-fit`
@@ -3872,7 +3887,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports WER 10.06% and 11.8% on the two test subsets, with Parakeet slightly ahead of ContextNet.
 - **Limits:** Challenge data, speaker impairment profiles, transcripts, and WER define the boundary; fairness across disorders, user control, and clinical usefulness remain unestablished.
 
-## 259. Can ASR generate valid measures of child reading fluency?
+## 260. Can ASR generate valid measures of child reading fluency?
 
 **Paper:** [Can ASR generate valid measures of child reading fluency?](https://www.isca-archive.org/interspeech_2025/harmsen25_interspeech.html)
 **Taxonomy:** `people-variation-and-health / human-centered-accessibility / accessibility-fit`
@@ -3887,7 +3902,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The best reported system has WER 12.3% and timing F1 0.82; twelve measures meet r ≥ 0.7.
 - **Limits:** Dutch child reading, fixed texts, age distribution, ASR choice, and transcript comparison limit generalization; intervention or diagnosis validity is not established.
 
-## 260. Hearing deficits of transformer-based ASR for anechoic and spatial signals
+## 261. Hearing deficits of transformer-based ASR for anechoic and spatial signals
 
 **Paper:** [Hearing deficits of transformer-based ASR for anechoic and spatial signals](https://www.isca-archive.org/interspeech_2025/hoffner25_interspeech.html)
 **Taxonomy:** `people-variation-and-health / human-centered-accessibility / listener-effort`
@@ -3902,7 +3917,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Model size improves ASR thresholds, but the gap changes with language, room, and spatial signals.
 - **Limits:** Whisper versions, German/English material, steady noise, and laboratory setup limit claims.
 
-## 261. Unifying Listener Scoring Scales: Comparison Learning Framework for Speech Quality Assessment and Continuous Speech Emotion Recognition
+## 262. Unifying Listener Scoring Scales: Comparison Learning Framework for Speech Quality Assessment and Continuous Speech Emotion Recognition
 
 **Paper:** [Unifying Listener Scoring Scales: Comparison Learning Framework for Speech Quality Assessment and Continuous Speech Emotion Recognition](https://www.isca-archive.org/interspeech_2025/hu25l_interspeech.html)
 **Taxonomy:** `people-variation-and-health / human-centered-accessibility / listener-effort`
@@ -3917,7 +3932,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports improved prediction performance and robustness on both tasks.
 - **Limits:** Listener panels, rating prompts, comparison construction, and datasets bound the result; agreement and usefulness for new listener populations remain open.
 
-## 262. Does effortful speech production indicate communication difficulty caused by noise and hearing aid support?
+## 263. Does effortful speech production indicate communication difficulty caused by noise and hearing aid support?
 
 **Paper:** [Does effortful speech production indicate communication difficulty caused by noise and hearing aid support?](https://www.isca-archive.org/interspeech_2025/huttner25_interspeech.html)
 **Taxonomy:** `people-variation-and-health / human-centered-accessibility / accessibility-fit`
@@ -3932,7 +3947,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports that higher vocal level and interaction measures predict communication difficulty for hearing-impaired participants under relevant conditions.
 - **Limits:** Small dyadic sample, task design, questionnaire, hearing-aid settings, and acoustic noise bound the result; a predictor of reported difficulty is not a universal clinical measure or causal explanation.
 
-## 263. Crowdsourcing MUSHRA Tests in the Age of Generative Speech Technologies: A Comparative Analysis of Subjective and Objective Testing Methods
+## 264. Crowdsourcing MUSHRA Tests in the Age of Generative Speech Technologies: A Comparative Analysis of Subjective and Objective Testing Methods
 
 **Paper:** [Crowdsourcing MUSHRA Tests in the Age of Generative Speech Technologies: A Comparative Analysis of Subjective and Objective Testing Methods](https://www.isca-archive.org/interspeech_2025/lechler25_interspeech.html)
 **Taxonomy:** `people-variation-and-health / human-centered-accessibility / listener-effort`
@@ -3947,7 +3962,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports platform-specific bias, reasonable crowdsourced comparisons under its protocol, and that traditional metrics undervalue generative models.
 - **Limits:** The result is bounded to the codecs, platforms, listener recruitment, and six metrics tested; other populations and model families remain open.
 
-## 264. Web-Based Application for Real-Time Biofeedback of Vocal Resonance in Gender-Affirming Voice Training: Design and Usability Evaluation
+## 265. Web-Based Application for Real-Time Biofeedback of Vocal Resonance in Gender-Affirming Voice Training: Design and Usability Evaluation
 
 **Paper:** [Web-Based Application for Real-Time Biofeedback of Vocal Resonance in Gender-Affirming Voice Training: Design and Usability Evaluation](https://www.isca-archive.org/interspeech_2025/mcallister25_interspeech.html)
 **Taxonomy:** `people-variation-and-health / human-centered-accessibility / user-control-and-consent`
@@ -3962,7 +3977,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports a working web application and usability findings supporting its use as a training aid.
 - **Limits:** Small usability sample, task design, browser/audio conditions, and self-report limit claims about long-term learning or clinical outcomes.
 
-## 265. Accessible Delivery of Visual-Acoustic Biofeedback for Speech Sound Disorder
+## 266. Accessible Delivery of Visual-Acoustic Biofeedback for Speech Sound Disorder
 
 **Paper:** [Accessible Delivery of Visual-Acoustic Biofeedback for Speech Sound Disorder](https://www.isca-archive.org/interspeech_2025/mcallister25b_interspeech.html)
 **Taxonomy:** `people-variation-and-health / human-centered-accessibility / accessibility-fit`
@@ -3977,7 +3992,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The staRt iOS/web system provides real-time visual-acoustic biofeedback for /r/ training and reports broad uptake; local processing avoids telepractice loss of frequency resolution and latency.
 - **Limits:** The current target is mainly English /r/, peak-picking and formant tracking are not yet stable enough for automated feedback across vocal-tract sizes, and clinical efficacy is not established by this technical description.
 
-## 266. Concurrent Speech and Auditory Tag Clouds for Non-Visual Web Interaction
+## 267. Concurrent Speech and Auditory Tag Clouds for Non-Visual Web Interaction
 
 **Paper:** [Concurrent Speech and Auditory Tag Clouds for Non-Visual Web Interaction](https://www.isca-archive.org/interspeech_2025/merzougui25_interspeech.html)
 **Taxonomy:** `people-variation-and-health / human-centered-accessibility / accessibility-fit`
@@ -3992,7 +4007,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper presents the experimental framework and reports feasibility for non-visual web skimming through auditory tag-cloud interaction.
 - **Limits:** The evaluation is interaction-specific, auditory clutter and learning effects matter, and accessibility promise is not equivalent to demonstrated performance across blind users, browsers, languages, or real browsing tasks.
 
-## 267. What Do Humans Hear When Interacting? Experiments on Selective Listening for Evaluating ASR of Spoken Dialogue Systems
+## 268. What Do Humans Hear When Interacting? Experiments on Selective Listening for Evaluating ASR of Spoken Dialogue Systems
 
 **Paper:** [What Do Humans Hear When Interacting? Experiments on Selective Listening for Evaluating ASR of Spoken Dialogue Systems](https://www.isca-archive.org/interspeech_2025/mori25_interspeech.html)
 **Taxonomy:** `people-variation-and-health / human-centered-accessibility / listener-effort`
@@ -4007,7 +4022,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Humans attend more to content words than function words; the proposed H-WWER gives lower scores to human than Whisper transcriptions in the reported comparison and is offered as a dialogue-relevant complement to WER.
 - **Limits:** Transcription follows response generation rather than occurring simultaneously, and the displayed weight comparison is partly optimized on test data. The metric is a proposal, not validated against downstream response success or diverse dialogue settings.
 
-## 268. Processing of grammatical information in cochlear implant simulated speech by German adult listeners
+## 269. Processing of grammatical information in cochlear implant simulated speech by German adult listeners
 
 **Paper:** [Processing of grammatical information in cochlear implant simulated speech by German adult listeners](https://www.isca-archive.org/interspeech_2025/schouwenaars25_interspeech.html)
 **Taxonomy:** `people-variation-and-health / human-centered-accessibility / accessibility-fit`
@@ -4022,7 +4037,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Only object-question accuracy was affected by the simulation, with weaker interpretation preferences in gaze patterns; higher working memory was associated with better accuracy and faster reorientation.
 - **Limits:** The simulation is not an actual implant, the German grammatical system and question types are narrow, and listener behavior does not establish clinical device benefit or general speech recognition performance.
 
-## 269. Individualized speech enhancement for hearing-impaired listeners
+## 270. Individualized speech enhancement for hearing-impaired listeners
 
 **Paper:** [Individualized speech enhancement for hearing-impaired listeners](https://www.isca-archive.org/interspeech_2025/wen25b_interspeech.html)
 **Taxonomy:** `people-variation-and-health / human-centered-accessibility / accessibility-fit`
@@ -4037,7 +4052,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports individualized speech enhancement for hearing-impaired listeners.
 - **Limits:** Hearing profiles, listener numbers, fitting procedure, materials, and subjective protocol bound transfer.
 
-## 270. A Bayesian Approach to L2 Fluency Ratings by Native and Nonnative Listeners
+## 271. A Bayesian Approach to L2 Fluency Ratings by Native and Nonnative Listeners
 
 **Paper:** [A Bayesian Approach to L2 Fluency Ratings by Native and Nonnative Listeners](https://www.isca-archive.org/interspeech_2025/yazawa25_interspeech.html)
 **Taxonomy:** `people-variation-and-health / human-centered-accessibility / listener-effort`
@@ -4052,7 +4067,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Using 16 listeners and 180 Japanese speakers in J-AESOP, the paper reports greater leniency among some nonnative listeners and stronger fit for segment-based articulation rate.
 - **Limits:** Listener sample, language backgrounds, trained-rating task, corpus, feature definitions, and Bayesian priors bound transfer; fluency ratings are not a complete measure of communicative success.
 
-## 271. Feature Importance across Domains for Improving Non-Intrusive Speech Intelligibility Prediction in Hearing Aids
+## 272. Feature Importance across Domains for Improving Non-Intrusive Speech Intelligibility Prediction in Hearing Aids
 
 **Paper:** [Feature Importance across Domains for Improving Non-Intrusive Speech Intelligibility Prediction in Hearing Aids](https://www.isca-archive.org/interspeech_2025/zezario25_interspeech.html)
 **Taxonomy:** `people-variation-and-health / human-centered-accessibility / accessibility-fit`
@@ -4067,7 +4082,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports that FiDo reduces MBI-Net+ RMSE from 26.10 to 24.11 and improves over the best 2023 Clarity Prediction Challenge system.
 - **Limits:** Weakly supervised targets, hearing-aid/noise conditions, challenge split, proxy RMSE, and absence of a new listener study bound the claim; prediction is not equivalent to real-world access improvement.
 
-## 272. Agent-based modelling, sound change, and metaphony in Southern Italian varieties of Italo-Romance.
+## 273. Agent-based modelling, sound change, and metaphony in Southern Italian varieties of Italo-Romance.
 
 **Paper:** [Agent-based modelling, sound change, and metaphony in Southern Italian varieties of Italo-Romance.](https://www.isca-archive.org/interspeech_2025/bressensdorf25_interspeech.html)
 **Taxonomy:** `people-variation-and-health / identity-and-life-stage / age-and-development`
@@ -4082,7 +4097,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The reported results provide support for an asymmetric shift toward the innovative dialect and are consistent with feedback models of sound change.
 - **Limits:** The two dialects, 54 speakers collapsed to 13 agents, selected words, F1 trajectory representation, and model assumptions limit generalization to other communities or changes.
 
-## 273. Pitch Target Realization in Putonghua Tone Production of Children from Dialect-Speaking Regions
+## 274. Pitch Target Realization in Putonghua Tone Production of Children from Dialect-Speaking Regions
 
 **Paper:** [Pitch Target Realization in Putonghua Tone Production of Children from Dialect-Speaking Regions](https://www.isca-archive.org/interspeech_2025/cao25_interspeech.html)
 **Taxonomy:** `people-variation-and-health / identity-and-life-stage / age-and-development`
@@ -4097,7 +4112,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports universal physiological constraints, persistent dialect interference, and off-target forms arising from phonetic similarity and target interaction.
 - **Limits:** The age range, dialect exposure, corpus, and tone inventory bound the developmental claim; longitudinal and other language environments remain open.
 
-## 274. Towards Robust Speaker Recognition against Intrinsic Variation with Foundation Model Few-shot Tuning and Effective Speech Synthesis
+## 275. Towards Robust Speaker Recognition against Intrinsic Variation with Foundation Model Few-shot Tuning and Effective Speech Synthesis
 
 **Paper:** [Towards Robust Speaker Recognition against Intrinsic Variation with Foundation Model Few-shot Tuning and Effective Speech Synthesis](https://www.isca-archive.org/interspeech_2025/chen25_interspeech.html)
 **Taxonomy:** `people-variation-and-health / identity-and-life-stage / style-and-state-variation`
@@ -4112,7 +4127,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports stronger generalization to aging and emotional variation while maintaining resistance to unknown outliers.
 - **Limits:** The claim is bounded to the synthetic-data choices, foundation model, enrollment protocol, and benchmarks; real aging trajectories, spoofing attacks, and fairness across groups remain open.
 
-## 275. Pushing the Frontiers of Self-Distillation Prototypes Network with Dimension Regularization and Score Normalization
+## 276. Pushing the Frontiers of Self-Distillation Prototypes Network with Dimension Regularization and Score Normalization
 
 **Paper:** [Pushing the Frontiers of Self-Distillation Prototypes Network with Dimension Regularization and Score Normalization](https://www.isca-archive.org/interspeech_2025/chen25f_interspeech.html)
 **Taxonomy:** `people-variation-and-health / identity-and-life-stage / speaker-verification`
@@ -4127,7 +4142,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** On VoxCeleb1, the paper reports EERs of 1.29%, 1.60%, and 2.80% on the O/E/H trials and relative improvements over prior self-supervised methods.
 - **Limits:** VoxCeleb1, trial conditions, unlabeled-training setup, score normalization, and EER bound the claim; benchmark gains do not establish fairness or robustness in deployment.
 
-## 276. Speech Unlearning
+## 277. Speech Unlearning
 
 **Paper:** [Speech Unlearning](https://www.isca-archive.org/interspeech_2025/cheng25d_interspeech.html)
 **Taxonomy:** `people-variation-and-health / identity-and-life-stage / speaker-verification`
@@ -4142,7 +4157,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports that speech unlearning is substantially harder than image or text unlearning and identifies structured training, evaluation, feature-level removal, and adversarial robustness as open directions.
 - **Limits:** Tasks, speakers, unlearning definitions, attack tests, and evaluation criteria bound the result; a proposed forgetting score is not proof of privacy against every adversary.
 
-## 277. Analysis of the ABC Classification Backends for NIST SRE24
+## 278. Analysis of the ABC Classification Backends for NIST SRE24
 
 **Paper:** [Analysis of the ABC Classification Backends for NIST SRE24](https://www.isca-archive.org/interspeech_2025/cumani25_interspeech.html)
 **Taxonomy:** `people-variation-and-health / identity-and-life-stage / speaker-verification`
@@ -4157,7 +4172,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports how the analyzed backends behave on the NIST SRE24 evaluation conditions.
 - **Limits:** Benchmark protocol, language/channel conditions, calibration, and chosen operating points limit claims beyond SRE24.
 
-## 278. A Copula-Based Generative Score-Level Fusion Model for Speaker Verification
+## 279. A Copula-Based Generative Score-Level Fusion Model for Speaker Verification
 
 **Paper:** [A Copula-Based Generative Score-Level Fusion Model for Speaker Verification](https://www.isca-archive.org/interspeech_2025/cumani25b_interspeech.html)
 **Taxonomy:** `people-variation-and-health / identity-and-life-stage / speaker-verification`
@@ -4172,7 +4187,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** On NIST SRE 2019 and SITW, the method reports up to 7% relative Cllr reduction versus discriminative linear fusion.
 - **Limits:** Datasets, recognizer diversity, score distributions, and calibration protocol bound the result; new speakers, channels, and attacks need separate evaluation.
 
-## 279. Inter-Speaker Relative Cues for Text-Guided Target Speech Extraction
+## 280. Inter-Speaker Relative Cues for Text-Guided Target Speech Extraction
 
 **Paper:** [Inter-Speaker Relative Cues for Text-Guided Target Speech Extraction](https://www.isca-archive.org/interspeech_2025/dai25b_interspeech.html)
 **Taxonomy:** `people-variation-and-health / identity-and-life-stage / style-and-state-variation`
@@ -4187,7 +4202,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports that all relative cues beat random subsets, with gender and temporal order especially robust across languages and reverberation; WavLM/CNN initialization improves the baseline.
 - **Limits:** The claim is bounded to the constructed mixtures, cue templates, languages, and author-reported tests; real conversational mixtures and privacy effects remain open.
 
-## 280. An Investigative Study on Recent Sharpness- and Flatness-Based Optimizers for Enhanced Self-Supervised Speaker Verification
+## 281. An Investigative Study on Recent Sharpness- and Flatness-Based Optimizers for Enhanced Self-Supervised Speaker Verification
 
 **Paper:** [An Investigative Study on Recent Sharpness- and Flatness-Based Optimizers for Enhanced Self-Supervised Speaker Verification](https://www.isca-archive.org/interspeech_2025/fathan25_interspeech.html)
 **Taxonomy:** `people-variation-and-health / identity-and-life-stage / speaker-verification`
@@ -4202,7 +4217,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports that optimizer choice materially changes generalization and that the tested sharpness-aware and general-purpose optimizers can reach state-of-the-art self-supervised speaker-verification results in its experiments.
 - **Limits:** The conclusions are bounded by the selected speaker-verification corpora, architectures, optimizer settings, and author-reported comparisons; a better optimizer score does not establish robustness to every language, channel, attack, or demographic group. No independent reproduction was performed.
 
-## 281. Egocentric Speaker Classification in Child-Adult Dyadic Interactions: From Sensing to Computational Modeling
+## 282. Egocentric Speaker Classification in Child-Adult Dyadic Interactions: From Sensing to Computational Modeling
 
 **Paper:** [Egocentric Speaker Classification in Child-Adult Dyadic Interactions: From Sensing to Computational Modeling](https://www.isca-archive.org/interspeech_2025/feng25b_interspeech.html)
 **Taxonomy:** `people-variation-and-health / identity-and-life-stage / speaker-verification`
@@ -4217,7 +4232,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports that egocentric sensing provides useful information for child/adult speaker classification and highlights the promise and constraints of wearable speech modeling.
 - **Limits:** BOSCC activities, children/clinicians, sensor placement, privacy, and speaker labels bound the result; classification is not a direct measure of social communication or treatment outcome.
 
-## 282. How sibilant spectra shape gender perception in prepubertal children: A voice morphing study
+## 283. How sibilant spectra shape gender perception in prepubertal children: A voice morphing study
 
 **Paper:** [How sibilant spectra shape gender perception in prepubertal children: A voice morphing study](https://www.isca-archive.org/interspeech_2025/funk25_interspeech.html)
 **Taxonomy:** `people-variation-and-health / identity-and-life-stage / age-and-development`
@@ -4232,7 +4247,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** No overall gender differences in the measured sibilant features were found; sibilants did not affect gender perception in natural stimuli but did affect it in morphed stimuli, suggesting stereotypical associations in isolation.
 - **Limits:** Age, language, stimulus construction, listener beliefs, longitudinal sample, and morphing artifacts bound the claim; a perceptual association is not a biological marker or justification for gender classification.
 
-## 283. You Are What You Say: Exploiting Linguistic Content for VoicePrivacy Attacks
+## 284. You Are What You Say: Exploiting Linguistic Content for VoicePrivacy Attacks
 
 **Paper:** [You Are What You Say: Exploiting Linguistic Content for VoicePrivacy Attacks](https://www.isca-archive.org/interspeech_2025/gaznepoglu25_interspeech.html)
 **Taxonomy:** `people-variation-and-health / identity-and-life-stage / speaker-verification`
@@ -4247,7 +4262,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports mean EER around 35%, with some speakers as low as 2%, using text alone on VoicePrivacy data.
 - **Limits:** Dataset curation, speaker/content overlap, BERT training, split design, and EER interpretation bound the claim; text leakage does not prove an anonymizer fails acoustically.
 
-## 284. EmoSpeechAuth: Emotion-Aware Speaker Verification
+## 285. EmoSpeechAuth: Emotion-Aware Speaker Verification
 
 **Paper:** [EmoSpeechAuth: Emotion-Aware Speaker Verification](https://www.isca-archive.org/interspeech_2025/goebiowska25_interspeech.html)
 **Taxonomy:** `people-variation-and-health / identity-and-life-stage / speaker-verification`
@@ -4262,7 +4277,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper presents EmoSpeechAuth and evaluates emotion-aware speaker verification.
 - **Limits:** Emotion labels, speakers, channel, enrollment, thresholds, and demographics bound transfer.
 
-## 285. Unified Text and Speaker Verification using SSL model for Text-Dependent Speaker Verification
+## 286. Unified Text and Speaker Verification using SSL model for Text-Dependent Speaker Verification
 
 **Paper:** [Unified Text and Speaker Verification using SSL model for Text-Dependent Speaker Verification](https://www.isca-archive.org/interspeech_2025/griot25_interspeech.html)
 **Taxonomy:** `people-variation-and-health / identity-and-life-stage / speaker-verification`
@@ -4277,7 +4292,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The student improves reported text-dependent and DeepMine results but degrades VoxCeleb1 text-independent results relative to ReDimNet.
 - **Limits:** Datasets, languages, content, thresholds, and reported EERs bound the conclusion; open-set deployment is unestablished.
 
-## 286. PAEFF: Precise Alignment and Enhanced Gated Feature Fusion for Face-Voice Association
+## 287. PAEFF: Precise Alignment and Enhanced Gated Feature Fusion for Face-Voice Association
 
 **Paper:** [PAEFF: Precise Alignment and Enhanced Gated Feature Fusion for Face-Voice Association](https://www.isca-archive.org/interspeech_2025/hannan25_interspeech.html)
 **Taxonomy:** `people-variation-and-health / identity-and-life-stage / speaker-verification`
@@ -4292,7 +4307,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** On the reported VoxCeleb1 splits, PAEFF improves the best listed baseline on unseen-unheard EER and reaches the highest or near-highest AUC in the table.
 - **Limits:** The result is author-reported and tied to VoxCeleb1, its split protocol, pretrained encoders, and hyperparameters; it does not establish robustness to dubbing, adversarial pairing, or other cultures.
 
-## 287. Variability in performance across four generations of automatic speaker recognition systems
+## 288. Variability in performance across four generations of automatic speaker recognition systems
 
 **Paper:** [Variability in performance across four generations of automatic speaker recognition systems](https://www.isca-archive.org/interspeech_2025/harrington25_interspeech.html)
 **Taxonomy:** `people-variation-and-health / identity-and-life-stage / speaker-verification`
@@ -4307,7 +4322,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Performance improves from GMM-UBM through i-vector and x-vector but not ECAPA-TDNN in the reported comparison; some individuals remain difficult across systems.
 - **Limits:** Forensic data, calibration, system implementations, speaker sampling, and metric choice bound transfer; persistent difficulty is not automatically a biological property.
 
-## 288. Challenges in Automated Processing of Speech from Child Wearables:  The Case of Voice Type Classifier
+## 289. Challenges in Automated Processing of Speech from Child Wearables:  The Case of Voice Type Classifier
 
 **Paper:** [Challenges in Automated Processing of Speech from Child Wearables:  The Case of Voice Type Classifier](https://www.isca-archive.org/interspeech_2025/kunze25_interspeech.html)
 **Taxonomy:** `people-variation-and-health / identity-and-life-stage / age-and-development`
@@ -4322,7 +4337,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Model and tuning improvements produce marginal gains, while more relevant and larger shareable data produce more progress.
 - **Limits:** The child-wearable setting, label scheme, permissions, and task definition bound the result; conclusions do not automatically transfer to adult or laboratory speech.
 
-## 289. Examining Test-Time Adaptation for Personalized Child Speech Recognition
+## 290. Examining Test-Time Adaptation for Personalized Child Speech Recognition
 
 **Paper:** [Examining Test-Time Adaptation for Personalized Child Speech Recognition](https://www.isca-archive.org/interspeech_2025/shi25h_interspeech.html)
 **Taxonomy:** `people-variation-and-health / identity-and-life-stage / age-and-development`
@@ -4337,7 +4352,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports average and per-child gains for both model types, with remaining limitations on non-linguistic child speech.
 - **Limits:** Child corpus, adaptation methods, update stability, model family, and evaluation conditions bound transfer; average WER gains are not proof of safe continual deployment.
 
-## 290. Bridging ASR and LLMs for Dysarthric Speech Recognition: Benchmarking Self-Supervised and Generative Approaches
+## 291. Bridging ASR and LLMs for Dysarthric Speech Recognition: Benchmarking Self-Supervised and Generative Approaches
 
 **Paper:** [Bridging ASR and LLMs for Dysarthric Speech Recognition: Benchmarking Self-Supervised and Generative Approaches](https://www.isca-archive.org/interspeech_2025/aboeitta25_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / acoustic-unit-learning / acoustic-to-token`
@@ -4352,7 +4367,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Whisper improves over CTC baselines, and Whisper-Vicuna reports the lowest WER in the tested TORGO and UASpeech comparisons; all results remain author-reported.
 - **Limits:** Dataset splits, severity labels, model scale, decoding prompts, and WER limit the claim; lower WER does not prove faithful preservation of disfluencies or speaker intent.
 
-## 291. HuBERT-VIC: Improving Noise-Robust Automatic Speech Recognition of Speech Foundation Model via Variance-Invariance-Covariance Regularization
+## 292. HuBERT-VIC: Improving Noise-Robust Automatic Speech Recognition of Speech Foundation Model via Variance-Invariance-Covariance Regularization
 
 **Paper:** [HuBERT-VIC: Improving Noise-Robust Automatic Speech Recognition of Speech Foundation Model via Variance-Invariance-Covariance Regularization](https://www.isca-archive.org/interspeech_2025/ahn25_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / acoustic-unit-learning / self-supervised-speech-units`
@@ -4367,7 +4382,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** All three regularizers give the best reported WER and show complementary ablation effects.
 - **Limits:** MUSAN, SNR choices, HuBERT, and LibriSpeech bound the result; real conversational noise is not established.
 
-## 292. Analysis of Semantic and Acoustic Token Variability Across Speech, Music, and Audio Domains
+## 293. Analysis of Semantic and Acoustic Token Variability Across Speech, Music, and Audio Domains
 
 **Paper:** [Analysis of Semantic and Acoustic Token Variability Across Speech, Music, and Audio Domains](https://www.isca-archive.org/interspeech_2025/ashihara25_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / acoustic-unit-learning / self-supervised-speech-units`
@@ -4382,7 +4397,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports similar statistical/predictable sequence patterns across domains but domain-dependent token usage.
 - **Limits:** The analysis supports representation observations, not a universal optimal token design or downstream task improvement.
 
-## 293. From Weak Labels to Strong Results: Utilizing 5,000 Hours of Noisy Classroom Transcripts with Minimal Accurate Data
+## 294. From Weak Labels to Strong Results: Utilizing 5,000 Hours of Noisy Classroom Transcripts with Minimal Accurate Data
 
 **Paper:** [From Weak Labels to Strong Results: Utilizing 5,000 Hours of Noisy Classroom Transcripts with Minimal Accurate Data](https://www.isca-archive.org/interspeech_2025/attia25_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / acoustic-unit-learning / acoustic-to-token`
@@ -4397,7 +4412,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports that WSP outperforms alternative strategies in synthetic and real weak-label settings for classroom ASR.
 - **Limits:** Classroom domain, weak-label generation, gold-data size, transcript quality, and WER protocol bound the result; weak supervision can still reproduce systematic omissions or speaker bias.
 
-## 294. Word stress in self-supervised speech models: A cross-linguistic comparison
+## 295. Word stress in self-supervised speech models: A cross-linguistic comparison
 
 **Paper:** [Word stress in self-supervised speech models: A cross-linguistic comparison](https://www.isca-archive.org/interspeech_2025/bentum25_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / acoustic-unit-learning / self-supervised-speech-units`
@@ -4412,7 +4427,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Stress is decoded with high accuracy, and the representations show language-specific differences, with a larger contrast between variable-stress and fixed-stress languages.
 - **Limits:** Read-aloud sentences, languages, layer choices, probe capacity, and diagnostic accuracy bound the inference; recoverable information is not proof that the model uses stress causally.
 
-## 295. DC-Spin: A Speaker-invariant Speech Tokenizer for Spoken Language Models
+## 296. DC-Spin: A Speaker-invariant Speech Tokenizer for Spoken Language Models
 
 **Paper:** [DC-Spin: A Speaker-invariant Speech Tokenizer for Spoken Language Models](https://www.isca-archive.org/interspeech_2025/chang25_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / acoustic-unit-learning / acoustic-to-token`
@@ -4427,7 +4442,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports that tokens with phoneme alignment or simple language-model structure are useful downstream and improve the tested zero-shot and resynthesis proxies.
 - **Limits:** The tokenizers, languages, proxy tasks, and resynthesis setup bound the result; token usefulness is not the same as complete spoken meaning.
 
-## 296. Decoding Speaker-Normalized Pitch from EEG for Mandarin Perception
+## 297. Decoding Speaker-Normalized Pitch from EEG for Mandarin Perception
 
 **Paper:** [Decoding Speaker-Normalized Pitch from EEG for Mandarin Perception](https://www.isca-archive.org/interspeech_2025/chen25e_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / acoustic-unit-learning / acoustic-to-token`
@@ -4442,7 +4457,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The proposed CE-ViViT approach achieved modest-error decoding, with speaker-normalized contours decoded more accurately than raw contours in the reported experiments.
 - **Limits:** Participants, Mandarin tones, EEG sessions, normalization rule, model, and modest-error metric bound the neural claim; better decoding does not by itself reveal the full perceptual code.
 
-## 297. DiceHuBERT: Distilling HuBERT with a Self-Supervised Learning Objective
+## 298. DiceHuBERT: Distilling HuBERT with a Self-Supervised Learning Objective
 
 **Paper:** [DiceHuBERT: Distilling HuBERT with a Self-Supervised Learning Objective](https://www.isca-archive.org/interspeech_2025/chi25_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / acoustic-unit-learning / self-supervised-speech-units`
@@ -4457,7 +4472,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports over 21% improvement in phoneme recognition and over 14% in ASR relative to existing distillation methods, with competitive multi-task results.
 - **Limits:** Teacher/student sizes, SUPERB tasks, training data, and comparison baselines bound the result; benchmark transfer does not establish equal behavior under every deployment constraint.
 
-## 298. On-device Streaming Discrete Speech Units
+## 299. On-device Streaming Discrete Speech Units
 
 **Paper:** [On-device Streaming Discrete Speech Units](https://www.isca-archive.org/interspeech_2025/choi25b_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / acoustic-unit-learning / self-supervised-speech-units`
@@ -4472,7 +4487,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** On ML-SUPERB 1h, the paper reports a 50% FLOP reduction for a 6.5% relative CER increase.
 - **Limits:** Dataset size, causal window, unit clustering, hardware, FLOPs accounting, and CER bound practical generalization; the trade-off may change for other languages or latency targets.
 
-## 299. Exploring auditory feedback mechanisms in speech recognition
+## 300. Exploring auditory feedback mechanisms in speech recognition
 
 **Paper:** [Exploring auditory feedback mechanisms in speech recognition](https://www.isca-archive.org/interspeech_2025/coppietersdegibson25_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / acoustic-unit-learning / acoustic-to-token`
@@ -4487,7 +4502,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports that adding the larger feedback loop appears beneficial for ASR, while describing the current implications as modest.
 - **Limits:** Approximate oscillator model, compute limits, ASR task, feedback implementation, and modest gains bound interpretation; improved recognition does not validate the whole biological mechanism.
 
-## 300. What do self-supervised speech models know about Dutch?  Analyzing advantages of language-specific pre-training
+## 301. What do self-supervised speech models know about Dutch?  Analyzing advantages of language-specific pre-training
 
 **Paper:** [What do self-supervised speech models know about Dutch?  Analyzing advantages of language-specific pre-training](https://www.isca-archive.org/interspeech_2025/deheerkloots25_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / acoustic-unit-learning / self-supervised-speech-units`
@@ -4502,7 +4517,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Language-specific pretraining yields lower WER, while probe and fine-tuning rankings need not coincide.
 - **Limits:** Models, Dutch corpora, probes, and fine-tuning limit generalization; decodability is not causal proof of ASR behavior.
 
-## 301. Towards a Unified Benchmark for Arabic Pronunciation Assessment: Qur’anic Recitation as Case Study
+## 302. Towards a Unified Benchmark for Arabic Pronunciation Assessment: Qur’anic Recitation as Case Study
 
 **Paper:** [Towards a Unified Benchmark for Arabic Pronunciation Assessment: Qur’anic Recitation as Case Study](https://www.isca-archive.org/interspeech_2025/elkheir25b_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / acoustic-unit-learning / acoustic-to-token`
@@ -4517,7 +4532,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper presents a benchmark and case study for Arabic pronunciation assessment.
 - **Limits:** Recitation tradition, annotation, coverage, and metrics bound transfer; automatic scores are not teacher judgment.
 
-## 302. Improving End-to-end Mixed-case ASR with Knowledge Distillation and Integration of Voice Activity Cues
+## 303. Improving End-to-end Mixed-case ASR with Knowledge Distillation and Integration of Voice Activity Cues
 
 **Paper:** [Improving End-to-end Mixed-case ASR with Knowledge Distillation and Integration of Voice Activity Cues](https://www.isca-archive.org/interspeech_2025/novitasari25b_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / acoustic-unit-learning / acoustic-to-token`
@@ -4532,7 +4547,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The method reports up to a 9.2% relative error reduction at comparable decoding cost.
 - **Limits:** Training data, formatting conventions, teacher quality, decoding budget, and reported error definitions bound the result; punctuation accuracy is not the same as transcript understanding.
 
-## 303. EnCodecMAE: leveraging neural codecs for universal audio representation learning
+## 304. EnCodecMAE: leveraging neural codecs for universal audio representation learning
 
 **Paper:** [EnCodecMAE: leveraging neural codecs for universal audio representation learning](https://www.isca-archive.org/interspeech_2025/pepino25_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / acoustic-unit-learning / self-supervised-speech-units`
@@ -4547,7 +4562,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports average gains over prior audio representations and finds that larger models, task-dependent inputs, self-training, and diverse data each matter.
 - **Limits:** The task suite, pretraining mixture, labels, model comparisons, and aggregate averages bound the claim; average transfer does not prove universal suitability for speech.
 
-## 304. WhisperD: Dementia Speech Recognition and Filler Word Detection with Whisper
+## 305. WhisperD: Dementia Speech Recognition and Filler Word Detection with Whisper
 
 **Paper:** [WhisperD: Dementia Speech Recognition and Filler Word Detection with Whisper](https://www.isca-archive.org/interspeech_2025/akinrintoyo25_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / boundaries-and-alignment / disfluency-preservation`
@@ -4562,7 +4577,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports a medium model WER of 0.24 and stronger results than off-the-shelf models in its evaluation.
 - **Limits:** The dataset is 11.39 hours, some audio is mumbled or unintelligible, and diagnostic or clinical benefit is not established by ASR scores alone.
 
-## 305. ASR-based segmentation for the analysis of larger child-speech datasets: Performance evaluation on vowels from Australian-English speaking children aged 4 to 11 years
+## 306. ASR-based segmentation for the analysis of larger child-speech datasets: Performance evaluation on vowels from Australian-English speaking children aged 4 to 11 years
 
 **Paper:** [ASR-based segmentation for the analysis of larger child-speech datasets: Performance evaluation on vowels from Australian-English speaking children aged 4 to 11 years](https://www.isca-archive.org/interspeech_2025/cai25_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / boundaries-and-alignment / alignment`
@@ -4577,7 +4592,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports that MFA falls short of human annotation, with smaller discrepancies for older children.
 - **Limits:** The evidence is tied to the tested vowels, ages, language variety, and annotators; it supports semi-automatic caution rather than universal aligner failure.
 
-## 306. Song Form-aware Full-Song Text-to-Lyrics Generation with Multi-Level Granularity Syllable Count Control
+## 307. Song Form-aware Full-Song Text-to-Lyrics Generation with Multi-Level Granularity Syllable Count Control
 
 **Paper:** [Song Form-aware Full-Song Text-to-Lyrics Generation with Multi-Level Granularity Syllable Count Control](https://www.isca-archive.org/interspeech_2025/chae25_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / boundaries-and-alignment / alignment`
@@ -4592,7 +4607,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports controlled lyrics-generation experiments and makes generated samples available for inspection.
 - **Limits:** Text prompts, song forms, syllable-count rules, dataset construction, and evaluation criteria bound the claim; syllable fit is not the same as singability, musicality, or authorship.
 
-## 307. A semi-automatic pipeline for transcribing and segmenting child speech
+## 308. A semi-automatic pipeline for transcribing and segmenting child speech
 
 **Paper:** [A semi-automatic pipeline for transcribing and segmenting child speech](https://www.isca-archive.org/interspeech_2025/christodoulidou25_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / boundaries-and-alignment / alignment`
@@ -4607,7 +4622,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Manual transcript correction improves acoustic vowel measures, and adaptation of the pretrained MFA model helps, while merely increasing the adaptation sample does not add the same improvement.
 - **Limits:** The 275-child Scottish-English field corpus, manual reference quality, recording conditions, and selected vowel measures bound transfer; alignment quality is not a complete child-speech recognizer evaluation.
 
-## 308. SiamCTC:  Learning Speech Representations through Monotonic Temporal Alignment
+## 309. SiamCTC:  Learning Speech Representations through Monotonic Temporal Alignment
 
 **Paper:** [SiamCTC:  Learning Speech Representations through Monotonic Temporal Alignment](https://www.isca-archive.org/interspeech_2025/eom25_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / boundaries-and-alignment / alignment`
@@ -4622,7 +4637,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** SiamCTC improves representation robustness at diverse speaking rates in the reported experiments.
 - **Limits:** Augmentation, language, CTC targets, downstream tasks, and rate range bound transfer; robustness is not universal recognition accuracy.
 
-## 309. Towards Multi-Level Transcript Segmentation: LoRA Fine-Tuning for Table-of-Contents Generation
+## 310. Towards Multi-Level Transcript Segmentation: LoRA Fine-Tuning for Table-of-Contents Generation
 
 **Paper:** [Towards Multi-Level Transcript Segmentation: LoRA Fine-Tuning for Table-of-Contents Generation](https://www.isca-archive.org/interspeech_2025/freisinger25_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / boundaries-and-alignment / alignment`
@@ -4637,7 +4652,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Fine-tuned TOC-NEMO plus pause cues reports the strongest linear scores, including AMI F1 30.34/B 24.81 and VideoAula F1 67.34/B 55.18.
 - **Limits:** Datasets, prompts, annotations, and metric behavior constrain the result; transcript segmentation is not proof of human topic understanding.
 
-## 310. The Multimodal Information Based Speech Processing (MISP) 2025 Challenge: Audio-Visual Diarization and Recognition
+## 311. The Multimodal Information Based Speech Processing (MISP) 2025 Challenge: Audio-Visual Diarization and Recognition
 
 **Paper:** [The Multimodal Information Based Speech Processing (MISP) 2025 Challenge: Audio-Visual Diarization and Recognition](https://www.isca-archive.org/interspeech_2025/gao25g_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / boundaries-and-alignment / alignment`
@@ -4652,7 +4667,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The challenge reports DER 8.09%, CER 9.48%, and cpCER 11.56% for its top systems, with the largest gain in the joint task.
 - **Limits:** Challenge data, camera placement, meeting types, language, and leaderboard protocols define the claim; deployment in unseen rooms or privacy-constrained camera settings remains open.
 
-## 311. StutterCut: Uncertainty-Guided Normalised Cut for Dysfluency Segmentation
+## 312. StutterCut: Uncertainty-Guided Normalised Cut for Dysfluency Segmentation
 
 **Paper:** [StutterCut: Uncertainty-Guided Normalised Cut for Dysfluency Segmentation](https://www.isca-archive.org/interspeech_2025/ghosh25_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / boundaries-and-alignment / disfluency-preservation`
@@ -4667,7 +4682,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports higher F1 and more precise stuttering-onset detection on real and synthetic data.
 - **Limits:** The evidence is bounded to FluencyBank, four dysfluency types, annotation quality, and the tested uncertainty model; therapy outcomes and new speakers remain open.
 
-## 312. Transcript-Prompted Whisper with Dictionary-Enhanced Decoding for Japanese Speech Annotation
+## 313. Transcript-Prompted Whisper with Dictionary-Enhanced Decoding for Japanese Speech Annotation
 
 **Paper:** [Transcript-Prompted Whisper with Dictionary-Enhanced Decoding for Japanese Speech Annotation](https://www.isca-archive.org/interspeech_2025/hu25_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / boundaries-and-alignment / alignment`
@@ -4682,7 +4697,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports improved phonemic/prosodic annotation behavior and a practical pipeline for constructing Japanese TTS data from audio-transcript pairs.
 - **Limits:** Ground-truth transcript quality, dictionary coverage, Japanese phonology, label definitions, and annotation evaluation bound the result; automatic labels still require quality control before becoming training truth.
 
-## 313. Word Level Timestamp Generation for Automatic Speech Recognition and Translation
+## 314. Word Level Timestamp Generation for Automatic Speech Recognition and Translation
 
 **Paper:** [Word Level Timestamp Generation for Automatic Speech Recognition and Translation](https://www.isca-archive.org/interspeech_2025/hu25e_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / boundaries-and-alignment / alignment`
@@ -4697,7 +4712,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports word-level timestamp generation for Canary with the proposed token and teacher-supervised training in the evaluated ASR/translation settings.
 - **Limits:** Teacher timing quality, tokenization, language, speaking rate, and evaluation alignment constrain transfer; timestamp agreement does not by itself prove subtitle readability or translation quality.
 
-## 314. VoiceNet: Multilingual On-Device Phoneme-To-Audio Alignment
+## 315. VoiceNet: Multilingual On-Device Phoneme-To-Audio Alignment
 
 **Paper:** [VoiceNet: Multilingual On-Device Phoneme-To-Audio Alignment](https://www.isca-archive.org/interspeech_2025/jin25b_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / boundaries-and-alignment / alignment`
@@ -4712,7 +4727,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports competitive multilingual alignment and 6 ms average CPU phoneme inference on Galaxy devices.
 - **Limits:** Device, language, phoneme inventory, transcript availability, and splits bound transfer; latency is not alignment quality.
 
-## 315. Who knows best? Effects of speech disfluencies on incentivized decision-making
+## 316. Who knows best? Effects of speech disfluencies on incentivized decision-making
 
 **Paper:** [Who knows best? Effects of speech disfluencies on incentivized decision-making](https://www.isca-archive.org/interspeech_2025/kirkland25_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / boundaries-and-alignment / disfluency-preservation`
@@ -4727,7 +4742,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The study reports that listeners take speech fluency into account when deciding whom or what to believe.
 - **Limits:** Task stakes, speakers, disfluency types, online sample, and source-conflict design bound transfer; choice bias is not proof that disfluencies carry truthful information.
 
-## 316. What the Filler? Both ASR Systems and Humans Struggle More With Other Kinds of Disfluencies Than With Filler Particles
+## 317. What the Filler? Both ASR Systems and Humans Struggle More With Other Kinds of Disfluencies Than With Filler Particles
 
 **Paper:** [What the Filler? Both ASR Systems and Humans Struggle More With Other Kinds of Disfluencies Than With Filler Particles](https://www.isca-archive.org/interspeech_2025/wepner25_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / boundaries-and-alignment / disfluency-preservation`
@@ -4742,7 +4757,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports similar difficulty characteristics for humans and ASR and no WER effect from filler presence alone.
 - **Limits:** 54 listeners, nine systems, utterance design, languages, and WER/recall definitions bound transfer; matched error patterns do not establish cognitive equivalence.
 
-## 317. Domain Adaptation Method and Modality Gap Impact in Audio-Text Models for Prototypical Sound Classification
+## 318. Domain Adaptation Method and Modality Gap Impact in Audio-Text Models for Prototypical Sound Classification
 
 **Paper:** [Domain Adaptation Method and Modality Gap Impact in Audio-Text Models for Prototypical Sound Classification](https://www.isca-archive.org/interspeech_2025/acevedo25_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / context-and-open-vocabulary / domain-and-context-biasing`
@@ -4757,7 +4772,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Audio-based adaptation gives the largest reported gains across tested conditions.
 - **Limits:** Sound set, target examples, class construction, and reported accuracy limit open-world claims.
 
-## 318. Spot and Merge: A Hybrid Context Biasing Approach for Rare Word and Out of Vocabulary Recognition
+## 319. Spot and Merge: A Hybrid Context Biasing Approach for Rare Word and Out of Vocabulary Recognition
 
 **Paper:** [Spot and Merge: A Hybrid Context Biasing Approach for Rare Word and Out of Vocabulary Recognition](https://www.isca-archive.org/interspeech_2025/agrawal25b_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / context-and-open-vocabulary / domain-and-context-biasing`
@@ -4772,7 +4787,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports a 1.0% absolute WER reduction on LibriSpeech and improved OOV recognition on in-house contact-center data.
 - **Limits:** The in-house data are not independently available in this atlas, and future multilingual/low-resource extension remains open.
 
-## 319. Continuous Learning for Children's ASR: Overcoming Catastrophic Forgetting with Elastic Weight Consolidation and Synaptic Intelligence
+## 320. Continuous Learning for Children's ASR: Overcoming Catastrophic Forgetting with Elastic Weight Consolidation and Synaptic Intelligence
 
 **Paper:** [Continuous Learning for Children's ASR: Overcoming Catastrophic Forgetting with Elastic Weight Consolidation and Synaptic Intelligence](https://www.isca-archive.org/interspeech_2025/ahadzi25_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / context-and-open-vocabulary / speaker-adaptation`
@@ -4787,7 +4802,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** EWC and SI keep WER more stable across ten batches and improve over ordinary sequential fine-tuning under the protocol.
 - **Limits:** The protocol is simulated from MyST, uses English child speech and Whisper-small, and treats parameter importance as a proxy rather than a privacy guarantee.
 
-## 320. NGPU-LM: GPU-Accelerated N-Gram Language Model for Context-Biasing in Greedy ASR Decoding
+## 321. NGPU-LM: GPU-Accelerated N-Gram Language Model for Context-Biasing in Greedy ASR Decoding
 
 **Paper:** [NGPU-LM: GPU-Accelerated N-Gram Language Model for Context-Biasing in Greedy ASR Decoding](https://www.isca-archive.org/interspeech_2025/bataev25_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / context-and-open-vocabulary / domain-and-context-biasing`
@@ -4802,7 +4817,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports recovery of more than half the greedy/beam accuracy gap in out-of-domain tests and up to 10.6% relative WER improvement in its experiments.
 - **Limits:** The results depend on tested ASR architectures, domains, GPU implementation, and author-reported measurements; deployment energy and other hardware remain open.
 
-## 321. Bidirectional Spoken-Written Text Conversion with Large Language Models
+## 322. Bidirectional Spoken-Written Text Conversion with Large Language Models
 
 **Paper:** [Bidirectional Spoken-Written Text Conversion with Large Language Models](https://www.isca-archive.org/interspeech_2025/choi25g_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / context-and-open-vocabulary / long-context-decoding`
@@ -4817,7 +4832,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports a 13.4% ERR improvement in the evaluated conversion setting.
 - **Limits:** LLM generation quality, language conventions, error metric, transcript domain, and iterative-label bias bound transfer; normalization success is not ASR acoustic accuracy.
 
-## 322. Effect of Loudspeaker Emitted Speech on ASR performance
+## 323. Effect of Loudspeaker Emitted Speech on ASR performance
 
 **Paper:** [Effect of Loudspeaker Emitted Speech on ASR performance](https://www.isca-archive.org/interspeech_2025/cm25_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / context-and-open-vocabulary / domain-and-context-biasing`
@@ -4832,7 +4847,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports a measurable ASR impact from loudspeaker emission under its experimental conditions.
 - **Limits:** The result is bounded to the loudspeaker, room, microphones, and ASR systems tested; other devices and adaptive compensation remain open.
 
-## 323. Exploring SSL Discrete Speech Features for Zipformer-based Contextual ASR
+## 324. Exploring SSL Discrete Speech Features for Zipformer-based Contextual ASR
 
 **Paper:** [Exploring SSL Discrete Speech Features for Zipformer-based Contextual ASR](https://www.isca-archive.org/interspeech_2025/cui25_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / context-and-open-vocabulary / long-context-decoding`
@@ -4847,7 +4862,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Discrete-token contextual systems reduce WER by 0.39 and 1.41 absolute points on the two tasks and achieve up to 4.36x training speedup over continuous WavLM context systems.
 - **Limits:** Corpora, context windows, tokenization, speed hardware, and statistical test bound the result; better contextual WER does not prove robust dialogue understanding or causal use of future context in deployment.
 
-## 324. Robust fine-tuning of speech recognition models via model merging: application to disordered speech
+## 325. Robust fine-tuning of speech recognition models via model merging: application to disordered speech
 
 **Paper:** [Robust fine-tuning of speech recognition models via model merging: application to disordered speech](https://www.isca-archive.org/interspeech_2025/ducorroy25_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / context-and-open-vocabulary / speaker-adaptation`
@@ -4862,7 +4877,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports gains for long utterances and low-data settings, including a 7.6% relative reduction from 18.5 to 17.1 WER with 10 hours of data; smaller Base and Turbo models improve too, but less consistently than Large.
 - **Limits:** The SAP data, Whisper family, selected development subset, and merging order determine the result. The selective procedure uses WER on a development subset and may itself be selection-sensitive; no independent reproduction was performed.
 
-## 325. BR-ASR: Efficient and Scalable Bias Retrieval Framework for Contextual Biasing ASR in Speech LLM
+## 326. BR-ASR: Efficient and Scalable Bias Retrieval Framework for Contextual Biasing ASR in Speech LLM
 
 **Paper:** [BR-ASR: Efficient and Scalable Bias Retrieval Framework for Contextual Biasing ASR in Speech LLM](https://www.isca-archive.org/interspeech_2025/gong25_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / context-and-open-vocabulary / domain-and-context-biasing`
@@ -4877,7 +4892,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports 2.8%/7.1% biased WER with 2,000 words, only 0.3/2.9% absolute degradation at 200,000 entries, 99.99% pruning, and 20 ms query latency on the tested split.
 - **Limits:** The reported latency, languages, bias lists, and ASR systems define the boundary; rare names outside the retrieval distribution and interactive user correction remain open.
 
-## 326. Theoretical proposal for a unified Bayesian model of adaptation in non-interactive and interactive speech production
+## 327. Theoretical proposal for a unified Bayesian model of adaptation in non-interactive and interactive speech production
 
 **Paper:** [Theoretical proposal for a unified Bayesian model of adaptation in non-interactive and interactive speech production](https://www.isca-archive.org/interspeech_2025/guillaume25_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / context-and-open-vocabulary / speaker-adaptation`
@@ -4892,7 +4907,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The proposal shows how both experimental paradigms can be described within one Bayesian framework.
 - **Limits:** This is a theoretical proposal, not an independent behavioral validation; parameterization, priors, and task fit remain open.
 
-## 327. CMT-LLM: Contextual Multi-Talker ASR Utilizing Large Language Models
+## 328. CMT-LLM: Contextual Multi-Talker ASR Utilizing Large Language Models
 
 **Paper:** [CMT-LLM: Contextual Multi-Talker ASR Utilizing Large Language Models](https://www.isca-archive.org/interspeech_2025/he25_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / context-and-open-vocabulary / domain-and-context-biasing`
@@ -4907,7 +4922,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports WER of 7.9% on LibriMix and 32.9% on AMI SDM at biasing size 1,000, outperforming compared contextual-biasing approaches in its reported settings.
 - **Limits:** FIFO serialization imposes an ordering convention; the bias list and first-pass filter supply information that may not exist in every deployment. WER does not separately reveal speaker attribution, rare-word recall, or hallucination cost, and results were not independently reproduced.
 
-## 328. Dynamic Context-Aware Streaming Pretrained Language Model For Inverse Text Normalization
+## 329. Dynamic Context-Aware Streaming Pretrained Language Model For Inverse Text Normalization
 
 **Paper:** [Dynamic Context-Aware Streaming Pretrained Language Model For Inverse Text Normalization](https://www.isca-archive.org/interspeech_2025/ho25_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / context-and-open-vocabulary / long-context-decoding`
@@ -4922,7 +4937,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports accuracy comparable to non-streaming ITN and better than prior streaming models on Vietnamese data while maintaining low latency.
 - **Limits:** Vietnamese data, benchmark, and author-reported latency/results limit cross-language and independent deployment claims.
 
-## 329. Ranking and Selection of Bias Words for Contextual Bias Speech Recognition
+## 330. Ranking and Selection of Bias Words for Contextual Bias Speech Recognition
 
 **Paper:** [Ranking and Selection of Bias Words for Contextual Bias Speech Recognition](https://www.isca-archive.org/interspeech_2025/hou25_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / context-and-open-vocabulary / domain-and-context-biasing`
@@ -4937,7 +4952,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports more than 40% relative reduction in biased WER from ranking and selection.
 - **Limits:** NER list, LibriSpeech, Whisper context mechanism, and bias-word definition bound the result; new domains and errors in entity extraction remain open.
 
-## 330. Adversarial Deep Metric Learning for Cross-Modal Audio-Text Alignment in Open-Vocabulary Keyword Spotting
+## 331. Adversarial Deep Metric Learning for Cross-Modal Audio-Text Alignment in Open-Vocabulary Keyword Spotting
 
 **Paper:** [Adversarial Deep Metric Learning for Cross-Modal Audio-Text Alignment in Open-Vocabulary Keyword Spotting](https://www.isca-archive.org/interspeech_2025/jung25b_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / context-and-open-vocabulary / open-vocabulary-recognition`
@@ -4952,7 +4967,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Modality-invariant alignment improves the audio-text retrieval decision used for unseen-keyword spotting in the reported experiments.
 - **Limits:** Vocabulary, languages, negative sampling, enrollment text, threshold calibration, and speaker/channel variation bound the claim; open-vocabulary benchmark accuracy is not unrestricted lexical understanding.
 
-## 331. MOVER: Combining Multiple Meeting Recognition Systems
+## 332. MOVER: Combining Multiple Meeting Recognition Systems
 
 **Paper:** [MOVER: Combining Multiple Meeting Recognition Systems](https://www.isca-archive.org/interspeech_2025/kamo25_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / context-and-open-vocabulary / long-context-decoding`
@@ -4967,7 +4982,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** MOVER reports successful combination on CHiME-8 DASR and NOTSOFAR-1 multi-channel tasks.
 - **Limits:** Task formats, diarization errors, interval alignment, system diversity, and scoring rules bound transfer; fusion gains do not prove every component is complementary.
 
-## 332. Fully End-to-end Streaming Open-vocabulary Keyword Spotting with W-CTC Forced Alignment
+## 333. Fully End-to-end Streaming Open-vocabulary Keyword Spotting with W-CTC Forced Alignment
 
 **Paper:** [Fully End-to-end Streaming Open-vocabulary Keyword Spotting with W-CTC Forced Alignment](https://www.isca-archive.org/interspeech_2025/kim25d_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / context-and-open-vocabulary / open-vocabulary-recognition`
@@ -4982,7 +4997,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports superior performance on the Libriphrase hard set.
 - **Limits:** Benchmark, language, and author-reported result limit generalization and independent reproducibility.
 
-## 333. GLCLAP: A Novel Contrastive Learning Pre-trained Model for Contextual Biasing in ASR
+## 334. GLCLAP: A Novel Contrastive Learning Pre-trained Model for Contextual Biasing in ASR
 
 **Paper:** [GLCLAP: A Novel Contrastive Learning Pre-trained Model for Contextual Biasing in ASR](https://www.isca-archive.org/interspeech_2025/kong25_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / context-and-open-vocabulary / domain-and-context-biasing`
@@ -4997,7 +5012,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports a marked improvement in bias-word retrieval accuracy and downstream contextual ASR performance over sentence-level contrastive approaches.
 - **Limits:** Entity list, prompt quality, language, negative sampling, retrieval threshold, and ASR decoder bound the result; a better retrieved list cannot correct an incorrect user prompt or guarantee unbiased ordinary decoding.
 
-## 334. Improving Synthetic Data Training for Contextual Biasing Models with a Keyword-Aware Cost Function
+## 335. Improving Synthetic Data Training for Contextual Biasing Models with a Keyword-Aware Cost Function
 
 **Paper:** [Improving Synthetic Data Training for Contextual Biasing Models with a Keyword-Aware Cost Function](https://www.isca-archive.org/interspeech_2025/kwok25b_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / context-and-open-vocabulary / domain-and-context-biasing`
@@ -5012,7 +5027,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports improved contextual-biasing performance for the proposed synthetic-data objective.
 - **Limits:** Keyword lists, synthetic-data quality, language, decoder, and evaluation distribution limit generalization; better keyword recall can still create false activations.
 
-## 335. Efficient Trie-based Biasing using K-step Prediction for Rare Word Recognition
+## 336. Efficient Trie-based Biasing using K-step Prediction for Rare Word Recognition
 
 **Paper:** [Efficient Trie-based Biasing using K-step Prediction for Rare Word Recognition](https://www.isca-archive.org/interspeech_2025/kwok25c_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / context-and-open-vocabulary / open-vocabulary-recognition`
@@ -5027,7 +5042,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** On NSC Part 2, reported WER falls from 30.86% to 12.19% after 10 hours of synthetic-data fine-tuning.
 - **Limits:** Synthetic realism, rare-word list, decoder, beam settings, and WER denominator bound the claim.
 
-## 336. WCTC-Biasing: Retraining-free Contextual Biasing ASR with Wildcard CTC-based Keyword Spotting and Inter-layer Biasing
+## 337. WCTC-Biasing: Retraining-free Contextual Biasing ASR with Wildcard CTC-based Keyword Spotting and Inter-layer Biasing
 
 **Paper:** [WCTC-Biasing: Retraining-free Contextual Biasing ASR with Wildcard CTC-based Keyword Spotting and Inter-layer Biasing](https://www.isca-archive.org/interspeech_2025/nakagome25_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / context-and-open-vocabulary / domain-and-context-biasing`
@@ -5042,7 +5057,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports retraining-free contextual recognition improvements using WCTC-Biasing.
 - **Limits:** Keyword lists, wildcard design, domains, decoder thresholds, and test distributions bound transfer; contextual gains do not guarantee lower errors on arbitrary speech.
 
-## 337. Improving Cross-Attention based on Positional Alignment during Inference for Robust Long-form Speech Recognition
+## 338. Improving Cross-Attention based on Positional Alignment during Inference for Robust Long-form Speech Recognition
 
 **Paper:** [Improving Cross-Attention based on Positional Alignment during Inference for Robust Long-form Speech Recognition](https://www.isca-archive.org/interspeech_2025/oh25c_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / context-and-open-vocabulary / long-context-decoding`
@@ -5057,7 +5072,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports improved robust long-form recognition from inference-time positional alignment.
 - **Limits:** Model, long-form segmentation, positional formulation, decoding settings, and evaluation corpora bound transfer; reported robustness is not universal streaming reliability.
 
-## 338. Multilingual Query-by-Example KWS for Indian Languages using Transliteration
+## 339. Multilingual Query-by-Example KWS for Indian Languages using Transliteration
 
 **Paper:** [Multilingual Query-by-Example KWS for Indian Languages using Transliteration](https://www.isca-archive.org/interspeech_2025/r25_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / context-and-open-vocabulary / open-vocabulary-recognition`
@@ -5072,7 +5087,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The method raises reported MTWV from 0.015 to 0.504 on IndicSUPERB and exceeds the Marathi baseline.
 - **Limits:** Language, script, ASR errors, query duration, and splits constrain transfer; script unification is not translation.
 
-## 339. Effects of Speaker Count, Duration, and Accent Diversity on Zero-Shot Accent Robustness in Low-Resource ASR
+## 340. Effects of Speaker Count, Duration, and Accent Diversity on Zero-Shot Accent Robustness in Low-Resource ASR
 
 **Paper:** [Effects of Speaker Count, Duration, and Accent Diversity on Zero-Shot Accent Robustness in Low-Resource ASR](https://www.isca-archive.org/interspeech_2025/yong25_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / context-and-open-vocabulary / speaker-adaptation`
@@ -5087,7 +5102,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports that more speakers help more than more hours per speaker, while accent-diversity gains are minimal under controlled speaker count.
 - **Limits:** Languages, accent labels, low-resource budgets, model/training choices, and zero-shot evaluation bound transfer; this is not a universal data-collection law.
 
-## 340. Mixture of LoRA Experts for Low-Resourced Multi-Accent Automatic Speech Recognition
+## 341. Mixture of LoRA Experts for Low-Resourced Multi-Accent Automatic Speech Recognition
 
 **Paper:** [Mixture of LoRA Experts for Low-Resourced Multi-Accent Automatic Speech Recognition](https://www.isca-archive.org/interspeech_2025/bagat25_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / pronunciation-and-variation / pronunciation-variation`
@@ -5102,7 +5117,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports lower WER than those baselines, stronger gains when the accent is known, and less catastrophic forgetting.
 - **Limits:** The result is tied to L2-ARCTIC, its accent set, Whisper, and routing assumptions; spontaneous speech and accents outside the corpus remain open.
 
-## 341. CHSER: A Dataset and Case Study on Generative Speech Error Correction for Child ASR
+## 342. CHSER: A Dataset and Case Study on Generative Speech Error Correction for Child ASR
 
 **Paper:** [CHSER: A Dataset and Case Study on Generative Speech Error Correction for Child ASR](https://www.isca-archive.org/interspeech_2025/balajishankar25_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / pronunciation-and-variation / pronunciation-variation`
@@ -5117,7 +5132,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports up to 28.5% relative WER reduction zero-shot and 13.3% after ASR fine-tuning, but insertions and child disfluencies remain difficult.
 - **Limits:** The corpus, languages, ASR hypotheses, and correction model bound the result; preserving clinically meaningful disfluencies outside these settings remains open.
 
-## 342. SardinianVoxes: A Speech Recognition Dataset for the Sardinian Languages
+## 343. SardinianVoxes: A Speech Recognition Dataset for the Sardinian Languages
 
 **Paper:** [SardinianVoxes: A Speech Recognition Dataset for the Sardinian Languages](https://www.isca-archive.org/interspeech_2025/carta25_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / pronunciation-and-variation / pronunciation-variation`
@@ -5132,7 +5147,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper contributes a public resource and evaluation protocol intended to make Sardinian speech technology measurable.
 - **Limits:** The reported resource, varieties, transcription quality, and benchmark models bound the claim; future collection and independent use are still needed.
 
-## 343. Using Neurogram Similarity Index Measure (NSIM) to Model Hearing Loss and Cochlear Neural Degeneration
+## 344. Using Neurogram Similarity Index Measure (NSIM) to Model Hearing Loss and Cochlear Neural Degeneration
 
 **Paper:** [Using Neurogram Similarity Index Measure (NSIM) to Model Hearing Loss and Cochlear Neural Degeneration](https://www.isca-archive.org/interspeech_2025/cheema25_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / pronunciation-and-variation / pronunciation-variation`
@@ -5147,7 +5162,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports that NSIM maps phoneme-recognition performance and is sensitive to simulated degeneration, suggesting a candidate noninvasive biomarker.
 - **Limits:** Auditory-periphery model, task, simulations, participant data, and mapping assumptions bound clinical interpretation; a candidate biomarker is not a validated diagnosis.
 
-## 344. Improving Child Speech Recognition and Reading Mistake Detection by Using Prompts
+## 345. Improving Child Speech Recognition and Reading Mistake Detection by Using Prompts
 
 **Paper:** [Improving Child Speech Recognition and Reading Mistake Detection by Using Prompts](https://www.isca-archive.org/interspeech_2025/gao25c_interspeech.html)
 **Taxonomy:** `recognition-and-alignment / pronunciation-and-variation / pronunciation-variation`
@@ -5162,7 +5177,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports improving child speech recognition and reading-mistake detection using prompts.
 - **Limits:** Child age, language, prompt design, annotation policy, and error definitions bound transfer.
 
-## 345. Reconstruction of the Complete Vocal Tract Contour Through Acoustic to Articulatory Inversion Using Real-Time MRI Data
+## 346. Reconstruction of the Complete Vocal Tract Contour Through Acoustic to Articulatory Inversion Using Real-Time MRI Data
 
 **Paper:** [Reconstruction of the Complete Vocal Tract Contour Through Acoustic to Articulatory Inversion Using Real-Time MRI Data](https://www.isca-archive.org/interspeech_2025/azzouz25_interspeech.html)
 **Taxonomy:** `sound-and-production / articulatory-dynamics / articulatory-coordination`
@@ -5177,7 +5192,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports average contour RMSE near the MRI pixel size on its test set.
 - **Limits:** Speakers, MRI protocol, segmentation, speech styles, and model assumptions limit generalization; contour accuracy is not a complete articulatory theory.
 
-## 346. Enhancing Acoustic-to-Articulatory Inversion with Multi-Target Pretraining for Low-Resource Settings
+## 347. Enhancing Acoustic-to-Articulatory Inversion with Multi-Target Pretraining for Low-Resource Settings
 
 **Paper:** [Enhancing Acoustic-to-Articulatory Inversion with Multi-Target Pretraining for Low-Resource Settings](https://www.isca-archive.org/interspeech_2025/bandekar25_interspeech.html)
 **Taxonomy:** `sound-and-production / articulatory-dynamics / articulatory-coordination`
@@ -5192,7 +5207,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports consistent AAI improvement, including low-resource gains; the strongest reported unseen-speaker configuration reaches CC 0.8612 and RMSE 1.1023, while inference avoids the external SSL extractor.
 - **Limits:** The articulatory targets, speakers, language, and feature choices define the tested boundary; predicted movement is not equivalent to direct imaging. Reported gains and speed claims are author-reported and were not independently reproduced.
 
-## 347. Articulatory modeling of the S-shaped F2 trajectories observed in Öhman's spectrographic analysis of VCV syllables
+## 348. Articulatory modeling of the S-shaped F2 trajectories observed in Öhman's spectrographic analysis of VCV syllables
 
 **Paper:** [Articulatory modeling of the S-shaped F2 trajectories observed in Öhman's spectrographic analysis of VCV syllables](https://www.isca-archive.org/interspeech_2025/berthommier25_interspeech.html)
 **Taxonomy:** `sound-and-production / articulatory-dynamics / articulatory-coordination`
@@ -5207,7 +5222,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports synthetic trajectories resembling the observed sequences and structured effects of articulatory planning.
 - **Limits:** Model geometry, trajectory planning, corpus, and synthetic-to-observed comparison limit claims; matching a trajectory does not identify a unique human motor plan.
 
-## 348. Speech Reduction in French: The Relationship Between Vowel Space and Articulation Dynamics
+## 349. Speech Reduction in French: The Relationship Between Vowel Space and Articulation Dynamics
 
 **Paper:** [Speech Reduction in French: The Relationship Between Vowel Space and Articulation Dynamics](https://www.isca-archive.org/interspeech_2025/bodur25_interspeech.html)
 **Taxonomy:** `sound-and-production / articulatory-dynamics / articulatory-coordination`
@@ -5222,7 +5237,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Smaller vowel space predicts more reduction only when articulation rate is included; rate is the strongest predictor and VDI is not significant.
 - **Limits:** The French speakers, spontaneous tasks, reduction definition, and acoustic measures bound the result; other languages and conversational settings remain open.
 
-## 349. PERCEPT-US: A Multimodal American English Child Speech Corpus Specialized for Articulatory Feedback
+## 350. PERCEPT-US: A Multimodal American English Child Speech Corpus Specialized for Articulatory Feedback
 
 **Paper:** [PERCEPT-US: A Multimodal American English Child Speech Corpus Specialized for Articulatory Feedback](https://www.isca-archive.org/interspeech_2025/eads25_interspeech.html)
 **Taxonomy:** `sound-and-production / articulatory-dynamics / articulatory-coordination`
@@ -5237,7 +5252,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports corpus resources and articulatory-feedback-oriented evaluation for American English child speech.
 - **Limits:** Speakers, ages, tasks, sensor alignment, labels, and corpus size limit generalization; a resource does not itself establish learning or clinical benefit.
 
-## 350. Creaky Voice Facilitates More Efficient Phonological Processing of Mandarin Tone 3
+## 351. Creaky Voice Facilitates More Efficient Phonological Processing of Mandarin Tone 3
 
 **Paper:** [Creaky Voice Facilitates More Efficient Phonological Processing of Mandarin Tone 3](https://www.isca-archive.org/interspeech_2025/fan25b_interspeech.html)
 **Taxonomy:** `sound-and-production / articulatory-dynamics / articulatory-coordination`
@@ -5252,7 +5267,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports behavioral evidence that creaky voice can facilitate Tone 3 processing in the tested Mandarin stimuli.
 - **Limits:** Listeners, stimuli, tone context, creak manipulation, and task bound the claim; a processing benefit is not a universal production or perception rule.
 
-## 351. Acoustic similarities, articulatory uniqueness: Speech production mechanisms in individuals with congenital lip paralysis
+## 352. Acoustic similarities, articulatory uniqueness: Speech production mechanisms in individuals with congenital lip paralysis
 
 **Paper:** [Acoustic similarities, articulatory uniqueness: Speech production mechanisms in individuals with congenital lip paralysis](https://www.isca-archive.org/interspeech_2025/hermes25_interspeech.html)
 **Taxonomy:** `sound-and-production / articulatory-dynamics / articulatory-coordination`
@@ -5267,7 +5282,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports acoustic and articulatory findings for the affected speakers and comparison conditions.
 - **Limits:** Cohort, anatomy, language, tasks, imaging or motion measures, and acoustic metrics limit clinical generalization; similarity is not a diagnosis.
 
-## 352. Articulatory variations in Apical Vowels in Southwestern Mandarin
+## 353. Articulatory variations in Apical Vowels in Southwestern Mandarin
 
 **Paper:** [Articulatory variations in Apical Vowels in Southwestern Mandarin](https://www.isca-archive.org/interspeech_2025/huang25f_interspeech.html)
 **Taxonomy:** `sound-and-production / articulatory-dynamics / articulatory-coordination`
@@ -5282,7 +5297,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports articulatory variation and its acoustic relationships for the studied apical vowels.
 - **Limits:** Speakers, dialect region, imaging or measurement method, vowel context, and sample size limit generalization; variation is not pathology.
 
-## 353. Speaker-specific Patterns of Phonetic Covariation in Korean Word-medial Stops and the Role of Phonological and Morphological Contexts
+## 354. Speaker-specific Patterns of Phonetic Covariation in Korean Word-medial Stops and the Role of Phonological and Morphological Contexts
 
 **Paper:** [Speaker-specific Patterns of Phonetic Covariation in Korean Word-medial Stops and the Role of Phonological and Morphological Contexts](https://www.isca-archive.org/interspeech_2025/kwon25b_interspeech.html)
 **Taxonomy:** `sound-and-production / articulatory-dynamics / articulatory-coordination`
@@ -5297,7 +5312,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports systematic speaker-specific covariation that keeps stop categories distinct despite contextual variability, supporting a phonetic-uniformity account.
 - **Limits:** The language, stop system, contexts, speaker sample, and chosen phonetic measures bound the result; other languages and interactional settings require separate evidence.
 
-## 354. Supralaryngeal Kinematics of Implosives in Central Vietnamese: An EMA Study
+## 355. Supralaryngeal Kinematics of Implosives in Central Vietnamese: An EMA Study
 
 **Paper:** [Supralaryngeal Kinematics of Implosives in Central Vietnamese: An EMA Study](https://www.isca-archive.org/interspeech_2025/mcguire25_interspeech.html)
 **Taxonomy:** `sound-and-production / articulatory-dynamics / articulatory-coordination`
@@ -5312,7 +5327,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Implosives show greater peak velocity away from closure, while voiceless plosives have a longer gestural plateau; the voiced-plosive control does not reproduce the rapid movement.
 - **Limits:** The languages, speakers, consonant inventory, EMA measures, and statistical model bound the result; laryngeal airflow itself was not directly measured.
 
-## 355. Temporal organization of prenuclear glides in Hefei Mandarin
+## 356. Temporal organization of prenuclear glides in Hefei Mandarin
 
 **Paper:** [Temporal organization of prenuclear glides in Hefei Mandarin](https://www.isca-archive.org/interspeech_2025/yang25i_interspeech.html)
 **Taxonomy:** `sound-and-production / articulatory-dynamics / articulatory-coordination`
@@ -5327,7 +5342,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper finds that both glides are more likely part of the rime, agreeing with prior evidence for [j] but differing from earlier results for [w].
 - **Limits:** The dialect, speakers, acoustic method, and competing analyses bound the inference; timing alone cannot settle every phonological representation or generalize across Mandarin varieties.
 
-## 356. On the Language and Gender Biases in PSTN, VoIP and Neural Audio Codecs
+## 357. On the Language and Gender Biases in PSTN, VoIP and Neural Audio Codecs
 
 **Paper:** [On the Language and Gender Biases in PSTN, VoIP and Neural Audio Codecs](https://www.isca-archive.org/interspeech_2025/altwlkany25_interspeech.html)
 **Taxonomy:** `sound-and-production / room-channel-and-sensing / microphone-channel`
@@ -5342,7 +5357,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** PSTN codecs show strong gender bias and neural codecs introduce language bias in the reported analysis.
 - **Limits:** Codec set, languages, gender labels, quality measure, and files define the boundary; causal mechanisms and mitigation in deployed networks remain open.
 
-## 357. AISHELL-5: The First Open-Source In-Car Multi-Channel Multi-Speaker Speech Dataset for Automatic Speech Diarization and Recognition
+## 358. AISHELL-5: The First Open-Source In-Car Multi-Channel Multi-Speaker Speech Dataset for Automatic Speech Diarization and Recognition
 
 **Paper:** [AISHELL-5: The First Open-Source In-Car Multi-Channel Multi-Speaker Speech Dataset for Automatic Speech Diarization and Recognition](https://www.isca-archive.org/interspeech_2025/dai25c_interspeech.html)
 **Taxonomy:** `sound-and-production / room-channel-and-sensing / microphone-channel`
@@ -5357,7 +5372,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The corpus contains over 100 hours of speech from 260 participants plus about 40 hours of environmental noise; the baseline exposes large differences between near/far-field and processed conditions, with the reported ASR/front-end results establishing the challenge difficulty.
 - **Limits:** The corpus is Mandarin and vehicle-specific, with its seating, microphones, and scenario design defining the boundary. The baseline does not establish that one separation method is best in all cars, and dataset availability is not independent reproduction of the reported scores.
 
-## 358. Voxplorer: Voice data exploration and projection in an interactive dashboard
+## 359. Voxplorer: Voice data exploration and projection in an interactive dashboard
 
 **Paper:** [Voxplorer: Voice data exploration and projection in an interactive dashboard](https://www.isca-archive.org/interspeech_2025/deluca25_interspeech.html)
 **Taxonomy:** `sound-and-production / room-channel-and-sensing / microphone-channel`
@@ -5372,7 +5387,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper presents a reusable dashboard intended to broaden voice-analysis exploration; no scientific performance score is claimed.
 - **Limits:** Usability, projection choices, and feature-tool assumptions determine what researchers see; the dashboard does not establish causal voice categories.
 
-## 359. Improving Low-Resource Dialect Classification Using Retrieval-based Voice Conversion
+## 360. Improving Low-Resource Dialect Classification Using Retrieval-based Voice Conversion
 
 **Paper:** [Improving Low-Resource Dialect Classification Using Retrieval-based Voice Conversion](https://www.isca-archive.org/interspeech_2025/fischbach25_interspeech.html)
 **Taxonomy:** `sound-and-production / room-channel-and-sensing / microphone-channel`
@@ -5387,7 +5402,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports improved dialect-classification performance from RVC augmentation, with further gains when combined with frequency masking and segment removal.
 - **Limits:** Dialect data, target speaker, conversion fidelity, train/test speaker split, and classifier architecture bound the claim; higher accuracy does not prove that all dialect cues survived conversion.
 
-## 360. Influence of Room Acoustics on Objective Voice Assessment Methods in the Context of Speech and Language Therapy
+## 361. Influence of Room Acoustics on Objective Voice Assessment Methods in the Context of Speech and Language Therapy
 
 **Paper:** [Influence of Room Acoustics on Objective Voice Assessment Methods in the Context of Speech and Language Therapy](https://www.isca-archive.org/interspeech_2025/franz25_interspeech.html)
 **Taxonomy:** `sound-and-production / room-channel-and-sensing / reverberant-mixture`
@@ -5402,7 +5417,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Across the rooms, voice-quality measures generally deteriorate by 0–2 units; the smartphone is more affected than the lavalier microphone, and room effects are significant for almost all rooms. Only 8 of 35 rooms meet the stricter A4 reverberation recommendation.
 - **Limits:** The rooms, simulated signals, microphones, and Saarbrücken database define the tested boundary; the study does not establish a correction for other clinics or devices. Reported model fits and significance tests are author-reported and were not independently reproduced.
 
-## 361. AuralNet: Hierarchical Attention-based 3D Binaural Localization of Overlapping Speakers
+## 362. AuralNet: Hierarchical Attention-based 3D Binaural Localization of Overlapping Speakers
 
 **Paper:** [AuralNet: Hierarchical Attention-based 3D Binaural Localization of Overlapping Speakers](https://www.isca-archive.org/interspeech_2025/fu25_interspeech.html)
 **Taxonomy:** `sound-and-production / room-channel-and-sensing / microphone-channel`
@@ -5417,7 +5432,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports superiority over recent methods in its noisy-reverberant multi-source experiments.
 - **Limits:** The room simulation/recordings, binaural setup, sector design, and source overlap define the claim; far-field microphone arrays and speech-specific attribution remain open.
 
-## 362. Sub-band based Adaptive IIR Algorithm with Biquad Filter Stability Constraints for Feedforward Hear-Through Equalization
+## 363. Sub-band based Adaptive IIR Algorithm with Biquad Filter Stability Constraints for Feedforward Hear-Through Equalization
 
 **Paper:** [Sub-band based Adaptive IIR Algorithm with Biquad Filter Stability Constraints for Feedforward Hear-Through Equalization](https://www.isca-archive.org/interspeech_2025/gupta25b_interspeech.html)
 **Taxonomy:** `sound-and-production / room-channel-and-sensing / microphone-channel`
@@ -5432,7 +5447,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports up to 13 dB improvement over compared adaptive methods in simulated scenarios, with stable behavior and similar complexity in dynamic indoor/outdoor tests.
 - **Limits:** The evidence is simulation-based and depends on acoustic paths, filter orders, and stability settings; user perception, individualized ears, and end-to-end hardware latency are not established.
 
-## 363. Fine-tune Before Structured Pruning: Towards Compact and Accurate Self-Supervised Models for Speaker Diarization
+## 364. Fine-tune Before Structured Pruning: Towards Compact and Accurate Self-Supervised Models for Speaker Diarization
 
 **Paper:** [Fine-tune Before Structured Pruning: Towards Compact and Accurate Self-Supervised Models for Speaker Diarization](https://www.isca-archive.org/interspeech_2025/han25_interspeech.html)
 **Taxonomy:** `sound-and-production / room-channel-and-sensing / microphone-channel`
@@ -5447,7 +5462,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** On AMI, AISHELL-4, and AliMeeting, the paper reports that fine-tuning before pruning improves the accuracy/size trade-off over pruning without that order.
 - **Limits:** Dataset microphone layouts, pruning ratios, teacher/student settings, and DER's treatment of overlap bound the claim; compact diarization is not universal robustness or real-device validation.
 
-## 364. L3C-DeepMFC: Low-Latency Low-Complexity Deep Marginal Feedback Cancellation with Closed-Loop Fine Tuning for Hearing Aids
+## 365. L3C-DeepMFC: Low-Latency Low-Complexity Deep Marginal Feedback Cancellation with Closed-Loop Fine Tuning for Hearing Aids
 
 **Paper:** [L3C-DeepMFC: Low-Latency Low-Complexity Deep Marginal Feedback Cancellation with Closed-Loop Fine Tuning for Hearing Aids](https://www.isca-archive.org/interspeech_2025/hao25_interspeech.html)
 **Taxonomy:** `sound-and-production / room-channel-and-sensing / microphone-channel`
@@ -5462,7 +5477,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports low-latency, low-complexity feedback cancellation with improved speech quality relative to its baselines under tested hearing-aid conditions.
 - **Limits:** Feedback paths, delay budget, hardware assumptions, noise, and quality metrics bound the result; lab cancellation performance is not the same as clinical benefit for every listener.
 
-## 365. SepVAC: Multitask Learning of Speaker Separation, Speaker Localization, Microphone Array Localization, and Room Acoustic Parameter Estimation in Various Acoustic Conditions
+## 366. SepVAC: Multitask Learning of Speaker Separation, Speaker Localization, Microphone Array Localization, and Room Acoustic Parameter Estimation in Various Acoustic Conditions
 
 **Paper:** [SepVAC: Multitask Learning of Speaker Separation, Speaker Localization, Microphone Array Localization, and Room Acoustic Parameter Estimation in Various Acoustic Conditions](https://www.isca-archive.org/interspeech_2025/hartanto25_interspeech.html)
 **Taxonomy:** `sound-and-production / room-channel-and-sensing / microphone-channel`
@@ -5477,7 +5492,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports a 0.67-point WER improvement over SpatialNet.
 - **Limits:** The result is author-reported on SMS-WSJ-Plus and its simulated acoustic conditions; real rooms, imperfect localization, and independent reproduction remain open.
 
-## 366. Conformer-based Ultrasound-to-Speech Conversion
+## 367. Conformer-based Ultrasound-to-Speech Conversion
 
 **Paper:** [Conformer-based Ultrasound-to-Speech Conversion](https://www.isca-archive.org/interspeech_2025/ibrahimov25_interspeech.html)
 **Taxonomy:** `sound-and-production / room-channel-and-sensing / non-airborne-sensing`
@@ -5492,7 +5507,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports no statistically significant objective improvement for either Conformer, but better perceptual quality for the bi-LSTM model; the base model matches the CNN while training about three times faster.
 - **Limits:** Four speakers, speaker-specific training, ultrasound alignment, vocoder quality, and the listening panel bound the result; perceptual improvement is not evidence of speaker-independent silent speech or clinical usefulness.
 
-## 367. Direction-Aware Neural Acoustic Fields for Few-Shot Interpolation of Ambisonic Impulse Responses
+## 368. Direction-Aware Neural Acoustic Fields for Few-Shot Interpolation of Ambisonic Impulse Responses
 
 **Paper:** [Direction-Aware Neural Acoustic Fields for Few-Shot Interpolation of Ambisonic Impulse Responses](https://www.isca-archive.org/interspeech_2025/ick25_interspeech.html)
 **Taxonomy:** `sound-and-production / room-channel-and-sensing / reverberant-mixture`
@@ -5507,7 +5522,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports improved few-shot interpolation of directional ambisonic responses over prior neural-field formulations in its room measurements.
 - **Limits:** Room geometry, microphone/ambisonic order, sampling locations, interpolation range, and waveform metrics bound the claim; interpolation quality does not prove accurate rendering in unseen rooms or perceptual equivalence.
 
-## 368. Selective Auditory Attention Decoding in Naturalistic Conversations Using EEG-Based Speech Envelope Tracking in Multi-Speaker Environments
+## 369. Selective Auditory Attention Decoding in Naturalistic Conversations Using EEG-Based Speech Envelope Tracking in Multi-Speaker Environments
 
 **Paper:** [Selective Auditory Attention Decoding in Naturalistic Conversations Using EEG-Based Speech Envelope Tracking in Multi-Speaker Environments](https://www.isca-archive.org/interspeech_2025/ivucic25_interspeech.html)
 **Taxonomy:** `sound-and-production / room-channel-and-sensing / non-airborne-sensing`
@@ -5522,7 +5537,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Across 36 trials, target-speaker decoding averages 76% ± 12%; performance remains above chance as windows shrink from 20 seconds to 2 seconds, and reconstruction briefly rises after attention switches.
 - **Limits:** The experiment uses controlled speakers and exogenous switches, short windows still perform poorly, EEG signal-to-noise limits real-time use, and neural decoding is not equivalent to robust everyday source separation.
 
-## 369. French Listening Tests for the Assessment of Intelligibility, Quality, and Identity of Body-Conducted Speech Enhancement
+## 370. French Listening Tests for the Assessment of Intelligibility, Quality, and Identity of Body-Conducted Speech Enhancement
 
 **Paper:** [French Listening Tests for the Assessment of Intelligibility, Quality, and Identity of Body-Conducted Speech Enhancement](https://www.isca-archive.org/interspeech_2025/joubaud25_interspeech.html)
 **Taxonomy:** `sound-and-production / room-channel-and-sensing / non-airborne-sensing`
@@ -5537,7 +5552,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** EBEN improves reported quality and intelligibility but slightly harms female throat-microphone identity; STOI correlates strongly with MUSHRA quality (ρ=.87) and ECAPA2 with identification (ρ=.90), while no tested metric reliably predicts intelligibility change.
 - **Limits:** The study uses quiet recordings, selected sensors and speakers, one enhancement model, and finite listening tests. Correlation with a perceptual proxy does not establish general clinical or operational usefulness.
 
-## 370. Recreating Neural Activity During Speech Production with Language and Speech Model Embeddings
+## 371. Recreating Neural Activity During Speech Production with Language and Speech Model Embeddings
 
 **Paper:** [Recreating Neural Activity During Speech Production with Language and Speech Model Embeddings](https://www.isca-archive.org/interspeech_2025/khanday25_interspeech.html)
 **Taxonomy:** `sound-and-production / room-channel-and-sensing / non-airborne-sensing`
@@ -5552,7 +5567,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Language and speech embeddings reconstruct measurable neural activity characteristics, with differences across model type and brain locations reported as evidence about linguistic versus acoustic information.
 - **Limits:** Neural recordings, participant count, electrode coverage, alignment choices, and correlational reconstruction limit causal interpretation; a good reconstruction is not a speech decoder or clinical interface.
 
-## 371. Articulatory Feature Prediction from Surface EMG during Speech Production
+## 372. Articulatory Feature Prediction from Surface EMG during Speech Production
 
 **Paper:** [Articulatory Feature Prediction from Surface EMG during Speech Production](https://www.isca-archive.org/interspeech_2025/lee25d_interspeech.html)
 **Taxonomy:** `sound-and-production / room-channel-and-sensing / non-airborne-sensing`
@@ -5567,7 +5582,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** On 7,565 utterances from one male American English speaker, the paper reports strong EMA and loudness prediction and evaluates held-out utterances using correlations against acoustic-inversion targets.
 - **Limits:** Targets are pseudo-ground truth from acoustic-to-articulatory inversion, the speaker is not diverse, experiments focus on vocalized open-vocabulary speech, and feature prediction is not the same as intelligible silent-speech synthesis.
 
-## 372. Unified Microphone Conversion: Many-to-Many Device Mapping via Feature-wise Linear Modulation
+## 373. Unified Microphone Conversion: Many-to-Many Device Mapping via Feature-wise Linear Modulation
 
 **Paper:** [Unified Microphone Conversion: Many-to-Many Device Mapping via Feature-wise Linear Modulation](https://www.isca-archive.org/interspeech_2025/ryu25b_interspeech.html)
 **Taxonomy:** `sound-and-production / room-channel-and-sensing / microphone-channel`
@@ -5582,7 +5597,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports unified microphone conversion results across device mappings without paired examples for every target pair.
 - **Limits:** Device inventory, pairing protocol, training coverage, content preservation metrics, and acoustic conditions bound transfer; channel conversion is not the same as recognizer invariance.
 
-## 373. Effect of Noise Floor in Room Impulse Response on Speech Perception Under Spherical Harmonics-based Spatial Sound Reproduction
+## 374. Effect of Noise Floor in Room Impulse Response on Speech Perception Under Spherical Harmonics-based Spatial Sound Reproduction
 
 **Paper:** [Effect of Noise Floor in Room Impulse Response on Speech Perception Under Spherical Harmonics-based Spatial Sound Reproduction](https://www.isca-archive.org/interspeech_2025/zhang25e_interspeech.html)
 **Taxonomy:** `sound-and-production / room-channel-and-sensing / reverberant-mixture`
@@ -5597,7 +5612,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports better reproducibility with low-noise-floor RIRs in highly reverberant rooms and at 5 m, while truncation usually did not help.
 - **Limits:** Rooms, source distances, RIR measurement, listening protocol, and speech-in-noise task bound transfer; perceptual reproducibility is not exact physical localization.
 
-## 374. Analysis of Avian Biphonic Vocalization Using Computational Modelling
+## 375. Analysis of Avian Biphonic Vocalization Using Computational Modelling
 
 **Paper:** [Analysis of Avian Biphonic Vocalization Using Computational Modelling](https://www.isca-archive.org/interspeech_2025/a25_interspeech.html)
 **Taxonomy:** `sound-and-production / source-generation / vocal-tract-filter`
@@ -5612,7 +5627,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports experimentally validated biphonic simulations and systematic effects of tract geometry on resonance modulation and syllable bandwidth.
 - **Limits:** The model concerns avian vocalization rather than human speech; micro-CT reconstruction, source assumptions, and validation recordings constrain the result. No independent reproduction was performed.
 
-## 375. Vocal-tract model with two directions: Static design for a dummy head and dynamic design for a speaking machine
+## 376. Vocal-tract model with two directions: Static design for a dummy head and dynamic design for a speaking machine
 
 **Paper:** [Vocal-tract model with two directions: Static design for a dummy head and dynamic design for a speaking machine](https://www.isca-archive.org/interspeech_2025/arai25_interspeech.html)
 **Taxonomy:** `sound-and-production / source-generation / vocal-tract-filter`
@@ -5627,7 +5642,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper demonstrates both models and argues that static and dynamic versions serve different education, phonetics, pathology, and technology purposes.
 - **Limits:** This is a two-page demonstration with no shared quantitative evaluation or claim of human-speech equivalence.
 
-## 376. Evaluation of a model for sound radiation from the vocal tract wall
+## 377. Evaluation of a model for sound radiation from the vocal tract wall
 
 **Paper:** [Evaluation of a model for sound radiation from the vocal tract wall](https://www.isca-archive.org/interspeech_2025/birkholz25_interspeech.html)
 **Taxonomy:** `sound-and-production / source-generation / vocal-tract-filter`
@@ -5642,7 +5657,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports 2.26–3.82 dB RMSE from 0–800 Hz and concludes the simple model can reproduce the spectra closely.
 - **Limits:** The six speakers, selected consonants/vowels, frequency range, and fitted parameters bound the claim; other speech sounds and independent physical validation remain open.
 
-## 377. Influence of wall coverings of 3D-printed vocal tract models on measured transfer functions
+## 378. Influence of wall coverings of 3D-printed vocal tract models on measured transfer functions
 
 **Paper:** [Influence of wall coverings of 3D-printed vocal tract models on measured transfer functions](https://www.isca-archive.org/interspeech_2025/birkholz25b_interspeech.html)
 **Taxonomy:** `sound-and-production / source-generation / vocal-tract-filter`
@@ -5657,7 +5672,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Both coverings reduce spurious poles and zeros and improve repeatability of the measured transfer functions.
 - **Limits:** Printed geometries, ten vowels, materials, reciprocity setup, and repeatability metric bound the claim; improved measurement does not prove the replica matches a human tract.
 
-## 378. Equivalence and differences: Formant patterns of labialization and pharyngealization in Tashlhiyt
+## 379. Equivalence and differences: Formant patterns of labialization and pharyngealization in Tashlhiyt
 
 **Paper:** [Equivalence and differences: Formant patterns of labialization and pharyngealization in Tashlhiyt](https://www.isca-archive.org/interspeech_2025/buech25_interspeech.html)
 **Taxonomy:** `sound-and-production / source-generation / vocal-tract-filter`
@@ -5672,7 +5687,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Both articulations show similar F2 effects, strongest for /i/ and then /a/, while differences depend on F1 and vowel quality.
 - **Limits:** The language, speakers, logatomes, adjacent vowels, and formant measures bound the result; formants alone cannot identify every articulatory gesture.
 
-## 379. Phonetic Posteriorgram-Based Phoneme Selection for Vocal Cord Disorder Classification in Continuous Mandarin Speech
+## 380. Phonetic Posteriorgram-Based Phoneme Selection for Vocal Cord Disorder Classification in Continuous Mandarin Speech
 
 **Paper:** [Phonetic Posteriorgram-Based Phoneme Selection for Vocal Cord Disorder Classification in Continuous Mandarin Speech](https://www.isca-archive.org/interspeech_2025/chen25n_interspeech.html)
 **Taxonomy:** `sound-and-production / source-generation / vocal-tract-filter`
@@ -5687,7 +5702,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports classification results for the selected phonetic evidence on continuous Mandarin speech.
 - **Limits:** Cohort, disorder labels, language, transcript quality, phoneme selection, and recording conditions limit clinical generalization; classification is not diagnosis.
 
-## 380. Study of vocal fold vibration using M-mode ultrasound: a proof of concept
+## 381. Study of vocal fold vibration using M-mode ultrasound: a proof of concept
 
 **Paper:** [Study of vocal fold vibration using M-mode ultrasound: a proof of concept](https://www.isca-archive.org/interspeech_2025/dindart25_interspeech.html)
 **Taxonomy:** `sound-and-production / source-generation / periodic-source`
@@ -5702,7 +5717,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports close agreement and reveals temporal drift; four high-pitched recordings expose aliasing.
 - **Limits:** The 500-Hz rate, probe placement, healthy participants, and excluded aliased cases limit clinical and high-pitch claims.
 
-## 381. Hybrid Expert Knowledge and Self-Supervised Learning for Diagnostic Modeling of Adductor Spasmodic and Primary Myotonic Dysphonia
+## 382. Hybrid Expert Knowledge and Self-Supervised Learning for Diagnostic Modeling of Adductor Spasmodic and Primary Myotonic Dysphonia
 
 **Paper:** [Hybrid Expert Knowledge and Self-Supervised Learning for Diagnostic Modeling of Adductor Spasmodic and Primary Myotonic Dysphonia](https://www.isca-archive.org/interspeech_2025/du25c_interspeech.html)
 **Taxonomy:** `sound-and-production / source-generation / periodic-source`
@@ -5717,7 +5732,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports 83.3% classification accuracy.
 - **Limits:** The result is tied to the constructed dataset, its patient mix, and the two diagnoses; clinical deployment, calibration, and external validation remain open.
 
-## 382. French schwa is not acoustically distinct  from its two lexical neighbors /ø/ and /œ/
+## 383. French schwa is not acoustically distinct  from its two lexical neighbors /ø/ and /œ/
 
 **Paper:** [French schwa is not acoustically distinct  from its two lexical neighbors /ø/ and /œ/](https://www.isca-archive.org/interspeech_2025/hutin25_interspeech.html)
 **Taxonomy:** `sound-and-production / source-generation / vocal-tract-filter`
@@ -5732,7 +5747,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports acoustic overlap between French schwa and the neighboring vowels in the tested materials.
 - **Limits:** Speakers, dialect, context, corpus, measurements, and lexical analysis bound the claim; acoustic overlap is not proof that all grammatical distinctions disappear.
 
-## 383. On Enhancing the Performance of Children's ASR Task in Limited Data Scenario
+## 384. On Enhancing the Performance of Children's ASR Task in Limited Data Scenario
 
 **Paper:** [On Enhancing the Performance of Children's ASR Task in Limited Data Scenario](https://www.isca-archive.org/interspeech_2025/ankita25_interspeech.html)
 **Taxonomy:** `sound-and-production / time-frequency-measurement / multi-resolution-signal`
@@ -5747,7 +5762,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The combined normalized MFCC and glottal features give a reported 40% relative character-error-rate reduction over baseline.
 - **Limits:** The evidence is limited to the child's speech data and tested feature pipeline; languages, age ranges, and transfer to new schools or microphones are not established.
 
-## 384. Influence of Proficiency and L2 Experience on Dynamic Spectral Cue Utilization in L2 Vowel Perception and Production
+## 385. Influence of Proficiency and L2 Experience on Dynamic Spectral Cue Utilization in L2 Vowel Perception and Production
 
 **Paper:** [Influence of Proficiency and L2 Experience on Dynamic Spectral Cue Utilization in L2 Vowel Perception and Production](https://www.isca-archive.org/interspeech_2025/bakkouche25b_interspeech.html)
 **Taxonomy:** `sound-and-production / time-frequency-measurement / windowed-spectrum`
@@ -5762,7 +5777,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Advanced learners improve, especially for /i-I/; formant movement increases with proficiency, while length of residence is not significant.
 - **Limits:** The learner group, contrasts, language experience, and measurements bound the result; other L1s and natural interaction need separate evidence.
 
-## 385. Frequency-Domain Enhanced Extreme Bandwidth Extension Network with ICCRN for Superior Speech Quality
+## 386. Frequency-Domain Enhanced Extreme Bandwidth Extension Network with ICCRN for Superior Speech Quality
 
 **Paper:** [Frequency-Domain Enhanced Extreme Bandwidth Extension Network with ICCRN for Superior Speech Quality](https://www.isca-archive.org/interspeech_2025/bao25_interspeech.html)
 **Taxonomy:** `sound-and-production / time-frequency-measurement / multi-resolution-signal`
@@ -5777,7 +5792,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The tests show gains over the original EBEN, including a 40-person MUSHRA comparison; the authors report clearer high-frequency detail and less distortion.
 - **Limits:** French LibriSpeech, sampling setup, listeners, and author-reported metrics bound the result; other languages remain open.
 
-## 386. Introducing EMOPARKNZ: the Emotional Speech Database from New Zealand English Speakers with Parkinson’s Disease
+## 387. Introducing EMOPARKNZ: the Emotional Speech Database from New Zealand English Speakers with Parkinson’s Disease
 
 **Paper:** [Introducing EMOPARKNZ: the Emotional Speech Database from New Zealand English Speakers with Parkinson’s Disease](https://www.isca-archive.org/interspeech_2025/bendom25_interspeech.html)
 **Taxonomy:** `sound-and-production / time-frequency-measurement / multi-resolution-signal`
@@ -5792,7 +5807,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports emotion-dependent acoustic differences and 63% listener classification accuracy.
 - **Limits:** Thirteen speakers, New Zealand English, Parkinson's disease, and the selected emotions bound the resource; clinical severity and broader populations remain open.
 
-## 387. Universal Speech Enhancement with Regression and Generative Mamba
+## 388. Universal Speech Enhancement with Regression and Generative Mamba
 
 **Paper:** [Universal Speech Enhancement with Regression and Generative Mamba](https://www.isca-archive.org/interspeech_2025/chao25b_interspeech.html)
 **Taxonomy:** `sound-and-production / time-frequency-measurement / multi-resolution-signal`
@@ -5807,7 +5822,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** On the URGENT 2025 conditions spanning seven distortions, five languages, and several sampling rates, the combined system achieved second place in the blind Track 1 phase; regression worked best for most conditions while generation helped packet loss and bandwidth extension.
 - **Limits:** The regression model was trained only on English, the challenge data and distortions define the tested generality, and the flow output sometimes had residual noise or wrong phonemes for long packet losses. Ranking and objective metrics do not establish human usefulness in every language or device; no independent reproduction was performed.
 
-## 388. Neural Spectral Band Generation for Audio Coding
+## 389. Neural Spectral Band Generation for Audio Coding
 
 **Paper:** [Neural Spectral Band Generation for Audio Coding](https://www.isca-archive.org/interspeech_2025/choi25d_interspeech.html)
 **Taxonomy:** `sound-and-production / time-frequency-measurement / sampling-and-quantization`
@@ -5822,7 +5837,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Using AAC as the core codec, the paper reports that n-SBG outperforms conventional SBR at comparable bitrates, especially at low rates, though some codec/rate combinations introduce audible noise.
 - **Limits:** The core codec, bitrate, adversarial training, signal types, and perceptual metric bound the claim; plausible high-frequency detail is not guaranteed to be the original detail or to improve every downstream speech task.
 
-## 389. An interpretable speech foundation model for depression detection by revealing prediction-relevant acoustic features from long speech
+## 390. An interpretable speech foundation model for depression detection by revealing prediction-relevant acoustic features from long speech
 
 **Paper:** [An interpretable speech foundation model for depression detection by revealing prediction-relevant acoustic features from long speech](https://www.isca-archive.org/interspeech_2025/deng25b_interspeech.html)
 **Taxonomy:** `sound-and-production / time-frequency-measurement / windowed-spectrum`
@@ -5837,7 +5852,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports better depression detection than the segment-level model and identifies reduced loudness and F0 as relevant signals consistent with prior clinical findings.
 - **Limits:** Dataset, diagnostic labels, recording protocol, attention interpretation, and screening threshold bound the claim; a predictive acoustic correlate is not a clinical cause or validated diagnosis.
 
-## 390. Adaptive Differential Denoising for Respiratory Sounds Classification
+## 391. Adaptive Differential Denoising for Respiratory Sounds Classification
 
 **Paper:** [Adaptive Differential Denoising for Respiratory Sounds Classification](https://www.isca-archive.org/interspeech_2025/dong25e_interspeech.html)
 **Taxonomy:** `sound-and-production / time-frequency-measurement / windowed-spectrum`
@@ -5852,7 +5867,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports improved respiratory-sound classification with the proposed denoising approach.
 - **Limits:** Dataset, labels, recording hardware, noise conditions, and evaluation split limit generalization to clinical deployment or diagnosis.
 
-## 391. Functional Connectivity and Hilbert-Based Features for Covert Speech EEG Variability Analysis and Classification
+## 392. Functional Connectivity and Hilbert-Based Features for Covert Speech EEG Variability Analysis and Classification
 
 **Paper:** [Functional Connectivity and Hilbert-Based Features for Covert Speech EEG Variability Analysis and Classification](https://www.isca-archive.org/interspeech_2025/duraisamy25_interspeech.html)
 **Taxonomy:** `sound-and-production / time-frequency-measurement / multi-resolution-signal`
@@ -5867,7 +5882,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The reported subject-independent model reaches 59.14% accuracy across five covert-speech categories and reveals both shared and class-specific connectivity patterns.
 - **Limits:** Covert speech EEG is not ordinary spoken audio, sample and subject variability constrain the result, class accuracy is not communicative utility, and no independent execution was performed.
 
-## 392. Band-Split Self-supervised Mamba for Infant-centered Audio Analysis
+## 393. Band-Split Self-supervised Mamba for Infant-centered Audio Analysis
 
 **Paper:** [Band-Split Self-supervised Mamba for Infant-centered Audio Analysis](https://www.isca-archive.org/interspeech_2025/fan25_interspeech.html)
 **Taxonomy:** `sound-and-production / time-frequency-measurement / multi-resolution-signal`
@@ -5882,7 +5897,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** BS-SSAMBA improves infant-centered audio analysis in the reported experiments and benefits from combining unlabeled in-domain audio with limited annotations.
 - **Limits:** Infant audio is adjacent to, not identical with, human speech; task labels, home environments, class balance, and domain-specific data bound transfer to adult speech systems.
 
-## 393. Evaluating Deep Speaker Embedding Robustness to Domain, Sampling Rate, and Codec Variations
+## 394. Evaluating Deep Speaker Embedding Robustness to Domain, Sampling Rate, and Codec Variations
 
 **Paper:** [Evaluating Deep Speaker Embedding Robustness to Domain, Sampling Rate, and Codec Variations](https://www.isca-archive.org/interspeech_2025/ferrofilho25_interspeech.html)
 **Taxonomy:** `sound-and-production / time-frequency-measurement / sampling-and-quantization`
@@ -5897,7 +5912,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** All models degrade under mismatched domains; ReDimNet degrades least in the tested settings, while downsampling and low-bitrate compression further hurt performance and expose reliance on high-frequency information.
 - **Limits:** Datasets, codecs, sampling rates, threshold calibration, and attack/evaluation protocol bound the result; robustness to these shifts does not imply fairness or security against adaptive attacks.
 
-## 394. Echoes of Phonetics:  Unveiling Relevant Acoustic Cues for ASR via Feature Attribution
+## 395. Echoes of Phonetics:  Unveiling Relevant Acoustic Cues for ASR via Feature Attribution
 
 **Paper:** [Echoes of Phonetics:  Unveiling Relevant Acoustic Cues for ASR via Feature Attribution](https://www.isca-archive.org/interspeech_2025/fucci25_interspeech.html)
 **Taxonomy:** `sound-and-production / time-frequency-measurement / windowed-spectrum`
@@ -5912,7 +5927,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports that the model uses full vowel spans and especially the first two formants, captures sibilant spectra more strongly, and emphasizes plosive release/burst cues, with differences by speaker sex.
 - **Limits:** Attribution method, baseline model, phoneme set, speaker distribution, and interpretation assumptions bound the result; saliency is evidence of sensitivity, not a causal proof that the model listens as a human does.
 
-## 395. Leveraging AM and FM Rhythm Spectrograms for Dementia Classification and Assessment
+## 396. Leveraging AM and FM Rhythm Spectrograms for Dementia Classification and Assessment
 
 **Paper:** [Leveraging AM and FM Rhythm Spectrograms for Dementia Classification and Assessment](https://www.isca-archive.org/interspeech_2025/gogoi25_interspeech.html)
 **Taxonomy:** `sound-and-production / time-frequency-measurement / multi-resolution-signal`
@@ -5927,7 +5942,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports a 14.2% relative classification-accuracy improvement over eGeMAPs for handcrafted features and further gains when rhythm spectrograms are fused with linguistic and acoustic models.
 - **Limits:** Corpus, labels, recording length, disease definition, model fusion, and accuracy/regression metrics bound the result; an acoustic association is not a clinical diagnosis or causal mechanism.
 
-## 396. A Data-Driven Diffusion-based Approach for Audio Deepfake Explanations
+## 397. A Data-Driven Diffusion-based Approach for Audio Deepfake Explanations
 
 **Paper:** [A Data-Driven Diffusion-based Approach for Audio Deepfake Explanations](https://www.isca-archive.org/interspeech_2025/grinberg25_interspeech.html)
 **Taxonomy:** `sound-and-production / time-frequency-measurement / windowed-spectrum`
@@ -5942,7 +5957,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports a diffusion approach for explaining neural audio deepfake decisions.
 - **Limits:** Deepfake types, explanation faithfulness, model family, and listener interpretation bound transfer.
 
-## 397. Extended High-frequency Cues to Phoneme Recognition: Insights from ASR
+## 398. Extended High-frequency Cues to Phoneme Recognition: Insights from ASR
 
 **Paper:** [Extended High-frequency Cues to Phoneme Recognition: Insights from ASR](https://www.isca-archive.org/interspeech_2025/guo25b_interspeech.html)
 **Taxonomy:** `sound-and-production / time-frequency-measurement / multi-resolution-signal`
@@ -5957,7 +5972,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Broadband speech improves phoneme accuracy in masked conditions, especially at lower TMR, while adding no quiet-condition benefit; removing extended high frequencies increases consonant omissions.
 - **Limits:** VCTK speech, selected maskers, cochleagram assumptions, and a model-based probe bound the conclusion; audiological benefit and general ASR deployment are not established.
 
-## 398. Low Complex IIR Adaptive Hear-Through Ambient Filtering for Overcoming Practical Constraints in Earbuds
+## 399. Low Complex IIR Adaptive Hear-Through Ambient Filtering for Overcoming Practical Constraints in Earbuds
 
 **Paper:** [Low Complex IIR Adaptive Hear-Through Ambient Filtering for Overcoming Practical Constraints in Earbuds](https://www.isca-archive.org/interspeech_2025/gupta25_interspeech.html)
 **Taxonomy:** `sound-and-production / time-frequency-measurement / multi-resolution-signal`
@@ -5972,7 +5987,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The proposed low-complexity IIR method reports improved hear-through performance under practical constraints and reduced complexity relative to larger adaptive alternatives.
 - **Limits:** The evidence is simulation-heavy and depends on acoustic-path and fitting assumptions; user listening, hardware latency, and individualized hearing benefit are not established.
 
-## 399. Relationship between objective and subjective perceptual measures of speech in individuals with head and neck cancer
+## 400. Relationship between objective and subjective perceptual measures of speech in individuals with head and neck cancer
 
 **Paper:** [Relationship between objective and subjective perceptual measures of speech in individuals with head and neck cancer](https://www.isca-archive.org/interspeech_2025/halpern25_interspeech.html)
 **Taxonomy:** `sound-and-production / time-frequency-measurement / multi-resolution-signal`
@@ -5987,7 +6002,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Subjective intelligibility correlates strongly with articulation (r=.95) and voice quality (r=.92); NAD correlates .90 with intelligibility, while phonation and nasality lack reliable objective counterparts in this cohort.
 - **Limits:** The population is Dutch readers with head-and-neck cancer, not general speech; neural features are not fully interpretable, running spontaneous speech is absent, and correlation does not prove clinical decision validity.
 
-## 400. LSPnet: an ultra-low bitrate hybrid neural codec
+## 401. LSPnet: an ultra-low bitrate hybrid neural codec
 
 **Paper:** [LSPnet: an ultra-low bitrate hybrid neural codec](https://www.isca-archive.org/interspeech_2025/zhang25l_interspeech.html)
 **Taxonomy:** `sound-and-production / time-frequency-measurement / sampling-and-quantization`
@@ -6002,7 +6017,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports high speech quality at 1.2 kbps and lower complexity than compared end-to-end codecs.
 - **Limits:** Datasets, bitrate, codec baselines, quality metrics, hardware, and real-time implementation bound transfer; reported quality is not proof for every channel or listener.
 
-## 401. Non-Standard Accent TTS Support via Large Multi-Accent Frontend Pronunciation Knowledge Transfer
+## 402. Non-Standard Accent TTS Support via Large Multi-Accent Frontend Pronunciation Knowledge Transfer
 
 **Paper:** [Non-Standard Accent TTS Support via Large Multi-Accent Frontend Pronunciation Knowledge Transfer](https://www.isca-archive.org/interspeech_2025/berger25_interspeech.html)
 **Taxonomy:** `voice-generation-and-control / content-planning / text-to-speech-planning`
@@ -6017,7 +6032,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports up to 95% less pronunciation training data for robust performance and examines 14 English accents using LibriTTS and HiFi-TTS-derived data.
 - **Limits:** Accuracy is reported for the studied accents, frontend labels, and datasets; transfer to other languages, voices, and synthesis backends remains unestablished.
 
-## 402. Accelerating Diffusion-based Text-to-Speech Model Trainingwith Dual Modality Alignment
+## 403. Accelerating Diffusion-based Text-to-Speech Model Trainingwith Dual Modality Alignment
 
 **Paper:** [Accelerating Diffusion-based Text-to-Speech Model Trainingwith Dual Modality Alignment](https://www.isca-archive.org/interspeech_2025/choi25c_interspeech.html)
 **Taxonomy:** `voice-generation-and-control / content-planning / text-to-speech-planning`
@@ -6032,7 +6047,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports doubled convergence speed with better performance than its baselines.
 - **Limits:** The text/speech encoders, datasets, diffusion schedule, and quality measures bound the claim; hardware cost and new languages remain open.
 
-## 403. Scheduled Interleaved Speech-Text Training for Speech-to-Speech Translation with LLMs
+## 404. Scheduled Interleaved Speech-Text Training for Speech-to-Speech Translation with LLMs
 
 **Paper:** [Scheduled Interleaved Speech-Text Training for Speech-to-Speech Translation with LLMs](https://www.isca-archive.org/interspeech_2025/futami25_interspeech.html)
 **Taxonomy:** `voice-generation-and-control / content-planning / text-to-speech-planning`
@@ -6047,7 +6062,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports consistent translation improvements, especially in limited-data languages.
 - **Limits:** CVSS, unitizer, schedule, model size, and languages bound the result; naturalness, speaker identity, and unseen domains need separate tests.
 
-## 404. Code Mix TTS: An Approach to Infer Human Like Speech for Multi-Lingual Input Texts
+## 405. Code Mix TTS: An Approach to Infer Human Like Speech for Multi-Lingual Input Texts
 
 **Paper:** [Code Mix TTS: An Approach to Infer Human Like Speech for Multi-Lingual Input Texts](https://www.isca-archive.org/interspeech_2025/gourav25_interspeech.html)
 **Taxonomy:** `voice-generation-and-control / content-planning / text-to-speech-planning`
@@ -6062,7 +6077,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports an approach for code-mix inference without extra data or fine-tuning; the preserved evidence does not establish broad human preference gains.
 - **Limits:** The paper's method and evaluation details are bounded by the selected TTS system, languages, and automated metric; human listening, pronunciation accuracy, and unseen language pairs remain open.
 
-## 405. Analyzing Mitigation Strategies for Catastrophic Forgetting in End-to-End Training of Spoken Language Models
+## 406. Analyzing Mitigation Strategies for Catastrophic Forgetting in End-to-End Training of Spoken Language Models
 
 **Paper:** [Analyzing Mitigation Strategies for Catastrophic Forgetting in End-to-End Training of Spoken Language Models](https://www.isca-archive.org/interspeech_2025/hsiao25_interspeech.html)
 **Taxonomy:** `voice-generation-and-control / content-planning / text-to-speech-planning`
@@ -6077,7 +6092,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports comparative forgetting and adaptation results across the tested strategies.
 - **Limits:** Tasks, training order, model size, data mixture, and retention metrics bound the conclusions; results do not establish lifelong learning in open deployment.
 
-## 406. Revival with Voice: Multi-modal Controllable Text-to-Speech Synthesis
+## 407. Revival with Voice: Multi-modal Controllable Text-to-Speech Synthesis
 
 **Paper:** [Revival with Voice: Multi-modal Controllable Text-to-Speech Synthesis](https://www.isca-archive.org/interspeech_2025/kim25b_interspeech.html)
 **Taxonomy:** `voice-generation-and-control / content-planning / text-to-speech-planning`
@@ -6092,7 +6107,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Revival with Voice reports controllable synthesis from real and artistic face inputs and improved use of high-quality audio-only data in the tested settings.
 - **Limits:** Face distribution, language, control wording, subjective protocol, and disentanglement assumptions limit the claim; controllability is not proof of identity fidelity or safe use of a person's likeness.
 
-## 407. Long-Context Speech Synthesis with Context-Aware Memory
+## 408. Long-Context Speech Synthesis with Context-Aware Memory
 
 **Paper:** [Long-Context Speech Synthesis with Context-Aware Memory](https://www.isca-archive.org/interspeech_2025/li25b_interspeech.html)
 **Taxonomy:** `voice-generation-and-control / content-planning / text-to-speech-planning`
@@ -6107,7 +6122,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The model outperforms the reported baselines on paragraph-level prosody expressiveness, coherence, and context-inference cost.
 - **Limits:** Text genre, speaker/style conditioning, subjective measures, memory capacity, and paragraph length bound transfer; coherence scores do not prove human preference in broad long-form use.
 
-## 408. SpeechSEC: A Unified Multi-Task Framework for Speech Synthesis, Editing, and Continuation
+## 409. SpeechSEC: A Unified Multi-Task Framework for Speech Synthesis, Editing, and Continuation
 
 **Paper:** [SpeechSEC: A Unified Multi-Task Framework for Speech Synthesis, Editing, and Continuation](https://www.isca-archive.org/interspeech_2025/liang25e_interspeech.html)
 **Taxonomy:** `voice-generation-and-control / content-planning / text-to-speech-planning`
@@ -6122,7 +6137,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** SpeechSEC reports MOS-like audio quality of 4.20 versus 4.00 and voice preservation of 0.72 versus 0.58 for synthesis, with usable editing and continuation results.
 - **Limits:** Reported scores, codec choice, task mixture, prompts, speakers, and sample protocol bound the comparison; multi-task compatibility is not proof of editing safety or continuity in arbitrary audio.
 
-## 409. Improving Noise Robustness of LLM-based Zero-shot TTS via Discrete Acoustic Token Denoising
+## 410. Improving Noise Robustness of LLM-based Zero-shot TTS via Discrete Acoustic Token Denoising
 
 **Paper:** [Improving Noise Robustness of LLM-based Zero-shot TTS via Discrete Acoustic Token Denoising](https://www.isca-archive.org/interspeech_2025/lu25b_interspeech.html)
 **Taxonomy:** `voice-generation-and-control / content-planning / text-to-speech-planning`
@@ -6137,7 +6152,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports that its codec denoiser outperforms speech-enhancement baselines and that noise-robust LauraTTS improves over adding an external enhancer.
 - **Limits:** Noise types, prompt duration, speaker overlap, codec/model version, and zero-shot evaluation bound transfer; clean synthesis from a prompt is not speaker-authenticated identity preservation.
 
-## 410. Tungnaá In Live Performance: An Implementation Of Interactive Artistic Text-To-Voice
+## 411. Tungnaá In Live Performance: An Implementation Of Interactive Artistic Text-To-Voice
 
 **Paper:** [Tungnaá In Live Performance: An Implementation Of Interactive Artistic Text-To-Voice](https://www.isca-archive.org/interspeech_2025/shepardson25_interspeech.html)
 **Taxonomy:** `voice-generation-and-control / content-planning / text-to-speech-planning`
@@ -6152,7 +6167,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The demonstration reports real-time inference with worst-case latency below 100 ms and a bespoke performance dataset/application.
 - **Limits:** Demonstration scope, artist-specific data, reduced phonetic alphabet, hardware, subjective quality, and no controlled comparison bound generalization; live usability is not a standard TTS benchmark.
 
-## 411. Finding the Human Voice in AI: Insights on the Perception of AI-Voice Clones from Naturalness and Similarity Ratings
+## 412. Finding the Human Voice in AI: Insights on the Perception of AI-Voice Clones from Naturalness and Similarity Ratings
 
 **Paper:** [Finding the Human Voice in AI: Insights on the Perception of AI-Voice Clones from Naturalness and Similarity Ratings](https://www.isca-archive.org/interspeech_2025/bakkouche25_interspeech.html)
 **Taxonomy:** `voice-generation-and-control / expression-and-interactive-control / style-and-emotion-control`
@@ -6167,7 +6182,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports that AI voice clones struggle with dynamic F0 variation and analyzes its relationship to naturalness and similarity ratings.
 - **Limits:** Listener population, prompts, voices, and rating protocol limit generalization; perceptual association does not establish that changing F0 alone fixes naturalness. No independent reproduction was performed.
 
-## 412. Fine-Tuning Text-to-Speech Diffusion Models Using Reinforcement Learning with Human Feedback
+## 413. Fine-Tuning Text-to-Speech Diffusion Models Using Reinforcement Learning with Human Feedback
 
 **Paper:** [Fine-Tuning Text-to-Speech Diffusion Models Using Reinforcement Learning with Human Feedback](https://www.isca-archive.org/interspeech_2025/chen25b_interspeech.html)
 **Taxonomy:** `voice-generation-and-control / expression-and-interactive-control / style-and-emotion-control`
@@ -6182,7 +6197,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports gains over the baseline and competing reward objectives, with listeners preferring samples 67% of the time.
 - **Limits:** The evidence uses WaveGrad 2 and selected reward predictors; predicted metrics and pairwise preference do not establish broad real-time deployment.
 
-## 413. DiEmo-TTS: Disentangled Emotion Representations via Self-Supervised Distillation for Cross-Speaker Emotion Transfer in Text-to-Speech
+## 414. DiEmo-TTS: Disentangled Emotion Representations via Self-Supervised Distillation for Cross-Speaker Emotion Transfer in Text-to-Speech
 
 **Paper:** [DiEmo-TTS: Disentangled Emotion Representations via Self-Supervised Distillation for Cross-Speaker Emotion Transfer in Text-to-Speech](https://www.isca-archive.org/interspeech_2025/cho25b_interspeech.html)
 **Taxonomy:** `voice-generation-and-control / expression-and-interactive-control / style-and-emotion-control`
@@ -6197,7 +6212,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The reported system improves emotion and speaker-related measures in the chosen experiments.
 - **Limits:** Pretrained encoders, datasets, subjective measures, and cross-speaker coverage bound the conclusion.
 
-## 414. VibE-SVC: Vibrato Extraction with High-frequency F0 Contour for Singing Voice Conversion
+## 415. VibE-SVC: Vibrato Extraction with High-frequency F0 Contour for Singing Voice Conversion
 
 **Paper:** [VibE-SVC: Vibrato Extraction with High-frequency F0 Contour for Singing Voice Conversion](https://www.isca-archive.org/interspeech_2025/choi25e_interspeech.html)
 **Taxonomy:** `voice-generation-and-control / expression-and-interactive-control / prosody-control`
@@ -6212,7 +6227,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports objective and subjective evidence for high-quality conversion, style control, and speaker similarity.
 - **Limits:** Singers, songs, vibrato ranges, extraction errors, and evaluation conditions limit generalization; explicit control does not guarantee a preferred artistic result.
 
-## 415. From Static to Dynamic: Enhancing AAC with Generative Imagery and Zero-Shot TTS
+## 416. From Static to Dynamic: Enhancing AAC with Generative Imagery and Zero-Shot TTS
 
 **Paper:** [From Static to Dynamic: Enhancing AAC with Generative Imagery and Zero-Shot TTS](https://www.isca-archive.org/interspeech_2025/francis25_interspeech.html)
 **Taxonomy:** `voice-generation-and-control / expression-and-interactive-control / interactive-latency`
@@ -6227,7 +6242,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper presents a broader expressive design but leaves long-term communication outcomes for future study.
 - **Limits:** No causal benefit or clinical efficacy should be inferred; user satisfaction, safety, cultural fit, and long-term adaptation remain open.
 
-## 416. Voice Impression Control in Zero-Shot TTS
+## 417. Voice Impression Control in Zero-Shot TTS
 
 **Paper:** [Voice Impression Control in Zero-Shot TTS](https://www.isca-archive.org/interspeech_2025/fujita25_interspeech.html)
 **Taxonomy:** `voice-generation-and-control / expression-and-interactive-control / style-and-emotion-control`
@@ -6242,7 +6257,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** Objective and subjective tests report effective single-dimension impression control and language-generated vectors that avoid manual optimization.
 - **Limits:** The evidence is limited to the selected impression dimensions, speakers, ratings, and TTS model; listener consistency and cross-language control are not established.
 
-## 417. Differentiable Reward Optimization for LLM based TTS system
+## 418. Differentiable Reward Optimization for LLM based TTS system
 
 **Paper:** [Differentiable Reward Optimization for LLM based TTS system](https://www.isca-archive.org/interspeech_2025/gao25d_interspeech.html)
 **Taxonomy:** `voice-generation-and-control / expression-and-interactive-control / style-and-emotion-control`
@@ -6257,7 +6272,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports improved pronunciation accuracy and state-of-the-art WER results, with controllability experiments for emotion, MOS, age, and gender; codec-level MOS and re-encoded audio reveal disagreement between proxy and waveform quality.
 - **Limits:** Reward-model accuracy, codec reconstruction, vocoder behavior, sampling, and listener perception bound the result; a differentiable proxy is not the same as human preference or end-to-end quality.
 
-## 418. DnR-nonverbal: Cinematic Audio Source Separation DatasetContaining Non-Verbal Sounds
+## 419. DnR-nonverbal: Cinematic Audio Source Separation DatasetContaining Non-Verbal Sounds
 
 **Paper:** [DnR-nonverbal: Cinematic Audio Source Separation DatasetContaining Non-Verbal Sounds](https://www.isca-archive.org/interspeech_2025/hasumi25_interspeech.html)
 **Taxonomy:** `voice-generation-and-control / expression-and-interactive-control / style-and-emotion-control`
@@ -6272,7 +6287,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports that conventional separators mishandle nonverbal sounds and that the new dataset improves the tested synthetic separation task.
 - **Limits:** Synthetic mixtures, labels, scene distribution, separator, and nonverbal taxonomy bound the result; real-film generalization remains open.
 
-## 419. SOVA-Bench: Benchmarking the Speech Conversation Ability for LLM-based Voice Assistant
+## 420. SOVA-Bench: Benchmarking the Speech Conversation Ability for LLM-based Voice Assistant
 
 **Paper:** [SOVA-Bench: Benchmarking the Speech Conversation Ability for LLM-based Voice Assistant](https://www.isca-archive.org/interspeech_2025/hou25b_interspeech.html)
 **Taxonomy:** `voice-generation-and-control / expression-and-interactive-control / interactive-latency`
@@ -6287,7 +6302,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper presents a systematic evaluation framework intended to guide speech-LLM voice interaction.
 - **Limits:** Benchmark tasks, prompts, listeners, model versions, and acoustic measures define the comparison; long-term interaction quality and user adaptation remain open.
 
-## 420. LombardTokenizer: Disentanglement and Control of Vocal Effort in a Neural Speech Codec
+## 421. LombardTokenizer: Disentanglement and Control of Vocal Effort in a Neural Speech Codec
 
 **Paper:** [LombardTokenizer: Disentanglement and Control of Vocal Effort in a Neural Speech Codec](https://www.isca-archive.org/interspeech_2025/jacquelin25_interspeech.html)
 **Taxonomy:** `voice-generation-and-control / expression-and-interactive-control / prosody-control`
@@ -6302,7 +6317,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports better neutral-to-Lombard and Lombard-to-neutral conversion than existing methods while retaining synthesis quality.
 - **Limits:** The result is tied to the AVID/Lombard data, selected effort conditions, and codec; other speaking styles, languages, and independent listening tests remain open.
 
-## 421. Prediction of listening effort ratings for habitual and clear-Lombard speech presented in noise
+## 422. Prediction of listening effort ratings for habitual and clear-Lombard speech presented in noise
 
 **Paper:** [Prediction of listening effort ratings for habitual and clear-Lombard speech presented in noise](https://www.isca-archive.org/interspeech_2025/janse25_interspeech.html)
 **Taxonomy:** `voice-generation-and-control / expression-and-interactive-control / style-and-emotion-control`
@@ -6317,7 +6332,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** HEGP predicts effort similarly across styles; wider F0 range and slower articulation are associated with lower effort, especially for habitual speech.
 - **Limits:** Noise, listener ratings, speech styles, and HEGP definition bound the result; individual strategy and real device conditions remain open.
 
-## 422. In This Environment, As That Speaker: A Text-Driven Framework for Multi-Attribute Speech Conversion
+## 423. In This Environment, As That Speaker: A Text-Driven Framework for Multi-Attribute Speech Conversion
 
 **Paper:** [In This Environment, As That Speaker: A Text-Driven Framework for Multi-Attribute Speech Conversion](https://www.isca-archive.org/interspeech_2025/jin25d_interspeech.html)
 **Taxonomy:** `voice-generation-and-control / expression-and-interactive-control / prosody-control`
@@ -6332,7 +6347,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports effective text-driven control of timbre and environment with high content retention and results on in-domain and out-of-domain conditions.
 - **Limits:** Synthetic training mixtures, text descriptions, diffusion sampling, evaluation speakers and rooms, and the notion of controllability bound the result; independent factors are operational test dimensions, not guaranteed physical causes.
 
-## 423. Spotlight-TTS: Spotlighting the Style via Voiced-Aware Style Extraction and Style Direction Adjustment for Expressive Text-to-Speech
+## 424. Spotlight-TTS: Spotlighting the Style via Voiced-Aware Style Extraction and Style Direction Adjustment for Expressive Text-to-Speech
 
 **Paper:** [Spotlight-TTS: Spotlighting the Style via Voiced-Aware Style Extraction and Style Direction Adjustment for Expressive Text-to-Speech](https://www.isca-archive.org/interspeech_2025/kim25t_interspeech.html)
 **Taxonomy:** `voice-generation-and-control / expression-and-interactive-control / style-and-emotion-control`
@@ -6347,7 +6362,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports stronger expressiveness, overall speech quality, and style-transfer capability than its baselines in objective and perceptual evaluations.
 - **Limits:** Reference speakers, style labels, voiced-region detection, subjective ratings, and TTS architecture bound the result; a style direction is not a complete account of emotion, identity, or conversational appropriateness.
 
-## 424. Counterfactual Activation Editing for Post-hoc Prosody and Mispronunciation Correction in TTS Models
+## 425. Counterfactual Activation Editing for Post-hoc Prosody and Mispronunciation Correction in TTS Models
 
 **Paper:** [Counterfactual Activation Editing for Post-hoc Prosody and Mispronunciation Correction in TTS Models](https://www.isca-archive.org/interspeech_2025/lee25f_interspeech.html)
 **Taxonomy:** `voice-generation-and-control / expression-and-interactive-control / prosody-control`
@@ -6362,7 +6377,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports lower WER and PER, preserved semantic similarity, and a 0.764-point CMOS improvement from correcting prosody and mispronunciation.
 - **Limits:** The chosen model, activation locations, correction targets, language, evaluation prompts, and listener panel bound the claim; an observed intervention effect does not prove a unique causal representation.
 
-## 425. Zero-Shot Mono-to-Binaural Speech Synthesis
+## 426. Zero-Shot Mono-to-Binaural Speech Synthesis
 
 **Paper:** [Zero-Shot Mono-to-Binaural Speech Synthesis](https://www.isca-archive.org/interspeech_2025/levkovitch25_interspeech.html)
 **Taxonomy:** `voice-generation-and-control / expression-and-interactive-control / interactive-latency`
@@ -6377,7 +6392,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports objective and perceptual results for zero-shot mono-to-binaural synthesis.
 - **Limits:** Room and position range, speaker diversity, spatial labels, head-related filtering, and listening protocol bound generalization; stereo plausibility is not physical localization accuracy.
 
-## 426. EME-TTS: Unlocking the Emphasis and Emotion Link in Speech Synthesis
+## 427. EME-TTS: Unlocking the Emphasis and Emotion Link in Speech Synthesis
 
 **Paper:** [EME-TTS: Unlocking the Emphasis and Emotion Link in Speech Synthesis](https://www.isca-archive.org/interspeech_2025/li25i_interspeech.html)
 **Taxonomy:** `voice-generation-and-control / expression-and-interactive-control / style-and-emotion-control`
@@ -6392,7 +6407,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports expressive TTS quality and controllability for emphasis and emotion in the tested evaluations.
 - **Limits:** Languages, speakers, labels, text prompts, control ranges, and subjective raters bound the claim; controllability does not guarantee natural or culturally appropriate expression.
 
-## 427. SA-RAS: Speaker-Aware Style Retrieval Augmented Generation for Expressive Zero-Shot Text-to-Speech Synthesis
+## 428. SA-RAS: Speaker-Aware Style Retrieval Augmented Generation for Expressive Zero-Shot Text-to-Speech Synthesis
 
 **Paper:** [SA-RAS: Speaker-Aware Style Retrieval Augmented Generation for Expressive Zero-Shot Text-to-Speech Synthesis](https://www.isca-archive.org/interspeech_2025/li25t_interspeech.html)
 **Taxonomy:** `voice-generation-and-control / expression-and-interactive-control / style-and-emotion-control`
@@ -6407,7 +6422,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports expressive quality, speaker similarity, and style-control results for zero-shot synthesis.
 - **Limits:** Reference selection, speaker set, style labels, prompts, listening tests, and language bound the claim; style similarity is not a complete account of naturalness.
 
-## 428. Accelerating Autoregressive Speech Synthesis Inference With Speech Speculative Decoding
+## 429. Accelerating Autoregressive Speech Synthesis Inference With Speech Speculative Decoding
 
 **Paper:** [Accelerating Autoregressive Speech Synthesis Inference With Speech Speculative Decoding](https://www.isca-archive.org/interspeech_2025/lin25h_interspeech.html)
 **Taxonomy:** `voice-generation-and-control / expression-and-interactive-control / interactive-latency`
@@ -6422,7 +6437,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports inference-speed gains and quality behavior for speculative speech decoding.
 - **Limits:** Tokenization, proposal model, acceptance rate, hardware, speaker/style, and latency measurement bound the result; speedups vary with the workload.
 
-## 429. Towards Emotionally Consistent Text-Based Speech Editing: Introducing EmoCorrector and The ECD-TSE Dataset
+## 430. Towards Emotionally Consistent Text-Based Speech Editing: Introducing EmoCorrector and The ECD-TSE Dataset
 
 **Paper:** [Towards Emotionally Consistent Text-Based Speech Editing: Introducing EmoCorrector and The ECD-TSE Dataset](https://www.isca-archive.org/interspeech_2025/liu25c_interspeech.html)
 **Taxonomy:** `voice-generation-and-control / expression-and-interactive-control / style-and-emotion-control`
@@ -6437,7 +6452,7 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **What the paper reports:** The paper reports dataset and model results for emotionally consistent speech editing.
 - **Limits:** Emotion labels, edit types, speakers, context, synthesis model, and perceptual evaluation bound the claim; emotional consistency is listener- and culture-dependent.
 
-## 430. Investigating Stochastic Methods for Prosody Modeling in Speech Synthesis
+## 431. Investigating Stochastic Methods for Prosody Modeling in Speech Synthesis
 
 **Paper:** [Investigating Stochastic Methods for Prosody Modeling in Speech Synthesis](https://www.isca-archive.org/interspeech_2025/mayer25_interspeech.html)
 **Taxonomy:** `voice-generation-and-control / expression-and-interactive-control / style-and-emotion-control`
@@ -6451,21 +6466,6 @@ This consolidated report uses the authoritative semantic-review path for every c
 - **Mathematical idea:** Prosody is a conditional distribution, not one correct curve: a useful model samples plausible timing and pitch while remaining anchored to linguistic content.
 - **What the paper reports:** The paper reports stochastic prosody-modeling behavior and synthesis evaluations for the tested methods.
 - **Limits:** Text, speakers, sampling temperature, prosody labels, raters, and metrics bound the claim; diversity alone is not expressive control.
-
-## 431. Voice Conversion Improves Cross-Domain Robustness  for Spoken Arabic Dialect Identification
-
-**Paper:** [Voice Conversion Improves Cross-Domain Robustness  for Spoken Arabic Dialect Identification](https://www.isca-archive.org/interspeech_2025/abdullah25_interspeech.html)
-**Taxonomy:** `voice-generation-and-control / identity-and-conversion / speaker-identity`
-**Evidence:** D3 full-paper capture; PDF SHA-256 `1a900281aa9a8d251c21d3efbae0d648fecec923df8146287e0bdf38e39174f5`; full-text SHA-256 `ba28b4ee1457775a6a26feaa6b8a0a6b451b2d9a86cb8434dec21d8dba3b0711`.
-
-- **Ordinary problem:** Improve Arabic dialect identification when test speech comes from a different domain or speaker population.
-- **Why it is hard:** Dialect classifiers can exploit speaker-specific shortcuts instead of dialect evidence, causing cross-domain failure.
-- **Naive attempt:** Train a classifier on available dialect data and treat in-domain accuracy as evidence of dialect robustness.
-- **Central move:** Use voice conversion as augmentation to reduce speaker bias, then evaluate on a newly collected real-world cross-domain set.
-- **Mechanism:** Converted speech changes speaker characteristics while preserving dialect-related content; controlled experiments compare conversion with ordinary augmentation.
-- **Mathematical idea:** Cross-domain accuracy measures transfer rather than memorization; the causal explanation about speaker bias is supported by the paper’s controlled analysis but not independently verified here.
-- **What the paper reports:** The paper reports up to +34.07% cross-domain accuracy improvement and releases a model and evaluation dataset.
-- **Limits:** The result is specific to Arabic dialect identification and the released artifacts require separate access and execution checks.
 
 ## 432. VoxAging: Continuously Tracking Speaker Aging with a Large-Scale Longitudinal Dataset in English and Mandarin
 
