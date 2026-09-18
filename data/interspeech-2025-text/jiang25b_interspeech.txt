@@ -1,0 +1,792 @@
+An Effective Anomalous Sound Detection Method Based on Global and Local
+Attribute Mining
+Nan Jiang1, Yan Song1, Qing Gu1, Haoyu Song2, Lirong Dai1, Ian McLoughlin2
+1National Engineering Research Center of Speech and Language Information Processing, University
+of Science and Technology of China, Hefei, China
+2ICT Cluster, Singapore Institute of Technology, Singapore
+jiang nan@mail.ustc.edu.cn, songy@ustc.edu.cn, qinggu6@mail.ustc.edu.cn,
+2303822@sit.singaporetech.edu.sg, lrdai@ustc.edu.cn, ian.mcloughlin@singaporetech.edu.sg
+Abstract
+Recent anomalous sound detection (ASD) methods have
+achieved impressive performance by leveraging attribute infor-
+mation. However, domain shift and imbalance issues caused by
+inconsistent attributes between source and target domains re-
+main a key challenge. In this paper, we propose a novel global
+and local attribute mining method for ASD (GLAM-ASD) with
+a Transformer based encoder consisting of teacher and stu-
+dent branches to exploit semantic-rich information. The student
+mines contextual information via masked patch reconstruction
+while the teacher obtains weights from the student via expo-
+nential moving average. Global and local attributes are then de-
+rived in an unsupervised way. The student branch is further op-
+timized by global self-distillation and pseudo-label prediction
+via learned local attributes. Evaluations on the DCASE2023
+Task2 benchmark demonstrate the superiority of GLAM-ASD,
+especially in its target domain generalization performance.
+Index Terms: Anomalous Sound Detection, Self-supervised
+learning, Local Attributes, Global Attributes
+1. Introduction
+Anomalous Sound Detection (ASD) refers to the analysis of
+machine audio to determine whether the machine is operating
+normally. This has recently begun to be widely applied in in-
+dustrial fields. DCASE ASD challenges [1, 2, 3] mirror real-
+world deployment scenarios by only providing normal sounds
+for training, and requiring models to learn how to distinguish
+anomalous sounds using only normal data. This task is particu-
+larly challenging due to the scarcity and diversity of anomalous
+sounds, as well as domain shifts caused by varying background
+noise, machine types and operating conditions.
+Effective modeling approaches often rely on discriminative
+learning methods, such as ResNet [4, 5, 6], MobileNetV2 [7],
+and STgram-MFN [8]. These methods extract labels from train-
+ing meta information such as machine IDs and attributes, treat-
+ing different categories as anomalies and subsequently training
+models using an Outlier Exposure (OE) approach [9]. However,
+there is always a trade-off between accuracy and generalization
+when converting attributes into labels. When the label granular-
+ity is too fine, the model tends to overfit, whereas overly coarse
+labels may lead to the model overlooking differences between
+distinct attributes. To address this issue, Zhang et al. [10] pro-
+posed a multi-task learning framework that incorporates labels
+of different granularities, while Wang et al. [11] trained inde-
+pendent classifiers for each attribute, leveraging attribute diver-
+sity to enhance their generalization capability.
+Existing methods generally tune hyperparameters for each
+machine type, which is possible where development and eval-
+uation datasets share the same machine types as in past ASD
+tasks [1, 2]. However, it may not be possible in some practical
+deployments to collect both normal and anomalous data. De-
+tection then becomes a “first-shot” problem and the challenge
+is to adapt to a completely new machine type for which only
+normal data is available, and still be capable of accurately de-
+tecting anomalies. This is the focus of DCASE2023 Task 2 [3].
+Generative methods such as autoencoder (AE)-based sys-
+tems [12, 13, 14] are trained to reconstruct frame-level features
+of normal audio, which do not rely on labels. These methods
+operate under the assumption that anomalous audio will exhibit
+notably higher reconstruction errors. Generative methods are
+known for their strong generalization capabilities, which enable
+them to handle first-shot problems effectively. However, they
+may overgeneralize by incorporating certain anomalies that are
+well-reconstructed, leading to misclassification. Zavrtanik et
+al. [15] took a different approach. Highlighting the importance
+of local features in anomaly detection, they distinguished be-
+tween normal and anomalous samples by simulating anomalies
+in local frame-level features. AnoPatch [16] was proposed to
+leverage a Transformer backbone pre-trained on the extensive
+AudioSet dataset and fine-tune it on task-specific machine au-
+dio. It was shown that modeling from patch-level features can
+effectively address the sparsity of machine audio. However,
+fine-tuning pre-trained complex models still requires substantial
+computational resources, which can result in inefficient infer-
+ence and high memory consumption. In [4, 17], self-supervised
+representation learning methods were presented, which mainly
+rely on data augmentations like mixup [18] and FeatEx [4].
+In this paper, we propose a novel global and local attribute
+mining based ASD (GLAM-ASD) method to address the first-
+shot problem, by exploiting a self-supervised method in both
+clip- and frame-level embedding spaces. As shown in Fig. 1,
+a Transformer based encoder consisting of student and teacher
+branches is designed to learn both attributes in an unsupervised
+way. Local attributes refer to specific patch-level patterns in
+machine audio, which may detect anomalies with fine granu-
+larity. Specifically, Mel-spectrograms are extracted from the
+raw audio input, then patchified and embedded into a patch se-
+quence as described in [19]. Following [20, 21], the sequence
+is multi-cropped and masked, which is used as input to the stu-
+dent for performing masked patch reconstruction by exploiting
+the contextual information among visible patches. The teacher
+is then obtained from the student via exponential moving aver-
+age (EMA), from which local attributes are learned by an online
+clustering algorithm on the whole input sequence.
+Global attributes refer to clip-level embeddings that aggre-
+gate local attribute mappings and can detect anomalies with
+coarse granularity. Following multi-crop training in [20], the
+global attributes from the student branch reflect various combi-
+nations of local attributes, while those from the teacher branch
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+2620
+10.21437/Interspeech.2025-1449
+
+Multi-Crop & Augmentation
+Softmax
+Centering
+Softmax
+𝑔𝑔𝑠𝑠
+𝑔𝑔𝑡𝑡
+Avg. Pool
+Avg. Pool
+ℒ𝐾𝐾𝐾𝐾
+sg
+Local
+pseudo-label
+ℒ𝐿𝐿𝐿𝐿𝐿𝐿
+EMA
+logits
+𝑒𝑒𝑠𝑠
+Patch Embedding
+···
+Transformer blocks 
+×N
+···
+Mel-Spectrogram
+Teacher
+Patch Embedding & 
+Mask
+···
+Transformer blocks 
+×N
+···
+Mel-Spectrogram
+Student
+𝑐𝑐1
+𝑐𝑐2
+𝑐𝑐3
+𝑐𝑐4
+⋅⋅⋅
+𝑐𝑐𝐾𝐾
+𝑐𝑐5
+Local Attributes
+ℒ𝑣𝑣𝑣𝑣
+𝑒𝑒𝑡𝑡
+Figure 1: GLAM pre-training uses local and global losses from corresponding attributes; “sg” means stop-gradient.
+provide supervision for self-distillation without the need of la-
+bels. During GLAM pre-training, the encoder is jointly opti-
+mized by minimizing losses based on both global and local at-
+tributes. We further fine-tune the encoder with the attributes ex-
+tracted from manually annotated meta information, as described
+in OE [4, 5, 9].
+Extensive experiments have been conducted on the
+DCASE2023 Task 2 benchmark.
+Pre-trained GLAM-ASD
+acheives comparable results of 62.57% and 70.78% in terms of
+the official score Ω[3] on development and evaluation datasets,
+respectively. However, further fine-tuning with attributes from
+meta information can achieve state-of-the-art performance,
+achieving 67.06% and 76.79% correspondingly. These experi-
+mental results demonstrate the superiority of GLAM-ASD, par-
+ticularly in its target domain generalization performance.
+2. ASD Based on Global and Local
+Attribute Mining
+As shown in Fig. 1, the GLAM encoder consists of a teacher-
+student dual-branch architecture with a codebook C ∈RK×D
+to represent local attributes. Adopting a “pre-training + fine-
+tuning” paradigm, GLAM-ASD is first pre-trained to learn
+global and local attributes on development and additional
+datasets in a self-supervised way, and then fine-tuned with at-
+tributes (i.e., machine types, sections [3]) extracted from manu-
+ally annotated meta information.
+The pre-training stage involves global and local attribute
+mining. Local attribute mining (LAM) learns semantic-rich in-
+formation via masked patch reconstruction and self-supervised
+learning from patch-level embeddings. Inspired by [25], the
+teacher obtains weights from the student via EMA to provide
+patch-level supervision, while the student is optimized by In-
+foNCE [26]. Global attribute mining (GAM) learns clip-level
+discriminative representations. Similar to DINO [20], multi-
+cropped training is applied to the student, while the teacher is
+centered on the entire input for calculating the KL-divergence.
+In the fine-tuning stage, we utilize the label extracted from meta
+information to perform OE [9].
+The proposed system has following merits: (1) GLAM-
+ASD can characterize the distribution of normal audio from
+multiple granularities, i.e., patch-, clip- and category-level,
+which can effectively address the first-shot problem in real-
+world deployments. (2) The GLAM encoder pre-training, based
+on self-supervised learning, makes it possible to utilize a large-
+scale dataset, or incorporate existing pre-trained models [27, 28]
+to provide additional supervisions. (3) Compared to AE-based
+generative methods [22], GLAM-ASD demonstrates improved
+discrimination by leveraging learned global attributes, achiev-
+ing comparable or even better performance than other discrimi-
+native methods [16, 22, 23].
+2.1. Global and Local Attribute Mining
+2.1.1. Local Attribute Mining
+Given an input audio clip Xw, a long clip is randomly cropped,
+and various data augmentations are applied before being fed
+into the teacher and student branches separately. After extract-
+ing its Mel-spectrogram, input patch embeddings {xi}N
+t=1 ∈
+RD are obtained for N patches, with an embedding dimen-
+sion of D.
+The student branch applies a random masking
+strategy, replacing 75% of the patches with learnable mask
+tokens.
+The positions of the masked tokens are denoted as
+Imask = {1, . . . , N}0.75N. The replaced embeddings are fed
+into the student encoder, which is composed of Transformer
+blocks, while the teacher branch receives the full embedding
+sequence and produces an encoded vector sequence. The out-
+puts of the student and teacher branches are {zs,m, ˆzs,n}, m ∈
+Iunmask, n ∈Imask and {zt,i}N
+i=1, respectively.
+For each encoded vector of the teacher branch, we compute
+the index of the nearest vector in the codebook:
+yn = arg min
+k
+∥ℓ2(zt,i) −ℓ2(ck)∥2
+(1)
+The codebook is updated online by optimizing the following
+vector quantization loss function LVQ:
+LVQ = ∥ℓ2(zt,i) −ℓ2(cyn)∥2
+2
+(2)
+where the ℓ2 norm is employed to enhance codebook utiliza-
+tion [21, 28]. For the masked recovery result ˆzs,n from the stu-
+dent branch, we use the corresponding index yn of the teacher
+branch’s output zt,n as a pseudo-label. The student branch is
+optimized using its output and the pseudo-label through local
+attribute prediction, i.e., InfoNCE loss LLAP, as follows:
+LLAP = −
+X
+i∈Imask
+log
+exp (⟨ˆzs,n, cyn⟩/τl)
+PK
+j=0 exp (⟨ˆzs,n, cj⟩/τl)
+(3)
+2621
+
+Table 1: Result on the DCASE2023 Task2 development and evaluation datasets, Ωdenotes the official score.
+Development
+Evaluation
+Methods
+ToyCar ToyTrain bearing
+fan
+gearbox slider valve
+Ω
+ToyDrone ToyNscale ToyTank Vacuum bandsaw grinder shaker
+Ω
+AE [22]
+52.83
+48.23
+56.71
+59.90
+64.60
+68.46 52.83 56.91
+56.20
+50.78
+56.48
+78.25
+64.76
+59.97
+68.63
+61.05
+No. 1 [23]
+54.58
+54.20
+64.21
+75.95
+76.92
+92.06 85.67 69.28
+55.71
+84.92
+60.72
+92.27
+60.97
+65.18
+63.50
+66.97
+No. 2 [24]
+58.92
+55.92
+62.62
+66.66
+77.77
+83.96 68.61 66.56
+52.89
+71.90
+70.73
+91.48
+55.47
+64.76
+70.98
+66.39
+SSL4ASD [17]
+-
+-
+-
+-
+-
+-
+-
+66.92
+-
+-
+-
+-
+-
+-
+-
+68.13
+AnoPatch [16]
+58.78
+67.16
+70.43
+66.65
+58.67
+81.88 53.73 64.24
+64.49
+85.04
+72.60
+92.24
+69.71
+64.06
+80.25
+74.23
+GLAM (w/o fine-tune)
+57.11
+48.02
+62.82
+58.45
+65.74
+92.77 68.91 62.57
+58.51
+83.26
+69.37
+88.31
+65.11
+64.52
+75.77
+70.78
+GLAM (w/ fine-tune)
+58.39
+55.61
+69.97
+61.01
+68.24
+94.03 75.20 67.06
+67.89
+90.25
+76.14
+94.80
+66.12
+71.89
+79.20
+76.79
+where τl is the temperature parameter, and ⟨·, ·⟩represents the
+cosine similarity. We treat cyn as the positive sample for the
+masked patch recovery ˆzs,n and the other local attributes in
+the codebook as negative samples. This encourages the stu-
+dent branch to learn discriminative local features and capture
+semantic relationships between them. Unlike traditional meth-
+ods that compute MSE loss between recovery results and the
+original spectrogram, our method employs online clustering and
+contrastive learning in the deep feature space, enhancing the ef-
+fectiveness and discriminability of the learned features, thereby
+enabling fine-grained anomalous audio detection.
+2.1.2. Global Attributes Mining
+We adopt a dual-branch structure inspired by DINO [20], where
+the student branch learns from the teacher branch via knowledge
+distillation, and the teacher branch is updated using the EMA of
+the student branch. We apply random cropping and various data
+augmentation strategies to the input audio to obtain different
+views. Longer audio clips are treated as the global view Xg in
+DINO, while shorter audio clips are treated as the local view
+Xl. All audio clips are fed into the student branch, but only the
+global view is fed into the teacher branch. During pre-training,
+the global audio representations are learned by matching the
+distributions between the global view and the local view.
+In contrast to DINO, we replace the projection head with
+a codebook C to obtain the local attribute distribution of the
+audio. This local distribution is then pooled and the first-order
+statistics are adopted as the clip-level distribution of the audio
+regarding its local attributes, as shown below:
+g(x) =
+N
+X
+i=1
+Cf(xi)
+(4)
+where f(·) represents the encoder of either the teacher or stu-
+dent branch, and f(xi) ∈RD.
+We then optimize the KL-
+divergence loss LKL to align the output distribution of the stu-
+dent branch with the teacher branch’s distribution gt(x), which
+is considered as the global attributes:
+LKL =
+X
+x∈Xg
+X
+x′∈Xg∪Xl,x′̸=x
+H(Pt(x), Ps(x′))
+(5)
+where Pt and Ps represent the probability distributions of the
+teacher and student branches’ outputs, and H is the cross-
+entropy loss function. To prevent model collapse, we apply
+centering and sharpening operations on the probability distri-
+butions g(x), as follows:
+Pt(x) = softmax ((gt(x) −c)/τt)
+(6)
+Ps(x) = softmax (gs(x)/τs)
+(7)
+where c is the centre of the teacher distribution, and τs and τt
+are temperature parameters for sharpening.
+2.2. Pre-training with global and local attributes
+By combining global self-distillation learning with local at-
+tribute prediction, the GLAM loss can be computed as LGLAM =
+LLAP + λ1LKL + λ2LVQ, where λ1 and λ2 are hyperparameters
+that control the balance between global and local contributions,
+as well as the update of the codebook.
+LLAP and LVQ learn discriminative features in the local fea-
+ture space, creating a high-quality codebook as local attributes.
+LKL utilizes the local attributes and their combinations to form
+robust global attributes. By establishing connections between
+local and global features in a self-supervised manner, it adap-
+tively adjusts the granularity of anomaly detection between fine-
+grained and coarse-grained levels. Joint optimization of these
+three losses enhances feature discriminability, leading to a more
+precise and robust anomaly detection performance.
+2.3. Fine-tuning with attributes from meta information
+In the GLAM fine-tuning stage, we only use the pre-trained
+teacher encoder and the codebook, adding a linear classifier to
+predict the clip-level labels. The clip-level labels are manually
+created from the given meta information, with each unique com-
+bination of meta information treated as a new label.
+Specifically, for an input audio clip Xw, after extracting
+the Mel-spectrogram, we perform random masking in both time
+and frequency dimensions as spec-augmentation [29]. Then,
+following the method in Sec 2.1, we use the teacher encoder
+ft(·) and the codebook C to extract clip-level features g(x), and
+predict clip-level labels through the linear classifier. We employ
+ArcFace loss [30] L as the fine-tuning objective, as follows:
+L = −1
+N
+N
+X
+i=1
+log
+es·(cos(θˆyi +m))
+es·(cos(θˆyi +m)) +
+M
+P
+j=1,j̸=yi
+es·cos(θj)
+(8)
+where s and m are the scaling factor and margin, ˆyi is the label,
+θj is the angle between g(x) and the embedding of the j-th
+class, with M being the number of classes..
+2.4. Anomaly Detection
+The pre-trained or fine-tuned model is used to extract clip-level
+features g(x) and generate memory banks for both the source
+and target domains for each machine type. For the embedding
+of a test sample, its anomaly score is calculated as follows:
+a(˜x) = min
+i
+∥g(˜x) −g(xi)∥2
+(9)
+where ˜x is the test sample, and g(xi) is the corresponding fea-
+ture in the source or target domain memory bank for its machine
+type. We then take the maximum of the source and target do-
+main scores as the anomaly score for the test sample.
+2622
+
+3. Experiments
+3.1. Dataset and Evaluation Metrics
+We conducted experiments on the DCASE2023 Task 2
+dataset [31, 32], which includes 14 machine types, with do-
+main shifts reflecting different operational states of the ma-
+chines. The dataset meta information indicates machine type,
+machine section, and machine attributes. Each machine type
+has only one machine section, and each section contains 990
+samples from the source domain 10 from the target domain. In
+the evaluation set, each machine section contains 200 normal
+and anomalous audio samples. Audio clip durations range from
+6 to 18 seconds, and are sampled at 16 kHz.
+Adhering to the challenge guidelines [3], the area under the
+receiver operating characteristics curve (AUC) and the partial
+AUC (pAUC) is used as evaluation metrics for our system. We
+report the harmonic mean of source AUC (sAUC, %), target
+AUC (tAUC, %), and pAUC (%) for each machine type, along
+with the official score Ω(%), which is the harmonic mean of
+the scores across all machine types.
+3.2. Implementation Details
+During both the pre-training and fine-tuning stages, only the
+Development and Additional training data from DCASE2023
+Task 2 are used for training, without utilizing any external data.
+We extract 128-dimensional Mel-spectrograms as input fea-
+tures, obtained via a 1024-point FFT with a Hamming window
+of length 1024 and a hop size of 512.
+Instance normaliza-
+tion [33] is applied to the input features.
+During pre-training, we apply data augmentation tech-
+niques including white noise injection and fade-in/out effects,
+with SNRs ranging from 0 to 15 dB. The long clip Xg is set to
+6 seconds, while the short clip Xl is set to 2 seconds. The model
+was trained using the AdamW [34] optimizer with a batch size
+of 64 over 150 epochs. The learning rate linearly increases to
+1e-4 over the first 10 epochs, and then follows a cosine anneal-
+ing schedule, decaying to 1e-8 for the remaining epochs. The
+Transformer model contains 6 encoder blocks, with 6 attention
+heads per block and a hidden size of 384. A codebook size of 64
+is used, based on ablation experiments presented in Table 3. The
+temperature parameters for the teacher and student branches, τt
+and τs, were set to 0.1 and 0.05, respectively, and λ1 and λ2
+were set to 1 and 0.1 based on initial tests.
+In the fine-tuning stage, we used the AdamW optimizer
+with a learning rate of 1e-4, a batch size of 64, and train over
+100 epochs. ArcFace loss was used with a scale of 30 and a
+margin of 0.15.
+3.3. Experimental Results
+As shown in Table 1, the proposed GLAM method achieves
+state-of-the-art (SOTA) performance without external data. De-
+spite the use of large-scale pre-trained models in methods like
+AnoPatch, our approach maintains a significant lead, demon-
+strating its effectiveness. Additionally, we evaluated GLAM in
+an unsupervised setting, where only a pre-trained model was
+used for feature extraction, followed by anomaly detection via
+KNN. Results confirm that our method performs well even in
+this scenario.
+3.4. Ablation Study
+To validate effectiveness, we conducted ablation experiments,
+with results in Table 2. Systems #1 and #2 employ only LLAP
+Table 2: Ablation study for four systems with different settings
+on the DCASE2023 Task 2 evaluation dataset.
+#
+Local
+Global
+sAUC
+tAUC
+pAUC
+Ω
+1
+LAP
+×
+72.48
+61.13
+58.91
+63.65
+2
+×
+✓
+75.02
+71.91
+60.42
+68.51
+3
+MSE
+✓
+78.31
+75.23
+64.36
+72.11
+4
+LAP
+✓
+84.06
+78.96
+68.94
+76.79
+Table 3: Ablation study for different size of local attributes on
+DCASE2023 Task 2 evaluation dataset.
+Size
+sAUC
+tAUC
+pAUC
+Ω
+16
+81.21
+75.90
+65.23
+73.50
+32
+84.45
+75.04
+66.74
+74.72
+64
+84.06
+78.96
+68.94
+76.79
+256
+82.50
+72.21
+65.29
+72.66
+1024
+78.77
+69.85
+63.73
+70.25
+and LKL in pre-training, respectively, both leading to a sig-
+nificant performance drop, especially for System #1.
+This
+highlights the importance of learning global features during
+pre-training. System #3, following the strategy in [27], uses
+patch-level mask prediction with MSE loss in the embedding
+space.
+The results show that the proposed LAP loss learns
+more discriminative local features, significantly outperforming
+the MSE-based approach.
+To further analyze performance, we examined the impact of
+increasing local attribute size from 16 to 1024. Table 3 shows
+that increasing this size improves performance up to a threshold,
+beyond which performance degrades. Excessively large local
+attributes result in sparse global representations from average
+pooling, weakening the model’s ability to learn relationships
+between local and global features. Conversely, overly small at-
+tributes fail to capture sufficient local information, impairing
+the audio local distribution model, and reducing performance.
+4. Conclusion
+This paper has proposed a novel GLAM-ASD method based
+on global and local attributes mining. A Transformer based en-
+coder containing teacher and student branches is designed to ex-
+ploit semantic-rich information from patch- and clip-level fea-
+tures in an unsupervised way. The student exploits the con-
+text information via masked patch reconstruction, while the
+teacher is updated from the student via EMA. Local attributes
+are then learned to describe specific patch-level patterns in ma-
+chine audio by online clustering, which can also provide super-
+vision for optimizing student through pseudo-labeling. Follow-
+ing DINO, global attributes relate to clip-level patterns, which
+can be mined by aggregating local attribute mappings. With
+the help of multi-crop learning, we can exploit the teacher-
+student architecture again to perform self-distillation without
+the need for labels. A superior ASD performance of 67.06%
+and 76.79% in terms of official score Ωhas been achieved by
+multi-granularity attribute learning related to the patch-, clip-
+and categorical-level representations respectively, demonstrat-
+ing the effectiveness of GLAM-ASD to address the first-shot
+problem of the DCASE2023 Task2 challenge.
+2623
+
+5. Acknowledgements
+Corresponding author Yan Song is supported by Anhui
+Province Major Science and Technology Research and Devel-
+opment Project (S2023Z20004).
+6. References
+[1] Y. Koizumi, Y. Kawaguchi, K. Imoto et al., “Description and dis-
+cussion on DCASE2020 challenge task2: Unsupervised anoma-
+lous sound detection for machine condition monitoring,” in Proc.
+DCASE2020, Nov. 2020, pp. 81–85.
+[2] K. Dohi, T. Nishida, H. Purohit et al., “MIMII DG: Sound
+dataset for malfunctioning industrial machine investigation and
+inspection for domain generalization task,” in Proc. DCASE2022,
+Nancy, France, Nov. 2022, pp. 1–5.
+[3] K. Dohi, K. Imoto, N. Harada et al., “Description and discus-
+sion on DCASE 2023 challenge task 2: First-shot unsupervised
+anomalous sound detection for machine condition monitoring,”
+In arXiv e-prints: 2305.07828, 2023.
+[4] H. Chen, Y. Song, L.-R. Dai, I. McLoughlin, and L. Liu, “Self-
+supervised representation learning for unsupervised anomalous
+sound detection under domain shift,” in ICASSP 2022, 2022, pp.
+471–475.
+[5] H. Chen, Y. Song, Z. Zhuo, Y. Zhou, Y.-H. Li, H. Xue, and
+I. McLoughlin, “An effective anomalous sound detection method
+based on representation learning with simulated anomalies,” in
+ICASSP 2023, 2023, pp. 1–5.
+[6] X.-M. Zeng, Y. Song, Z. Zhuo, Y. Zhou, Y.-H. Li, H. Xue, L.-R.
+Dai, and I. McLoughlin, “Joint generative-contrastive representa-
+tion learning for anomalous sound detection,” in ICASSP 2023,
+2023, pp. 1–5.
+[7] Y. Kawaguchi, K. Imoto, Y. Koizumi et al., “Description and dis-
+cussion on dcase 2021 challenge task 2: Unsupervised anomalous
+detection for machine condition monitoring under domain shifted
+conditions,” in Proc. DCASE2021, Barcelona, Spain, Nov. 2021,
+pp. 186–190.
+[8] Y. Liu, J. Guan, Q. Zhu, and W. Wang, “Anomalous sound detec-
+tion using spectral-temporal information fusion,” in ICASSP 2022,
+2022, pp. 816–820.
+[9] D. Hendrycks, M. Mazeika, and T. Dietterich, “Deep anomaly
+detection with outlier exposure,” in International Conference on
+Learning Representations, 2019.
+[10] Y. Zhang, S. Hongbin, Y. Wan, and M. Li, “Outlier-aware inlier
+modeling and multi-scale scoring for anomalous sound detection
+via multitask learning,” in Interspeech 2023, 2023.
+[11] S. Wang, Q. Wang, J. Du, L. Wang, F. Chu, Y. Zhou, M. Cai, and
+X. Fang, “Representation learning using machine attribute infor-
+mation for anomalous sound detection in real scenarios,” in 2024
+International Joint Conference on Neural Networks (IJCNN),
+2024, pp. 1–7.
+[12] Y. Koizumi, Y. Kawaguchi, K. Imoto et al., “Description and dis-
+cussion on DCASE2020 challenge task2: Unsupervised anoma-
+lous sound detection for machine condition monitoring,” in Proc.
+DCASE 2020, Nov. 2020, pp. 81–85.
+[13] K. Suefusa, T. Nishida, H. Purohit, R. Tanabe, T. Endo, and
+Y. Kawaguchi, “Anomalous sound detection based on interpola-
+tion deep neural network,” in ICASSP 2020, 2020, pp. 271–275.
+[14] X.-M. Zeng, Y. Song, Z. Zhuo, Y. Zhou, Y.-H. Li, H. Xue, L.-R.
+Dai, and I. McLoughlin, “Joint generative-contrastive representa-
+tion learning for anomalous sound detection,” in ICASSP 2023,
+2023, pp. 1–5.
+[15] V. Zavrtanik, M. Marolt, M. Kristan, and D. Skoˇcaj, “Anomalous
+sound detection by feature-level anomaly simulation,” in ICASSP
+2024, 2024, pp. 1466–1470.
+[16] A. Jiang, B. Han, Z. Lv, Y. Deng, W.-Q. Zhang, X. Chen, Y. Qian,
+J. Liu, and P. Fan, “Anopatch: Towards better consistency in ma-
+chine anomalous sound detection,” in Interspeech 2024, 2024, pp.
+107–111.
+[17] K. Wilkinghoff, “Self-supervised learning for anomalous sound
+detection,” in ICASSP 2024, 2024, pp. 276–280.
+[18] H. Zhang, M. Cisse, Y. N. Dauphin, and D. Lopez-Paz, “Mixup:
+Beyond empirical risk minimization,” in Proceedings of the Inter-
+national Conference on Learning Representations, 2018.
+[19] Z. Xie, Z. Zhang, Y. Cao, Y. Lin, J. Bao, Z. Yao, Q. Dai, and
+H. Hu, “Simmim: a simple framework for masked image mod-
+eling,” in 2022 IEEE/CVF Conference on Computer Vision and
+Pattern Recognition (CVPR), 2022, pp. 9643–9653.
+[20] M. Caron, H. Touvron, I. Misra, H. Jegou, J. Mairal, P. Bo-
+janowski, and A. Joulin, “Emerging properties in self-supervised
+vision transformers,” in 2021 IEEE/CVF International Confer-
+ence on Computer Vision (ICCV), 2021, pp. 9630–9640.
+[21] Z. Peng, L. Dong, H. Bao, Q. Ye, and F. Wei, “Beit v2: Masked
+image modeling with vector-quantized visual tokenizers,” arXiv
+preprint arXiv:2208.06366, 2022.
+[22] N. Harada, D. Niizumi, D. Takeuchi, Y. Ohishi, and M. Ya-
+suda, “First-shot anomaly detection for machine condition mon-
+itoring: A domain generalization baseline,” In arXiv e-prints:
+2303.00455, 2023.
+[23] J. Jie, “Anomalous sound detection based on self-supervised
+learning,” DCASE2023 Challenge, Tech. Rep., June 2023.
+[24] Z. Lv, B. Han, Z. Chen, Y. Qian, J. Ding, and J. Liu, “Unsu-
+pervised anomalous detection based on unsupervised pretrained
+models,” DCASE2023 Challenge, Tech. Rep., June 2023.
+[25] X. Dong, J. Bao, T. Zhang et al., “Bootstrapped masked autoen-
+coders for vision bert pretraining,” in Computer Vision – ECCV
+2022, S. Avidan, G. Brostow, M. Ciss´e, G. M. Farinella, and
+T. Hassner, Eds.
+Cham: Springer Nature Switzerland, 2022,
+pp. 247–264.
+[26] K. He, H. Fan, Y. Wu, S. Xie, and R. Girshick, “Momentum con-
+trast for unsupervised visual representation learning,” in Proceed-
+ings of the IEEE/CVF Conference on Computer Vision and Pat-
+tern Recognition (CVPR), June 2020.
+[27] W. Chen, Y. Liang, Z. Ma, Z. Zheng, and X. Chen, “Eat: Self-
+supervised pre-training with efficient audio transformer,” in Pro-
+ceedings of the Thirty-Third International Joint Conference on Ar-
+tificial Intelligence, IJCAI-24, K. Larson, Ed.
+International Joint
+Conferences on Artificial Intelligence Organization, 8 2024, pp.
+3807–3815, main Track.
+[28] S. Chen, Y. Wu, C. Wang et al., “Beats: audio pre-training with
+acoustic tokenizers,” in Proceedings of the 40th International
+Conference on Machine Learning, ser. ICML’23.
+JMLR.org,
+2023.
+[29] D. S. Park, W. Chan, Y. Zhang, C.-C. Chiu, B. Zoph, E. D.
+Cubuk, and Q. V. Le, “Specaugment: A simple data augmen-
+tation method for automatic speech recognition,” arXiv preprint
+arXiv:1904.08779, 2019.
+[30] J. Deng, J. Guo, N. Xue, and S. Zafeiriou, “Arcface: Additive
+angular margin loss for deep face recognition,” in 2019 IEEE/CVF
+Conference on Computer Vision and Pattern Recognition (CVPR),
+2019, pp. 4685–4694.
+[31] N. Harada, D. Niizumi, D. Takeuchi, Y. Ohishi, M. Yasuda, and
+S. Saito, “ToyADMOS2: Another dataset of miniature-machine
+operating sounds for anomalous sound detection under domain
+shift conditions,” in Proc. DCASE2021, Barcelona, Spain, Nov.
+2021, pp. 1–5.
+[32] K. Dohi, T. Nishida, H. Purohit, R. Tanabe, T. Endo, M. Ya-
+mamoto, Y. Nikaido, and Y. Kawaguchi, “MIMII DG: Sound
+dataset for malfunctioning industrial machine investigation and
+inspection for domain generalization task,” in Proc. DCASE2022,
+Nancy, France, Nov. 2022.
+[33] D. Ulyanov, “Instance normalization: The missing ingredient for
+fast stylization,” arXiv preprint arXiv:1607.08022, 2016.
+[34] I. Loshchilov and F. Hutter, “Decoupled weight decay regulariza-
+tion,” in 7th International Conference on Learning Representa-
+tions, ICLR 2019, New Orleans, LA, USA, May 6-9, 2019. Open-
+Review.net, 2019.
+2624

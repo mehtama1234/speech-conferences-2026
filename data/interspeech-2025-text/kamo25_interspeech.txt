@@ -1,0 +1,858 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+MOVER: Combining Multiple Meeting Recognition Systems
+Naoyuki Kamo∗,1, Tsubasa Ochiai∗,1, Marc Delcroix1, Tomohiro Nakatani1
+1NTT Corporation, Japan
+naoyuki.kamo@ntt.com
+Abstract
+In this paper, we propose Meeting recognizer Output Voting Er-
+ror Reduction (MOVER), a novel system combination method
+for meeting recognition tasks. Although there are methods to
+combine the output of diarization (e.g., DOVER) or automatic
+speech recognition (ASR) systems (e.g., ROVER), MOVER
+is the first approach that can combine the outputs of meeting
+recognition systems that differ in terms of both diarization and
+ASR. MOVER combines hypotheses with different time inter-
+vals and speaker labels through a five-stage process that in-
+cludes speaker alignment, segment grouping, word and tim-
+ing combination, etc. Experimental results on the CHiME-8
+DASR task and the multi-channel track of the NOTSOFAR-1
+task demonstrate that MOVER can successfully combine mul-
+tiple meeting recognition systems with diverse diarization and
+recognition outputs, achieving relative tcpWER improvements
+of 9.55 % and 8.51 % over the state-of-the-art systems for both
+tasks.
+Index Terms: Meeting recognition, system combination, multi-
+speaker ASR, speaker diarization, CHiME-8
+1. Introduction
+With the advancements in deep learning technologies, the per-
+formance of automatic speech recognition (ASR) has remark-
+ably improved [1–3]. Thus, the research interests have moved
+to more challenging tasks such as meeting recognition [4–9],
+which requires estimating who speaks what and when, i.e., gen-
+erating transcription with speaker labels and timing information
+for long multi-talker recordings including overlapped speech.
+System combination is often used to boost meeting recogni-
+tion performance [10–18]. For example, many of the CHiME-
+7 and 8 submissions used some kind of system combination,
+e.g., [12–18]. In these challenges, many participants used sys-
+tem combination with diarization-first pipelines [5,6,19], which
+perform diarization, then separate each segment, and finally per-
+form ASR on the separated signals. With such systems, we can
+combine the outputs of multiple diarization systems into a sin-
+gle diarization hypothesis using e.g., diarization output voting
+error reduction with overlap (DOVER-LAP) [20]. We can then
+generate multiple recognition hypotheses for each segment of
+the diarization hypothesis using multiple ASR back-ends. Fi-
+nally, we can combine the hypotheses for each segment using
+recognizer output voting error reduction (ROVER) [21], mini-
+mum Bayes risk decoding [22], or N-best rescoring [23].
+This approach can successfully reduce diarization and ASR
+errors. However, we need to combine the diarization results into
+a single hypothesis to make sure that the different ASR back-
+ends generate hypotheses for the same speech content. This
+* Contributed equally
+limitation prevents the correction of ASR errors due to the di-
+arization (e.g., speaker confusion or missed detection) through
+the latter ASR system combination.
+Other pipelines also exist for meeting recognition, such as
+the continuous speech separation (CSS) pipeline [7,19,24,25],
+which performs separation, then transcribes the separated sig-
+nals, and finally assigns speaker labels by clustering speaker
+embeddings for each word. Unlike diarization-first pipelines, it
+is not straightforward to combine the output of different CSS-
+based systems using, e.g., DOVER-LAP and ROVER, as there
+is no clear distinction between diarization and ASR steps.
+Although it is well known that system combination is par-
+ticularly effective when combining hypotheses with diverse er-
+ror patterns [26], there are no approaches that can combine very
+distinct meeting recognition systems, such as diarization-first
+and CSS-based ones. To fully exploit such diversity, it is impor-
+tant to develop a system combination approach that can accom-
+modate systems with different diarization and ASR outputs.
+In this paper, we propose meeting recognizer output vot-
+ing error reduction (MOVER) to combine the hypotheses of the
+multiple meeting recognition systems with different diarization
+and ASR outputs (i.e., transcriptions, timing information, and
+speaker labels). Therefore, MOVER allows the combination
+of meeting recognition systems that could not be combined by
+conventional approaches. Moreover, even for cases where we
+could use, e.g., DOVER-LAP and ROVER, we could improve
+the effect of the system combination because we can preserve
+the diversity of the hypotheses in terms of diarization and ASR.
+The proposed MOVER algorithm can combine the hypotheses
+relying only on the meeting recognition outputs regardless of
+the system architecture, which allows us to combine even black
+box systems such as meeting recognition APIs.
+We tested the effectiveness of the proposed MOVER on
+tasks 1 (DASR) and 2 (NOTSOFAR-1) of the CHiME-8 chal-
+lenge. We combined the meeting recognition systems of the
+different organizations with MOVER, and achieved relative tcp-
+WER improvements of around 9% compared to the best system
+of each task. These results brought new state-of-the-art (SOTA)
+for these tasks, and demonstrate the effectiveness of the pro-
+posed MOVER, showing that it can combine the meeting recog-
+nition systems with diverse diarization and ASR characteristics.
+The scripts of the proposed MOVER are publicly released.1
+2. Related work
+The NIST Scoring Toolkit (SCTK)2 provides the implementa-
+tion of ROVER. Although it basically assumes segmented tran-
+scriptions as input, it also has an optional mechanism that lo-
+1https://github.com/nttcslab-sp/mover
+2https://github.com/usnistgov/SCTK
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+3424
+10.21437/Interspeech.2025-1614
+
+cates common silence regions among the hypotheses to segment
+long transcriptions [27]. This function requires the hypotheses
+with the start and end timing information for each word, but
+many meeting recognition systems only provide segment-level
+timing information. Moreover, the tool supports only single-
+speaker recordings and does not handle the speaker ambiguities
+among hypotheses. Thus, it is not possible to directly apply the
+tool to the meeting recognition tasks, which include long multi-
+speaker recordings with overlapped speech.
+The authors in [15] have mentioned they applied ROVER
+to merge meeting recognition systems with different diariza-
+tion systems by matching the speaker labels of different sys-
+tems and then performing ROVER on the whole text of each
+speaker. However, the paper is mainly about the overall meeting
+recognition system description submitted to the CHiME-8 chal-
+lenge [15]. They did not describe the details of the system com-
+bination algorithm, e.g., how to merge the timing information
+of the segments or words. To the best of our knowledge, this
+study is the first work describing a detailed algorithm extending
+ROVER for meeting recognition hypotheses and demonstrating
+its effectiveness through comprehensive experiments.
+3. Proposed method
+3.1. System formulation
+The aim of meeting recognition is transcribing a long recording
+with timing information and speaker labels for all segments in
+the recording (i.e., who speaks when and what?). We assume
+that we have H meeting recognition systems producing tran-
+scriptions with different errors. Let uh
+s,j = (wh
+s,j, vh
+s,j) be a
+pair of transcription wh
+s,j and segment timing vh
+s,j = [bh
+s,j, eh
+s,j]
+for the j-th segment of the speaker s estimated by the meet-
+ing recognition system h, where bh
+s,j and eh
+s,j are the start and
+end times of the segment. Given a long recording, the meeting
+recognition system h outputs the set of all segments of all speak-
+ers Oh = {oh
+s}1≤s≤Sh, where oh
+s = {uh
+s,j}1≤j≤Jh
+s denotes
+the set of all segments associated with the speaker s. Here, Sh is
+the total number of speakers, and Jh
+s is the number of segments
+of speaker s.
+System combination aims at merging the output of the
+H meeting recognition systems as:
+O = {os}1≤s≤S
+=
+Combine({Oh}1≤h≤H), where Combine(·) denotes the func-
+tional representation of the system combination, and S is the
+number of speakers determined as a result of the combination.
+3.2. Conventional: ROVER
+ROVER is a classic system combination approach that merges
+the transcriptions of a segment estimated by multiple ASR sys-
+tems. The idea of ROVER is that each system has different error
+patterns. Consequently, we may obtain more accurate transcrip-
+tions than any single system by combining multiple systems.
+Let wh = [wh
+1 , wh
+2 , . . . , wh
+Nh] be the transcription (i.e., word
+sequence) estimated by the system h, where N h denotes its cor-
+responding total number of words in the segment. Since we
+consider only a single segment by a single speaker, we removed
+the s and j indices in this section.
+ROVER mainly consists of two stages; 1) word align-
+ment and 2) word voting. First in the word alignment stage,
+by repeatedly applying a variant of dynamic programming
+(DP) matching [28], we can obtain a confusion network (CN)
+{( ˆwh=1
+1
+, . . . , ˆwh=H
+1
+), . . . , ( ˆwh=1
+NCN, . . . , ˆwh=H
+NCN )}, which repre-
+sents the word alignment among the H hypotheses.
+Here,
+N CN is the number of aligned words. ˆwh
+n is the n-th word in
+spk1
+spk2
+sys1
+sys2
+sys3
+AEC
+DE
+XWY
+ABD
+UY
+Z
+AB
+C
+DE
+X
+Z
+AEC
+DE
+AB
+C
+DE
+XWY
+UY
+Z
+X
+Z
+ABD
+AEC
+DE
+AB
+C
+DE
+XWY
+UY
+Z
+X
+Z
+ABD
+A | E | C
+D | E
+A | B
+C
+X|W|Y
+U | Y
+Z
+X
+Z
+A |   B  |  D
+D | E
+A
+B
+C
+D
+E
+X
+Z Y
+A
+BC
+D
+E
+X
+YZ
+1. Speaker label 
+mapping
+spk2
+spk1
+4. ROVER
+5. Order Consistency 
+Resolution
+2.  Segment 
+Grouping
+3. Word-level time 
+annotation
+MOVER
+Figure 1: Processing flow of MOVER
+the CN associated with hypothesis h, which corresponds to a
+word from the word sequence wh or the null symbol. Then
+in the word voting stage, we can select the word according to
+some criterion, e.g., the word with the highest count, among all
+words in the same position i and obtain the merged hypothesis
+wROV = {wROV
+1
+, wROV
+2
+, . . . , wROV
+NROV}, where N ROV denotes the
+number of words determined as a result of voting.
+3.3. Proposed: MOVER
+As described in Section 3.2, the ROVER algorithm assumes the
+transcriptions estimated by the multiple systems, which corre-
+spond to the same speech content with different errors. When
+the systems share a diarization system (and use different ASR
+systems), the estimated segment boundaries are the same, and
+the transcriptions of each segment are aligned without any pre-
+processing. However, the hypotheses of meeting recognition
+systems with different diarization systems can have a different
+number of segments and also different segment boundaries. In
+addition, different meeting recognition systems may use differ-
+ent speaker label spaces; the order and number of speaker labels
+do not necessarily match across systems. Consequently, to ap-
+ply ROVER to the meeting recognition hypotheses, we need
+pre-processing to align the set of segments.
+Figure 1 shows the processing flow of the proposed
+MOVER, which comprises five stages; 1) speaker label map-
+ping, 2) segment grouping, 3) word-level time annotation, 4)
+ROVER and timing combination, and 5) order consistency res-
+olution (OCR).
+1) Speaker label mapping: First, we align the transcrip-
+tions uttered by the same speaker across all systems. To ob-
+tain such speaker-aligned hypotheses, we re-map the system-
+dependent speaker label space s to the common label space s′
+using s′ = Map(s, h), where Map(·) denotes the functional
+representation of the speaker label mapping. If system h has no
+output for speaker s′, we set oh
+s′ = {(ϕ, φ)}, where ϕ and φ
+denote the empty text and timing, which is not judged to overlap
+with any segment.
+In this study, we adopted the global speaker mapping al-
+gorithm of the DOVER [29], which is based on the similarities
+between speaker time activities for the whole recording.
+2) Segment grouping: In the second step, we group to-
+gether transcriptions considered to be transcribing the same
+speech content. We considered two approaches; 1) re-grouping
+the multiple segments and applying ROVER to each group (sub-
+set grouping) and 2) applying ROVER to the hypotheses con-
+catenating all the segments over the entire recording (full set
+grouping).
+The subset grouping divides the segments into groups as
+{(gh=1
+s,k=1, . . . , gh=H
+s,k=1), . . . , (gh=1
+s,k=K, . . . , gh=H
+s,k=K)}, where K
+denotes the number of the re-grouped segments. Here, gh
+s,k =
+{uh
+s,j=lh
+k, . . . , uh
+s,j=mh
+k} represents the re-grouped segment. lh
+k
+and mh
+k denotes the start and end segment indices for the k-th
+re-grouped segment of the hypothesis h.
+3425
+
+Algorithm 1 Segment grouping
+Input: {(wh
+s,j, [bh
+s,j, eh
+s,j])}(h,j)∈Ωs
+▷Set of segments
+Output: ˜G
+▷Set of grouped segments
+˜G ←ϕ, (˜g1, . . . , ˜gH) ←(ϕ, . . . , ϕ), ˜e ←0
+for h, j in ARGSORT(h,j)({bh
+s,j}(h,j)∈Ωs) do
+▷Sort by start time
+if (˜e = 0) or (bh
+s,j < ˜e) then
+▷If empty-sets or overlapped
+˜gh ←˜gh ∪{(wh
+s,j, [bh
+s,j, eh
+s,j])}
+˜e ←max(˜e, eh
+s,j)
+▷Get the maximum end time of segments
+else
+▷If not overlapped
+˜G ←˜G ∪{(˜g1, . . . , ˜gH)}
+▷Appent the group
+(˜g1, . . . , ˜gH) ←(ϕ, . . . , ϕ), ˜e ←0
+▷Initialize
+end if
+end for
+In our implementation, we group the segments over the hy-
+potheses so that a segment in one group overlaps any segments
+in the group but does not overlap segments in other groups. Al-
+gorithm 1 describes the procedure of the subset grouping, where
+Ωs is the set of all indices (h, j) of the hypotheses and segments
+for the speaker s, except empty hypotheses. ARGSORT(·) re-
+turns the indices (h, j) in ascending order of the start time of
+the segment.
+On the other hand, the full set grouping simply makes a sin-
+gle group containing all the segments as {(ˆgh=1
+s
+, . . . , ˆgh=H
+s
+)},
+where ˆgh
+s = {uh
+s,j=1, . . . , uh
+s,j=Jh
+s }.
+3) Word-level time annotation:
+MOVER utilizes the
+word-level timing information for the ROVER-based merg-
+ing procedure of the transcription and timing information.
+Meeting recognition systems do not always provide word-
+level timing (only segment-level timing).
+Thus, when the
+hypotheses do not have word-level time information, we re-
+quire assigning it by, e.g., applying forced alignment [30],
+pseudo-word-level annotation [31], etc.
+The segment-level
+timing information [bh
+s,j, eh
+s,j] is converted to word-level
+one [bh
+s,j,n=1, eh
+s,j,n=1], . . . , [bh
+s,j,n=Nh
+s,j, eh
+s,j,n=Nh
+s,j], where
+bh
+s,j,n and eh
+s,j,n are the start and end times of the n-th word
+of the j-th segment, and N h
+s,j is the number of words in it.
+In this study, we adopted the pseudo-word-level annota-
+tions [31] with character-based option for each segment, which
+assigns the time interval for each word in proportion to its num-
+ber of characters.
+4) ROVER and timing combination:
+Finally, given
+the set of grouped segments (gh=1
+s,k , . . . , gh=H
+s,k
+), we apply
+ROVER to each group of segments and obtain the merged
+meeting recognition hypothesis gROV
+s,k
+= (wROV
+s,k , vROV
+s,k ).
+By
+applying DP matching to the hypotheses, we can obtain the
+aligned words ( ˆwh=1
+s,j,n, . . . , ˆwh=H
+s,j,n ) and their timing informa-
+tion ([bh=1
+s,j,n, eh=1
+s,j,n], . . . , [bh=H
+s,j,n, eh=H
+s,j,n]). Then, we obtain the
+merged transcription wROV
+s,k by the word voting as for ROVER
+(see Section 3.2). In our implementation, we simply select the
+most frequent word for voting. When the null symbol is selected
+by the voting, it is removed from the merged hypothesis.
+We also merge the timing information for each word
+as
+bROV
+s,j,n
+=
+1
+Ns,j,n
+P
+h∈Hs,j,n bh
+s,j,n
+and
+eROV
+s,j,n
+=
+1
+Ns,j,n
+P
+h∈Hs,j,n eh
+s,j,n, where Hs,j,n is the set of hypotheses
+that have the same word as that selected by the voting process
+and Ns,j,n is the number of hypotheses in Hs,j,n.
+As a result of the segment grouping, the duration of the re-
+grouped segment may become very long (especially, for the full
+set grouping), which could cause the word alignments whose
+word timings are temporally distant and may cause a negative
+impact on the system combination. To prevent such implausi-
+ble alignments, we proposed to extend the DP matching pro-
+Algorithm 2 Order consistency resolution
+Input: {(ws,j, [bs,j, es,j])}1≤j≤J ▷Set of segments of merged hypothesis
+Output: {( ˜wj, [˜bj, ˜ej])}1≤j≤˜
+J
+▷Set of revised segments
+{( ˜wj, [˜bj, ˜ej])}1≤j≤J ←{(ws,j, [bs,j, es,j])}1≤j≤J
+▷Copy input
+j ←1, ˜
+J ←J
+while j < ˜
+J do
+if ˜bj+1 < ˜ej then
+▷If order is inconsistent or overlapped
+[˜b, ˜e] ←[min(˜bj, ˜bj+1), max(˜ej, ˜ej+1)]
+▷Merge two segments
+˜w ←[ ˜wj, ˜wj+1]
+▷Merge two segments
+( ˜wj, [˜bj, ˜ej]) ←( ˜w, [˜b, ˜e])
+▷Replace old to new element
+delete ( ˜wj+1, [˜bj+1, ˜ej+1])
+▷Remove old element from set
+j ←1, ˜
+J ←˜
+J −1
+▷Go to start of the loop
+else
+j ←j + 1
+end if
+end while
+cedure of ROVER’s word alignment stage by incorporating the
+time-constraint mechanism (TC-DP), like tcpWER [31]. Un-
+like the DP for a pair of hypothesis and reference transcriptions
+in the tcpWER, ROVER requires performing the DP between
+the CN (aligned hypotheses) and a hypothesis. When we com-
+pute the score (i.e., correct, substitution, insertion, and deletion)
+between a word in the hypothesis and one of the words in the
+CN, we apply a time constraint, allowing correct and substitu-
+tion only if the word timings overlap. To allow for a certain
+amount of time gaps between hypotheses, we adopted a collar
+c like [31], which we set to 5 seconds based on our preliminary
+experiments.
+5) Order consistency resolution: The simple merging pro-
+cedure of the timing information can cause a mismatch between
+the order of the words and their timing information, which may
+change the order of the words from that obtained with ROVER.
+Here, we hypothesize that the word order of ROVER is more
+accurate and propose a post-processing procedure called OCR
+to correct the timing information.
+Algorithm 2 describes the OCR procedure, where delete
+stands for removing an element from a list. The idea of OCR
+is to find order inconsistent words that have an end time af-
+ter the start time of the next word, concatenate these words,
+and re-assign the timing information of the concatenated words.
+In this study, we applied the OCR to the merged hypothesis
+{(wROV
+s,j=1, vROV
+s,j=1), . . . , (wROV
+s,j=J, vROV
+s,j=J)} for each speaker s,
+where J is the total number of the segments in the entire hy-
+pothesis. Each of the element (ws,j, vs,j) contains only one
+word ws,j = [ws,j] and its word-level timing information
+vs,j = [bs,j, es,j]. Here, we assume that the words are ar-
+ranged in the order of ROVER’s output, and ws,j is the j-th
+word in the entire transcription.
+4. Experiments
+4.1. Experimental setup
+We evaluated the effectiveness of the proposed MOVER on
+task-1 (DASR) and the multi-channel track of task-2 (NOT-
+SOFAR/mc) of the recent CHiME-8 Challenge. The evalua-
+tion set of task 1 comprises four datasets, i.e., CHiME-6 [32],
+DiPCO [33], Mixer 6 [34], and NOTSOFAR-1 [7], while that
+of the Task 2 focuses on the NOTSOFAR-1 dataset. Following
+CHiME-8’s regulation, we evaluated the performance using the
+tcpWER with a collar of 5 seconds. All texts in the hypotheses
+were normalized using the CHiME-8 text normalization tool,
+which includes unifying numerical representations, removing
+fillers, etc [6].
+For our experiments, we used the system outputs provided
+3426
+
+Table 1: Comparison of the tcpWER [%] on the eval set of NOT-
+SOFAR/mc for the 1-best system and different configurations of
+MOVER for the combination of nine systems.
+System
+Grouping
+OCR
+TC-DP
+Eval
+1-Best
+-
+-
+-
+10.81
+MOVER
+Full set
+11.29
+✓
+10.26
+✓
+✓
+9.89
+Subset
+10.81
+✓
+9.95
+✓
+✓
+9.96
+Systems
+8
+10
+12
+14
+16
+18
+20
+22
+tcpWER
+4,0,0,0 4,1,1,0 4,2,2,1 4,2,2,4 1,1,1,1 0,2,2,1 0,2,3,4
+NPU-TEA
+NTT
+STCON
+USTC-NERCSLIP
+Figure 2: tcpWER [%] when combining different systems with
+MOVER. Each bar represents the performance of the combined
+system (the pink one is the best). The horizontal lines show the
+performance of the individual systems. The numbers at the bot-
+tom indicate the number of systems from each team (i.e., from
+left to right: USTC-NERCSLIP, STCON, NTT, and NPU-TEA).
+by the participants.
+For task 1, we combined systems from
+the two participating teams (STCON [13] and NTT [14]), and
+two additional post-challenge systems [35].
+For task 2, we
+used the systems from four teams, i.e., USTC-NERCSLIP [12],
+STCON [13], NTT [14], and NPU-TEA [15].
+4.2. Experimental result of Task 2 (NOTSOFAR/mc)
+Table 1 shows the results of the NOTSOFAR/mc task. We se-
+lected nine systems among all CHiME-8 submissions for com-
+bination, based on the performance on the development set;
+four systems from USTC-NERCSLIP [12], two systems from
+STCON [13], two systems from NTT [14], and one system from
+NPU-TEA [15]. We evaluated the three options of MOVER,
+i.e., Full set or Subset “Grouping”, without or with “TC-DP”,
+and without or with “OCR”. As a baseline, the table includes the
+USTC-NERCSLIP/sys1, which achieved the best performance
+on the evaluation set using a single system (1-Best).
+From Table 1, we observe that MOVER can improve perfor-
+mance over the 1-best system for both full set and subset group-
+ing. The ablation results show that resolving the consistency of
+the word orders with OCR is essential for MOVER to outper-
+form the 1-Best system. TC-DP does not improve the perfor-
+mance for the subset grouping, while it is essential for the full
+set grouping. This result is reasonable, because the DP match-
+ing for the long segment may cause implausible word align-
+ments with a large time discrepancy. Overall, MOVER+TC-
+DP+OCR with Full set grouping achieved the best performance
+and a 0.9-point improvement compared to the baseline.3 The
+difference between 1-Best and the best MOVER approaches sta-
+tistical significance according to a one-sided Student’s t-test (p
+3We also evaluated system combination with SCTK ROVER using
+speaker label mapping and pseudo-word-level annotation. It failed to
+improve performance over the 1-best, achieving performance compara-
+ble to that of MOVER with full set grouping without OCR and TC-DP
+(11.32 vs. 11.29 %).
+Table 2: tcpWER [%] results on the eval set of the DASR task.
+CHiME-6
+DiPCo
+Mixer 6
+NOTSOFAR-1
+Macro-Ave
+NTT/best
+31.99
+21.68
+13.74
+13.83
+20.31
+STCON/sys2
+33.13
+19.88
+10.87
+14.61
+19.62
+MOVER
+30.32
+18.61
+12.28
+12.97
+18.54
+= 0.057).4 In the following, we report only the results of this
+configuration.
+Note that the performance after applying MOVER (i.e.,
+9.89 %) is the new SOTA performance of the NOTSOFAR-1/mc
+task, outperforming the top challenge system (i.e., 10.81 %,
+NERCSLIP/sys1). These results demonstrate that the proposed
+MOVER can successfully merge diverse meeting recognition
+systems, designed by different organizations.
+Figure 2 shows the results obtained by combining different
+systems with MOVER. The results show that MOVER stably
+improved performance for various combinations of the systems.
+Depending on the combined systems, the performance improve-
+ment varies. For example, combining the 4 best systems did not
+improve performance, probably because of the lack of variety,
+as they were all built by the same team (USTC-NERCSLIP).
+The best performance was achieved by combining nine systems
+from four teams, but interestingly, a very close performance
+could be achieved by combining only each team’s best system.
+These results suggest that it is more effective to merge sys-
+tems with diverse diarization and ASR characteristics than to
+merge systems with good performance but similar characteris-
+tics. These results re-confirm the potential of MOVER as it
+allows merging systems with different diarization results, re-
+sulting in more diverse ASR results.
+4.3. Experimental result of Task 1 (DASR)
+We evaluated the effectiveness of MOVER on four different
+datasets of task 1 (DASR) of CHiME-8.
+Only two teams
+(STCON and NTT) submitted a total of five systems. In ad-
+dition, we included the output of two more systems built after
+the challenge [35], bringing the total to seven systems.
+Table 2 compares the best-performing systems of STCON
+and NTT with the results obtained with MOVER. MOVER
+improves the macro-averaged tcpWER by 1.1 points over the
+SOTA (i.e., 19.6 %, STCON/sys2).
+Except for Mixer-6,
+MOVER stably achieved the performance gains over the best-
+performing single systems. These results confirm the effective-
+ness of the proposed method not only for NOTSOFAR-1 but
+also for other meeting recognition datasets. The STCON and
+NTT systems utilized system combination methods for both di-
+arization and ASR outputs. Even for such systems, the proposed
+MOVER obtained further performance gains.
+5. Conclusion
+In this paper, we proposed a novel system combination method
+for meeting recognition, called MOVER. MOVER is a voting-
+based method that combines multiple hypotheses with different
+transcriptions, timing information, and speaker labels. With the
+proposed MOVER, we could combine systems from different
+CHiME-8 participants, achieving new SOTA performance on
+both the DASR and NOTSOFAR/mc tasks, demonstrating its
+effectiveness. The proposed implementation of MOVER uses
+global speaker mapping. In future work, we would like to ex-
+plore using local speaker mapping to allow further speaker con-
+fusion error correction based on textual information.
+4The tcpWER is evaluated for each session, and thus the number of
+samples is small (i.e., 160 samples), which may explain why the test did
+not reach a smaller p-value.
+3427
+
+6. References
+[1] R. Prabhavalkar, T. Hori, T. N. Sainath, R. Schl¨uter, and S. Watan-
+abe, “End-to-end speech recognition:
+A survey,” IEEE/ACM
+Transactions on Audio, Speech, and Language Processing, 2023.
+[2] A. Radford, J. W. Kim, T. Xu, G. Brockman, C. Mcleavey, and
+I. Sutskever, “Robust speech recognition via large-scale weak su-
+pervision,” in Proc. ICML, vol. 202, 2023, pp. 28 492–28 518.
+[3] R. Haeb-Umbach, J. Heymann, L. Drude, S. Watanabe, M. Del-
+croix, and T. Nakatani, “Far-field automatic speech recognition,”
+Proc. IEEE, vol. 109, no. 2, pp. 124–148, 2020.
+[4] W. Kraaij, T. Hain, M. Lincoln, and W. Post, “The AMI meeting
+corpus,” in Proc.ternational Conference on Methods and Tech-
+niques in Behavioral Research, 2005, pp. 1–4.
+[5] S. Cornell, M. S. Wiesner, S. Watanabe, D. Raj, X. Chang, P. Gar-
+cia et al., “The CHiME-7 DASR challenge: Distant meeting tran-
+scription with multiple devices in diverse scenarios,” in Proc. In-
+ternational Workshop on Speech Processing in Everyday Environ-
+ments (CHiME 2023), 2023, pp. 1–6.
+[6] S. Cornell, T. J. Park, H. Huang, C. Boeddeker, X. Chang, M. Ma-
+ciejewski et al., “The CHiME-8 DASR challenge for generaliz-
+able and array agnostic distant automatic speech recognition and
+diarization,” in Proc. International Workshop on Speech Process-
+ing in Everyday Environments (CHiME 2024), 2024, pp. 1–6.
+[7] A. Vinnikov, A. Ivry, A. Hurvitz, I. Abramovski, S. Koubi, I. Gur-
+vich et al., “NOTSOFAR-1 challenge: New datasets, baseline,
+and tasks for distant meeting transcription,” in Proc. Interspeech,
+2024, pp. 5003–5007.
+[8] Y. Fu, L. Cheng, S. Lv, Y. Jv, Y. Kong, Z. Chen, Y. Hu, L. Xie,
+J. Wu, H. Bu, X. Xu, J. Du, and J. Chen, “Aishell-4: An open
+source dataset for speech enhancement, separation, recognition
+and speaker diarization in conference scenario,” in Interspeech
+2021, 2021, pp. 3665–3669.
+[9] F. Yu, S. Zhang, Y. Fu, L. Xie, S. Zheng, Z. Du et al., “M2MeT:
+The ICASSP 2022 multi-channel multi-party meeting transcrip-
+tion challenge,” in Proc. ICASSP, 2022, pp. 6167–6171.
+[10] F. Yu, S. Zhang, P. Guo, Y. Fu, Z. Du, S. Zheng et al., “Summary
+on the ICASSP 2022 multi-channel multi-party meeting transcrip-
+tion grand challenge,” in Proc. ICASSP, 2022, pp. 9156–9160.
+[11] Y. Liang, M. Shi, F. Yu, Y. Li, S. Zhang, Z. Du et al., “The
+second multi-channel multi-party meeting transcription challenge
+(M2MeT 2.0): A benchmark for speaker-attributed ASR,” in Proc.
+ASRU, 2023, pp. 1–8.
+[12] S. Niu, R. Wang, J. Du, G. Yang, Y. Tu, S. Wu et al., “The USTC-
+NERCSLIP systems for the CHiME-8 NOTSOFAR-1 challenge,”
+in Proc. International Workshop on Speech Processing in Every-
+day Environments (CHiME 2024), 2024, pp. 31–36.
+[13] A. Mitrofanov, T. Prisyach, T. Timofeeva, S. Novoselov, M. Ko-
+renevsky, Y. Khokhlov et al., “STCON system for the CHiME-8
+challenge,” in Proc. International Workshop on Speech Process-
+ing in Everyday Environments (CHiME 2024), 2024, pp. 13–17.
+[14] N. Kamo, N. Tawara, A. Ando, T. Kano, H. Sato, R. Ikeshita et al.,
+“NTT Multi-Speaker ASR System for the DASR Task of CHiME-
+8 Challenge,” in Proc. International Workshop on Speech Process-
+ing in Everyday Environments (CHiME 2024), 2024, pp. 69–74.
+[15] K. Huang, Y. Li, Z. Wang, H. Wang, W. Rao, Z. Sun et al., “The
+NPU-TEA system for the CHiME-8 NOTSOFAR-1 challenge,” in
+Proc. International Workshop on Speech Processing in Everyday
+Environments (CHiME 2024), 2024, pp. 45–48.
+[16] C. B. Boeddeker, T. Cord-Landwehr, T. von Neumann, and
+R. Haeb-Umbach, “Multi-stage diarization refinement for the
+CHiME-7 DASR scenario,” in Proc. International Workshop on
+Speech Processing in Everyday Environments (CHiME 2023),
+2023, pp. 51–56.
+[17] M. Karafiat, K. Vesel´y, I. Szoke, L. Mosner, K. Benes,
+M. Witkowski et al., “BUT CHiME-7 system description,” in
+Proc. International Workshop on Speech Processing in Everyday
+Environments (CHiME 2023), 2023, pp. 67–72.
+[18] K. Deng, X. Zheng, and P. Woodland, “The university of Cam-
+bridge system for the CHiME-7 DASR task,” in Proc. Interna-
+tional Workshop on Speech Processing in Everyday Environments
+(CHiME 2023), 2023, pp. 73–76.
+[19] D. Raj, P. Denisov, Z. Chen, H. Erdogan, Z. Huang, M. He et al.,
+“Integration of speech separation, diarization, and recognition
+for multi-speaker meetings: System description, comparison, and
+analysis,” in Proc. SLT, 2021, pp. 897–904.
+[20] D. Raj, L. P. Garcia-Perera, Z. Huang, S. Watanabe, D. Povey,
+A. Stolcke et al., “DOVER-Lap:
+A method for combining
+overlap-aware diarization outputs,” Proc. SLT, 2021.
+[21] J. G. Fiscus, “A post-processing system to yield reduced word er-
+ror rates: Recognizer Output Voting Error Reduction (ROVER),”
+in Proc. ASRU, 1997, pp. 347–354.
+[22] H. Xu, D. Povey, L. Mangu, and J. Zhu, “Minimum Bayes risk
+decoding and system combination based on a recursion for edit
+distance,” Computer Speech & Language, vol. 25, no. 4, pp. 802–
+828, 2011.
+[23] B. Roark, M. Saraclar, and M. Collins, “Discriminative n-gram
+language modeling,” Computer Speech & Language, vol. 21,
+no. 2, pp. 373–392, 2007.
+[24] T. Yoshioka, I. Abramovski, C. Aksoylar, Z. Chen, M. David,
+D. Dimitriadis et al., “Advances in online audio-visual meeting
+transcription,” in Proc. ASRU, 2019, pp. 276–283.
+[25] T. Von Neumann, C. Boeddeker, T. Cord-Landwehr, M. Del-
+croix, and R. Haeb-Umbach, “Meeting recognition with contin-
+uous speech separation and transcription-supported diarization,”
+in Proc. ICASSPW, 2024, pp. 775–779.
+[26] Z.-H. Zhou, Ensemble Methods: Foundations and Algorithms.
+Chapman and Hall/CRC, 2012.
+[27] J. S. Garofolo, J. G. Fiscus, and C. D. Laprun, The rich transcrip-
+tion 2004 spring meeting recognition evaluation.
+US Depart-
+ment of Commerce, National Institute of Standards and Technol-
+ogy, 2004.
+[28] D. Sankoff and J. B. Kruskal, Time Warps, String Edits, and
+Macromolecules: The Theory and Practice of Sequence Compar-
+ison.
+Addison-Wesley, 1983.
+[29] A. Stolcke and T. Yoshioka, “DOVER: A method for combining
+diarization outputs,” in Proc. ASRU, 2019, pp. 757–763.
+[30] M. McAuliffe, M. Socolof, S. Mihuc, M. Wagner, and M. Son-
+deregger, “Montreal forced aligner: Trainable text-speech align-
+ment using kaldi,” in Proc. Interspeech, 2017, pp. 498–502.
+[31] T. von Neumann, C. Boeddeker, M. Delcroix, and R. Haeb-
+Umbach, “MeetEval:
+A toolkit for computation of word er-
+ror rates for meeting transcription systems,” in Proc. Interna-
+tional Workshop on Speech Processing in Everyday Environments
+(CHiME 2023), 2023, pp. 27–32.
+[32] S. Watanabe, M. Mandel, J. Barker, E. Vincent, A. Arora,
+X. Chang et al., “CHiME-6 challenge: Tackling multispeaker
+speech recognition for unsegmented recordings,” in Proc. Interna-
+tional Workshop on Speech Processing in Everyday Environments
+(CHiME 2020), 2020, pp. 1–7.
+[33] M. V. Segbroeck, Z. Ahmed et al., “DiPCo—Dinner Party Cor-
+pus,” in Proc. Interspeech, 2020, pp. 434–436.
+[34] L. Brandschain, D. Graff, C. Cieri, K. Walker, C. Caruso, and
+A. Neely, “The Mixer 6 corpus: Resources for cross-channel and
+text independent speaker recognition,” in Proc. LREC, 2010, pp.
+2441–2444.
+[35] N. Kamo, N. Tawara, A. Ando, T. Kano, H. Sato, R. Ikeshita
+et al., “Microphone array geometry independent multi-talker dis-
+tant ASR: NTT system for the DASR task of the CHiME-8 chal-
+lenge,” arXiv preprint arXiv:2502.09859, 2025.
+3428
+

@@ -1,0 +1,558 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+Evaluating Deep Speaker Embedding Robustness to Domain, Sampling Rate,
+and Codec Variations
+Alexandre Ferro Filho1, Diogo Fernandes Costa Silva1, Pedro Elias Engelberg Silva Borges1,
+Arlindo Rodrigues Galv˜ao Filho1
+1AKCIT, Federal University of Goi´as, Brazil
+diiogofernands@gmail.com
+Abstract
+Speaker verification systems based on deep speaker embed-
+dings perform well under matched training and evaluation
+conditions, but performance degrades under domain shifts.
+This work evaluates the sensitivity of four speaker embed-
+ding models—ECAPA-TDNN, TitaNet, ECAPA2, and ReD-
+imNet—to variations in acoustic domains, sampling rates, and
+audio codecs. Experiments on datasets with far-field speech,
+noise, and music interference demonstrate that all models de-
+grade under mismatched conditions. ReDimNet demonstrates
+the smallest performance degradation compared to the other
+models but is still affected in certain cases. Downsampling and
+low-bitrate compression further degrade performance, revealing
+the reliance of models on high-frequency information and their
+sensitivity to compression artifacts.
+Index Terms: speaker verification, speech recognition, compu-
+tational paralinguistics
+1. Introduction
+Automatic Speaker Verification (ASV) systems are deployed
+in biometric authentication, access control, and voice assis-
+tants, requiring reliable performance across diverse environ-
+ments.
+While deep speaker embedding models, such as x-
+vector [1], ECAPA-TDNN [2], TitaNet [3], and ReDimNet [4],
+achieve high accuracy under matched training and evaluation
+conditions, their performance degrades under domain shifts.
+Variations in channel characteristics, codecs, sampling
+rates, background noise, and microphones introduce shifts that
+significantly reduce ASV accuracy. Models trained on clean,
+wideband datasets like VoxCeleb [5] often fail in narrowband,
+noisy, or far-field conditions [6]. Approaches such as domain
+adversarial training [7], and data augmentation [8, 1] improve
+robustness but remain limited when facing unseen domains or
+extreme distortions [9, 10].
+Recent datasets expose these weaknesses. CN-Celeb [11]
+captures multi-genre, real-world speech with noise; DIPCo [9]
+simulates far-field meeting scenarios with reverberation and
+overlapping speakers; JuKeBOX [12] introduces low-quality
+speech mixed with music. Although these datasets highlight
+performance gaps, the extent to which state-of-the-art models
+degrade across domain shifts, sampling rates, and codec varia-
+tions remains underexplored.
+This work investigates the sensitivity of deep speaker em-
+beddings to domain shifts. We evaluate ECAPA-TDNN, Ti-
+taNet, ECAPA2, and ReDimNet across far-field (DiPCo), multi-
+genre (CN-Celeb), noisy and reverberant (VOiCES), and low-
+quality music-mixed speech (JuKeBOX). Our analysis reveals
+performance degradation across domains and highlights the
+need for more robust embedding learning strategies.
+Figure 1: Illustration of the speaker verification pipeline. Au-
+dio signals from two speakers are processed by a speaker em-
+bedding model to extract deep speaker representations. Cosine
+similarity is computed between the embeddings to determine
+whether the samples correspond to the same or different speak-
+ers.
+Our key contributions are summarized as follows:
+• We systematically evaluate the performance degradation of
+deep speaker embeddings under domain shifts, quantifying
+the impact of diverse acoustic conditions on state-of-the-art
+models.
+• We assess model sensitivity across diverse evaluation
+datasets, covering far-field (DiPCo), multi-genre broadcast
+(CN-Celeb), noisy and reverberant (VOiCES), and low-
+quality music-embedded speech (JuKeBOX), showing that
+VOiCES exposes notable weaknesses in noise robustness.
+• We
+benchmark
+four
+leading
+speaker
+verification
+models—ECAPA-TDNN, ECAPA2,
+TitaNet,
+and ReD-
+imNet—and find that ReDimNet consistently exhibits the
+lowest degradation across domains, but still suffers in
+music-contaminated and low-quality conditions.
+• We analyze the effects of sampling rate reduction, and low-
+bitrate codecs, revealing that all models are sensitive to
+downsampling and compression artifacts, with ReDimNet
+being the least affected.
+2. Related Works
+Speaker verification systems have advanced through improve-
+ments in deep speaker embedding architectures, domain adap-
+tation techniques, and evaluation across diverse acoustic condi-
+tions. The x-vector model [1] introduced TDNN-based embed-
+dings, while ECAPA-TDNN [2] incorporated channel attention,
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+1113
+10.21437/Interspeech.2025-2167
+
+context gating, and multi-scale aggregation. ResNet-based ar-
+chitectures, such as ECAPA2 [13] and TitaNet [3], further en-
+hanced embedding extraction with squeeze-excitation and at-
+tentive pooling. ReDimNet [4] proposed a more efficient design
+optimized for both clean and noisy data. These models achieve
+competitive performance in matched conditions, but their ro-
+bustness degrades under domain shifts, indicating that architec-
+tural refinements alone are insufficient.
+To address this, recent works have explored leveraging
+pretrained speech models and domain adaptation strategies.
+Whisper-SV [14] adapts the Whisper ASR model for speaker
+verification using multi-layer aggregation and attention, im-
+proving performance in low-resource settings. Transfer learn-
+ing and knowledge distillation from ASR-trained Conformers
+[15] reduce EER in VoxCeleb evaluations. Multi-Level Domain
+Adapters [6] introduce domain-specific modules that encode
+domain information into embeddings, achieving up to 21.1%
+EER reduction on the 3D-Speaker dataset. While these meth-
+ods improve robustness, they often rely on domain labels, large-
+scale pretraining, or target-domain adaptation, limiting their ap-
+plicability across unseen domains.
+Despite these advances, domain mismatch remains a funda-
+mental challenge. Models trained on clean, wideband datasets
+like VoxCeleb [5] degrade in narrowband, noisy, or far-field
+conditions. Early work explored domain adversarial training [7]
+and data augmentation [8], but their effectiveness diminishes
+under severe acoustic shifts [7, 8]. Evaluation datasets such
+as CN-Celeb [11], DiPCo [9], VOiCES [16], and JuKeBOX
+[12] expose these limitations, highlighting the performance gap
+across diverse domains. However, prior work has not systemat-
+ically isolated the combined impact of sampling rates, codecs,
+and channel characteristics on embedding robustness. Our work
+fills this gap by quantifying the performance degradation under
+these factors, offering a more comprehensive assessment of em-
+bedding resilience.
+3. Experimental Setup
+3.1. Datasets
+We evaluate model performance using four datasets selected
+to expose the sensitivity of speaker embeddings to diverse do-
+main shifts. CN-Celeb [11] contains multi-genre speech with
+varied recording conditions and noise levels, reflecting channel
+and content variability typical of media broadcasts. VOiCES
+[16] comprises far-field speech with noise and reverberation, as-
+sessing robustness to distance and acoustic interference. DiPCo
+[9] features multi-party conversations with speaker overlap and
+room reverberation, representing meeting scenarios with di-
+arization challenges. JuKeBOX [12] consists of speech mixed
+with music and compression artifacts, testing resilience to non-
+speech interference and low-quality signals. These datasets col-
+lectively cover critical domain variations, enabling a detailed
+analysis of embedding degradation across conditions encoun-
+tered in real-world applications.
+3.2. Metrics
+We evaluate speaker verification performance using Equal Error
+Rate (EER) and minimum Detection Cost Function (minDCF),
+two principal metrics in the field. EER represents the threshold
+at which the False Acceptance Rate (FAR) equals the False Re-
+jection Rate (FRR), providing a threshold-independent assess-
+ment. minDCF considers application-specific costs, weighting
+missed detections and false acceptances based on prior proba-
+bilities.
+EER is defined as the operating point where:
+FAR(τ) = False Acceptances
+Non-target Trials ,
+FRR(τ) = False Rejections
+Target Trials
+(1)
+and
+EER = FAR(τEER) = FRR(τEER)
+(2)
+where τEER is the threshold where the rates are equal.
+The detection cost function (DCF) is defined as:
+DCF(τ) = CmissPmiss(τ)Ptarget + CfaPfa(τ)(1 −Ptarget)
+(3)
+where Pmiss(τ) and Pfa(τ) are the miss and false acceptance
+probabilities, and Cmiss, Cfa, and Ptarget represent the costs and
+prior. The minimum DCF is:
+minDCF = min
+τ
+DCF(τ)
+(4)
+3.3. Models
+We evaluate four speaker embedding models commonly
+adopted in speaker verification:
+ECAPA-TDNN, TitaNet,
+ECAPA2, and ReDimNet. These models incorporate different
+architectural choices aimed at improving robustness and dis-
+criminability in embedding extraction. Table 1 summarizes the
+domains and augmentation techniques applied during training.
+ECAPA-TDNN [2] builds upon the x-vector architecture,
+introducing multi-scale feature aggregation, squeeze-excitation
+blocks, and channel-wise attention to enhance speaker represen-
+tation. ECAPA2 [13] refines this design with additional modifi-
+cations to the network structure, maintaining the same training
+data and augmentation strategies, which include noise, music,
+babble, reverb, speed perturbation, and compression applied to
+wideband, interview-style speech.
+TitaNet [3] also derives from the TDNN framework but in-
+troduces residual connections and attention mechanisms, focus-
+ing on scalability and efficiency. Unlike the ECAPA models,
+TitaNet was trained on a broader range of domains, including
+telephone and read speech, with data augmentation involving
+reverb, speed perturbation, and time/frequency masking.
+ReDimNet [4] diverges by prioritizing robustness to do-
+main shifts. It employs regularization techniques and discrimi-
+native training objectives to mitigate the impact of channel vari-
+ability and noise. Its training data aligns more closely with
+ECAPA models, consisting of wideband, interview-style speech
+augmented with noise, music, babble, reverb, and speed pertur-
+bation.
+4. Methodology
+We investigate the domain sensitivity of deep speaker em-
+beddings by evaluating the performance of ECAPA-TDNN,
+ECAPA2, TitaNet, and ReDimNet under variations in acous-
+tic domains, codecs, and sampling rates. The evaluation fol-
+lows the speaker verification pipeline shown in Figure 1, where
+audio samples are processed by a model to extract speaker em-
+beddings, and cosine similarity is computed between pairs to
+determine whether they belong to the same speaker. A balanced
+set of test trials was created for each evaluation dataset, ensuring
+an equal number of same-speaker and different-speaker pairs.
+We select evaluation datasets that represent domains dis-
+tinct from those used in model training to expose performance
+degradation under domain shifts.
+CN-Celeb contains multi-
+genre content, including drama, singing, and variety shows, re-
+flecting media diversity. VOICES introduces controlled noise
+1114
+
+Models
+Training Data Domains
+ECAPA-TDNN
+Wideband, interview-style, augmented (speech, noise, music, babble, reverb, speed perturbation, compression)
+TitaNET
+Wideband, telephone, read speech, augmented (reverb, speed perturbation, time/frequency masking).
+ECAPA2
+Wideband, interview-style, augmented (speech, noise, music, babble, reverb, speed perturbation, time/frequency masking).
+ReDimNet
+Wideband, interview-style (VoxCeleb2), augmented (speech, noise, music, babble, reverb, speed perturbation))
+Table 1: Domains used for training each speaker verification model.
+conditions through additive distractors and far-field microphone
+placement. DIPCo captures conversational speech with mild
+overlap, simulating meeting environments. JuKeBOX consists
+of speech segments mixed with music, representing entertain-
+ment scenarios. These datasets provide complementary cover-
+age of domain variations, enabling a comprehensive assessment
+of embedding robustness.
+In addition to domain shifts, we analyze the impact of au-
+dio processing factors on model performance. We evaluate the
+effect of codecs by encoding audio samples with lossy and com-
+panded compression formats.
+We also assess the impact of
+sampling rates by downsampling audio from 16kHz to 8kHz,
+followed by upsampling back to 16kHz, simulating frequency
+loss. Performance is measured using EER and minDCF in all
+experiments.
+CN-Celeb
+VOICES
+DiPCo
+JuKeBOX
+Ecapa-TDNN
+21.66/0.87
+6.13/0.35
+9.15/0.5
+34.62/0.80
+TitaNet
+18.07/0.83
+10.43/0.68
+3.38/0.21
+28.30/0.74
+ECAPA2
+16.93/0.68
+4.22/0.22
+3.63/0.26
+29.27/0.71
+ReDimNet
+14.47/0.61
+2.68/0.15
+3.24/0.29
+30.93/0.73
+Table 2: Speaker verification performance across four eval-
+uation datasets from diverse domains: CN-Celeb, VOICES,
+DiPCo , and JuKeBOX. Results are presented as EER (%) /
+minDCF. Bold values indicate the best performance for each
+dataset.
+5. Results and Discussions
+5.1. Domain Sensitivity Across Datasets
+Our evaluation shows that all tested models (ECAPA-TDNN,
+TitaNet, ECAPA2, and ReDimNet) experience performance
+degradation when evaluated on datasets representing domain
+shifts. As shown in Table 2, models trained on clean, wide-
+band data achieve lower EER on CN-Celeb compared to DiPCo,
+VOiCES, and JuKeBOX. This degradation is more pronounced
+in datasets characterized by far-field conditions, background
+noise, or music interference, indicating that current speaker em-
+beddings overfit to training data, particularly clean, wideband
+speech.
+Performance on VOiCES highlights the sensitivity of em-
+beddings to noise and reverberation, as the dataset includes
+noise augmentation and multi-microphone setups to emulate
+real-world acoustic variability.
+Models with poor results on
+VOiCES are likely to struggle in practical applications involv-
+ing distant-talking scenarios and non-ideal environments.
+A
+similar pattern is observed in DiPCo, which introduces conver-
+sational overlap and room effects, and JuKeBOX, which repre-
+sents an extreme domain shift with speech mixed into music.
+Among the models, ReDimNet achieves the lowest EER
+across most domain-shifted datasets, aligning with its focus on
+improving robustness to domain variability. ECAPA2 outper-
+forms ECAPA-TDNN in noisy and far-field conditions, such
+as VOiCES and DIPCo, suggesting greater stability to acous-
+tic variations. ECAPA-TDNN exhibits substantial degradation
+under these domain shifts, while TitaNet consistently yields the
+highest EER, indicating that its training regime and architec-
+ture are less effective in mismatched conditions. These results
+reinforce that architectural refinements alone are insufficient to
+ensure generalization, and embeddings remain vulnerable to re-
+alistic domain shifts.
+8khz
+16khz
+Ecapa-TDNN
+5.94/0.48
+3.79/0.27
+TitaNet
+4.71/0.39
+2.33/0.16
+ECAPA2
+3.12/0.23
+1.95/0.09
+ReDimNet
+2.69/0.32
+1.83/0.08
+Table 3: Speaker verification performance under different sam-
+pling rates: 8 kHz and 16 kHz . Results are reported as EER
+(%) / minDCF. Bold values represent the best performance in
+each condition.
+5.2. Sampling Rate Variation
+Performance degradation is observed across all models when
+reducing the sampling rate from 16kHz to 8kHz, as shown
+in Table 3.
+ReDimNet and ECAPA2 exhibit greater robust-
+ness, maintaining lower EER under both conditions. Although
+ECAPA-TDNN shows high absolute EER at 8kHz, its rela-
+tive degradation is lower (57%) compared to TitaNet (102%),
+indicating that TitaNet is more sensitive to bandwidth reduc-
+tion. These findings are consistent with prior work indicating
+that speaker embeddings depend on high-frequency informa-
+tion. The results emphasize that even state-of-the-art models are
+vulnerable to sampling rate limitations, which is critical in ap-
+plications involving narrowband audio, such as telephone-based
+verification systems.
+WAV
+MP3
+FLAC
+U-law
+Ecapa-TDNN
+3.79/0.27
+5.28/0.41
+3.79/0.27
+4.10/0.28
+TitaNet
+2.33/0.16
+3.30/0.28
+2.33/0.16
+2.41/0.17
+ECAPA2
+1.95/0.09
+2.51/0.14
+1.95/0.09
+1.96/0.10
+ReDimNet
+1.83/0.08
+2.29/0.13
+1.83/0.08
+1.86/0.09
+Table 4:
+Comparison of speaker verification performance
+across different audio codecs.
+Results are reported as EER
+(%) / minDCF across four codecs: WAV (uncompressed), MP3
+(lossy), FLAC (lossless), and u-law (companded). Lower val-
+ues indicate better performance. Bold values highlight the best-
+performing model for each codec.
+1115
+
+(a) ReDimNet on VoxCeleb2
+(b) ReDimNet on CN-Celeb
+(c) ReDimNet on VOiCES
+(d) ReDimNet on DiPCo
+(e) ReDimNet on JuKeBOX
+Figure 2: Distribution of cosine similarity scores for same-speaker (blue) and different-speaker (orange) trials across evaluation
+datasets using ReDimNet. The Equal Error Rate (EER) threshold is indicated by the dashed line in each plot. The spread and overlap
+of the distributions illustrate the verification difficulty across domains.
+5.3. Codec Variation
+Experiments with codecs reveal that all models degrade when
+audio is encoded using lossy or companded compression for-
+mats, as shown in Table 4.
+ReDimNet achieves the lowest
+EER across all evaluated codecs (WAV, MP3, FLAC, and u-
+law), suggesting greater robustness to compression artifacts.
+ECAPA2 is less affected than ECAPA-TDNN and TitaNet but is
+consistently outperformed by ReDimNet. ECAPA-TDNN ex-
+hibits the highest degradation, particularly in MP3 and u-law,
+indicating greater sensitivity to low-bitrate artifacts. TitaNet
+shows intermediate performance but also degrades under MP3
+compression.
+Although FLAC is a lossless codec, the source audio files
+were previously encoded using AAC before being transcoded to
+the tested formats. This pre-processing step likely explains why
+FLAC performance does not match expectations for truly loss-
+less audio. These results reinforce that compression artifacts
+reduce the discriminative power of embeddings, especially in
+models more reliant on clean training data, and highlight that
+evaluation with seemingly lossless formats can still reflect en-
+coding dependencies from upstream processing.
+5.4. Score Distribution Analysis
+To further analyze the behavior of the best-performing model,
+ReDimNet, we plot the cosine similarity score distributions
+for same-speaker and different-speaker pairs across evaluation
+datasets. Figure 2 shows that in challenging scenarios such as
+JuKeBOX and CN-Celeb, the distributions present greater over-
+lap, aligning with the higher EERs observed. In contrast, DiPCo
+displays more separable distributions, corresponding to lower
+EERs.
+However, VOiCES reveals an additional source of degra-
+dation: although the distributions may visually suggest sepa-
+rability, the application of multiple noise augmentation tech-
+niques and distractors introduces intra-speaker variability, caus-
+ing samples from the same speaker to sound perceptibly differ-
+ent. This leads to increased false rejections, as the model fre-
+quently misclassifies same-speaker pairs as different speakers.
+Visual inspection further indicates that music interference
+in JuKeBOX often results in false acceptances, while reverber-
+ation and background noise in DiPCo primarily increase false
+rejections. This analysis complements the quantitative evalua-
+tion, reinforcing that domain conditions affect both the separa-
+bility of embeddings and the consistency of same-speaker rep-
+resentations, particularly in noise-augmented datasets such as
+VOiCES.
+6. Conclusion
+This work investigated the sensitivity of deep speaker embed-
+dings to domain shifts, sampling rate variations, and codec com-
+pression in speaker verification systems. We evaluated ECAPA-
+TDNN, ECAPA2, TitaNet, and ReDimNet across diverse eval-
+uation conditions and observed performance degradation across
+all models when exposed to mismatched domains.
+ReDim-
+Net demonstrated the lowest degradation percentage, indicating
+greater robustness, but it also exhibited limitations under severe
+shifts such as speech mixed with music.
+Our results show that variations in sampling rates and
+codecs further degrade performance, reinforcing that speaker
+embeddings depend on high-frequency content and are vulner-
+able to compression artifacts.
+Even the most robust model,
+ReDimNet, experienced consistent but less severe degradation
+compared to others, suggesting that current embedding models
+remain susceptible to real-world audio variations despite archi-
+tectural advancements.
+These findings indicate that existing training paradigms re-
+lying on clean, wideband, and augmented data are insufficient
+for generalization to realistic conditions. Developing domain-
+invariant embedding models and adaptive training techniques
+that explicitly account for channel, noise, and sampling vari-
+ability remains an open challenge. Addressing this sensitivity
+is critical to ensure reliable speaker verification performance in
+practical deployment scenarios involving heterogeneous audio
+environments.
+7. Acknowledgements
+This work has been fully/partially funded by the project Re-
+search and Development of Algorithms for Construction of Dig-
+1116
+
+ital Human Technological Components supported by Advanced
+Knowledge Center in Immersive Technologies (AKCIT), with
+financial resources from the PPI IoT/Manufatura 4.0 / PPI Hard-
+wareBR of the MCTI grant number 057/2023, signed with EM-
+BRAPII.
+8. References
+[1] D. Snyder, D. Garcia-Romero, G. Sell, D. Povey, and S. Khudan-
+pur, “X-vectors: Robust dnn embeddings for speaker recognition,”
+in 2018 IEEE international conference on acoustics, speech and
+signal processing (ICASSP).
+IEEE, 2018, pp. 5329–5333.
+[2] B. Desplanques, J. Thienpondt, and K. Demuynck, “Ecapa-
+tdnn:
+Emphasized channel attention,
+propagation and ag-
+gregation in tdnn based speaker verification,” arXiv preprint
+arXiv:2005.07143, 2020.
+[3] N. R. Koluguri, T. Park, and B. Ginsburg, “Titanet: Neural model
+for speaker representation with 1d depth-wise separable convo-
+lutions and global context,” in ICASSP 2022-2022 IEEE Inter-
+national Conference on Acoustics, Speech and Signal Processing
+(ICASSP).
+IEEE, 2022, pp. 8102–8106.
+[4] I. Yakovlev, R. Makarov, A. Balykin, P. Malov, A. Okhotnikov,
+and N. Torgashov, “Reshape dimensions network for speaker
+recognition,” arXiv preprint arXiv:2407.18223, 2024.
+[5] A. Nagrani,
+J. S. Chung,
+and A. Zisserman,
+“Voxceleb:
+a large-scale speaker identification dataset,” arXiv preprint
+arXiv:1706.08612, 2017.
+[6] W. Huang, B. Han, S. Wang, Z. Chen, and Y. Qian, “Robust cross-
+domain speaker verification with multi-level domain adapters,”
+in ICASSP 2024-2024 IEEE International Conference on Acous-
+tics, Speech and Signal Processing (ICASSP).
+IEEE, 2024, pp.
+11 781–11 785.
+[7] Q. Wang, W. Rao, S. Sun, L. Xie, E. S. Chng, and H. Li, “Un-
+supervised domain adaptation via domain adversarial training for
+speaker recognition,” in 2018 IEEE international conference on
+acoustics, speech and signal processing (ICASSP).
+IEEE, 2018,
+pp. 4889–4893.
+[8] T. Ko, V. Peddinti, D. Povey, M. L. Seltzer, and S. Khudanpur,
+“A study on data augmentation of reverberant speech for robust
+speech recognition,” in 2017 IEEE international conference on
+acoustics, speech and signal processing (ICASSP).
+IEEE, 2017,
+pp. 5220–5224.
+[9] M. Van Segbroeck, A. Zaid, K. Kutsenko, C. Huerta, T. Nguyen,
+X. Luo, B. Hoffmeister, J. Trmal, M. Omologo, and R. Maas,
+“Dipco–dinner party corpus,” arXiv preprint arXiv:1909.13447,
+2019.
+[10] M. A. Pastor, A. Ortega, and D. Ribas, “Analysis of the domain
+mismatch problem in the speech emotion recognition task,” in
+Proc. IberSPEECH 2024, 2024, pp. 181–185.
+[11] Y. Fan, J. Kang, L. Li, K. Li, H. Chen, S. Cheng, P. Zhang,
+Z. Zhou, Y. Cai, and D. Wang, “Cn-celeb: a challenging chinese
+speaker recognition dataset,” in ICASSP 2020-2020 IEEE Inter-
+national Conference on Acoustics, Speech and Signal Processing
+(ICASSP).
+IEEE, 2020, pp. 7604–7608.
+[12] A. Chowdhury, A. Cozzo, and A. Ross, “Jukebox: A multilingual
+singer recognition dataset,” arXiv preprint arXiv:2008.03507,
+2020.
+[13] J. Thienpondt and K. Demuynck, “Ecapa2: A hybrid neural net-
+work architecture and training strategy for robust speaker embed-
+dings,” in 2023 IEEE Automatic Speech Recognition and Under-
+standing Workshop (ASRU).
+IEEE, 2023, pp. 1–8.
+[14] L. Zhang, N. Jiang, Q. Wang, Y. Li, Q. Lu, and L. Xie, “Whisper-
+sv: Adapting whisper for low-data-resource speaker verification,”
+Speech Communication, vol. 163, p. 103103, 2024.
+[15] D. Cai and M. Li, “Leveraging asr pretrained conformers for
+speaker verification through transfer learning and knowledge dis-
+tillation,” IEEE/ACM Transactions on Audio, Speech, and Lan-
+guage Processing, 2024.
+[16] C. Richey, M. A. Barrios, Z. Armstrong, C. Bartels, H. Franco,
+M. Graciarena, A. Lawson, M. K. Nandwana, A. Stauffer, J. van
+Hout et al., “Voices obscured in complex environmental settings
+(voices) corpus,” arXiv preprint arXiv:1804.05053, 2018.
+1117
+

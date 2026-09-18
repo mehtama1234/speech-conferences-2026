@@ -1,0 +1,46 @@
+#!/usr/bin/env python3
+import hashlib,json
+from pathlib import Path
+HERE=Path(__file__).resolve().parent; DATA=HERE/"data"
+A={
+"kaneko25b_interspeech":("sound-and-production","time-frequency-measurement","vocoder-discrimination","A vocoder discriminator should judge the acoustic detail that a TTS or voice-conversion system actually needs to reconstruct."),
+"zhang25l_interspeech":("sound-and-production","time-frequency-measurement","neural-codec","An ultra-low-bitrate codec must compress speech while retaining the time-frequency structure needed for intelligibility."),
+"zeng25_interspeech":("sound-and-production","time-frequency-measurement","gradient-audio-recovery","Gradient inversion exposes that shared training signals can contain recoverable acoustic structure and therefore privacy risk."),
+"huang25k_interspeech":("listening-and-separation","source-separation-and-spatial-listening","overlap-diarization","Overlapping speakers require diarization and recognition to share observations instead of treating speaker turns as already separated."),
+"jalal25_interspeech":("listening-and-separation","source-separation-and-spatial-listening","target-speaker-separation","Target-speaker separation must preserve one identity when speaker embeddings and acoustic conditions vary."),
+"jiang25_interspeech":("listening-and-separation","source-separation-and-spatial-listening","directional-separation","Regional separation uses direction and distance cues to decide which sound belongs to a spatial region."),
+"lay25_interspeech":("listening-and-separation","noise-enhancement","online-enhancement","Streaming enhancement must suppress noise within a sub-second budget rather than wait for a complete recording."),
+"xiao25_interspeech":("listening-and-separation","source-separation-and-spatial-listening","sound-localization","A time-frequency model must turn multichannel spatial evidence into the location of a sound source."),
+"horii25_interspeech":("recognition-and-alignment","acoustic-unit-mapping","child-speech-recognition","Children's phonological errors change the mapping from sound to phoneme, so recognition failures must be analyzed by error type."),
+"kumar25_interspeech":("recognition-and-alignment","acoustic-unit-mapping","dialect-aware-recognition","Dialect identification and ASR share acoustic evidence, so multimodal fusion can improve both decisions in Indian languages."),
+"mak25_interspeech":("recognition-and-alignment","acoustic-unit-mapping","speech-guided-pronunciation","Speech evidence can guide grapheme-to-phoneme conversion when written pronunciation rules and data are incomplete."),
+"ofaolain25_interspeech":("recognition-and-alignment","acoustic-unit-mapping","auditory-representation","Auditory-transduction features test whether a recognition system should begin from a representation closer to hearing than a plain spectrogram."),
+"lahtinen25_interspeech":("meaning-and-interaction","prosody-and-intent","affect-data-selection","Affective speech corpora need annotation examples that cover natural emotional variation rather than merely adding more randomly selected recordings."),
+"ohashi25_interspeech":("meaning-and-interaction","dialogue-and-turn-taking","full-duplex-dialogue","A full-duplex spoken dialogue system must listen and speak at once while deciding when interruption is meaningful rather than noise."),
+"wang25x_interspeech":("meaning-and-interaction","dialogue-and-turn-taking","dialogue-data-generation","Speech dialogue data must preserve timing, turn exchange, and natural responses rather than generate isolated text sentences."),
+"lu25c_interspeech":("meaning-and-interaction","grounding-and-action","speech-instruction-following","Instruction-following evaluation asks whether a speech model obeys the requested constraint, not merely whether its transcript is plausible."),
+"lee25f_interspeech":("voice-generation-and-control","prosody-and-interactive-control","counterfactual-prosody-editing","Editing one prosodic or pronunciation attribute requires changing the relevant internal cause without regenerating unrelated speech properties."),
+"li25i_interspeech":("voice-generation-and-control","prosody-and-interactive-control","emphasis-emotion-control","Speech synthesis must coordinate emphasis and emotion because changing one can unintentionally alter the other."),
+"li25t_interspeech":("voice-generation-and-control","prosody-and-interactive-control","style-retrieval","Expressive zero-shot TTS retrieves speaker and style evidence so an unseen voice can be controlled from references."),
+"park25b_interspeech":("voice-generation-and-control","text-to-speech-and-content","flow-synthesis","Rapid TTS uses a consistency-constrained flow to trade fewer inference steps against acoustic fidelity."),
+"narain25_interspeech":("people-variation-and-health","human-centered-evaluation","voice-quality-primitives","Interpretable voice-quality dimensions can describe speaking style across atypical speech and affect without hiding the explanation in one label."),
+"joubaud25_interspeech":("people-variation-and-health","human-centered-evaluation","body-conducted-listening","Human tests must separately measure intelligibility, quality, and identity because body-conducted enhancement may improve one while harming another."),
+"kulkarni25_interspeech":("people-variation-and-health","speaker-characteristics","audio-deepfake-forensics","Audio deepfake attribution must distinguish generated voices and their sources rather than only detect that something sounds unusual."),
+"wu25_interspeech":("people-variation-and-health","clinical-and-assistive-speech","speech-wellness","Speech-based suicide-risk assessment raises a human consequence question: whether acoustic patterns can support intervention without replacing clinical judgment."),
+"lodagala25_interspeech":("languages-accents-and-resources","multilingual-and-crosslingual","arabic-tts-resources","A TTS benchmark must represent standard Arabic, dialects, and code-switching so one average voice score does not hide language variation."),
+"sankar25_interspeech":("languages-accents-and-resources","multilingual-and-crosslingual","accented-tts-resources","Adaptive speech modeling needs data that links language, accent, intonation, and speaker style across many Indian languages."),
+"serrand25_interspeech":("languages-accents-and-resources","low-resource-and-data-creation","regional-asr-corpus","A regional ASR corpus makes accent and lexical variation measurable instead of forcing a standard-language model to absorb it silently."),
+"naseem25_interspeech":("languages-accents-and-resources","low-resource-and-data-creation","script-and-language-resources","Punjabi and Urdu TTS must handle script and dialect choices explicitly because transliteration can change what the system is asked to pronounce."),
+"gorthi25_interspeech":("evaluation-deployment-and-consequence","privacy-security-and-accountability","multimodal-anti-spoofing","Anti-spoofing must combine modalities and remain reliable when an attacker changes the attack type rather than repeat a familiar artifact."),
+"koudounas25c_interspeech":("evaluation-deployment-and-consequence","privacy-security-and-accountability","spoken-unlearning","A spoken-language system should forget a requested capability or data trace without damaging unrelated language understanding."),
+"lechler25_interspeech":("evaluation-deployment-and-consequence","metrics-and-targets","crowdsourced-listening","Crowdsourced MUSHRA changes who supplies quality judgments, so listener agreement and objective metrics must be compared explicitly."),
+"phukon25_interspeech":("evaluation-deployment-and-consequence","metrics-and-targets","human-aligned-intelligibility","An ASR metric should agree with human intelligibility judgments even when a transcription error leaves the meaning understandable.")}
+papers={p["paper_id"]:p for p in json.loads((DATA/"interspeech-2025-papers.json").read_text())["papers"]}
+rows=[]
+for pid,a in A.items():
+ p=papers[pid]; abstract=p.get("abstract") or ""
+ if not abstract: raise SystemExit(f"missing abstract: {pid}")
+ rows.append({"paper_id":pid,"title":p["title"],"decision":"supported","confidence":"analyst-reviewed-D2","theme_id":a[0],"subtheme_id":a[1],"concept_id":a[2],"semantic_reasoning":a[3],"evidence_fields":["bp","wh","naive","ap","mech","math","eval","ww","limits"],"evidence_excerpt":abstract[:1400],"source_location":p["paper_url"],"source_sha256":hashlib.sha256(abstract.encode()).hexdigest(),"evidence_depth":"D2","review_state":"analyst-reviewed","claim_boundary":"Abstract supports the problem and proposed move; full-paper mechanism, tables, ablations, and limitations remain unreviewed."})
+payload={"schema_version":1,"batch_id":"interspeech-2025-semantic-d2-batch-012","status":"analyst-reviewed-D2-batch","claim_boundary":"These 32 assignments are analyst readings bounded by official abstracts; they do not establish full-paper mechanisms or results.","reviewed_count":len(rows),"rows":rows}
+(DATA/"interspeech-2025-semantic-reviewed-d2-batch-012.json").write_text(json.dumps(payload,indent=2,ensure_ascii=False)+"\n")
+print(json.dumps({"batch_id":payload["batch_id"],"reviewed_count":len(rows),"D2":len(rows)}))

@@ -1,0 +1,573 @@
+Towards Multi-Level Transcript Segmentation:
+LoRA Fine-Tuning for Table-of-Contents Generation
+Steffen Freisinger, Philipp Seeberger, Thomas Ranzenberger, Tobias Bocklet, Korbinian Riedhammer
+Technische Hochschule N¨urnberg, Germany
+firstname.lastname@th-nuernberg.de
+Abstract
+Segmenting speech transcripts into thematic sections benefits
+both downstream processing and users who depend on written
+text for accessibility. We introduce a novel approach to hierar-
+chical topic segmentation in transcripts, generating multi-level
+tables of contents that capture both topic and subtopic bound-
+aries. We compare zero-shot prompting and LoRA fine-tuning
+on large language models, while also exploring the integration
+of high-level speech pause features. Evaluations on English
+meeting recordings and multilingual lecture transcripts (Por-
+tuguese, German) show significant improvements over estab-
+lished topic segmentation baselines. Additionally, we adapt a
+common evaluation measure for multi-level segmentation, tak-
+ing into account all hierarchical levels within one metric.
+Index Terms: topic segmentation, spoken content segmenta-
+tion, table of contents generation, hierarchical segmentation
+1. Introduction
+Topic segmentation of spoken content is essential for many
+speech technology applications, especially when dealing with
+lengthy or multi-speaker recordings such as lectures, meetings,
+and seminars [1, 2, 3]. Unlike written texts, which are usu-
+ally structured into chapters or sections (e.g., books, papers,
+etc.), automatically generated transcripts of spoken language
+lack this semi-structural information. Despite advances in auto-
+matic speech recognition (ASR), the absence of structure makes
+it difficult for users to find specific information, and down-
+stream tasks such as information retrieval (IR) and retrieval aug-
+mented generation (RAG) rely on meaningful segmentation.
+Most previous work in spoken document segmentation has
+explored traditional linear segmentation methods, where the
+speech transcripts are divided into segments based on the tem-
+poral dimension. However, topics often exist on several levels
+of granularity, and the exclusively temporal view completely
+ignores these compositional structures. For example, a broad
+topic like ”Project Requirements” may encompass more spe-
+cific subtopics such as ”User Interface” and ”Testing Strate-
+gies”. Treating these subtopics as equivalent to broader themes
+disrupts the inherent hierarchy, resulting in a loss of structural
+clarity. A hierarchical approach not only improves navigation
+for all users, but also benefits those with hearing impairments by
+providing a clear, multi-level structure in written form. This fos-
+ters inclusive access to spoken content, where transcripts serve
+as a primary means of information intake.
+Large Language Models (LLMs) such as LLaMA1, Qwen2,
+and GPT-4 3 demonstrate strong language understanding and
+1https://arxiv.org/abs/2307.09288
+2https://arxiv.org/abs/2412.15115
+3https://arxiv.org/abs/2303.08774
+have led to significant advances in tasks such as summarization
+[4, 5] and report generation [6], which require an understanding
+of coherent content. Furthermore, their ability to perform zero-
+shot and in-context learning has unlocked new capabilities by
+leveraging task descriptions alongside large-scale pre-training
+and instruction-following data. However, applying LLMs to
+generate table of contents (ToC) in spoken content remains un-
+derexplored.
+This work is inspired by recent successes in using LLMs for
+related tasks [4, 5, 6]. We propose an approach to bridge the gap
+between the potential of LLMs for ToC generation and hierar-
+chical topic segmentation. Our goal is to automatically generate
+a hierarchical topical structure for spoken language content4.
+Our main contributions are summarized as follows:
+• We present a novel approach to the task of hierarchical topic
+segmentation of transcripts based on advances in summariza-
+tion using LLMs.
+• We demonstrate that our method outperforms existing seg-
+mentation baselines and evaluate the linear segmentation task
+on three datasets.
+• In terms of multi-level segmentation, we adapt a common lin-
+ear segmentation metric, so that it considers all hierarchical
+levels.
+2. Related Work
+2.1. Spoken Document Segmentation
+Spoken document segmentation applies to various domains,
+including lecture videos [3, 7], meetings [8, 9], radio pro-
+grams [2, 10], dialogues [11], podcasts [12, 13], and YouTube
+videos [14]. Most work focuses on segmenting textual tran-
+scripts, with a line of research incorporating acoustic features.
+TextTiling [15] determines topic shifts via lexical deviations
+across sentences and can be extended with pre-trained sentence
+embeddings [16] or randomly drawn hyperdimensional vec-
+tors [1]. Typical supervised methods treat segmentation as a
+sequence tagging task, labeling sentences as topic change or no
+change, using LSTM- and Transformer-based models [11, 17].
+Other work frame it as a classification problem and determine
+whether a given sentence boundary presents a topic change,
+given its left and right context [18, 19]. Beyond text, other ap-
+proaches incorporate acoustic cues such as pauses, pitch, vol-
+ume, and speaker changes [7, 20] as well as embeddings from
+pre-trained audio models [2, 10]. Despite the progress made in
+segmenting spoken documents, the focus is primarily on the flat
+level and ignores hierarchical structures.
+4Code and prompts: https://github.com/steffrs/toc-llm
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+276 10.21437/Interspeech.2025-2792
+
+2.2. Hierarchical Topic Segmentation
+Unlike traditional topic segmentation, hierarchical topic seg-
+mentation identifies topic shifts at multiple levels. Early work
+in this area combined lexical cohesion measures with conver-
+sational features to detect both top-level and subtopic bound-
+aries in multiparty dialogues [21]. Later approaches leveraged
+Bayesian multi-scale models and affinity propagation to con-
+struct nested topic structures in text [22, 23]. Hierarchical meth-
+ods have also been explored in spoken dialogue summariza-
+tion. In [24], the authors proposed a two-stage system integrat-
+ing ASR with text-based summarization, employing specialized
+segmentation and merging algorithms to process long conversa-
+tional data. Although not exclusively a segmentation frame-
+work, their approach highlights the value of multi-level organi-
+zation for enhanced readability.
+2.3. Table-of-Contents Generation
+A specialized form of topic segmentation is ToC generation,
+which integrates segmentation with title generation. [25] use
+a hierarchical discriminative model to generate ToCs for text-
+books. Their method combines local and global models for
+candidate title generation and candidate title selection, respec-
+tively. Here, the global model aims to enforce the coherence
+of the ToC structure. Similarly, [26] investigate automatic hi-
+erarchy identification, leveraging linguistic features and super-
+vised classification on diverse corpora such as Wikipedia and
+literary works. To address data sparsity, [27] employ semi-
+supervised learning to integrate word clusters into structured
+models in order to enhance segmentation for long texts. Con-
+sidering speech transcripts, [28] apply hierarchical clustering
+on conceptual word vectors to extract a layered topic structure
+in meeting transcripts. In contrast, PODTILE [29] introduces a
+fine-tuned transformer for generating podcast chapters with ti-
+tles but does not incorporate hierarchical structures. While early
+research explored this direction, end-to-end generation of ToC
+using LLMs remains relatively underexplored in spoken docu-
+ment segmentation.
+3. Method
+3.1. Problem Definition
+Let D be a document of n sentences{s1,...,s n}. A lin-
+ear segmentation partitions D into a single set of contiguous
+segments{S1,...,S m}, such that Sm
+i=1Si = D and no two
+segments overlap. We extend this to a hierarchical segmen-
+tation across L levels, where each level l also defines a full
+partition of D. Every boundary at level l persists at level
+l + 1. Formally, if Sl
+i is a segment at level l, it may stay in-
+tact at levell + 1, or split into smaller contiguous sub-segments
+{Sl
+i}→{ Sl+1
+i,1 ,Sl+1
+i,2 ,... }. This produces nested structures,
+from coarse top-level topics atl = 1 down to finer subtopics at
+l = L. For our linear segmentation experiments, we consider
+only the lowest levelL in isolation.
+3.2. ToC-LLM: Table-of-Contents Generation
+We present a method that applies LLMs to produce a multi-level
+table of contents directly from a speech transcript (cf. Figure 1).
+Rather than predicting only boundary positions, our approach
+generates a structured outline, allowing each segment to be la-
+beled with its hierarchical level. This is achieved through a sys-
+tem prompt instructing the model to output a table of contents
+for the entire transcript. Each line of the input contains exactly
+ToC-LLM
+ASR + FA
+1 Contents [0]
+2 Architectural Styles [6]
+2.1 Benefits [24]
+2.2 Examples [34]
+2.2.1 Pipes and Fitlers [40]
+2.2.2 Layered [67] 
+...
+3 Difficulties [99]
+4 Exercises [126]
+5 Bibliography [136]
+pause
+audio waveform
+Figure 1: Overview of our approach with an example from
+VIDEOAULA (translated): First, we generate transcripts using
+an ASR system and apply forced alignment (FA) to synchronize
+the transcripts with the audio. Then, we extract inter-sentence
+pause durations and prompt the LLM along with the text. The
+output is a table of contents that shows the topic boundaries.
+one sentence, labeled with its corresponding index [30, 31]. The
+final output uses dotted numbering (e.g., 2.2.1) to encode the
+segment’s level, along with a topic name and the associated sen-
+tence index. Figure 1 illustrates an example of the resulting
+structure.
+3.3. Infusing Acoustic Cues
+To explore the impact of acoustic cues on topic segmen-
+tation, we optionally incorporate inter-sentence pause du-
+rations into the transcript text. Past research indicates
+that pauses serve as a valuable indicator of topic bound-
+aries [2, 3, 32]. In our setup, each sentence line can
+include a pause annotation (e.g., 42 (pause=0.62s):
+Now let’s continue with... ), allowing the model to
+see these timing gaps. Because of the precise alignment per-
+formed during preprocessing (cf. Section 4.1), we obtain pause
+intervals directly from the sentence boundaries without addi-
+tional audio processing. This optional feature aims to leverage
+high-level acoustic information to refine boundary detection.
+3.4. Modeling and Implementation
+Our primary model is Mistral Nemo 5, a 12-billion-parameter
+LLM trained on multilingual data. It supports a 128k-token
+context window, making it suitable for long-form transcripts in
+different languages. For comparison, we also employQwen2.5-
+7B6, a 7.61-billion-parameter model with the same context
+length and multilingual coverage. Both models have been
+instruction-tuned to better handle natural language queries. We
+refer to these models as TOC-N EMO and TOC-Q WEN.
+We use 4-bit quantized checkpoints78 from the unsloth9 li-
+brary to reduce memory usage and accelerate inference. To
+explore domain adaptation, we compare a zero-shot scenario
+(no fine-tuning) with LoRA-based fine-tuning [33]. LoRA
+freezes the main model weights and updates a set of low-
+rank adapters. In combination with 4-bit quantization, this has
+shown to significantly reduce the memory footprint and train-
+ing time, while preserving performance comparable to full-
+precision fine-tuning [34]. In both zero-shot and fine-tuned
+configurations, we maintain the same prompt format to ensure
+a fair comparison.
+5https://mistral.ai/news/mistral-nemo
+6https://arxiv.org/abs/2412.15115
+7unsloth/Qwen2.5-7B-Instruct-unsloth-bnb-4bit
+8unsloth/Mistral-Nemo-Instruct-2407-bnb-4bit
+9https://github.com/unslothai/unsloth
+277
+
+4. Experiments
+4.1. Datasets
+For our experiments, we employ three topic segmentation
+datasets and provide an overview in Table 2. The AMI cor-
+pus [9] comprises 171 English meetings with 139 sessions an-
+notated for topic segmentation. We adapt the topic interval an-
+notations of AMI to our segmentation scheme (Section 4.2) by
+inserting a filler topic whenever a gap occurs. This preserves
+the practice of predicting only topic changes [14, 16, 17, 18].
+To create a hierarchical structure, we treat any topic that be-
+gins within a larger segment as a subtopic. However, AMI is
+relatively shallow in hierarchical depth compared to the other
+two datasets. The V IDEOAULA dataset [3] contains 34 Por-
+tuguese video lectures on computer science topics. Each lecture
+is given by a distinct speaker and includes topic segment anno-
+tations. L ECTURE DE [32] is an internal collection of German
+video lectures covering engineering, social sciences, and didac-
+tics. We manually annotated these recordings with hierarchical
+topic labels to facilitate multi-level segmentation experiments.
+For all datasets, we follow the same preprocessing pro-
+cedure. We first generate transcripts with Whisper large-v2
+[35], an end-to-end multilingual ASR model trained on 680,000
+hours of speech. Next, we apply the Montreal Forced Aligner
+[36] to synchronize the transcripts with the respective audio
+tracks. Finally, we segment the aligned text into sentences using
+SpaCy10. This pipeline aims to approximate realistic conditions
+in which content is transcribed and segmented automatically.
+4.2. Hierarchical Evaluation
+When evaluating methods producing hierarchical segmentation,
+standard single-level metrics (e.g., F1,B, orPk) lose the finer
+details or force one to select only a single level for evalua-
+tion. To address this, we propose a hierarchical metric wrap-
+per that yields a single numeric measure for multi-level seg-
+mentations, without discarding any coarse or fine levels. We
+adopt a simple dynamic programming approach to align each
+reference level with a non-decreasing hypothesis level, reminis-
+cent of monotonic sequence alignment methods (e.g., dynamic
+time warping), ensuring the reference’s coarse-to-fine progres-
+sion matches the hypothesis in a globally optimal way.
+Let D be a document with n sentences, and assume we
+have a reference hierarchical segmentation {Sl
+1,...,S l
+ml} at
+each levell∈{ 1,...,L ref}. Likewise, let{Hk
+1,...,H k
+pk} be
+the hypothesis segmentation at each level k∈{ 1,...,L hyp}.
+For each single level, we can compute a linear measure
+M (Rl,Hk), e.g., boundary similarityB [37].
+To define a single hierarchical score, we require that if the
+reference progresses from a coarser level l to a finer level l +
+1, the hypothesis does not move ”back up” to a less-fine level.
+Formally, we choose a functionϕ that satisfies:
+ϕ :{1,...,L ref}→{ 1,...,L hyp}, (1)
+where ϕ(l + 1)≥ϕ(l) ∀l.
+Given this constraint, we seek the ϕ∗ that maximizes the total
+boundary similarity:
+ϕ∗ = argmax
+ϕ(·)
+LrefX
+l=1
+B
+ 
+Rl,Hϕ(l)
+, subject toϕ(l + 1)≥ϕ(l).
+(2)
+10https://github.com/explosion/spaCy
+Finally, we define our hierarchical boundary similarity by aver-
+aging across all reference levels:
+Bhier(R,H ) = 1
+Lref
+LrefX
+l=1
+B
+ 
+Rl,Hϕ∗(l)
+. (3)
+Thus, each reference level l is matched to whichever hy-
+pothesis level maximizes its local boundary metric, while obey-
+ing the non-decreasing constraint of (1). Equations (2) and (3)
+then yield one scalar summarizing how well the entire nested
+segmentation aligns, from coarse to fine levels.
+4.3. Baselines
+We compare our proposed method with several linear baselines
+to investigate their effectiveness in solving the topic segmenta-
+tion task:
+TT-BERT : As unsupervised baseline, we adopt the vari-
+ant of TextTiling [15] in conjunction with sentence embeddings
+[16]. To compute the embeddings, we use a pre-trained text
+encoder11 from the SentenceTransformers library [38].
+MINI SEG: As supervised baseline, we apply the sequence-
+tagging approach of M INI SEG [14], which is based on
+MiniLM [39] and RoFormer [40]. For each sentence, we de-
+termine whether a topic boundary is present or not.
+CS-BERT : Another supervised baseline represents cross-
+segment BERT [18], which includes a binary segment boundary
+classification. We concatenate the left and right context and use
+the [CLS] token for classification.
+SEGMENT LLM: Finally, we adopt the prompt-based
+method introduced by [30]. This zero-shot approach instructs
+an LLM to generate a list of sentence indices, where each list
+represents a topic segment.
+4.4. Linear Segmentation Results
+Table 1 summarizes the linear segmentation results, for which
+we use the most fine-grained segmentation level (cf. Sec-
+tion 3.1). All supervised methods in Table 1 are pre-trained
+on the first 10,000 articles of the W IKI -727 corpus [17], simi-
+lar to [14, 19]. For AMI, we report the mean ± stddev across
+100 bootstrapped test sets, following [18]. For V IDEOAULA
+and L ECTURE DE, we employ a leave-one-speaker-out cross-
+validation strategy and report the mean ± stddev over all vali-
+dation sets. Metrics for each validation set are computed as the
+average across all samples in that set.
+Among the fine-tuned models, TOC-N EMO with pause du-
+rations achieves the best performance across all datasets. This
+indicates that the model can leverage additional acoustic cues
+when supervised fine-tuning is applied. In contrast, pause dura-
+tions lower the scores for the zero-shot variant, suggesting that
+these cues require specific training to yield improvements.
+SEGMENT LLM with ChatGPT [30] achieves the highest
+zero-shot scores. However, when both SEGMENT LLM and our
+ToC prompting rely on the Nemo model, the ToC approach con-
+sistently outperforms S EGMENT LLM across all datasets. This
+finding highlights the advantage of a table of contents format,
+even when only linear segmentation is evaluated. We did not
+run the SEGMENT LLM C HATGPT approach on L ECTURE DE,
+because privacy restrictions prevent external cloud-based pro-
+cessing for this dataset.
+11paraphrase-multilingual-mpnet-base-v2
+278
+
+Table 1: Comparison of methods for different datasets. We report mean ± stddev across 100 bootstrapped test sets (AMI ) and mean ±
+stddev on leave-one-speaker-out cross-validation sets (VIDEOAULA , LECTURE DE). ✓ indicates fine-tuning on respective target train
+set and ✗ refers to the zero-shot setting. The best scores in each group are highlighted in bold.
+AMI V IDEOAULA LECTURE DE
+Methods Tuning F1↑ B↑ F1↑ B↑ F1↑ B↑
+TT-BERT [16] ✗ 7.25 ± 1.47 6.71 ± 0.97 9.42 ± 2.45 8.73 ± 2.87 6.94 ± 4.43 8.31 ± 2.55
+SEGMENT LLM C HATGPT [30] ✗ 10.35 ± 2.14 7.97 ± 1.31 27.57 ± 9.27 22.29 ± 8.32 - -
+SEGMENT LLM N EMO cf. [30] ✗ 5.42 ± 1.44 5.79 ± 1.02 4.92 ± 2.64 4.68 ± 2.18 9.87 ± 9.17 11.37 ± 10.22
+TOC-N EMO ✗ 7.36 ± 1.51 7.68 ± 1.07 12.27 ± 6.45 14.06 ± 5.80 20.55 ± 5.97 17.04 ± 4.98
+TOC-N EMO + PAUSE ✗ 6.50 ± 2.23 7.05 ± 1.72 9.90 ± 3.14 12.4 ± 3.79 17.5 ± 7.64 15.79 ± 6.26
+MINI SEG [14] ✓ 18.61 ± 2.54 14.90 ± 1.68 38.72 ± 7.80 28.28 ± 4.42 23.86 ± 11.18 19.21 ± 8.11
+CS-BERT [18] ✓ 20.50 ± 2.71 15.77 ± 1.78 47.77 ± 8.47 34.22 ± 6.09 31.08 ± 5.99 22.88 ± 6.37
+TOC-N EMO ✓ 26.55 ± 2.92 22.79 ± 2.40 64.26 ± 7.86 51.94 ± 8.10 58.47 ± 15.86 49.50 ± 17.04
+TOC-N EMO + PAUSE ✓ 30.34 ± 3.28 24.81 ± 2.30 67.34 ± 6.57 55.18 ± 6.42 58.89 ± 13.65 49.77 ± 14.72
+TOC-Q WEN + PAUSE ✓ 24.71 ± 3.91 18.68 ± 2.95 45.69 ± 14.72 35.95 ± 13.59 51.05 ± 17.89 42.20 ± 18.40
+Table 2: Dataset statistics of the three datasets.
+Dataset Records Duration Speakers Levels
+AMI 139 73h - 3
+VIDEOAULA 34 23h 5 4
+LECTURE DE 96 27h 4 5
+1 2 3 4 5
+Hypothesis Levels
+1
+2
+3
+4 Reference Levels
+0.47 0.35 0.32 0.3 0.3
+0.34 0.48 0.48 0.48 0.48
+0.28 0.5 0.57 0.57 0.57
+0.27 0.48 0.56 0.56 0.56
+Figure 2: Level-specificB scores for each reference (rows) to
+hypothesis (column) level combination. Average over all sam-
+ples of TOC-N EMO + PAUSE on VIDEOAULA
+4.5. Hierarchical Segmentation Results
+The linear scores in Table 1 do not reveal whether our meth-
+ods truly produce nested structures, with coarse top-level and
+finer sub-level segments. To address this, we apply the extended
+boundary similarity metric (Bhier) introduced in Section 4.2.
+This metric assesses the matching of the hypothesized and ref-
+erence levels, thus reflecting the nested organization of topics.
+Figure 2 illustrates the B-scores across different reference
+and hypothesis levels for the V IDEOAULA dataset, averaged
+over all lectures. The chosen method is T OC-N EMO + PAUSE .
+As the figure shows, the highest scores appear when comparing
+levels of similar granularity. This indicates that the model suc-
+cessfully captures both broad top-level and fine-grained lower-
+level topics, producing a meaningful table of contents structure.
+Table 3 reports Bhier for the zero-shot methods from Ta-
+Table 3: Hierarchical B scores (with difference to linear B
+scores) for different 0-shot methods and datasets.
+Methods AMI V IDEOAULA LECTURE DE
+TT-BERT 6.70 (-0.01) 8.64 (-0.09) 7.92 (-0.39)
+S.LLM C HATGPT 8.49 (+0.52) 20.2 (-2.09) -
+S.LLM N EMO 5.77 (-0.02) 4.17 (-0.51) 8.72 (-2.65)
+TOC-N EMO 8.50 (+0.82) 14.01 (-0.05) 21.56 (+4.52)
+TOC-N EMO + P. 8.10 (+1.05) 12.00 (-0.40) 21.73 (+5.94)
+ble 1, along with the difference to the linear B scores. On
+the L ECTURE DE dataset, which has deeper hierarchies (see
+Table 2), the hierarchical metric for the linear-only segmenter
+SEGMENT LLM N EMO is lower than its standard linear B-
+scores. Conversely, methods designed for multi-level output
+achieve higher Bhier values compared to their linear B, un-
+derscoring the benefit of explicitly modeling nested topics. For
+AMI, whose annotations are relatively shallow, the gap between
+B andBhier is less pronounced across all methods. These find-
+ings highlight the added structural value of hierarchical segmen-
+tation, indicating a need for evaluation metrics that go beyond
+simple linear boundaries.
+5. Conclusion
+We introduce a hierarchical topic segmentation approach that
+generates a multi-level table of contents from lengthy speech
+transcripts. Our experiments demonstrate that LLMs can sur-
+pass traditional baselines when fine-tuned. Including pause-
+duration cues provides an additional boost in segmentation per-
+formance. In addition, we propose a hierarchical evaluation
+method, offering deeper insights compared to linear metrics.
+Nonetheless, zero-shot models still show substantial per-
+formance gaps, pointing to the need for more effective solu-
+tions that do not rely on supervised data from the target domain
+or language. We hope our findings inspire additional work on
+hierarchical segmentation, which can add valuable structure to
+automatically generated transcripts.
+6. References
+[1] S. Park, J. Seo, and J. Lee, “Unsupervised Dialogue Topic Seg-
+mentation in Hyperdimensional Space,” inINTERSPEECH, 2023,
+279
+
+pp. 730–734.
+[2] I. Ghinassi, L. Wang, C. Newell, and M. Purver, “Multimodal
+topic segmentation of podcast shows with pre-trained neural en-
+coders,” in Proc. ACM ICMR, 2023, p. 602–606.
+[3] E. R. Soares and E. Barr ´ere, “Automatic topic segmentation for
+video lectures using low and high-level audio features,” in Proc.
+WebMedia, 2018, p. 189–196.
+[4] H. Shang, Z. Li, J. Guo, S. Li, Z. Rao, Y . Luo, D. Wei, and
+H. Yang, “An end-to-end speech summarization using large lan-
+guage model,” in Interspeech 2024, 2024, pp. 1950–1954.
+[5] W. Kang and D. Roy, “Prompting large language models with
+audio for general-purpose speech summarization,” in Interspeech
+2024, 2024, pp. 1955–1959.
+[6] R. G. Reddy et al., “Smartbook: Ai-assisted situation report gen-
+eration for intelligence analysts,” 2024.
+[7] D. Chand and H. O ˘gul, “A framework for lecture video seg-
+mentation from extracted speech content,” 2021 IEEE SAMI, pp.
+000 299–000 304, 2021.
+[8] A. Janin et al., “The icsi meeting corpus,” in ICASSP, vol. 1, 2003,
+pp. I–I.
+[9] I. Mccowan et al., “The ami meeting corpus,”Int’l. Conf. on Meth-
+ods and Techniques in Behavioral Research, 2005.
+[10] O. Berlage, K. Lux, and D. Graus, “Improving automated seg-
+mentation of radio shows with audio embeddings,” CoRR, vol.
+abs/2002.05194, 2020.
+[11] L. Zhang and Q. Zhou, “Topic segmentation for dialogue stream,”
+in 2019 Asia-Pacific Signal and Information Processing Associ-
+ation Annual Summit and Conference (APSIPA ASC) , 2019, pp.
+1036–1043.
+[12] A. Clifton, S. Reddy, Y . Yu, A. Pappu, R. Rezapour, H. Bonab,
+M. Eskevich, G. Jones, J. Karlgren, B. Carterette, and R. Jones,
+“100,000 podcasts: A spoken English document corpus,” in Proc.
+COLING, 2020, pp. 5903–5917.
+[13] E. Garmash et al., “Cem mil podcasts: A spoken portuguese doc-
+ument corpus for multi-modal, multi-lingual and multi-dialect in-
+formation access research,” in Experimental IR Meets Multilin-
+guality, Multimodality, and Interaction, 2023, pp. 48–59.
+[14] F. Retkowski and A. Waibel, “From text segmentation to smart
+chaptering: A novel benchmark for structuring video transcrip-
+tions,” in Proc. EACL, Y . Graham and M. Purver, Eds., 2024, pp.
+406–419.
+[15] M. A. Hearst, “Texttiling: Segmenting text into multi-paragraph
+subtopic passages,” Comput. Linguist., vol. 23, no. 1, p. 33–64,
+1997.
+[16] A. Solbiati, K. Heffernan, G. Damaskinos, S. Poddar, S. Modi,
+and J. Cali, “Unsupervised topic segmentation of meetings with
+bert embeddings,” 2021.
+[17] O. Koshorek, A. Cohen, N. Mor, M. Rotman, and J. Berant, “Text
+segmentation as a supervised learning task,” in Proc. NAACL.
+ACL, 2018, pp. 469–473.
+[18] M. Lukasik, B. Dadachev, G. Sim ˜oes, and K. Papineni,
+“Text segmentation by cross segment attention,” CoRR, vol.
+abs/2004.14535, 2020.
+[19] R. Ghosh, H. S. Kajal, S. Kamath, D. Shrivastava, S. Basu, and
+S. Srinivasan, “Topic segmentation in the wild: Towards segmen-
+tation of semi-structured & unstructured chats,” 2022.
+[20] E. R. Soares and E. Barr ´ere, “An optimization model for tempo-
+ral video lecture segmentation using word2vec and acoustic fea-
+tures,” in Proc. WebMedia, 2019, p. 513–520.
+[21] P.-Y . Hsueh, J. D. Moore, and S. Renals, “Automatic segmenta-
+tion of multiparty dialogue,” in Proc. EACL, D. McCarthy and
+S. Wintner, Eds., 2006, pp. 273–280.
+[22] J. Eisenstein, “Hierarchical text segmentation from multi-scale
+lexical cohesion,” in Proc. NAACL, M. Ostendorf, M. Collins,
+S. Narayanan, D. W. Oard, and L. Vanderwende, Eds., 2009, pp.
+353–361.
+[23] A. Kazantseva and S. Szpakowicz, “Hierarchical topical segmen-
+tation with affinity propagation,” in Proc. COLING, J. Tsujii and
+J. Hajic, Eds., 2014, pp. 37–47.
+[24] D. Li, T. Chen, A. Tung, and L. B. Chilton, “Hierarchical sum-
+marization for longform spoken dialog,” inThe 34th Annual ACM
+Symposium on User Interface Software and Technology, 2021, p.
+582–597.
+[25] S. R. K. Branavan, P. Deshpande, and R. Barzilay, “Generating
+a table-of-contents,” in Proc. ACL, A. Zaenen and A. van den
+Bosch, Eds., 2007, pp. 544–551.
+[26] N. Erbs, I. Gurevych, and T. Zesch, “Hierarchy identification
+for automatically generating table-of-contents,” in Proc. RANLP,
+R. Mitkov, G. Angelova, and K. Bontcheva, Eds., 2013, pp. 252–
+260.
+[27] V . C. Nguyen, L. M. Nguyen, and A. Shimazu, “A semi-
+supervised approach for generating a table-of-contents,” in Proc.
+RANLP, G. Angelova and R. Mitkov, Eds., 2009, pp. 312–317.
+[28] K. Ohtsuki, N. Hiroshima, Y . Hayashi, K. Bessho, and S. Mat-
+sunaga, “Topic structure extraction for meeting indexing,” in In-
+terspeech 2004, 2004, pp. 305–308.
+[29] A. Ghazimatin et al., “Podtile: Facilitating podcast episode
+browsing with auto-generated chapters,” in Proc. CIKM, 2024, p.
+4487–4495.
+[30] Y . Fan, F. Jiang, P. Li, and H. Li, “Uncovering the potential of
+ChatGPT for discourse analysis in dialogue: An empirical study,”
+in Proc. LREC-COLING , N. Calzolari, M.-Y . Kan, V . Hoste,
+A. Lenci, S. Sakti, and N. Xue, Eds., 2024, pp. 16 998–17 010.
+[31] H. Yu, C. Deng, Q. Zhang, J. Liu, Q. Chen, and W. Wang, “Im-
+proving long document topic segmentation models with enhanced
+coherence modeling,” in Proc. EMNLP, H. Bouamor, J. Pino, and
+K. Bali, Eds., 2023, pp. 5592–5605.
+[32] S. Freisinger, F. Schneider, A. Herygers, M. Georges, T. Bocklet,
+and K. Riedhammer, “Unsupervised Multilingual Topic Segmen-
+tation of Video Lectures: What can Hierarchical Labels tell us
+about the Performance?” in Proc. SLaTE, 2023, pp. 141–145.
+[33] E. J. Hu, Y . Shen, P. Wallis, Z. Allen-Zhu, Y . Li, S. Wang,
+L. Wang, and W. Chen, “LoRA: Low-rank adaptation of large lan-
+guage models,” in ICLR, 2022.
+[34] T. Dettmers, A. Pagnoni, A. Holtzman, and L. Zettlemoyer,
+“Qlora: efficient finetuning of quantized llms,” in NIPS, 2023.
+[35] A. Radford, J. W. Kim, T. Xu, G. Brockman, C. McLeavey, and
+I. Sutskever, “Robust speech recognition via large-scale weak su-
+pervision,” 2022.
+[36] M. McAuliffe, M. Socolof, S. Mihuc, M. Wagner, and M. Son-
+deregger, “Montreal Forced Aligner: Trainable Text-Speech
+Alignment Using Kaldi,” in Interspeech, 2017, pp. 498–502.
+[37] C. Fournier, “Evaluating text segmentation using boundary edit
+distance,” in Proc. ACL, H. Schuetze, P. Fung, and M. Poesio,
+Eds., 2013, pp. 1702–1712.
+[38] N. Reimers and I. Gurevych, “Making monolingual sentence
+embeddings multilingual using knowledge distillation,” in Proc.
+EMNLP, 2020.
+[39] W. Wang, F. Wei, L. Dong, H. Bao, N. Yang, and M. Zhou,
+“Minilm: deep self-attention distillation for task-agnostic com-
+pression of pre-trained transformers,” in NIPS, 2020.
+[40] J. Su, M. Ahmed, Y . Lu, S. Pan, W. Bo, and Y . Liu, “Roformer:
+Enhanced transformer with rotary position embedding,” Neuro-
+comput., vol. 568, no. C, 2024.
+280

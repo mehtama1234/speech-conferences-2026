@@ -1,0 +1,818 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+LitMAS: A Lightweight and Generalized Multi-Modal Anti-Spoofing
+Framework for Biometric Security
+Nidheesh Gorthi1, Kartik Thakral2, Rishabh Ranjan2, Richa Singh2, Mayank Vatsa2
+1Indian Institute of Information Technology Kottayam, India
+2Indian Institute of Technology Jodhpur, India
+nidheesh21bcs143@iiitkottayam.ac.in, {thakral.1, ranjan.4, richa, mvatsa}@iitj.ac.in
+Abstract
+Biometric authentication systems are increasingly being de-
+ployed in critical applications, but they remain susceptible to
+spoofing. Since most of the research efforts focus on modality-
+specific anti-spoofing techniques, building a unified, resource-
+efficient solution across multiple biometric modalities remains a
+challenge. To address this, we propose LitMAS, a Light weight
+and generalizable Multi-modal Anti-Spoofing framework de-
+signed to detect spoofing attacks in speech, face, iris, and
+fingerprint-based biometric systems. At the core of LitMAS is
+a Modality-Aligned Concentration Loss, which enhances inter-
+class separability while preserving cross-modal consistency
+and enabling robust spoof detection across diverse biometric
+traits. With just 6M parameters, LitMAS surpasses state-of-
+the-art methods by 1.36% in average EER across seven datasets,
+demonstrating high efficiency, strong generalizability, and suit-
+ability for edge deployment. Code and trained models are avail-
+able at https://github.com/IAB-IITJ/LitMAS.
+Index Terms: Anti-Spoofing, Multi-Modal, Biometric Systems
+1. Introduction
+Biometric authentication has become a cornerstone of secure
+identity verification, widely used in banking, mobile authentica-
+tion, access control, and emerging technologies such as AR/VR
+systems and smart assistants. These systems leverage speech,
+face, iris, and fingerprint recognition, which can be used indi-
+vidually or in combination to enhance security. For instance,
+speech-based authentication is common in voice assistants and
+telephone banking, while face recognition is used in smartphone
+unlocking and airport security. Iris recognition is applied in
+high-security environments like border control, and fingerprint
+authentication is a standard method for financial transactions
+and personal device security. In multi-modal authentication sys-
+tems, such as those used in financial institutions, combining
+multiple biometric traits further strengthens the security.
+Despite their widespread adoption, biometric systems re-
+main highly susceptible to spoofing attacks, where adversaries
+attempt to bypass authentication using fake biometric traits,
+such as replayed voice recordings, printed face images, syn-
+thetic irises, or fabricated fingerprints [1]. While extensive re-
+search has been conducted on modality-specific anti-spoofing
+solutions [2, 3, 4, 5], real-world biometric authentication in-
+creasingly relies on multi-modal systems where existing meth-
+ods fail, creating a demand for generalized anti-spoofing meth-
+ods (as illustrated in Figure 1) that can generalize across differ-
+ent biometric traits. Furthermore, deploying anti-spoofing mod-
+els on resource-constrained edge devices such as smartphones,
+IoT systems, and AR glasses remains a challenge, as most exist-
+ing solutions are computationally expensive and lack efficiency.
+Recognition 
+Module
+Gallery
+Matching
+No
+No
+ (a)   Typical approach for Anti-spoofing across multiple modalities.
+(b)   LitMAS
+Voice Anti-Spoofing
+Face Anti-Spoofing
+Fingerprint Anti-Spoofing
+Iris Anti-Spoofing
+Separate model for each Modality
+Multi-Modal Data
+Unification
+Unified Anti-Spoofing
+Spoof?
+Spoof?
+Spoof?
+Multi-Modal Data
+Figure 1: Comparison of (a) existing multi-modal anti-spoofing
+approach and (b) a unified approach (proposed).
+Over the years, substantial progress has been made in anti-
+spoofing research across individual biometric modalities.
+In
+voice anti-spoofing, techniques such as linear frequency cep-
+stral coefficients (LFCC) and constant-Q cepstral coefficients
+(CQCC) [6] have been widely used.
+At the same time, re-
+cent approaches focus on processing raw audio [7, 8] and data
+augmentation [9] to further improve detection efficiency. Face
+anti-spoofing has evolved to counter various attacks, includ-
+ing printed photos, video replays, and 3D masks, with recent
+advancements leveraging hyperbolic embeddings [10], Vision
+Transformers [11], and lightweight CNN models [12] optimized
+for real-time detection. Recent digital attacks, particularly face-
+swapping techniques, have been extensively studied in the liter-
+ature [13, 14, 15], along with the development of corresponding
+defense mechanisms [16, 17, 18]. Similarly, iris anti-spoofing
+techniques have progressed from handcrafted features such as
+LBP and HOG [19] to deep learning-based classification meth-
+ods with different backbones [20]. Recent works in fingerprint
+anti-spoofing have transitioned from traditional Gabor and LBP
+descriptors to deep learning solutions, including Transformer-
+based classifiers [21] and MobileNet-SVM architectures [22].
+Despite advancements in modality-specific anti-spoofing,
+existing methods struggle with cross-modal generalization and
+are often computationally expensive, limiting their deployment
+on real-world edge devices. To address this, we propose Lit-
+MAS, a generalized and lightweight anti-spoofing framework
+that works across multiple biometric modalities. Our key con-
+tributions are as follows:
+• A Unified Anti-Spoofing Framework termed LitMAS, which
+is the first multi-modal anti-spoofing model. It is capable
+of detecting attacks on speech, face, iris, and fingerprint
+with a single, efficient architecture, while processing a sin-
+gle modality at a time.
+• We propose Modality-Aligned Concentration (MAC) Loss to
+enhance separation between live and spoof samples while
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+5658
+10.21437/Interspeech.2025-2677
+
+Pre-training Task
+LMAC
+Downstream Task
+DeiT Backbone
+DeiT Backbone
+Projection Module 
+P(m)
+Embedding Space
+Classifier g(θ)
+Projection Expert
+Spoof
+Real
+Self-attention
+Feed-Forward Network
+Self-attention
+Feed-Forward Network
+Self-attention
+Feed-Forward Network
+Self-attention
+Feed-Forward Network
+Self-attention
+Feed-Forward Network
+Self-attention
+Feed-Forward Network
+Weight Transfer
+Projection Expert
+Projection Expert
+Projection Expert
+{Modality Type 
+(m)}
+D(m)
+train
+D(m)
+train
+Figure 2: Illustration of the proposed LitMAS architecture (best viewed in color). The left block demonstrates the first step of the pre-
+training task with the MAC loss, and the right block demonstrates the second step of MoPE architecture used for the downstream task.
+preserving modality-specific information. Additionally, our
+Mixture of Projection Experts (MoPE) architecture balances
+modality-invariant representations with modality-aware fea-
+ture retention, ensuring robust generalization.
+• With only ∼6M parameters, LitMAS achieves state-of-the-
+art anti-spoofing performance while being resource-efficient
+for real-time edge deployments. We validate its effectiveness
+across seven diverse datasets, demonstrating superior accu-
+racy and generalization over existing methods.
+2. Proposed LitMAS Framework for
+Multi-Modal Anti-Spoofing
+The proposed framework is illustrated in Figure 2. Let M =
+{m1, m2, . . . , m|M|} be the set of biometric modalities we aim
+to protect against spoofing (e.g., speech, face, iris, fingerprint).
+Let the combined training set be defined as
+Dtrain =
+[
+m∈M
+D(m)
+train
+(1)
+where D(m)
+train is the training subset for modality m. Each sam-
+ple xi in D(m)
+train is associated with a label yi ∈{0, 1}, where
+yi = 0 indicates a bonafide (real) sample and yi = 1 indicates
+a spoofed sample. Our goal is to learn a single unified anti-
+spoofing model, LitMAS, which processes input samples xi
+from any modality m and reliably classifies them into bonafide
+or spoof. To achieve strong cross-modal discriminability while
+remaining lightweight, LitMAS proceeds in two main steps: a
+pre-training step with a novel Modality-Aligned Concentration
+(MAC) Loss and a fine-tuning step that employs a Mixture of
+Projection Experts (MoPE) architecture.
+Step 1: Pre-training with Modality-Aligned Concentration
+(MAC) Loss: A key objective in multi-modal anti-spoofing is
+to obtain an embedding space in which: (i) Bonafide samples
+of the same modality are pulled closer together. (ii) Bonafide
+samples of different modalities still maintain class consistency.
+(iii) Spoof samples (across all modalities) are pushed farther
+from all bonafide embeddings.
+Let zi be the embedding of sample xi extracted by an initial
+backbone network. For each modality m, let Cm be the cen-
+ter (prototype) of bonafide embeddings for that modality. After
+each epoch, Cm is updated to be the mean of the bonafide em-
+beddings currently assigned to modality m. Formally, let Nm
+be the set of indices corresponding to (i) bonafide samples from
+modality m and (ii) spoof samples from any modality in the cur-
+rent training batch. We introduce the MAC loss in two stages.
+First, for modality m, we compute the concentration loss Lc as:
+Lm
+c = −
+1
+|Nm|
+X
+i∈Nm
+ˆyi log
+ 
+exp
+ sm
+i
+
+P
+j∈Nm exp
+ sm
+j
+
+!
+.
+(2)
+where sm
+i is the cosine similarity between zi and the modality
+center Cm, and ˆyi is the softmax-transformed label for sam-
+ple i.
+This loss is designed to pull bonafide embeddings of
+modality m toward Cm, while pushing away spoof samples of
+any modality. Next, we average this concentration loss over all
+modalities in the batch to define MAC loss as:
+LMAC =
+1
+|M|
+X
+m∈M
+Lm
+c .
+(3)
+This ensures that every modality jointly contributes to sepa-
+rating real versus spoof embeddings while also preserving intra-
+class consistency for each modality’s bonafide samples. The
+initial pre-training step establishes a robust initialization for the
+embedding space.
+Step 2: Mixture of Projection Experts (MoPE): Although
+the pre-trained backbone now produces representations that par-
+tially separate bonafide and spoof samples, each modality might
+still exhibit unique cues (e.g., replay artifacts in speech vs. tex-
+ture anomalies in fingerprint images).
+To incorporate these
+modality-specific nuances, we introduce a Mixture of Projec-
+tion Experts (MoPE) layer.
+Concretely, we define a set of projection heads
+
+P(m) :
+Rd →Rk	
+m∈M, with d as the dimension of the backbone’s
+embedding space, and k as a (possibly) larger feature dimension
+that better captures the fine-grained cues needed to discrimi-
+nate spoof attacks for modality m. During training, a sample xi
+from modality m is projected through the corresponding head
+P(m). In this way, each projection expert captures the critical,
+modality-specific features necessary for classification.
+After aggregating these transformed features, we utilize a
+lightweight classifier gθ(·) to yield the final spoof vs. bonafide
+score. The complete model is then trained end-to-end using
+a standard cross-entropy objective on top of the pre-trained
+weights, thereby allowing both the backbone and the projection
+experts to refine the embeddings jointly.
+5659
+
+Table 1: AUC (↑) and EER (%) (↓) values reported across the four biometric modalities for performance comparison of different
+baseline algorithms and the proposed LitMAS algorithm. Each baseline is re-trained on all the modalities.
+Algorithm
+Speech
+Iris
+Face
+Fingerprint
+Average
+AUC
+EER
+AUC
+EER
+AUC
+EER
+AUC
+EER
+AUC
+EER
+LCNN [23]
+0.9846
+6.43
+0.9921
+4.47
+0.9295
+14.14
+0.9139
+16.51
+0.9550
+10.39
+SpecRNet [24]
+0.9780
+7.46
+0.9872
+6.30
+0.9412
+12.73
+0.9629
+9.78
+0.9673
+9.07
+ViTUnified [21]
+0.9680
+9.25
+0.9626
+11.97
+0.9498
+12.09
+0.8528
+23.03
+0.9333
+14.09
+MoSFPAD [22]
+0.9544
+11.91
+0.9967
+3.25
+0.9863
+6.31
+0.9809
+6.84
+0.9796
+7.08
+MobileNetV3-Spoof [12]
+0.9427
+13.20
+0.9945
+3.83
+0.9748
+8.08
+0.9830
+6.65
+0.9738
+7.94
+AAViT [11]
+0.9898
+4.64
+0.9936
+3.83
+0.9768
+8.07
+0.9752
+8.37
+0.9839
+6.23
+CascadeOfNetworks [25]
+0.9461
+13.00
+0.9863
+6.50
+0.9736
+9.02
+0.9650
+10.12
+0.9678
+9.66
+LitMAS (Proposed)
+0.9916
+4.54
+0.9962
+3.13
+0.9894
+5.06
+0.9837
+6.70
+0.9902
+4.86
+Table 2: Performance comparison of baseline algorithms using
+min t-DCF for speech modality, and BPCER @ APCER 1% for
+iris, face, and fingerprint modalities.
+Algorithm
+Speech
+Iris
+Face
+Fingerprint
+min t-DCF
+BPCER @ APCER 1%
+LCNN [23]
+0.16033
+12.09
+68.18
+70.08
+SpecRNet [24]
+0.18505
+18.58
+100.00
+51.31
+ViTUnified [21]
+0.23985
+25.2
+44.57
+86.43
+MosFPAD [22]
+0.26278
+6.04
+17.55
+32.05
+MobileNetV3 [12]
+0.31878
+9.78
+27.25
+28.77
+AAViT [11]
+0.11234
+10.09
+31.15
+31.44
+Cascade [25]
+0.29743
+16.40
+32.40
+47.84
+LitMAS
+0.11585
+6.36
+12.58
+25.5
+LitMAS: Our framework follows a two-step learning strategy.
+First, we pre-train with the MAC loss to learn well-separated
+embeddings that cluster bonafide samples by modality and push
+spoof samples away (see left block of Figure 2). Next, we in-
+troduce projection experts P(m) and a final classifier, refining
+for each modality in an end-to-end fashion (right block). Each
+expert captures fine-grained, modality-specific cues while lever-
+aging the robust, globally discriminative embeddings from the
+first step. This synergy delivers strong cross-modal generaliza-
+tion at minimal computational cost, making LitMAS ideal for
+resource-constrained, edge devices.
+3. Experimental Setup
+Datasets and Pre-processing: To evaluate the generalizability
+of our approach, we conduct experiments on diverse datasets
+spanning multiple biometric modalities, covering various types
+of spoofing attack. Statistics for all the utilized datasets are pre-
+sented in Table 3.
+Baseline Methods: We evaluate LitMAS against state-of-the-
+art methods across individual biometric modalities. To ensure a
+fair comparison, all baselines are trained on the combined multi-
+modal dataset and evaluated per modality, following our unified
+training protocol. We include strong baselines that are represen-
+tative state-of-the-art methods for each modality: LCNN [23],
+SpecRNet [24], AAViT [11], MobileNetV3-spoof [12], Cas-
+cadeOfNetworks [25], ViTUnified [21] and MoSFPAD [22].
+Evaluation Metrics: We evaluate performance using AUC and
+Equal Error Rate (EER). EER is the threshold where APCER
+Table 3: Class distribution of real and spoof samples across
+datasets. A total of 64,382 samples were used for training and
+176,875 samples were used for testing.
+Dataset
+Train
+Test
+Real
+Spoof
+Real
+Spoof
+ASVSpoof-2019 [26]
+5,400
+14,040
+18,090
+116,640
+Iris CSD [27]
+7,813
+6,750
+2,605
+2,250
+LivDet Fingerprint [28]
+5,998
+7,198
+5,092
+6,087
+MSU-MFSD [29]
+900
+2,683
+1,200
+3,592
+Replay Attack [30]
+1,800
+8,994
+2,400
+12,000
+Silicone Mask [31]
+237
+666
+501
+664
+MLFP [32]
+476
+1,427
+720
+5,034
+Total
+22,624
+41,758
+30,608
+146,267
+Table 4: APCER and BPCER values (at EER threshold) re-
+ported for the datasets used.
+Dataset
+APCER (%)
+BPCER (%)
+ASVSpoof 2019 [26]
+4.538
+4.541
+Iris CSD [27]
+3.129
+3.147
+LivDet-2017 Fingerprint [28]
+6.696
+6.702
+MSU-MFSD [29]
+5.750
+5.818
+Replay Attack [30]
+0.416
+0.449
+Silicone Mask [31]
+16.367
+16.566
+MLFP [32]
+13.055
+12.991
+(spoof misclassified as live) and BPCER (live misclassified as
+spoof) are equal, offering a balanced assessment, especially
+for imbalanced datasets. For speech, we also report the min-
+imum tandem detection cost function (min t-DCF) to evaluate
+the trade-off between missed detections and false alarms.
+Implementation details: We use DeiT-Tiny1 [33] as the back-
+bone for its efficiency and lightweight design. The model is
+trained on the combined dataset across all modalities and evalu-
+ated per modality. We employ the AdamW optimizer (learning
+rate: 1e-4, weight decay: 1e-5) with a batch size of 64, ensur-
+ing balanced bonafide samples in each batch. In Step 1, the
+[CLS] token’s feature size is 192, which is projected to 512 in
+Step 2 using modality-specific projection experts. Training is
+carried out for 40 epochs in both steps. We modify the input
+1https://github.com/facebookresearch/deit
+5660
+
+𐄂 Pretraining     𐄂 MoPE
+✓ Pretraining     𐄂 MoPE
+𐄂 Pretraining       ✓ MoPE
+✓ Pretraining       ✓ MoPE
+(LitMAS)
+ Spoofed (All modalities)
+ Fingerprint Bonafide
+ Face Bonafide
+Speech Bonafide
+Iris Bonafide
+Figure 3: t-SNE visualizations depicting the separation between spoofed and bonafide samples across different ablation configurations.
+layer of SpecRNet [24] to accept 3-channel inputs, and DeiT-
+Tiny is used as the backbone for AAViT [11]. Experiments are
+conducted on an Nvidia A40 and three A30 GPUs (48GB and
+24GB VRAM, respectively).
+4. Results and Discussion
+Generalization on Multi-Modal Anti-Spoofing Detection:
+Table 1 summarizes the detection performance of the proposed
+LitMAS framework compared against state-of-the-art methods
+in terms of AUC and EER across four biometric modalities:
+speech, iris, face, and fingerprint.
+As shown, LitMAS con-
+sistently outperforms all baselines, achieving superior average
+AUC and EER. In particular, it demonstrates the largest perfor-
+mance gains in the face and fingerprint modalities, where exist-
+ing approaches typically suffer due to modality-specific artifacts
+and limited generalization.
+We observe that certain methods like MoSFPAD [22] and
+MobileNetV3-Spoof [12] excel on individual modalities but ex-
+hibit lower performance on others. For instance, MoSFPAD
+shows strong results on iris spoof detection but underperforms
+on speech-based attacks. Similarly, MobileNetV3-Spoof works
+well on fingerprint attacks but fails to generalize effectively to
+speech spoofs. By contrast, LitMAS provides consistent im-
+provement across all modalities, highlighting its superior multi-
+modal learning strategy.
+In Table 2, we also report the min t-DCF for the speech
+modality, and BPCER@1% APCER for the remaining three
+modalities. The BPCER@1% APCER measures BPCER when
+APCER is fixed at 1%. This metric is particularly useful be-
+cause it evaluates the performance of the system under a strict
+false acceptance constraint. In addition to AUC and EER, we
+computed APCER and BPCER for a more fine-grained anal-
+ysis. Table 4 reports the values for each dataset at the EER
+threshold. Our framework not only sustains a low APCER (i.e.,
+fewer spoofed samples are misclassified as real) but also keeps
+the BPCER low (fewer real samples misclassified as spoof).
+This is crucial for practical settings since a system with low
+APCER but very high BPCER would excessively flag legitimate
+attempts as spoofs, reducing usability.
+Ablation Study and t-SNE Visualization: Table 5 compares
+four configurations that isolate the effects of MAC pre-training
+and MoPE. Without either component, the model reaches an
+AUC of 0.9843 and an EER of 6.17%.
+Adding MAC or
+MoPE individually provides a modest boost (AUC ≈0.986,
+EER ≈5.7%), while combining both yields the highest AUC
+(0.9902) and lowest EER (4.86%), confirming their synergis-
+tic benefit for multi-modal spoof detection. Figure 3 illustrates
+this progression via t-SNE embeddings: models lacking MAC
+or MoPE exhibit substantial overlap between bona fide and
+Table 5: Ablation study results for different training combina-
+tions of pre-training with MAC loss and the MoPE architecture
+Pretraining
+MoPE
+AUC
+EER
+✗
+✗
+0.9843
+6.17
+✓
+✗
+0.9862
+5.64
+✗
+✓
+0.9864
+5.75
+✓
+✓
+0.9902
+4.86
+spoof points, whereas LitMAS (rightmost panel) produces well-
+separated clusters across all modalities. This visual evidence
+aligns with the quantitative results, reinforcing the effectiveness
+of our proposed design.
+Discussion Overall, the results demonstrate that LitMAS ad-
+dresses the central challenges of multi-modal anti-spoofing by
+learning a structured embedding space and refining it with
+modality-specific projection experts, enabling strong cross-
+modal generalization even against widely varying spoof arti-
+facts (e.g., synthetic speech vs. silicone masks). Despite be-
+ing lightweight (with ∼6M parameters), the framework main-
+tains state-of-the-art performance and remains practical for real-
+time, on-device deployment. Additionally, the ablation study
+and dataset-specific metrics confirm LitMAS’s adaptability in
+handling diverse attacks. These findings highlight the potential
+of LitMAS as a robust, resource-efficient anti-spoofing solution
+that bridges the gap between stringent security requirements and
+the computational constraints of modern biometric applications.
+5. Conclusion
+We presented LitMAS, a unified anti-spoofing framework that
+leverages a novel Modality-Aligned Concentration (MAC) loss
+and a Mixture of Projection Experts (MoPE) to jointly han-
+dle speech, face, iris, and fingerprint attacks.
+Through ex-
+tensive experiments, we demonstrated that LitMAS not only
+disentangles modality-specific features, but also ensures robust
+live-spoof separation, leading to consistent gains over state-of-
+the-art methods. Crucially, the approach remains lightweight,
+making it well-suited for resource-constrained edge devices.
+Overall, LitMAS offers a scalable, high-performance solution
+to multi-modal anti-spoofing, closing the gap between stringent
+security requirements and practical deployment challenges.
+6. Acknowledgement
+This research is supported by a grant from IndiaAI and Meta via
+the Srijan: Centre of Excellence for Generative AI. Gorthi was
+supported by ACM IKDD Uplink Internship and Thakral by the
+PMRF Fellowship.
+5661
+
+7. References
+[1] K. Thakral, S. Mittal, M. Vatsa, and R. Singh, “Phygitalnet:
+Unified face presentation attack detection via one-class isolation
+learning,” in 2023 IEEE 17th International Conference on Auto-
+matic Face and Gesture Recognition (FG).
+IEEE, 2023, pp. 1–6.
+[2] H. Fang, A. Liu, N. Jiang, Q. Lu, G. Zhao, and J. Wan, “Vl-fas:
+Domain generalization via vision-language model for face anti-
+spoofing,” in ICASSP 2024 - 2024 IEEE International Conference
+on Acoustics, Speech and Signal Processing (ICASSP), 2024, pp.
+4770–4774.
+[3] M. Witkowski, S. Kacprzak, P. Zelasko, K. Kowalczyk, and
+J. Galka, “Audio replay attack detection using high-frequency fea-
+tures.” in Interspeech, 2017, pp. 27–31.
+[4] Z. Fang, A. Czajka, and K. W. Bowyer, “Robust iris presentation
+attack detection fusing 2d and 3d information,” IEEE Transac-
+tions on Information Forensics and Security, vol. 16, pp. 510–520,
+2020.
+[5] H. Liu, W. Zhang, F. Liu, H. Wu, and L. Shen, “Fingerprint pre-
+sentation attack detector using global-local model,” IEEE Trans-
+actions on Cybernetics, vol. 52, no. 11, pp. 12 315–12 328, 2022.
+[6] M. Todisco, H. Delgado, and N. Evans, “A new feature for auto-
+matic speaker verification anti-spoofing: Constant q cepstral co-
+efficients,” in The Speaker and Language Recognition Workshop
+(Odyssey 2016), 2016, pp. 283–290.
+[7] R. Ranjan, M. Vatsa, and R. Singh, “Context encoded multi-modal
+attention network for detecting audio spoofing,” in 2024 IEEE In-
+ternational Joint Conference on Biometrics (IJCB).
+IEEE, 2024,
+pp. 1–11.
+[8] R. Rishabh and M. Vatsa, and R. Singh, “Sv-deit: Speaker veri-
+fication with deitcap spoofing detection,” in 2023 IEEE Interna-
+tional Joint Conference on Biometrics (IJCB).
+IEEE, 2023, pp.
+1–10.
+[9] J. C. Sanchez, A. M. Peinado, and A. M. Gomez, “Data augmen-
+tation techniques for physical access in voice anti-spoofing,” in
+IberSPEECH 2024, 2024, pp. 1–5.
+[10] C. Hu, K.-Y. Zhang, T. Yao, S. Ding, and L. Ma, “Rethinking
+generalizable face anti-spoofing via hierarchical prototype-guided
+distribution refinement in hyperbolic space,” in 2024 IEEE/CVF
+Conference on Computer Vision and Pattern Recognition (CVPR),
+2024, pp. 1032–1041.
+[11] J. Yang, F. Chen, R. K. Das, Z. Zhu, and S. Zhang, “Adaptive-avg-
+pooling based attention vision transformer for face anti-spoofing,”
+in ICASSP 2024 - 2024 IEEE International Conference on Acous-
+tics, Speech and Signal Processing (ICASSP), 2024, pp. 3875–
+3879.
+[12] L.
+S.
+Luevano,
+Y.
+Mart´ınez-D´ıaz,
+H.
+M´endez-V´azquez,
+M. Gonzalez-Mendoza, and D. Frey, “Assessing the performance
+of efficient face anti-spoofing detection against physical and digi-
+tal presentation attacks,” in 2024 IEEE/CVF Conference on Com-
+puter Vision and Pattern Recognition Workshops (CVPRW), 2024.
+[13] K. Thakral, R. Ranjan, A. Singh, A. Jain, M. Vatsa, and R. Singh,
+“Illusion: Unveiling truth with a comprehensive multi-modal,
+multi-lingual deepfake dataset,” in The Thirteenth International
+Conference on Learning Representations.
+[14] K. Narayan, H. Agarwal, K. Thakral, S. Mittal, M. Vatsa,
+and R. Singh, “Df-platter: Multi-face heterogeneous deepfake
+dataset,” in Proceedings of the IEEE/CVF Conference on Com-
+puter Vision and Pattern Recognition, 2023, pp. 9739–9748.
+[15] K. Narayan, H. Agarwal, K. Thakral, S. Mittal, M. Vatsa, and R.
+Singh, “Deephy: On deepfake phylogeny,” in 2022 IEEE Interna-
+tional Joint Conference on Biometrics (IJCB).
+IEEE, 2022, pp.
+1–10.
+[16] K. Thakral, H. Agarwal, K. Naraya, S. Mittal, M. Vatsa, and
+R. Singh, “Deephynet: Towards detecting phylogeny in deep-
+fakes,” IEEE Transactions on Biometrics, Behavior, and Identity
+Science, 2024.
+[17] S. Chhabra, K. Thakral, S. Mittal, M. Vatsa, and R. Singh, “Low-
+quality deepfake detection via unseen artifacts,” IEEE Transac-
+tions on Artificial Intelligence, vol. 5, no. 4, pp. 1573–1585, 2023.
+[18] K. Narayan, H. Agarwal, S. Mittal, K. Thakral, S. Kundu,
+M. Vatsa, and R. Singh, “Desi: Deepfake source identifier for so-
+cial media,” in Proceedings of the IEEE/CVF conference on com-
+puter vision and pattern recognition, 2022, pp. 2858–2867.
+[19] A. Agarwal, A. Noore, M. Vatsa, and R. Singh, “Generalized con-
+tact lens iris presentation attack detection,” IEEE Transactions on
+Biometrics, Behavior, and Identity Science, vol. 4, no. 3, pp. 373–
+385, 2022.
+[20] P. T. Mahsa Mitcheff and A. Czajka, “Privacy-safe iris presenta-
+tion attack detection,” in IEEE International Joint Conference on
+Biometrics, 2024.
+[21] S. A. Grosz, K. P. Wijewardena, and A. K. Jain, “Vit unified: Joint
+fingerprint recognition and presentation attack detection,” in 2023
+IEEE International Joint Conference on Biometrics (IJCB), 2023,
+pp. 1–9.
+[22] A. Rai, S. Dey, P. Patidar, and P. Rai, “Mosfpad: An end-to-end
+ensemble of mobilenet and support vector classifier for fingerprint
+presentation attack detection,” Computers
+Security, vol. 148,
+p. 104069, 2025. [Online]. Available: https://www.sciencedirect.
+com/science/article/pii/S0167404824003742
+[23] X. Wang and J. Yamagishi, “A comparative study on recent neu-
+ral spoofing countermeasures for synthetic speech detection,” in
+Interspeech 2021, 2021, pp. 4259–4263.
+[24] P. Kawa, M. Plata, and P. Syga, “Specrnet: Towards faster and
+more accessible audio deepfake detection,” in 2022 IEEE Inter-
+national Conference on Trust, Security and Privacy in Computing
+and Communications (TrustCom), 2022, pp. 792–799.
+[25] J. E. Tapia, S. Gonzalez, and C. Busch, “Iris liveness detection us-
+ing a cascade of dedicated deep learning networks,” IEEE Trans-
+actions on Information Forensics and Security, vol. 17, pp. 42–52,
+2022.
+[26] Z. Wu, T. Kinnunen, N. Evans, J. Yamagishi, C. Hanilc¸i,
+M. Sahidullah, and A. Sizov, “Asvspoof 2015: the first automatic
+speaker verification spoofing and countermeasures challenge,” in
+Interspeech 2015, 2015, pp. 2037–2041.
+[27] N. Kohli, D. Yadav, M. Vatsa, R. Singh, and A. Noore, “Detecting
+medley of iris spoofing attacks using desist,” in 2016 IEEE 8th
+International Conference on Biometrics Theory, Applications and
+Systems (BTAS), 2016, pp. 1–6.
+[28] V. Mura, G. Orr`u, R. Casula, A. Sibiriu, G. Loi, P. Tuveri, L. Ghi-
+ani, and G. L. Marcialis, “Livdet 2017 fingerprint liveness de-
+tection competition 2017,” in 2018 international conference on
+biometrics (ICB).
+IEEE, 2018, pp. 297–302.
+[29] D. Wen, H. Han, and A. K. Jain, “Face spoof detection with image
+distortion analysis,” IEEE Transactions on Information Forensics
+and Security, vol. 10, no. 4, pp. 746–761, 2015.
+[30] I. Chingovska, A. Anjos, and S. Marcel, “On the effectiveness
+of local binary patterns in face anti-spoofing,” in 2012 BIOSIG -
+Proceedings of the International Conference of Biometrics Spe-
+cial Interest Group (BIOSIG), 2012, pp. 1–7.
+[31] I. Manjani, S. Tariyal, M. Vatsa, R. Singh, and A. Majumdar, “De-
+tecting silicone mask-based presentation attack via deep dictio-
+nary learning,” IEEE Transactions on Information Forensics and
+Security, vol. 12, no. 7, pp. 1713–1723, 2017.
+[32] A. Agarwal, D. Yadav, N. Kohli, R. Singh, M. Vatsa, and
+A. Noore, “Face presentation attack with latex masks in multi-
+spectral videos,” in 2017 IEEE Conference on Computer Vision
+and Pattern Recognition Workshops (CVPRW), 2017, pp. 275–
+283.
+[33] H. Touvron, M. Cord, M. Douze, F. Massa, A. Sablayrolles, and
+H. J´egou, “Training data-efficient image transformers & distilla-
+tion through attention,” in International conference on machine
+learning.
+PMLR, 2021, pp. 10 347–10 357.
+5662
+

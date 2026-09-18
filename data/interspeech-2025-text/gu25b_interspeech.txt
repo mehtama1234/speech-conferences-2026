@@ -1,0 +1,540 @@
+Ultra-Low Bit Post-Training Quantization of Large Speech Models via
+K-Means Clustering and Mixed Precision Allocation
+Tianteng Gu1,2, Bei Liu1, Haoyu Wang1, Yanmin Qian1∗
+1Auditory Cognition and Computational Acoustics Lab
+MoE Key Lab of Artificial Intelligence, AI Institute
+School of Computer Science, Shanghai Jiao Tong University, Shanghai, China
+2SJTU Paris Elite lnstitute of Technology, Shanghai Jiao Tong University, Shanghai, China
+{995999277, beiliu, fayuge, yanminqian }@sjtu.edu.cn
+Abstract
+Large speech foundation models like Whisper face significant
+deployment challenges due to their massive storage require-
+ments. While post-training quantization (PTQ) offers a prac-
+tical compression solution, existing methods suffer severe per-
+formance degradation below 8 bits, particularly for transformer-
+based architectures with prevalent weight outliers. We propose
+an ultra-low bit PTQ framework combining three key innova-
+tions: 1) K-means clustering for distribution-aware nonlinear
+quantization, 2) Mixed-precision allocation based on column-
+wise outlier density, and 3) Selective retention of critical out-
+liers in sparse FP32 format. Evaluated on Whisper-Large-V3
+(1.5B parameters), our method achieves 2.12-bit quantization
+with only 0.17% absolute WER increase on LibriSpeech test-
+clean. The approach also maintains whisper’s robust capabil-
+ities, showing less than 1% WER degradation across multiple
+dataset.
+Index Terms: speech recognition, model compression, quanti-
+zation
+1. Introduction
+Large-scale speech models like Whisper[1] and USM[2], with
+billions of parameters, have shown remarkable capabilities
+across a wide range of speech tasks, consistently delivering im-
+pressive performance on diverse domain datasets. However,
+their substantial storage requirements pose a significant chal-
+lenge to their deployment in practical scenarios. This challenge
+has propelled significant research efforts in model compression
+techniques to reduce storage footprint while preserving perfor-
+mance.
+Various compression paradigms have emerged to address
+this challenge, each with distinct advantages. Pruning meth-
+ods, which remove redundant parameters while maintaining
+model architecture, have demonstrated effectiveness through
+structured [3] and unstructured approaches [4, 5], while knowl-
+edge distillation transfers knowledge from large teacher mod-
+els to compact student networks [6]. However, these methods
+typically require computationally expensive retraining or archi-
+tectural modifications that limit their practicality for massive
+models.
+Quantization has emerged as particularly promising for
+speech models due to its hardware-friendly nature and
+architecture-agnostic implementation. This technique reduces
+model size by decreasing the precision of numerical repre-
+sentations in model parameters. While extensively studied
+in computer vision [7, 8] and natural language processing
+[9, 10, 11, 12, 13], automatic speech recognition remains rel-
+*Corresponding author
+atively unexplored. Most existing work [14, 15, 16, 17] focuses
+on Quantization Aware Training (QAT) [8], requiring retrain-
+ing on original datasets. Post-Training Quantization (PTQ) of-
+fers greater practicality by eliminating retraining needs, yet cur-
+rent PTQ methods [18, 19, 20] exhibit significant performance
+degradation below 8 bits - still prohibitive for billion-parameter
+models. The development of lossless PTQ techniques below 4
+bits remains an open frontier in speech technology.
+This context underscores the critical need for efficient quan-
+tization techniques that maintain performance while dramati-
+cally reducing model size. Such advancements would enable
+broader deployment across resource-constrained applications
+and devices. Motivated by this challenge, we propose a k-
+means-based mixed-precision method for ultra-low-bit PTQ of
+large-scale speech models. Our contributions include:
+1. K-means Quantization Framework: We adapt the k-means
+clustering algorithm for speech model quantization, en-
+hancing efficiency through intelligent weight clustering and
+distribution-aware quantization.
+2. Mixed-Precision Allocation Strategy: A novel bit alloca-
+tion mechanism that identifies critical features (e.g., outlier-
+containing weights) and dynamically assigns higher preci-
+sion to preserve model integrity.
+3. Ultra-Low Bitrate Validation: Experimental results on
+Whisper-Large demonstrate our method achieves 2-bit quan-
+tization with < 1% absolute WER increase across multiple
+datasets, establishing new state-of-the-art PTQ compression
+for speech models while maintaining robustness. The evalu-
+ation on other models like Wav2Vec2 demonstrates the broad
+applicability of the proposed method.
+This work bridges the critical gap between theoretical com-
+pression potential and practical deployment requirements for
+billion-parameter speech models, enabling new possibilities for
+edge deployment and multi-model applications.
+2. Related Works
+2.1. Post-Training Quantization
+Post-Training Quantization (PTQ) has emerged as a crit-
+ical paradigm for deploying neural networks in resource-
+constrained environments by reducing storage and computa-
+tional overhead [21]. The core challenge lies in mapping con-
+tinuous floating-point values to discrete integer representations
+while preserving model fidelity.
+Quantization strategies are broadly categorized by their
+mapping granularity: linear quantization employs uniform in-
+tervals to partition the value range, enabling hardware-efficient
+implementations through fixed-point arithmetic. Seminal works
+like Jacob et al. [22] established foundational linear quantiza-
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+1988 10.21437/Interspeech.2025-503
+Figure 1: K-means Clustering Process for Weight Quantization
+of a Single Column
+tion frameworks, while recent advances optimize scaling factor
+calibration [9, 11]. Nonlinear quantization dynamically adapts
+to parameter distributions, allocating higher precision to dense
+regions. This approach, exemplified by NormalFloat Quantiza-
+tion [23], proves particularly effective for non-Gaussian weight
+distributions prevalent in transformer architectures.
+2.2. Whisper Architecture and Quantization Challenges
+The Whisper architecture [1], a transformer-based model pre-
+trained on 680k hours of multilingual audio, achieves state-of-
+the-art speech recognition through massive scale (up to 1.55B
+parameters). However, its heavy reliance on attention mecha-
+nisms introduces distinctive weight distribution characteristics,
+including magnitude outliers concentrated in specific attention
+heads [24]. These outliers create significant quantization bot-
+tlenecks—conventional PTQ methods suffer severe accuracy
+drops below 4 bits due to insufficient resolution for critical pa-
+rameters [25], motivating specialized solutions for ultra-low-bit
+speech model compression.
+3. Methods
+To address the challenges posed by limited range represented
+by low-bit and outliers in Whisper during quantization, we
+adopted several methods, including K-Means based quantiza-
+tion, mixed-precision allocation, and selective outlier retention.
+These approaches help ensure that the quantized weights more
+closely align with the original full-precision weights, thereby
+reducing the performance loss caused by quantization. This sec-
+tion will provide a detailed overview of these methods.
+3.1. K-Means Based Quantization
+K-Means based quantization is a nonlinear quantization method
+where values are clustered into groups and represented by a cen-
+troid.
+For a linear layer
+f(X; W) = WX (1)
+weighted by W ∈ Rdout×din, we treat the columns of the
+weight matrix as quantization groups. The formation of the
+codebook Cj for the n-bit quantization of j-th column is de-
+rived as follows:
+Cj = K-Means(W:,j, 2n) (2)
+The full-precision values in the original matrix will be quan-
+tized to the index in codebook of the nearest centroid generated
+by K-Means.
+Qi,j = Quantize(Wi,j) = arg min
+q
+|Cj[q]− Wi,j| (3)
+where q∈{ 0, 1, . . . ,2n} denotes the index and Q denotes the
+quantized weight. We also adopted the weight update mecha-
+nism from GPTQ for the unquantized weights to further mini-
+mize the impact of quantization.
+During inference, the low-precision quantized weights are
+dequantized back to the corresponding high-precision centroids
+from the codebook:
+ˆWi,j = Dequantize(Qi,j) = Cj[Qij] (4)
+where ˆW denotes the dequantized weight. K-means based
+quantization maps weights to more representative centroids, en-
+abling model compression with less performance loss compared
+to linear quantization. The quantized weights could be further
+compressed using Huffman coding.
+3.2. Metric for Detecting Outliers
+Outliers significantly contribute to the performance of
+transformer-based model. However, due to their rarity and de-
+viation from the typical distribution, these outliers are difficult
+to approximate with the limited set of quantized values and can
+negatively impact the quantization of other values. Therefore,
+outliers require special handling. We propose a straightforward
+method to identify outliers and measure their ratio within spe-
+cific columns of the weight matrix. This metric forms the foun-
+dation for our subsequent strategies in mixed-precision alloca-
+tion and outlier retention.
+We identify outliers within each quantization group, specif-
+ically in each column of the weight matrix. The process is as
+follows:
+is Outlier(Wi,j) =
+(
+1, if|Wi,j| > S×|W:,j|
+0, Otherwise (5)
+Here,|W:,j| represents the mean of j-th column of |W|. S
+denotes a hyperparameter and is set to 13 in this work. This
+metric takes into account both the magnitude of the outliers and
+their deviation from the distribution.
+Rj = Σdout
+i is Outlier(Wi,j)
+dout
+(6)
+We then using Equation 8 to mesure Rj the ratio of outlier in
+the j-th column of W.
+3.3. Mixed Precision Allocation
+The distribution of quantization groups (columns) in the
+model’s weights varies significantly. Some groups are more
+clustered and can be adequately represented with only a few
+centroids, while others are more dispersed and require a larger
+number of centroids. To ensure that the quantized weights more
+accurately reflect the original weights, different numbers of
+centroids—i.e., different levels of quantization precision—are
+needed to be allocated to each group.
+We propose a simple yet effective mixed-precision allo-
+cation strategy based on the outlier ratio in Formula 6. This
+approach addresses the challenge of outliers by adjusting the
+overall precision of the quantization groups. Specifically, we
+maintain the standard precision for most quantization groups
+while increasing the precision for groups that contain a signifi-
+cant proportion of outliers.
+Precision(W:,j) =
+(
+b1, if Rj > T p
+b2, Otherwise (7)
+1989
+Figure 2: Ultra-Low Bit Quantization Framework: From full-precision weights to compressed representation through mixed-precision
+allocation, selective outlier retention, and K-means clustering.
+Here, b1 and b2 represent two different levels of quantization
+precision, with b1 being greater than b2. T is a threshold de-
+termined by ranking the outlier ratios of each column accord-
+ing to the target overall precision. For example, to quantize a
+model to 2.1 bits, we would quantize 95% of the columns to
+2-bit precision and the remaining 5% to 4-bit precision, with T
+set accordingly.
+3.4. Selective Outlier Retention
+To further reduce the disruption caused by outliers when de-
+termining centroids during weight quantization, and to prevent
+performance degradation after outliers are quantized, we selec-
+tively retain certain outliers. These outliers are excluded from
+the quantization process and do not participate in the K-means
+clustering of their respective groups. Instead, they are preserved
+in a sparse, full-precision matrix format, which is then com-
+bined with the dense quantized weights.
+We observed that outliers are highly concentrated, with
+90% of them clustered in just 10% of the columns. There-
+fore, consistent with our mixed-precision allocation strategy, we
+set different outlier retention rates for these two categories of
+columns.
+Outlier Retention Rate(W:,j) =
+(
+o1, if Rj > T o
+o2, Otherwise (8)
+Here, o1 and o2 represent the manually set outlier retention
+rates, and To is the threshold, determined in the same manner
+as Tp.
+4. Experiment
+4.1. Experimental Setup
+Models The experiments are conducted on Whisper-Large-V3,
+one of the best open-source speech models available, with 1.5
+billion parameters. Model’s weight is downloaded from Hug-
+gingface.
+Data To demonstrate the capability and robustness of the quan-
+tized model, we selected a variety of datasets as test sets. Fol-
+lowing the dataset configuration used in the Whisper paper, we
+chose several datasets for evaluating English speech recogni-
+tion: LibriSpeech test-clean and test-other, TED-LIUM 3, Com-
+monV oice 5.1, V oxPopuli.en, and FLEURS.en. For multilin-
+gual speech recognition, we selected the French, German, Span-
+ish, and Italian datasets from Multilingual LibriSpeech. These
+datasets collectively provide a comprehensive evaluation frame-
+work across both English and multiple languages.
+Quantization After determining the quantization centroids us-
+ing K-Means, we applied the GPTQ strategy to update the
+remaining parameters. The calibration set used for this pro-
+cess consisted of 2,048 randomly sampled entries from the
+LibriSpeech train-clean-500 dataset. The quantization of the
+Whisper-Large-V3 model was performed using an RTX 4090
+GPU, and the entire process took approximately three hours.
+4.2. Main Results
+Our framework establishes new benchmarks for speech model
+compression across multiple bitwidths, as detailed in Table 1.
+At 4-bit uniform quantization, the method achieves near-
+lossless performance with 2.04% WER on LibriSpeech test-
+clean (vs 2.02% FP32), matching GPTQ’s accuracy while using
+8× fewer bits. The advantages amplify at lower precisions: 3-
+bit quantization maintains 2.05% WER (+0.03% absolute) com-
+pared to GPTQ’s degraded 2.18%, demonstrating superior dis-
+tribution alignment through K-means clustering.
+The critical divergence occurs at 2-bit operation, where our
+method sustains functional recognition (14.04% WER) versus
+GPTQ’s catastrophic failure (51.13%). This 3.6× relative im-
+provement stems from adaptive handling of weight outliers -
+particularly evident in challenging datasets like Common V oice
+(40.71% vs 210.94% WER). Progressive precision reduction re-
+veals graceful degradation: 4-bit → 3-bit → 2-bit transitions
+incur 0.02% → 0.03% → 12.02% absolute WER increases on
+LibriSpeech clean, compared to GPTQ’s unstable 0.01% →
+0.15% → 49.09% collapse.
+Crucially, our method preserves Whisper’s cross-dataset ro-
+bustness at all bitwidths. The 2.12-bit configuration achieves
+≤ 1% absolute WER degradation on clean read speech (Lib-
+riSpeech: 2.19% vs 2.02%), spontaneous talks (TED-LIUM:
+3.67% vs 3.88%), and noisy recordings (V oxPopuli: 7.93%
+vs 7.32%). Even on accented Common V oice data – where
+GPTQ fails completely at 2 bits – our approach maintains us-
+able 11.92% WER versus 8.56% FP32 baseline. This consis-
+tency across five distinct English speech domains (read, sponta-
+neous, accented, noisy, educational) confirms that our quantiza-
+tion strategy retains Whisper’s core capability to handle diverse
+acoustic conditions.
+Enabling mixed-precision (2.1-bit) and outlier retention
+(2.12-bit) further enhances robustness, recovering near-original
+performance while maintaining 98.3% model compression. The
+hierarchical precision allocation – 4-bit for outlier-dense atten-
+tion heads, 2-bit for clustered feedforward weights – proves es-
+sential for preserving both accuracy and Whisper’s signature
+cross-domain reliability.
+1990
+Table 1: English Automatic Speech Recognition Performance of Quantized Whisper-Large-V3 on Various Datasets Measured by Word
+Error Rate
+Method Bit Mixed Precision Outlier Retention Libriseech Clean Librispeech Other Tedlium Common V oice V oxPopuli Fleurs
+Full 32 ✗ ✗ 2.02 3.91 3.88 8.56 7.32 4.03
+GPTQ 4 ✗ ✗ 2.03 3.91 3.88 8.82 9.02 4.12
+Ours 4 ✗ ✗ 2.03 3.96 4.53 8.61 8.51 4.07
+GPTQ 3 ✗ ✗ 2.18 4.34 3.79 9.89 8.11 4.67
+Ours 3 ✗ ✗ 2.05 4.09 3.71 8.87 8.23 4.23
+GPTQ 2 ✗ ✗ 51.13 79.99 57.31 210.94 66.04 149.87
+Ours 2 ✗ ✗ 14.04 14.29 14.06 40.71 16.66 23.47
+Ours 2.1 ✓ ✗ 6.04 7.45 10.03 24.67 13.39 8.67
+Ours 2.12 ✗ ✓ 2.35 5.16 3.85 14.03 7.97 5.36
+Ours 2.12 ✓ ✓ 2.19 4.76 3.67 11.92 7.93 4.66
+4.3. Ablation Study
+To isolate the contributions of each proposed component in
+our framework, we conduct a comprehensive ablation study
+on Whisper-Large-V3. Specifically, we analyze the impact of
+(1) K-Means based quantization, (2) mixed-precision alloca-
+tion, and (3) selective outlier retention on quantization perfor-
+mance. We evaluate these ablations across multiple bitwidths
+and benchmark them on the LibriSpeech test-clean dataset.
+The performance trends observed are consistent across other
+datasets as well.
+4.3.1. Impact of K-Means Based Quantization
+The effectiveness of K-Means clustering for weight quantiza-
+tion is demonstrated by comparing our approach to a standard
+uniform GPTQ quantization baseline. Table 1 shows that re-
+moving K-Means clustering significantly degrades performance
+at lower bitwidths. For instance, at 2-bit quantization, uniform
+GPTQ quantization leads to a WER of 51.13%, whereas our
+K-Means-based approach improves it to 14.04%.
+4.3.2. Effect of Mixed-Precision Allocation
+We analyze the role of mixed-precision allocation by compar-
+ing standard fixed-bit quantization to our adaptive bit allocation
+strategy. As shown in Table 1, enabling mixed-precision allo-
+cation (e.g., 2.1-bit quantization) reduces WER from 14.04%
+to 6.04%, by selectively assigning higher bitwidths to outlier-
+heavy layers. This demonstrates the effectiveness of precision-
+aware weight allocation, particularly in low-bit quantization
+regimes, where uniform assignment struggles to capture outlier
+distributions.
+4.3.3. Benefit of Selective Outlier Retention
+To quantify the impact of selective outlier retention, we com-
+pare models with and without the sparse FP32 outlier preser-
+vation mechanism. Results in Table 1 indicate that incor-
+porating outlier retention further refines model accuracy. At
+2.12-bit quantization, enabling outlier retention reduces WER
+from 6.04% to 2.19%, recovering over 60% of the original
+full-precision model’s accuracy. This highlights the neces-
+sity of outlier-aware quantization techniques, particularly for
+transformer-based speech models where weight outliers signif-
+icantly influence performance.
+4.4. Generalization to SSL Speech Models
+The effectiveness of our method extends to self-supervised
+learning architectures as demonstrated by Wav2Vec2 [26] eval-
+uations in Table 2. At 4-bit uniform quantization, the model
+achieves near-original performance with 6.37% WER versus
+6.11% FP32 baseline. Progressive bit reduction maintains func-
+tional recognition down to 2-bit quantization (22.53% WER),
+though with expected accuracy degradation typical of ultra-low
+precision.
+Table 2: Performance of Quantized Wav2Vec2-Base-100h on
+LibriSpeech Test-Clean (Fine-tuned on 100h Dataset, Weight
+Downloaded from HuggingFace)
+Method Bit Mixed Precision Outlier Retention Libriseech Clean
+Full 32 ✗ ✗ 6.11
+Ours 4 ✗ ✗ 6.37
+Ours 3 ✗ ✗ 7.29
+Ours 2 ✗ ✗ 22.53
+Ours 2.1 ✓ ✗ 17.63
+Ours 2.12 ✗ ✓ 10.18
+Ours 2.12 ✓ ✓ 9.62
+Enabling mixed-precision allocation at 2.1-bit average pre-
+cision (95% 2-bit + 5% 4-bit columns) recovers significant per-
+formance (17.63% WER), while activating outlier retention at
+2.12-bit precision further reduces errors to 10.18%. The full
+framework combining both techniques achieves 9.62% WER -
+a 57% relative improvement over pure 2-bit quantization. These
+results confirm our components’ complementary benefits across
+bitwidths, with mixed-precision addressing coarse quantization
+errors and outlier retention preserving critical acoustic features.
+5. Conclusion
+We present a novel post-training quantization framework that
+enables ultra-low-bit compression of large speech models
+through K-means clustering, mixed-precision allocation, and
+selective outlier retention. Our method achieves lossless 2.12-
+bit quantization of Whisper-Large-V3, reducing model size by
+98.3% while maintaining less than 1% WER degradation across
+diverse datasets. The approach significantly outperforms linear
+quantization baselines, particularly below 4 bits, and demon-
+strates generalizability to SSL architectures like Wav2Vec2.0.
+Future work will focus on dynamic bit allocation based on ut-
+terance complexity, hardware-aware optimization for edge de-
+vices, and integration with pruning techniques for compounded
+compression effects. This advancement opens new possibili-
+ties for deploying billion-parameter speech models in resource-
+constrained environments without compromising recognition
+accuracy.
+1991
+6. Acknowledgement
+This work was supported in part by China STI 2030-Major
+Projects under Grant No. 2021ZD0201500, in part by China
+NSFC projects under Grants 62122050 and 62071288, and in
+part by Shanghai Municipal Science and Technology Commis-
+sion Project under Grant 2021SHZDZX0102.
+7. References
+[1] A. Radford, J. W. Kim, T. Xu, G. Brockman, C. McLeavey,
+and I. Sutskever, “Robust speech recognition via large-
+scale weak supervision,” 2022. [Online]. Available: https:
+//arxiv.org/abs/2212.04356
+[2] Y . Zhang, W. Han, J. Qin, Y . Wang, A. Bapna, Z. Chen, N. Chen,
+B. Li, V . Axelrod, G. Wang, Z. Meng, K. Hu, A. Rosenberg,
+R. Prabhavalkar, D. S. Park, P. Haghani, J. Riesa, G. Perng,
+H. Soltau, T. Strohman, B. Ramabhadran, T. Sainath, P. Moreno,
+C.-C. Chiu, J. Schalkwyk, F. Beaufays, and Y . Wu, “Google usm:
+Scaling automatic speech recognition beyond 100 languages,”
+2023. [Online]. Available: https://arxiv.org/abs/2303.01037
+[3] Y . Peng, Y . Sudo, S. Muhammad, and S. Watanabe, “DPHuBERT:
+Joint Distillation and Pruning of Self-Supervised Speech Models,”
+in Proc. INTERSPEECH 2023, 2023, pp. 62–66.
+[4] T. Gu, B. Liu, H. Shao, and Y . Qian, “Sparsewav: Fast and ac-
+curate one-shot unstructured pruning for large speech foundation
+models,” in Interspeech 2024, 2024, pp. 4498–4502.
+[5] T. Gu, B. Liu, and Y . Qian, “Efficient pruning for large-scale
+seq2seq speech models without back-propagation,” inIEEE Inter-
+national Conference on Acoustics, Speech and Signal Processing,
+ICASSP 2025, 2025.
+[6] S. Gandhi, P. von Platen, and A. M. Rush, “Distil-whisper: Robust
+knowledge distillation via large-scale pseudo labelling,” 2023.
+[7] S. Han, H. Mao, and W. J. Dally, “Deep compression: Compress-
+ing deep neural network with pruning, trained quantization and
+huffman coding,” in 4th International Conference on Learning
+Representations, ICLR 2016, San Juan, Puerto Rico, May 2-4,
+2016, Conference Track Proceedings, 2016.
+[8] B. Jacob, S. Kligys, B. Chen, M. Zhu, M. Tang, A. Howard,
+H. Adam, and D. Kalenichenko, “Quantization and training of
+neural networks for efficient integer-arithmetic-only inference,”
+in Proceedings of the IEEE Conference on Computer Vision and
+Pattern Recognition (CVPR), June 2018.
+[9] E. Frantar, S. Ashkboos, T. Hoefler, and D. Alistarh, “GPTQ:
+accurate post-training quantization for generative pre-trained
+transformers,” CoRR, vol. abs/2210.17323, 2022. [Online].
+Available: https://doi.org/10.48550/arXiv.2210.17323
+[10] T. Dettmers, R. Svirschevski, V . Egiazarian, D. Kuznedelev,
+E. Frantar, S. Ashkboos, A. Borzunov, T. Hoefler, and D. Alistarh,
+“Spqr: A sparse-quantized representation for near-lossless LLM
+weight compression,” in The Twelfth International Conference
+on Learning Representations, ICLR 2024, Vienna, Austria,
+May 7-11, 2024 . OpenReview.net, 2024. [Online]. Available:
+https://openreview.net/forum?id=Q1u25ahSuy
+[11] W. Shao, M. Chen, Z. Zhang, P. Xu, L. Zhao, Z. Li,
+K. Zhang, P. Gao, Y . Qiao, and P. Luo, “Omniquant:
+Omnidirectionally calibrated quantization for large language
+models,” in The Twelfth International Conference on Learning
+Representations, ICLR 2024, Vienna, Austria, May 7-11,
+2024. OpenReview.net, 2024. [Online]. Available: https:
+//openreview.net/forum?id=8Wuvhh0LYW
+[12] Z. Liu, C. Zhao, I. Fedorov, B. Soran, D. Choudhary,
+R. Krishnamoorthi, V . Chandra, Y . Tian, and T. Blankevoort,
+“Spinquant–llm quantization with learned rotations,” arXiv
+preprint arXiv:2405.16406, 2024.
+[13] W. Huang, Y . Liu, H. Qin, Y . Li, S. Zhang, X. Liu, M. Magno,
+and X. Qi, “Billm: Pushing the limit of post-training quantization
+for llms,” CoRR, vol. abs/2402.04291, 2024. [Online]. Available:
+https://doi.org/10.48550/arXiv.2402.04291
+[14] K. Zhen, M. Radfar, H. D. Nguyen, G. P. Strimel, N. Susanj,
+and A. Mouchtaris, “Sub-8-bit quantization for on-device
+speech recognition: A regularization-free approach,” in IEEE
+Spoken Language Technology Workshop, SLT 2022, Doha, Qatar,
+January 9-12, 2023. IEEE, 2022, pp. 15–22. [Online]. Available:
+https://doi.org/10.1109/SLT54892.2023.10022821
+[15] Y . Yuan, Z. You, S. Feng, D. Su, Y . Liang, X. Shi, and D. Yu,
+“Compressed moe ASR model based on knowledge distillation
+and quantization,” in 24th Annual Conference of the International
+Speech Communication Association, Interspeech 2023, Dublin,
+Ireland, August 20-24, 2023 , N. Harte, J. Carson-Berndsen, and
+G. Jones, Eds. ISCA, 2023, pp. 3337–3341. [Online]. Available:
+https://doi.org/10.21437/Interspeech.2023-2544
+[16] S. Ding, D. Qiu, D. Rim, Y . He, O. Rybakov, B. Li,
+R. Prabhavalkar, W. Wang, T. N. Sainath, Z. Han, J. Li,
+A. Yazdanbakhsh, and S. Agrawal, “Usm-lite: Quantization and
+sparsity aware fine-tuning for speech recognition with universal
+speech models,” in IEEE International Conference on Acoustics,
+Speech and Signal Processing, ICASSP 2024, Seoul, Republic
+of Korea, April 14-19, 2024 . IEEE, 2024, pp. 10 756–10 760.
+[Online]. Available: https://doi.org/10.1109/ICASSP48485.2024.
+10448217
+[17] O. Rybakov, D. Serdyuk, and C. Zheng, “USM RNN-T
+model weights binarization,” CoRR, vol. abs/2406.02887, 2024.
+[Online]. Available: https://doi.org/10.48550/arXiv.2406.02887
+[18] D. Wagner, I. Baumann, K. Riedhammer, and T. Bocklet,
+“Outlier reduction with gated attention for improved post-training
+quantization in large sequence-to-sequence speech foundation
+models,” CoRR, vol. abs/2406.11022, 2024. [Online]. Available:
+https://doi.org/10.48550/arXiv.2406.11022
+[19] S. Kim, A. Gholami, Z. Yao, N. Lee, P. Wang, A. Nrusimha,
+B. Zhai, T. Gao, M. W. Mahoney, and K. Keutzer, “Integer-
+only zero-shot quantization for efficient speech recognition,”
+in IEEE International Conference on Acoustics, Speech and
+Signal Processing, ICASSP 2022, Virtual and Singapore, 23-27
+May 2022 . IEEE, 2022, pp. 4288–4292. [Online]. Available:
+https://doi.org/10.1109/ICASSP43922.2022.9747552
+[20] H. Shao, W. Wang, B. Liu, X. Gong, H. Wang, and
+Y . Qian, “Whisper-kdq: A lightweight whisper via guided
+knowledge distillation and quantization for efficient ASR,”
+CoRR, vol. abs/2305.10788, 2023. [Online]. Available: https:
+//doi.org/10.48550/arXiv.2305.10788
+[21] W. Wang, W. Chen, Y . Luo, Y . Long, Z. Lin, L. Zhang, B. Lin,
+D. Cai, and X. He, “Model compression and efficient inference
+for large language models: A survey,” 2024. [Online]. Available:
+https://arxiv.org/abs/2402.09748
+[22] B. Jacob, S. Kligys, B. Chen, M. Zhu, M. Tang, A. Howard,
+H. Adam, and D. Kalenichenko, “Quantization and training of
+neural networks for efficient integer-arithmetic-only inference,”
+2017. [Online]. Available: https://arxiv.org/abs/1712.05877
+[23] T. Dettmers, A. Pagnoni, A. Holtzman, and L. Zettlemoyer,
+“Qlora: Efficient finetuning of quantized llms,” 2023. [Online].
+Available: https://arxiv.org/abs/2305.14314
+[24] D. Wagner, I. Baumann, K. Riedhammer, and T. Bocklet, “Outlier
+reduction with gated attention for improved post-training quanti-
+zation in large sequence-to-sequence speech foundation models,”
+in Interspeech 2024, 2024, pp. 4623–4627.
+[25] G. Xiao, J. Lin, M. Seznec, H. Wu, J. Demouth, and S. Han,
+“Smoothquant: Accurate and efficient post-training quantization
+for large language models,” in International Conference on Ma-
+chine Learning, ICML 2023, 23-29 July 2023, Honolulu, Hawaii,
+USA, ser. Proceedings of Machine Learning Research, vol. 202.
+PMLR, 2023, pp. 38 087–38 099.
+[26] A. Baevski, Y . Zhou, A. Mohamed, and M. Auli, “wav2vec 2.0:
+A framework for self-supervised learning of speech representa-
+tions,” in Advances in Neural Information Processing Systems ,
+H. Larochelle, M. Ranzato, R. Hadsell, M. Balcan, and H. Lin,
+Eds., vol. 33. Curran Associates, Inc., 2020, pp. 12 449–12 460.
+1992

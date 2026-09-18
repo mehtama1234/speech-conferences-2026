@@ -1,0 +1,709 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+FlowTSE: Target Speaker Extraction with Flow Matching
+Aviv Navon1, Aviv Shamsian1, Yael Segal-Feldman1, Neta Glazer1, Gil Hetz1, Joseph Keshet1
+1aiOla Research, Israel
+{aviv, aviv.shamsian}@aiola.com
+Abstract
+Target speaker extraction (TSE) aims to isolate a specific
+speaker’s speech from a mixture using speaker enrollment as
+a reference. While most existing approaches are discrimina-
+tive, recent generative methods for TSE achieve strong results.
+However, generative methods for TSE remain underexplored,
+with most existing approaches relying on complex pipelines
+and pretrained components, leading to computational overhead.
+In this work, we present FlowTSE, a simple yet effective TSE
+approach based on conditional flow matching. Our model re-
+ceives an enrollment audio sample and a mixed speech sig-
+nal, both represented as mel-spectrograms, with the objective
+of extracting the target speaker’s clean speech. Furthermore,
+for tasks where phase reconstruction is crucial, we propose a
+novel vocoder conditioned on the complex STFT of the mixed
+signal, enabling improved phase estimation. Experimental re-
+sults on standard TSE benchmarks show that FlowTSE matches
+or outperforms strong baselines.1
+Index Terms: target speaker extraction, flow matching
+1. Introduction
+Target Speaker Extraction (TSE) focuses on extracting the clean
+speech of a specific speaker from an audio mixture containing
+interfering speakers and background noise.
+TSE has gained
+significant attention for its role in improving speech clarity in
+communication systems and enhancing hearing aids for indi-
+viduals with hearing impairments [1, 2]. Additionally, TSE en-
+hances Automatic Speech Recognition (ASR) by isolating the
+target speaker’s speech before transcription, reducing interfer-
+ence from noise and other speakers [3]. This enables applica-
+tions like virtual assistants to operate accurately in noisy envi-
+ronments. Traditional approaches to TSE mainly rely on dis-
+criminative models, which directly map a noisy speech sample
+to a clean speech or speech mask, by optimizing signal-level
+metrics such as signal-to-distortion ratio [4, 5]. While these
+models have shown strong performance, they often produce ar-
+tifacts and may fail to reconstruct highly corrupted samples [6].
+In addition, they may exhibit limited generalization to unseen
+noise types or speakers [2, 7, 8, 9].
+Recently, generative models have emerged as a powerful al-
+ternative, especially in speech enhancement, offering improved
+perceptual quality and robustness [7, 8, 10]. Despite these ad-
+vantages, their potential in TSE is still relatively unexplored.
+In the context of TSE, generative approaches model the distri-
+bution of clean speech given a target speaker’s reference, en-
+abling more natural and high-fidelity speech extraction [2, 6].
+1Audio samples are available at:
+https://aiola-lab.github.io/flow-tse
+Figure 1: FlowTSE architecture. The model is conditioned on
+the mixed and enrollment mel.
+However, current generative models also have their limitations.
+Many existing methods rely on complex pipelines involving dis-
+criminative TSE models [2], or incorporating pretrained mod-
+els such as Self-Supervised Learning (SSL) models [6, 11]
+or ASRs [12], which complicates their training and deploy-
+ment. Additionally, several approaches operate directly in the
+complex short-time Fourier transform (STFT) domain, which,
+while providing fine-grained frequency resolution, can intro-
+duce computational overhead, potential artifacts, and slow con-
+vergence [2, 13].
+An alternative is to model speech in the mel-spectrogram
+domain, simplifying the pipeline and reducing computational
+complexity.
+However, this approach comes with its own
+challenges, particularly phase reconstruction.
+Since mel-
+spectrograms discard phase information, vocoder-based inver-
+sion may introduce artifacts or degrade speech quality, espe-
+cially in scenarios where precise phase reconstruction is crucial.
+Moreover, generative models may still struggle with maintain-
+ing speaker identity in challenging conditions [12].
+To address these challenges, we propose a simplified gener-
+ative approach based on Flow Matching (FM) [14] operating di-
+rectly on mel-spectrograms. This representation reduces train-
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+2965
+10.21437/Interspeech.2025-970
+
+ing complexity while maintaining high perceptual quality. Fur-
+thermore, for applications where phase reconstruction is cru-
+cial, we propose conditioning the vocoder on the comple STFT
+of the mixed signal, supporting better phase estimation.
+We conduct extensive evaluations on both clean two-
+speaker mixtures and more challenging two-speaker scenarios
+with background noise. Our results demonstrate that FlowTSE
+achieves performance matches or outperforms strong baselines
+while maintaining a simpler and more efficient pipeline.
+Our main contributions are as follows: (i) We propose
+FlowTSE, a novel TSE approach based on conditional flow
+matching, offering a simple yet effective alternative to complex
+generative pipelines. (ii) We introduce a vocoder augmenta-
+tion strategy to improve phase reconstruction in scenarios where
+phase estimation is critical. (iii) We provide extensive evalua-
+tions in both clean and noisy TSE conditions, demonstrating the
+effectiveness and robustness of our approach.
+2. Related Work
+TSE falls under the broader category of Speech Enhancement
+(SE), which aims to recover clean speech from an input au-
+dio corrupted by noise. SE methods are generally categorized
+as discriminative or generative. Discriminative approaches di-
+rectly map noisy inputs to clean outputs, operating either in the
+frequency domain [4] or in the time domain to mitigate phase
+estimation distortions [5]. Generative approaches enhance ro-
+bustness and perceptual quality, with recent advances incorpo-
+rating diffusion models for both time-domain [10] and complex
+STFT-domain processing [7, 8]. Additionally, hybrid models,
+such as [15], integrate discriminative and generative techniques
+to achieve improved performance.
+Similar to SE, TSE methods can be categorized into dis-
+criminative and generative approaches. Discriminative models
+either operate in the frequency domain, such as [16], or in the
+time domain, as seen in [17]. However, these methods often
+struggle to generalize to unseen noise conditions or speakers
+[7, 2, 8], leading to increased interest in generative methods. In
+order to address these limitations, generative-based TSE mod-
+els have emerged. [13] proposed a diffusion model operating
+on the complex STFT, while [2] combined diffusion processes
+with discriminative objectives. [12] further improved generative
+models by incorporating speech embeddings and ASR loss, en-
+hancing both perceptual quality and intelligibility. Another ap-
+proach is to leverages discrete speech tokens derived from large
+self-supervised language models, as demonstrated by [6] and
+[11]. However, there is still room for improvement, as the state-
+of-art methods rely on complex pipelines involving discrimina-
+tive TSE models [2] or large pretrained models [6, 11, 12].
+3. Method
+In this section, we present FlowTSE, our flow matching-based
+approach for TSE. Our method maintains a simple pipeline that
+does not rely on external pretrained models besides the vocoder,
+which converts mel spectrograms into audio. Additionally, we
+propose a simple yet effective modification to vocoder models,
+specifically Vocos [18], to enhance phase reconstruction in sce-
+narios where precise phase reconstruction is essential.
+3.1. Preliminaries: Flow Matching
+Flow matching (FM) [14] models a probability path (pt)0≤t≤1
+between a known source distribution p0 = p and the target
+data distribution p1 = q. Instead of learning a score function
+as in diffusion models, FM directly models a time-dependent
+velocity field ut : [0, 1] × Rd →Rd, parameterized by a
+neural network.
+This velocity field defines a transformation
+ψt : [0, 1]×Rd →Rd satisfying the ordinary differential equa-
+tion (ODE),
+d
+dtψt(x) = ut(ψt(x)),
+where ψt(x) represents the flow of a sample along the probabil-
+ity path. Training FM involves regressing the predicted veloc-
+ity field to its true counterpart. In practice, we replace the FM
+objective with the conditional flow matching (CFM) objective.
+Here, a target sample x1 ∼q is paired with a source sample
+x0 ∼p, and the velocity field is learned to match the condi-
+tional velocity:
+LCFM(θ) = Et,xt,x1∥uθ
+t (xt) −ut(xt|x1)∥2,
+with xt := ψt(x0) and where θ are trainable parameters of
+a neural network. The CFM and FM objectives were proven
+to have identical gradients w.r.t θ [14]. Furthermore, under an
+optimal transport setting, this simplifies to:
+LCFM(θ) = Et,x0,x1∥uθ
+t (xt) −(x1 −x0)∥2,
+(1)
+where xt = (1 −t)x0 + tx1.
+At inference, starting from
+x0 ∼p0, we integrate the learned velocity field uθ
+t along the
+probability path using numerical solvers, to obtain x1 ∼p1
+from the source distribution. Also, classifier-free guidance can
+be applied to enable better control over the generation process.
+3.2. FlowTSE
+We aim to design a generative approach for TSE with a sim-
+plified pipeline. Motivated by recent advancements in text-to-
+speech, our model adopts a similar architecture to [19], utiliz-
+ing diffusion transformer blocks [20] and adaptive layer normal-
+ization for processing flow time step conditioning t. Different
+from [19], we omit all text-related inputs and modules, focus-
+ing solely on audio-based conditioning. The input consists of
+an enrollment audio sample xe and a mixed speech signal xm,
+both represented as mel-spectrograms. These are concatenated
+along the time dimension to form the model input conditioning
+x = [xe, xm] ∈R(te+tm)×d, where d is the number of mel
+channels, and te, tm denote the time dimension of the enroll-
+ment and mixed speech, respectively. During self-attention, we
+allow mixed tokens to attend to the enrollment tokens, but not
+the other way around. The target output y ∈Rtm×d is the clean
+mel of the desired speaker. FlowTSE is depicted in Figure 1.
+Training. During training, given a data point (xe, xm, y),
+we sample t ∼U[0, 1] and set xt = (1−t)x0 +ty, where x0 is
+sampled from the source distribution p0 = N(0, I). The model
+is trained using the CFM objective in Eq. 1.
+Inference.
+At inference, given an enrollment xe and a
+mixed signal xm, we sample x0 ∼p0 and use an ODE solver to
+integrate the train velocity field uθ
+t (xt) from t=0 to t=1. The
+enrollment part of the generated mel is omitted and a vocoder is
+utilized to convert the mel into a waveform. In our experiments,
+we use 32 NFE steps, a CFG strength of 2 with Sway sam-
+pling [19]. In the following section, we propose an approach to
+modify the Vocoder to achieve accurate phase reconstruction by
+conditioning on complex STFT of the mixed signal.
+3.3. Phase-conditioned Vocoder
+One key challenge for generative-based TSE approaches utiliz-
+ing mel-based vocoders is the lack of explicit phase modeling,
+2966
+
+Table 1: Performance comparison on Libri2Mix (clean and noisy) using the min configuration. We bold the best results and underline
+the second-best results.
+Libri2Mix Noisy (mix-both)
+Libri2Mix Clean (mix-clean)
+Type
+PESQ
+ESTOI
+OVRL
+DNSMOS
+SIM
+PESQ
+ESTOI
+OVRL
+DNSMOS
+SIM
+Mixture
+-
+1.08
+0.40
+1.63
+2.71
+0.46
+1.15
+0.54
+2.65
+3.41
+0.54
+Clean
+-
+-
+-
+3.26
+3.73
+-
+-
+-
+3.26
+3.73
+-
+DPCCN
+D
+1.74
+0.73
+2.93
+3.58
+0.69
+2.22
+0.83
+3.05
+3.73
+0.82
+NCSN++
+D
+1.55
+0.73
+3.15
+3.68
+0.69
+2.24
+0.86
+3.28
+3.86
+0.85
+DiffSep+SV
+G
+1.32
+0.60
+2.78
+3.63
+0.62
+1.85
+0.79
+3.14
+3.83
+0.83
+DDTSE
+G
+1.60
+0.71
+3.28
+3.74
+0.71
+1.79
+0.78
+3.30
+3.79
+0.73
+SKIM
+G
+1.29
+/
+3.27
+/
+/
+/
+/
+/
+/
+/
+FlowTSE
+G
+1.86
+0.75
+3.30
+3.82
+0.83
+2.58
+0.84
+3.27
+3.79
+0.90
+as mel-spectrograms do not retain phase information. While a
+simple recontract phase is sufficient for most applications, pre-
+cise phase estimation may be necessary when our TSE method
+is integrated with systems that operate directly on the wave-
+form, such as HuBERT [21], or when used in hearing aids and
+professional audio processing, for which accurate waveform re-
+construction is crucial. We extend the architecture of the Vocos
+vocoder [18] by introducing phase-aware capabilities, specif-
+ically designed for the TSE task. The key modifications are
+as follows. First, we augment the ConvNeXt [22] blocks with
+cross-attention layers that condition the mel-spectrogram pro-
+cessing on the mixed speech STFT features. This enables the
+model to leverage phase information from the mixed signal. Ad-
+ditionally, we modify the standard iSTFT Vocos head to allow
+explicit phase modeling through learnable complex coefficients.
+This head predicts both magnitude and phase components,
+and combines them with the mixed signal’s phase information
+through a complex-valued linear combination (α⊙sm+β⊙sp),
+where α and β are learned for each time-frequency bin, sm is
+the mixed STFT and sp is the predicted STFT. Here, ⊙denotes
+the Hadamard product. This modification of the standard iSTFT
+is motivated by the alignment approach proposed in [23]. The
+new architecture transform Vocos from a general-purpose neu-
+ral vocoder into a phase-aware vocoder suited for TSE. Impor-
+tantly, this component can be trained independently, using the
+mel of the clean speech and complex STFT of the mixed signal
+as inputs. We optimize the vocoder using the SI-SDR objective.
+Evaluation of this approach is presented in Section 4.2.3.
+4. Experiments
+4.1. Experimental Setup
+Datasets. We follow [12] to train our model using the Lib-
+riSpeech dataset [24]. Specifically, we use the train clean
+100 and train clean 360 subsets. During training, we
+sample two random samples together with a noise sample from
+the WHAM! [25] dataset. The speech utterances are mixed with
+an SNR ratio sampled from U[−5, 5] dB. The noise sample
+is used with probability 0.75, and in that case, it is merged
+with SNR sampled from U[−5, 5] dB. The enrollment is a
+speech segment of the target speaker, extracted from a dif-
+ferent utterance, with a duration randomly sampled between
+1 and 5 seconds.
+For TSE evaluation, we use two subsets
+of the Libri2Mix [26] dataset, mix-both and mix-clean
+under the min and max settings.
+The mix-both is con-
+structed from merging two speech utterances and noise sam-
+pled from the WHAM! dataset. Similarly to training, an en-
+rollment of up to 5 seconds is sampled from a different ut-
+terance of the target speaker. For SE evaluation, we use the
+Libri2Mix mix-single subset with the min settings, created
+by merging a single speech utterance and noise sampled from
+the WHAM! dataset.
+Baselines.
+We evaluate our model against several TSE
+baselines. Generative-based methods include: (i) DDTSE [2],
+the DDTSE-only variant from the original paper which do not
+employ an additional discriminative model, and (ii) DiffSep
+[27]. Among discriminative approaches, we compare to (iii)
+DPCCN [28], (iv) pBSRoformer [29], and (v) a discriminative
+adaptation of [28] to NCSN++ [30]. Additionally, we com-
+pare to (vi) Whisper-TSE [12] which combines a Whisper en-
+coder with a flow-based tokenizer synthesizer. We further in-
+clude two models utilizing discrete unit representations:(vii)
+SKIM [6], employing the best-performing VQ-wav2vec-based
+discrete vocoder variant and (viii) TSELM [11]. Results for
+NCSN++, DPCCN, and DiffSep are taken from [2], while
+pBSRoformer results are taken from [12]. We also evaluate
+our model on the speech enhancement setup, following [2],
+we compare it to the following approaches: NCSN++ [30],
+DPCCN [28], SGMSE+ [9], WGSL [31], DCCRN [32], and
+DDTSE [2]. All speech enhancement baseline results are taken
+from [2].
+Evaluation metrics. We evaluate FlowTSE using both in-
+trusive and non-intrusive speech quality metrics, assessing per-
+ceptual quality, intelligibility, and speaker consistency. Intru-
+sive metrics, which require a clean reference signal, include
+Perceptual Evaluation of Speech Quality (PESQ) [33] and Ex-
+tended Short-Time Objective Intelligibility (ESTOI) [34]. The
+non-intrusive metrics, the overall quality (OVRL), and the deep
+noise suppression mean opinion score (DNSMOS) [35], pro-
+vide assessments without requiring a clean reference. To mea-
+sure intelligibility, we follow [12] to calculate the word error
+rate (WER) using the Whisper-small model. Speaker similar-
+ity is evaluated using cosine similarity between speaker embed-
+dings, which are extracted from a ResNet34 model pre-trained
+on VoxCeleb2 following [2]. Intrusive metrics such as SI-SDR
+are generally unsuitable for evaluating generative mel-based ap-
+proaches [12, 6, 11], hence are omitted from the main results.
+However, we provide results for these metrics using our phase-
+conditioned vocoder approach in Section 4.2.3.
+Training setup. Following [19], our FlowTSE model con-
+2967
+
+Figure 2: Comparison of word error rate evaluated on the
+Libri2Mix clean with max split.
+FlowTSE outperforms the
+WhisperTSE-S and pBSRoformer baselines while achieving a
+WER comparable to WhisperTSE-L, despite the latter being a
+significantly larger model.
+sists of 22 layers, with 16 attention heads, and an embedding di-
+mension of 1024, followed by a 2048-dimensional feed-forward
+network. We train our model for 100 epochs with a batch size of
+11K frames using the AdamW optimizer with a peaked learning
+rate of 1e-4. We represent audio samples with 100-dimensional
+log mel-filterbank features with 24kHz sampling rate and hop
+length 256, for correspondence with the Vocos vocoder.
+4.2. Results
+4.2.1. Multi-speaker TSE
+We evaluate our model under speaker mixture setups, with and
+without integrated noise. We use the clean and both splits of
+Libri2Mix under the min settings. The results presented in Ta-
+ble 1 show that FlowTSE achieves on-par results or outperforms
+strong baselines, including both generative and discriminative.
+Importantly, FlowTSE achieves the highest PESQ score among
+all methods, demonstrating its strong performance in generat-
+ing clean speech quality.
+Furthermore, in the mix-clean
+setting, FlowTSE surpasses the Clean baseline in both OVRL
+and DNSMOS, further showcasing its effectiveness. Notably,
+it also achieves impressive SIM scores in both mix-clean
+and mix-both setups, highlighting its ability to maintain the
+speaker’s speech characteristics. Additionally, to better evaluate
+the intelligibility of our approach, we follow [12] and report the
+word error rate evaluated using the Whisper-small model. For
+this experiment, we use the max split of the Libri2Mix mix-
+clean dataset, in alignment with [12]. The results are presented
+in Figure 2. Interestingly, our approach achieves a significantly
+lower WER than WhisperTSE-S, despite having a similar num-
+ber of parameters as FlowTSE. Moreover, it attains a WER
+comparable with WhisperTSE-L, which is substantially larger.
+These baselines were directly optimized for enhanced intelli-
+gibility using target speech transcriptions as additional training
+supervision, by leveraging the Whisper ASR.
+4.2.2. Speech Enhancement
+Although FlowTSE is designed and optimized for the TSE task,
+it can also be applied to speech enhancement (SE). Importantly,
+here we use the pretrained model from Section 4.2.1 with no
+additional training.
+In this scenario, the model is presented
+with the utterance of a single speaker in a noisy environment.
+Table 2: Performance comparison for single-speaker scenario
+(speech enhancement) using the min split of the Libri2Mix mix-
+single dataset.
+Model
+Type
+PESQ
+ESTOI
+OVRL
+DNSMOS
+Mixure
+-
+1.16
+0.56
+1.75
+2.63
+DCCRN
+D
+2.03
+0.81
+2.98
+3.64
+NCSN++
+D
+1.85
+0.82
+3.11
+3.59
+SGMSE+
+G
+1.99
+0.82
+3.12
+3.60
+WGSL
+G
+1.86
+0.79
+3.08
+3.50
+DDTSE
+G
+2.01
+0.82
+3.25
+3.75
+FlowTSE
+G
+2.18
+0.83
+3.27
+3.77
+To align with the standard SE setup, in this experiment we
+do not provide the model enrollment speech, and the model is
+provided with the mixed speech both as input and as the en-
+rollment condition. The results are presented in Table 2. As
+shown, FlowTSE achieves the best results in terms of the PESQ,
+OVRL and DNSMOS, with equal ESTOI to the best performing
+NCSN++ and DDTSE.
+4.2.3. Phase-aware Vocoder
+We turn to evaluate the impact of phase reconstruction with our
+Phase-conditioned Vocoder (see 3.3). Table 3 presents objec-
+tive metrics comparing our method with and without the phase
+vocoder. We use the Libri2Mix (mix-clean) dataset under the
+min setup and train the vocoder for 5000 steps as outlined
+in Section 3.3. Where applicable, the modules are initialized
+from the pretrained Vocos weights. Our phase-aware vocoder
+approach enhances the SI-SDR metric, as evident from the re-
+sults. However, this improvement may come at the cost of lower
+scores in other metrics, such as PESQ, ESTOI, and OVRL. The
+improvement in SI-SDR is driven by accurate phase reconstruc-
+tion, as this metric is highly sensitive to temporal misalignments
+between the generated waveform and the input speech.
+Table 3: Effect of our phase-conditioned vocoder.
+Method
+PESQ
+ESTOI
+SI-SDR
+OVRL
+Without Phase Vocoder
+2.58
+0.84
+-25.64
+3.27
+With Phase Vocoder
+2.48
+0.84
+10.81
+3.14
+5. Discussion
+In this work, we introduce FlowTSE, a novel generative ap-
+proach for high-quality TSE. We leverage recent advancements
+in flow matching to condition our model on the target speaker’s
+audio. This simple yet effective approach reduces computa-
+tional overhead and eliminates the need for pretrained models in
+complex pipelines. Through extensive experiments, we demon-
+strate that despite its simplicity, FlowTSE produces audio with
+high intelligibility and naturalness, matching or surpassing re-
+cent TSE baselines. We believe that FlowTSE drives TSE to-
+ward more simplified and effective generative approaches.
+6. References
+[1] M. Borsdorf, Z. Pan, H. Li, and T. Schultz, “wtimit2mix: A cock-
+tail party mixtures database to study target speaker extraction for
+2968
+
+normal and whispered speech,” in Proc. Interspeech 2024, 2024,
+pp. 5038–5042.
+[2] L. Zhang, Y. Qian, L. Yu, H. Wang, H. Yang, S. Liu, L. Zhou,
+and Y. Qian, “Ddtse: Discriminative diffusion model for target
+speech extraction,” in 2024 IEEE Spoken Language Technology
+Workshop (SLT).
+IEEE, 2024, pp. 294–301.
+[3] A. Polok, D. Klement, M. Wiesner, S. Khudanpur, J. ˇCernock`y,
+and L. Burget, “Target speaker asr with whisper,” arXiv preprint
+arXiv:2409.09543, 2024.
+[4] D. Wang and J. Chen, “Supervised speech separation based on
+deep learning: An overview,” IEEE/ACM transactions on audio,
+speech, and language processing, vol. 26, no. 10, pp. 1702–1726,
+2018.
+[5] S.-W. Fu, T.-W. Wang, Y. Tsao, X. Lu, and H. Kawai, “End-
+to-end waveform utterance enhancement for direct evaluation
+metrics optimization by fully convolutional neural networks,”
+IEEE/ACM Transactions on Audio, Speech, and Language Pro-
+cessing, vol. 26, no. 9, pp. 1570–1584, 2018.
+[6] L. Yu, W. Zhang, C. Du, L. Zhang, Z. Liang, and Y. Qian,
+“Generation-based target speech extraction with speech dis-
+cretization and vocoder,” in IEEE International Conference on
+Acoustics, Speech and Signal Processing (ICASSP), 2024, pp.
+12 612–12 616.
+[7] J. Richter, S. Welker, J.-M. Lemercier, B. Lay, and T. Gerkmann,
+“Speech enhancement and dereverberation with diffusion-based
+generative models,” IEEE/ACM Transactions on Audio, Speech,
+and Language Processing, vol. 31, pp. 2351–2364, 2023.
+[8] J.-M. Lemercier, J. Richter, S. Welker, and T. Gerkmann, “Storm:
+A diffusion-based stochastic regeneration model for speech en-
+hancement and dereverberation,” IEEE/ACM Transactions on Au-
+dio, Speech, and Language Processing, 2023.
+[9] ——, “Analysing diffusion-based generative approaches versus
+discriminative approaches for speech restoration,” IEEE/ACM
+Transactions on Audio, Speech, and Language Processing, 2023.
+[10] Y.-J. Lu, Z.-Q. Wang, S. Watanabe, A. Richard, C. Yu, and
+Y. Tsao, “Conditional diffusion probabilistic model for speech
+enhancement,” in IEEE International Conference on Acoustics,
+Speech and Signal Processing (ICASSP), 2022, pp. 7402–7406.
+[11] B. Tang, B. Zeng, and M. Li, “Tselm: Target speaker extrac-
+tion using discrete tokens and language models,” arXiv preprint
+arXiv:2409.07841, 2024.
+[12] H. Ma, R. Chen, R. Jing, X.-L. Zhang, J. Liu, and X. Li,
+“Enhancing intelligibility for generative target speech extraction
+via joint optimization with target speaker asr,” arXiv preprint
+arXiv:2501.14477, 2025.
+[13] N. Kamo, M. Delcroix, and T. Nakatani, “Target speech
+extraction with conditional diffusion model,” arXiv preprint
+arXiv:2308.03987, 2023.
+[14] Y. Lipman,
+R. T. Chen,
+H. Ben-Hamu,
+M. Nickel,
+and
+M. Le, “Flow matching for generative modeling,” arXiv preprint
+arXiv:2210.02747, 2022.
+[15] D. Kim, D.-H. Yang, D. Kim, J.-H. Chang, J. Yang, J. Choi,
+M. Lee, and H.-g. Moon, “Guided conditioning with predic-
+tive network on score-based diffusion model for speech enhance-
+ment,” in Proc. Interspeech 2024, 2024, pp. 1190–1194.
+[16] Q. Wang, H. Muckenhirn, K. Wilson, P. Sridhar, Z. Wu, J. Her-
+shey, R. A. Saurous, R. J. Weiss, Y. Jia, and I. L. Moreno, “Voice-
+filter: Targeted voice separation by speaker-conditioned spectro-
+gram masking,” arXiv preprint arXiv:1810.04826, 2018.
+[17] M. Ge, C. Xu, L. Wang, E. S. Chng, J. Dang, and H. Li,
+“Spex+: A complete time domain speaker extraction network,”
+arXiv preprint arXiv:2005.04686, 2020.
+[18] H. Siuzdak, “Vocos: Closing the gap between time-domain and
+fourier-based neural vocoders for high-quality audio synthesis,”
+arXiv preprint arXiv:2306.00814, 2023.
+[19] Y. Chen, Z. Niu, Z. Ma, K. Deng, C. Wang, J. Zhao, K. Yu, and
+X. Chen, “F5-tts: A fairytaler that fakes fluent and faithful speech
+with flow matching,” arXiv preprint arXiv:2410.06885, 2024.
+[20] W. Peebles and S. Xie, “Scalable diffusion models with transform-
+ers,” in Proceedings of the IEEE/CVF International Conference
+on Computer Vision, 2023, pp. 4195–4205.
+[21] W.-N. Hsu, B. Bolte, Y.-H. H. Tsai, K. Lakhotia, R. Salakhutdi-
+nov, and A. Mohamed, “Hubert: Self-supervised speech represen-
+tation learning by masked prediction of hidden units,” IEEE/ACM
+Trans. on Audio, Speech, and Language Processing, vol. 29, pp.
+3451 – 3460, 2021.
+[22] Z. Liu, H. Mao, C.-Y. Wu, C. Feichtenhofer, T. Darrell, and S. Xie,
+“A convnet for the 2020s,” in Proceedings of the IEEE/CVF con-
+ference on computer vision and pattern recognition, 2022, pp.
+11 976–11 986.
+[23] S. Lutati, E. Nachmani, and L. Wolf, “Separate and diffuse: Using
+a pretrained diffusion model for better source separation,” in The
+Twelfth International Conference on Learning Representations,
+2024.
+[24] V. Panayotov, G. Chen, D. Povey, and S. Khudanpur, “Lib-
+rispeech: an asr corpus based on public domain audio books,”
+in 2015 IEEE international conference on acoustics, speech and
+signal processing (ICASSP).
+IEEE, 2015, pp. 5206–5210.
+[25] G. Wichern, J. Antognini, M. Flynn, L. R. Zhu, E. McQuinn,
+D. Crow, E. Manilow, and J. Le Roux, “Wham!: Extending
+speech separation to noisy environments,” in Proc. Interspeech,
+Sep. 2019.
+[26] J. Cosentino, M. Pariente, S. Cornell, A. Deleforge, and E. Vin-
+cent, “Librimix: An open-source dataset for generalizable speech
+separation,” 2020.
+[27] R. Scheibler, Y. Ji, S.-W. Chung, J. Byun, S. Choe, and M.-S.
+Choi, “Diffusion-based generative speech source separation,” in
+IEEE International Conference on Acoustics, Speech and Signal
+Processing (ICASSP), 2023, pp. 1–5.
+[28] J. Han, Y. Long, L. Burget, and J. ˇCernock`y, “Dpccn: Densely-
+connected pyramid complex convolutional network for robust
+speech separation and extraction,” in IEEE International Confer-
+ence on Acoustics, Speech and Signal Processing (ICASSP), 2022,
+pp. 7292–7296.
+[29] X. Le, L. Chen, C. He, Y. Guo, C. Chen, X. Xia, and J. Lu,
+“Personalized speech enhancement combining band-split rnn and
+speaker attentive module,” in IEEE International Conference on
+Acoustics, Speech and Signal Processing (ICASSP), 2023, pp. 1–
+2.
+[30] Y. Song, J. Sohl-Dickstein, D. P. Kingma, A. Kumar, S. Ermon,
+and B. Poole, “Score-based generative modeling through stochas-
+tic differential equations,” arXiv preprint arXiv:2011.13456,
+2020.
+[31] J.-E. Ayilo, M. Sadeghi, and R. Serizel, “Diffusion-based speech
+enhancement with a weighted generative-supervised learning
+loss,” in IEEE International Conference on Acoustics, Speech and
+Signal Processing (ICASSP), 2024, pp. 12 506–12 510.
+[32] Y. Hu, Y. Liu, S. Lv, M. Xing, S. Zhang, Y. Fu, J. Wu,
+B. Zhang, and L. Xie, “Dccrn: Deep complex convolution re-
+current network for phase-aware speech enhancement,” arXiv
+preprint arXiv:2008.00264, 2020.
+[33] A. W. Rix, J. G. Beerends, M. P. Hollier, and A. P. Hekstra,
+“Perceptual evaluation of speech quality (pesq)-a new method for
+speech quality assessment of telephone networks and codecs,” in
+IEEE international conference on acoustics, speech, and signal
+processing (ICASSP), vol. 2.
+IEEE, 2001, pp. 749–752.
+[34] C. H. Taal, R. C. Hendriks, R. Heusdens, and J. Jensen, “A short-
+time objective intelligibility measure for time-frequency weighted
+noisy speech,” in IEEE international conference on acoustics,
+speech and signal processing (ICASSP), 2010, pp. 4214–4217.
+[35] C. K. Reddy, V. Gopal, and R. Cutler, “Dnsmos p. 835: A non-
+intrusive perceptual objective speech quality metric to evaluate
+noise suppressors,” in IEEE International Conference on Acous-
+tics, Speech and Signal Processing (ICASSP), 2022, pp. 886–890.
+2969
+

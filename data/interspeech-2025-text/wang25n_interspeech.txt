@@ -1,0 +1,822 @@
+Dual Orthogonality Sub-center Loss for Enhanced Anomalous Sound
+Detection
+Dong Wang1, Jiqing Han1, Tieran Zheng1, Guibin Zheng1, Yongjun He1
+1Faculty of Computing, Harbin Institute of Technology, China
+dongwang@stu.hit.edu.cn, jqhan@hit.edu.cn,
+zhengtieran@hit.edu.cn,zhengguibin@hit.edu.cn,heyongjun@hit.edu.cn
+Abstract
+Anomalous Sound Detection (ASD) requires modeling a
+compact and discriminative normal sound distribution.
+Re-
+cently, angular margin loss with multiple sub-centers has been
+shown to be effective for ASD by extending sub-centers to cap-
+ture intra-class diversity and maximizing their orthogonality to
+enhance model discriminability. However, existing methods do
+not consider that the orthogonality of intra-class sub-centers
+needs to be optimized based on the inherent data structure to
+avoid over-extension of the representation space due to over-
+orthogonality. To address this issue, we propose a Dual Or-
+thogonality Sub-Center Loss (DOSCL) that enforces strict or-
+thogonality of inter-class sub-centers to improve anomaly dis-
+crimination while applying relaxed constraints on intra-class
+sub-centers to capture the data structure.
+Experiments on
+the DCASE2023 Challenge Task2 dataset show that DOSCL
+achieves 1.74% AUC and 0.62% pAUC improvements over a
+strong baseline, validating its effectiveness.
+Index Terms: anomalous sound detection, angular margin loss,
+sub-center, orthogonality
+1. Introduction
+Anomalous Sound Detection (ASD) is crucial for applications
+such as industrial monitoring [1], smart home technology [2],
+and health inspection [3]. However, the acquisition of anoma-
+lous sound is challenging, requiring the development of mod-
+els that rely solely on normal sound data [4].
+The primary
+goal of ASD is to create a compact and discriminative distri-
+bution of normal sounds to effectively detect anomalies that
+deviate from this distribution [5].
+To improve the modeling
+of normal sound distributions for ASD, outlier exposure (OE)-
+based [6] methods have received considerable attention [7, 8, 9].
+These methods introduce data unrelated to the target of detec-
+tion as proxy anomalies, allowing the construction of classifi-
+cation tasks based on sample attributes [10]. The compactness
+and discriminative power of normal sound distributions can be
+further improved for OE-based methods by using angular mar-
+gin losses, such as ArcFace [11], AdaCos [12]. They minimize
+within-class compactness while maximizing between-class sep-
+aration, closely aligning with the primary objective of the ASD
+task [13, 14].
+To more accurately capture the inherent diversity within
+samples, angular margin loss with multiple sub-centers, such as
+SCArcface [15], SCAdaCos [16], have been proposed. They ex-
+pand the representation space by providing multiple sub-centers
+for each class, thus improving the representation capability of
+the model [17]. These class centers are often obtained by ran-
+dom initialization and set to be non-trainable [16, 18], since
+random vectors are nearly orthogonal to each other in high-
+dimensional spaces [19], which ensures discriminability be-
+tween different classes.
+As the number of sub-centers for each class increases from
+one to multiple, the relationships between these sub-centers can
+be categorized into two types: inter-class pairs and intra-class
+pairs.
+To optimize anomaly discrimination, inter-class pairs
+should be highly orthogonal [20], while intra-class pairs need
+to be orthogonalized by considering the underlying structure
+of the data to avoid representation space over-expansion [21].
+However, existing methods do not consider this point and focus
+solely on maximizing inter-class discriminability by enforcing
+orthogonality among all sub-centers.
+To address this issue, we propose a Dual Orthogonality
+Sub-center Loss (DOSCL), which categorizes sub-centers into
+inter-class and intra-class, imposing orthogonality constraints
+in a dual mechanism.
+DOSCL enforces strict orthogonality
+constraints on the inter-class cosine similarity, while applying
+relaxed constraints on the intra-class cosine similarity.
+This
+dual approach enables the model to enhance its ability to de-
+tect anomalies while effectively adapting to the underlying
+data structure. The AUC and pAUC are improved by 1.74%
+and 0.62%, respectively, compared to a strong baseline on the
+DCASE2023 Challenge Task2 dataset.
+2. Background
+2.1. Angular margin loss with multiple sub-centers
+In traditional softmax training, the distinction between differ-
+ent classes is achieved by maximizing the posterior probability
+eW T
+i x+bi
+PC
+j=1 e
+W T
+j x+bj . Here, x ∈Rd represents the sample embed-
+ding obtained through the feature extraction network, d is the
+feature dimension, Wj denotes the j-th column of the weight
+matrix W ∈Rd×C, W is the weight of the last fully connected
+layer, bj is the bias term, and C is the number of classes. How-
+ever, traditional softmax only focuses on the distinction, but not
+the degree of distinction [22]. To address this issue, angular
+margin loss modifies the traditional softmax by setting bi = 0
+and normalizing both the weight vectors and the feature embed-
+dings, ||wj|| = ||x|| = 1 [11, 12]. Consequently, the probabil-
+ity of the current input belonging to class i becomes cos(θi),
+where θi is the angle between the weight vector wi and the fea-
+ture x. This transformation shifts the focus from Euclidean dis-
+tance to angular relationships, so that the prediction probability
+depends solely on the angular similarity between the feature x
+and the weight matrix W [23]. The key step of the angular mar-
+gin loss lies in its angular margin function f(s, cos(θi)), which
+imposes an additional angular penalty on the decision margin
+between different classes. This approach improves the discrim-
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+3374
+10.21437/Interspeech.2025-1563
+
+inability by maximizing the angular separation between classes
+while maintaining compactness within the same class. Conse-
+quently, it improves not only the discrimination between differ-
+ent classes but also the overall clustering performance, resulting
+in more robust and discriminative feature representations for the
+ASD task [13].
+A variety of angular margin losses have been adopted, and
+these can be expressed in a general form:
+Langular = −log
+ef(s,cos(θi))
+ef(s,cos(θi)) + PC
+j=1,j̸=i ef(s,cos(θj))
+(1)
+and the f(s, cos(θi)) for ArcFace [11] and AdaCos [12] as fol-
+lows:
+f(s, cos(θj))Arcface =
+(
+s cos (θj + m)
+if j = i,
+s cos θj
+if j̸ = i.
+(2)
+f(s, cos(θj))AdaCos = s(t) cos (θj)
+(3)
+s(t) =
+
+
+
+√
+2 · log(C −1)
+if t = 0
+log ˆ
+B(t)avg
+cos
+
+min
+
+π
+4 ,ˆθ(t)
+med
+
+otherwise
+(4)
+where s is the scaling factor, m is the additional angular margin
+penalty, t is the number of iterations, ˆB(t)avg is the mean value
+computed using the angles of all the samples, and ˆθ(t)
+med is the
+median of the sample angles. Unlike the fixed angular margin
+penalty of Arcface, AdaCos adjusts the angular margin penalty
+according to the iterative process [12].
+Due to the diversity of samples within a class, a single class
+center is insufficient for efficient representation.
+To address
+this, angular margin loss with multiple sub-centers has been in-
+troduced, e.g., SCArcface [15], SCAdaCos [16]. This kind of
+methods expands the class-center matrix W from d × C × 1 to
+d × C × S, which means that the number of centers per class is
+extended from 1 to S. In addition, SCArcface represents sam-
+ples by the nearest sub-center, while SCAdaCos uses multiple
+sub-centers to model samples jointly, capturing more complex
+distributions. Therefore, the joint representation strategy is able
+to achieve better performance [16].
+2.2. Orthogonality of class centers
+As analyzed in [24], class centers should be well dispersed
+in the feature space to maximize inter-class differences.
+To
+achieve this, existing approaches achieve orthogonalization be-
+tween class centers from different perspectives. For example,
+in [16], the class center matrix is initialized as an unlearnable
+random matrix. While this improves the orthogonality between
+sub-centers, it limits the ability of the model to match the un-
+derlying structure of the data. In [23], an orthogonal regularity
+term is imposed on the class center matrix to promote orthogo-
+nality between class centers. Other possible improvements in-
+clude initializing the class center matrices as orthogonal and
+setting them as unlearnable. However, all of these approaches
+only consider the orthogonality requirement of inter-class sub-
+centers and cannot deal with the orthogonality requirement of
+sub-centers in the multiple sub-center angular margin loss, as
+we discuss in the next section.
+3. Proposed method
+3.1. Orthogonality requirements for different sub-centers
+Inter-class sub-centers.
+To ensure that normal and proxy
+anomaly samples are sufficiently separated in feature space, the
+inter-class sub-centers should be as orthogonal as possible. This
+separation enhances the sensitivity of the model to anomalies.
+For a randomly initialized class center matrix, according to [25],
+the probability density function of the angle θ between sub-
+centers in high-dimensional space can be expressed as:
+h(θ) =
+1
+√π ·
+Γ
+  p
+2
+
+Γ
+  p−1
+2
+ · (sin θ)p−2,
+θ ∈[0, π]
+(5)
+where p denotes the dimension of sub-center, and Γ(x) is the
+gamma function. In the angular margin loss framework, the
+dimensionality of sub-centers is determined by the feature di-
+mensionality, which has a direct impact on the performance
+and efficiency of the model. Higher feature dimensionality in-
+creases the risk of over-fitting and computational cost, while
+lower dimensionality can lead to loss of critical information.
+From Eq. (5) , it is known that higher dimensions generally
+lead to better orthogonality for randomly initialized sub-centers.
+However, since the dimensionality of these sub-centers is inher-
+ently matched to the feature dimensionality, insufficient feature
+dimensionality results in inadequate orthogonality of the ran-
+domly initialized sub-centers. On the other hand, since at most
+d vectors pairwise orthogonal in a d-dimensional feature, when
+the number of sub-centers pairs is larger than the feature dimen-
+sionality, the inter-class sub-centers should be preferentially or-
+thogonalized to ensure the sensitivity of the model to anomalies.
+Intra-class sub-centers. The size of the feature representa-
+tion space for intra-class sub-centers is primarily influenced by
+the number of sub-centers. When there is only one class center,
+high-probability samples are concentrated around it, resulting in
+a limited representation space. As the number of sub-centers in-
+creases, samples are distributed not only around the centers but
+also in the intermediate regions, thereby expanding the feature
+space. Given a fixed number of sub-centers, the angle between
+these sub-centers further determines the size of the feature space
+[26]. However, samples in the same class should be represented
+in a compact space due to their inherent similarity [27], even
+though intra-class diversity exists. Excessive orthogonality be-
+tween intra-class sub-centers can lead to an overly large and dis-
+persed representation space. This makes the distribution of nor-
+mal samples less compact and increases the risk of anomalous
+samples finding a suitable location within this space, reducing
+the effectiveness of anomaly detection.
+3.2. Dual orthogonality sub-center loss (DOSCL)
+In this section, we propose the dual orthogonality sub-center
+loss (DOSCL), a novel loss function designed to satisfy the
+orthogonality requirement of two types of sub-center pairs.
+DOSCL optimize the orthogonality of sub-centers through a
+dual mechanism, which consists of two components: the inter-
+class orthogonality loss Linter and the intra-class orthogonality
+loss Lintra, as shown in Fig. 1. The DOSCL loss function is
+formulated as:
+LDOSCL = Linter + Lintra
+(6)
+The Linter imposes first-order moment and second-order
+moment constraints on the cosine similarity between any two
+different classes of sub-centers (e.g., ws
+c, ws′
+c′ ). Minimizing the
+3375
+
+…
+…
+…
+ Feature       
+   extractor 
+…
+Input data
+…
+…
+…
+… …
+Feature 
+Class centers
+Angular 
+margin loss
+Dual orthogonality 
+sub-center loss
+Wj
+Wi
+Wj
+Wi
+wis1
+wis2
+wis3
+Intra-class sub-centers 
+…
+������⇒ θ ≈ 90°
+������⇒ θ→ 90°
+Figure 1: Schematic of the proposed DOSCL. Where Wi,Wj represent class centers of different classes, each containing multiple sub-
+centers(e.g. ws1,s2,s3
+i
+). An arbitrary sub-center constrained by both Linter and Lintra dual orthogonality constraints.
+first-order moment is equivalent to minimizing the average co-
+sine similarity between the sub-centers, thus encouraging or-
+thogonality between these sub-centers. Meanwhile, minimiz-
+ing the second-order moment is equivalent to minimizing the
+variance of the cosine similarity distributions, which restricts
+the angle variations between sub-centers and makes the distri-
+bution more peaked, further improving orthogonality. Linter is
+formulated as follows:
+Linter(ws
+c, ws′
+c′ ) = α
+1
+ C
+2
+
+X
+0≤c<c′≤C
+
+1
+ S
+2
+
+X
+0≤s≤s′≤S
+ws
+c
+T ws′
+c′
+
+
+|
+{z
+}
+first moment
++
+β
+1
+ C
+2
+
+X
+0≤c<c′≤C
+
+1
+ S
+2
+
+X
+0≤s≤s′≤S
+(ws
+c
+T ws′
+c′ )2
+
+
+|
+{z
+}
+second moment
+(7)
+where C is the number of classes, c and c′ are class indexes, S
+is the number of sub-centers for each class, s and s′ are indexes
+of sub-centers, α and β are hyperparameters that control the
+influence of the first and second moments, respectively.
+The Lintra minimizing the first-order moment of cosine sim-
+ilarity between arbitrary intra-class sub-centers (e.g., ws
+c, ws′
+c ),
+which is equivalent to minimizing the angular means of arbi-
+trary sub-centers within one class, which ensures that the model
+captures features with large intra-class differences:
+Lintra(ws
+c, ws′
+c ) = λ 1
+C
+C
+X
+c=1
+
+1
+ S
+2
+
+X
+0≤s<s′≤S
+ws
+c
+T ws′
+c
+
+
+|
+{z
+}
+first moment
+(8)
+In Lintra, only the mean of the cosine similarity is constrained to
+be minimized, which allows for the existence of diverse angles
+between sub-centers within a class, thus matching the underly-
+ing structure of the data. This ensures that the model captures
+within-class variation without compromising the overall com-
+pactness of the distribution.
+The hyperparameters α and λ are set equal (α = λ) given
+the consistent physical meaning and optimization objective of
+the first-order moment in both inter-class and intra-class losses.
+This simplification thus reduces the complexity of hyperparam-
+eter tuning while maintaining theoretical consistency.
+To further improve the discriminative ability of the model,
+the proposed DOSCL integrated with the angular margin loss
+function Langular, and the overall loss function Lall is thus for-
+mulated as a combination of Langular and LDOSCL, Lall is formu-
+lated as:
+Lall = Langular + LDOSCL
+(9)
+which enables the model to accurately and reliably differenti-
+ate between normal and anomalous samples, achieving superior
+performance.
+4. Experimental results
+4.1. Experimental setup
+Experiments were conducted on the DCASE2023 Challenge
+Task2 dataset (“First-shot unsupervised anomalous sound de-
+tection for machine condition monitoring”) [28], which is an
+ASD task dataset consisting of real-world data. This dataset,
+sourced from MIMII DG [29] and ToyADMOS2 [30], contains
+fourteen device types: Fan, Gearbox, Bearing, Slide rail, Toy
+car, Toy train, Valve, Vacuum, ToyTank, ToyNscale, ToyDrone,
+bandsaw, grinder, and shaker. Each type has only one indepen-
+dent device data. The data from each device in dataset consist
+of 1000 normal samples in the training set, of which 990 are
+from the source domain and 10 are from the target domain, and
+the test set contains 200 samples, of which 100 are from the
+source domain and 100 are from the target domain. The sam-
+ples in dataset are 10 seconds in length, with a sampling rate of
+16 kHz.
+Evaluation metrics including area under the receiver operat-
+ing characteristic (ROC) curve (AUC) and partial AUC (pAUC)
+with p = 0.1. The metric pAUC is the AUC computed under a
+low false-positive rate range, namely [0, p], which is used be-
+cause a high true positive-rate is desirable under this conditions
+in practical applications to avoid frequent false alarms [31]. All
+experiments were conducted in the development and evaluation
+set of the DCASE2023 Challenge Task 2 dataset, and the re-
+sults are the mean and standard deviation of five independent
+experiments.
+The baseline was adopted from [32], an efficient ASD
+method that uses a finely designed model structure and is trained
+by SCAdaCos with randomly initialized and non-learnable class
+center matrix. All experiments maintain consistent network ar-
+chitectures and training setup with the baseline, only modifying
+the angular margin loss components to ensure controlled com-
+parison. The training data is categorized into 186 classes based
+on the attributes of the samples. For multiple sub-center an-
+gular margin losses, each class has 16 sub-centers with feature
+dimensions of 512.
+3376
+
+4.2. Performance comparison
+Considering that our approach is based on angular margin loss
+and is related to the orthogonality of the class centers, we per-
+formed three sets of experiments: First, we evaluated the basic
+angular margin losses (ArcFace, AdaCos) and their trainable
+multiple subclass extensions (SCArcFace, SCAdaCos). Both
+SCArcFace and SCAdaCos utilize a joint representation strat-
+egy. Second, we investigated different strategies for the orthog-
+onalization of sub-centers: 1) fixed centers with random initial-
+ization (∗), 2) fixed centers with orthogonal initialization (†) and
+3) learnable sub-centers with orthogonality loss (OL). Third, we
+integrated our proposed DOSCL (β = 100, α = 6 × 103) with
+existing multiple sub-center angular margin losses. The experi-
+mental results are shown in Table 1.
+Table 1: Harmonic mean of AUC(%) and pAUC(%) for different
+methods over all machines. Highest values in bold.
+Method
+AUC(%)
+pAUC(%)
+Arcface
+64.82 ± 0.39
+54.63 ± 0.82
+Adacos
+64.91 ± 0.46
+54.69 ± 0.53
+SCArcface
+67.22 ± 0.91
+56.63 ± 0.36
+SCAdaCos
+67.52 ± 0.56
+56.84 ± 0.70
+SCArcface*
+69.31 ± 0.42
+57.11 ± 0.65
+SCAdaCos*(baseline)
+69.57 ± 0.82
+57.45 ± 0.84
+SCArcface†
+68.40 ± 0.48
+56.92 ± 0.55
+SCAdaCos†
+68.91 ± 0.56
+57.03 ± 0.43
+SCArcface+OL
+69.02 ± 0.41
+57.28 ± 0.63
+SCAdaCos+OL
+69.42 ± 0.72
+57.33 ± 0.42
+SCArcface+DOSCL
+70.92 ± 0.75
+57.81 ± 0.59
+SCAdaCos+DOSCL
+71.31 ± 0.61
+58.07 ± 0.45
+Table 1 highlights key insights on sub-center configura-
+tions.
+Fixed centers with orthogonal initialization (†) show
+less performance improvement compared to the random initial-
+ization strategy (∗).
+In contrast, angular margin losses with
+learnable multiple class centers achieve improved AUC and
+pAUC performance when integrated with orthogonality loss
+(OL), compared to the non-OL configuration. However, these
+methods still underperform the baseline. Notably, SCAdaCos
+with our proposed DOSCL achieves significant performance
+enhancement, surpassing the baseline by 1.74% for AUC and
+0.62% for pAUC.
+As shown in Fig. 2, compared with fixed centers with ran-
+dom initialization, DOSCL achieves comparable orthogonality
+between inter-class sub-centers. While for the intra-class sub-
+centers, DOSCL results in more diverse and relatively lower
+orthogonality between class centers.
+4.3. Performance impact of hyperparameter
+The hyperparameters α and β are designed to regulate the mean
+and variance of sub-centers cosine similarities, respectively. A
+sensitivity analyzes were conducted by alternately fixing each
+parameter, for the SCAdaCos and SCArcFace methods with
+DOSCL, respectively, as shown in Fig. 3. The harmonic mean
+of combined AUC and pAUC H was chosen as the performance
+metric, as it provides a comprehensive measure of performance.
+The results show that the performance of the model depends
+more on the choice of α, and if α is not the optimal choice, the
+performance can drop significantly.
+4.4. Ablation studies
+To investigate the impact of different components of DOSCL on
+performance, ablation studies were conducted using SCAdaCos
+0.3
+0.2
+0.1
+0.0
+0.1
+0.2
+0.3
+Cosine Similarity
+0
+1
+2
+3
+Number
+ 
+SCAdaCos(fixed W)
+SCAdaCos + DOSCL
+×10
+5
+(a)
+0.3
+0.2
+0.1
+0.0
+0.1
+0.2
+0.3
+Cosine Similarity
+0
+1
+2
+3
+4
+Number
+ 
+SCAdaCos(fixed W)
+SCAdaCos + DOSCL
+×400
+(b)
+Figure 2: Histogram of cosine similarity of (a) inter-class and
+(b) intra-class sub-centers with fixed W and DOSCL.
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+61
+62
+63
+64
+65
+(%)
+baseline
+SCAdaCos + DOSCL
+SCArcface + DOSCL
+×10
+3
+(a)
+0
+25
+50
+75
+100 125 150 175 200
+61
+62
+63
+64
+65
+(%)
+baseline
+SCAdaCos + DOSCL
+SCArcface + DOSCL
+(b)
+Figure 3: Harmonic mean of combined AUC and pAUC H(%)
+with varying the value of hyperparameters. (a) β fixed at 100.
+(b) α fixed at 6 × 103.
+as angular margin loss. The results, as shown in Table 2, indi-
+cate that the removal of any single component leads to a decline
+in performance. Notably, the most significant drop occurs when
+the first-order moment constraint of sub-centers is absent.
+Table 2: Ablation studies results by using SCAdaCos as angular
+margin loss.
+Method
+AUC(%)
+pAUC(%)
+Lintra
+68.43 ± 0.56
+56.87 ± 0.60
+Linter(1st moment only)
+69.74 ± 0.82
+57.45 ± 0.75
+Linter(2nd moment only)
+68.28 ± 0.67
+56.83 ± 0.56
+Linter
+70.46 ± 0.43
+57.56 ± 0.34
+Linter(1st moment only) + Lintra
+70.85 ± 0.69
+57.63 ± 0.83
+Linter(2nd moment only) + Lintra
+69.89 ± 0.94
+57.47 ± 0.76
+5. Conclusion
+This paper analyzed the orthogonality requirements of inter-
+class and intra-class sub-centers within the multiple sub-center
+angular margin loss framework and proposed a novel DOSCL
+loss function to optimize their orthogonality. DOSCL ensures
+that inter-class sub-centers are as orthogonal as possible to en-
+hance anomaly detection, while applying a relaxed constraint
+on intra-class sub-centers. This strategy allows the sub-centers
+to better match the underlying data structure, thereby avoid-
+ing overly constrained sub-centers that could impair the com-
+pactness of the distribution.
+Evaluated on the DCASE2023
+Challenge Task2 dataset, DOSCL enhanced model performance
+compared to a strong baseline, achieving a 1.74% increase in
+AUC and a 0.62% increase in pAUC.
+3377
+
+6. References
+[1] C. Pichler,
+M. Neumayer,
+B. Schweighofer,
+C. Feilmayr,
+S. Schuster, and H. Wegleiter, “Knocking sound detection for
+acoustic condition monitoring in industrial facilities,” IEEE Sen-
+sors Letters, vol. 8, no. 10, pp. 1–4, 2024.
+[2] R. Wang, Y. Leng, J. Zhuang, and C. Sun, “A sound event de-
+tection support system for smart home based on “two-to-one”
+teacher–student learning,” Applied Soft Computing, vol. 167, p.
+112224, 2024.
+[3] S. Gahlot, S. R. N. Reddy, and D. Kumar, “Review of smart health
+monitoring approaches with survey analysis and proposed frame-
+work,” IEEE Internet of Things Journal, vol. 6, no. 2, pp. 2116–
+2127, 2019.
+[4] Y. Koizumi, Y. Kawaguchi, K. Imoto, T. Nakamura, Y. Nikaido,
+R. Tanabe, H. Purohit, K. Suefusa, T. Endo, M. Yasuda et al., “De-
+scription and discussion on dcase2020 challenge task2: Unsuper-
+vised anomalous sound detection for machine condition monitor-
+ing,” arXiv preprint arXiv:2006.05822, 2020.
+[5] J. Guan, F. Xiao, Y. Liu, Q. Zhu, and W. Wang, “Anomalous sound
+detection using audio representation with machine id based con-
+trastive learning pretraining,” in IEEE International Conference
+on Acoustics, Speech and Signal Processing.
+IEEE, 2023, pp.
+1–5.
+[6] D. Hendrycks, M. Mazeika, and T. Dietterich, “Deep anomaly
+detection with outlier exposure,” Proceedings of the International
+Conference on Learning Representations, 2019.
+[7] I. Kuroyanagi, T. Hayashi, K. Takeda, and T. Toda, “Improvement
+of serial approach to anomalous sound detection by incorporating
+two binary cross-entropies for outlier exposure,” in European Sig-
+nal Processing Conference.
+IEEE, 2022, pp. 294–298.
+[8] K. Wilkinghoff, “Self-supervised learning for anomalous sound
+detection,” in International Conference on Acoustics, Speech and
+Signal Processing.
+IEEE, 2024, pp. 276–280.
+[9] Y. Tachioka, “Outlier exposure with efficient division of positive
+and negative examples for anomalous sound detection,” in Euro-
+pean Signal Processing Conference.
+IEEE, 2024, pp. 76–80.
+[10] H. Chen, Y. Song, Z. Zhuo, Y. Zhou, Y.-H. Li, H. Xue, and
+I. McLoughlin, “An effective anomalous sound detection method
+based on representation learning with simulated anomalies,” in
+IEEE International Conference on Acoustics, Speech and Signal
+Processing.
+IEEE, 2023, pp. 1–5.
+[11] J. Deng, J. Guo, N. Xue, and S. Zafeiriou, “Arcface: Additive
+angular margin loss for deep face recognition,” in Proceedings of
+the IEEE/CVF conference on computer vision and pattern recog-
+nition, 2019, pp. 4690–4699.
+[12] X. Zhang, R. Zhao, Y. Qiao, X. Wang, and H. Li, “Adacos: Adap-
+tively scaling cosine logits for effectively learning deep face repre-
+sentations,” in Proceedings of the IEEE/CVF Conference on Com-
+puter Vision and Pattern Recognition, 2019, pp. 10 823–10 832.
+[13] K. Wilkinghoff and F. Kurth, “Why do angular margin losses
+work well for semi-supervised anomalous sound detection?”
+IEEE/ACM Transactions on Audio, Speech, and Language Pro-
+cessing, 2023.
+[14] K. Wilkinghoff, “Adaproj: Adaptively scaled angular margin sub-
+space projections for anomalous sound detection with auxiliary
+classification tasks,” in Detection and Classification of Acoustic
+Scenes and Events, Tokyo, Japan, October 2024, pp. 23–25.
+[15] J. Deng, J. Guo, T. Liu, M. Gong, and S. Zafeiriou, “Sub-center ar-
+cface: Boosting face recognition by large-scale noisy web faces,”
+in Computer Vision–ECCV 2020: 16th European Conference,
+Glasgow, UK, August 23–28, 2020, Proceedings, Part XI 16.
+Springer, 2020, pp. 741–757.
+[16] K. Wilkinghoff, “Sub-cluster adacos: Learning representations
+for anomalous sound detection,” in International Joint Conference
+on Neural Networks.
+IEEE, 2021, pp. 1–8.
+[17] M. Zhu and A. M. Martinez, “Subclass discriminant analysis,”
+IEEE transactions on pattern analysis and machine intelligence,
+vol. 28, no. 8, pp. 1274–1286, 2006.
+[18] L. Ruff, R. Vandermeulen, N. Goernitz, L. Deecke, S. A. Siddiqui,
+A. Binder, E. M¨uller, and M. Kloft, “Deep one-class classifica-
+tion,” in International conference on machine learning.
+PMLR,
+2018, pp. 4393–4402.
+[19] P. Kanerva, “Hyperdimensional computing: An introduction to
+computing in distributed representation with high-dimensional
+random vectors,” Cognitive computation, vol. 1, pp. 139–159,
+2009.
+[20] Y. Hu, C. Chen, B. Deng, Y. Lai, H. Lin, Z. Zheng, and J. Bian,
+“Decoupling anomaly discrimination and representation learn-
+ing: self-supervised learning for anomaly detection on attributed
+graph,” Data Science and Engineering, pp. 1–14, 2024.
+[21] D. Li, Q. Tao, J. Liu, and H. Wang, “Center-aware adversarial au-
+toencoder for anomaly detection,” IEEE Transactions on Neural
+Networks and Learning Systems, vol. 33, no. 6, pp. 2480–2493,
+2021.
+[22] A. Laha,
+S. A. Chemmengath,
+P. Agrawal,
+M. Khapra,
+K. Sankaranarayanan, and H. G. Ramaswamy, “On controllable
+sparse alternatives to softmax,” Advances in neural information
+processing systems, vol. 31, 2018.
+[23] S. Yang, W. Deng, M. Wang, J. Du, and J. Hu, “Orthogonality
+loss: Learning discriminative representations for face recogni-
+tion,” IEEE Transactions on Circuits and Systems for Video Tech-
+nology, vol. 31, no. 6, pp. 2301–2314, 2020.
+[24] X. Zhang, F. X. Yu, S. Kumar, and S.-F. Chang, “Learning spread-
+out local feature descriptors,” in Proceedings of the IEEE interna-
+tional conference on computer vision, 2017, pp. 4595–4603.
+[25] T. T. Cai, J. Fan, and T. Jiang, “Distributions of angles in ran-
+dom packing on spheres,” Journal of Machine Learning Research,
+vol. 14, no. 136, pp. 1837–1864, 2013.
+[26] B. Song, H. Zhu, B. Wang, and Y. Bi, “Class feature sub-space for
+few-shot classification,” Applied Intelligence, vol. 54, no. 19, pp.
+9177–9194, 2024.
+[27] Y. Wen, W. Liu, Y. Feng, B. Raj, R. Singh, A. Weller, M. J. Black,
+and B. Sch¨olkopf, “Pairwise similarity learning is simple,” in Pro-
+ceedings of the IEEE/CVF International Conference on Computer
+Vision, 2023, pp. 5308–5318.
+[28] K. Dohi, K. Imoto, N. Harada, D. Niizumi, Y. Koizumi,
+T. Nishida, H. Purohit, R. Tanabe, T. Endo, and Y. Kawaguchi,
+“Description and discussion on dcase 2023 challenge task 2: First-
+shot unsupervised anomalous sound detection for machine con-
+dition monitoring,” in Detection and Classification of Acoustic
+Scenes and Events, Tampere, Finland, September 2023, pp. 21–
+22.
+[29] N. Harada, D. Niizumi, D. Takeuchi, Y. Ohishi, M. Yasuda, and
+S. Saito, “ToyADMOS2: Another dataset of miniature-machine
+operating sounds for anomalous sound detection under domain
+shift conditions,” in Proceedings of the Detection and Classifica-
+tion of Acoustic Scenes and Events Workshop, Barcelona, Spain,
+November 2021, pp. 1–5.
+[30] K. Dohi, T. Nishida, H. Purohit, R. Tanabe, T. Endo, M. Ya-
+mamoto, Y. Nikaido, and Y. Kawaguchi, “MIMII DG: Sound
+dataset for malfunctioning industrial machine investigation and
+inspection for domain generalization task,” in Proceedings of the
+7th Detection and Classification of Acoustic Scenes and Events
+2022 Workshop, Nancy, France, November 2022.
+[31] Y. Koizumi, Y. Kawaguchi, K. Imoto, T. Nakamura, Y. Nikaido,
+R. Tanabe, H. Purohit, K. Suefusa, T. Endo, M. Yasuda, and
+N. Harada, “Description and discussion on DCASE2020 chal-
+lenge task2: Unsupervised anomalous sound detection for ma-
+chine condition monitoring,” in Proceedings of the Detection and
+Classification of Acoustic Scenes and Events 2020 Workshop,
+November 2020, pp. 81–85.
+[32] K. Wilkinghoff, “Design choices for learning embeddings from
+auxiliary tasks for domain generalization in anomalous sound de-
+tection,” in IEEE International Conference on Acoustics, Speech
+and Signal Processing.
+IEEE, 2023, pp. 1–5.
+3378

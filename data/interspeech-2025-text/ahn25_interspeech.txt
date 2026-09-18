@@ -1,0 +1,564 @@
+HuBERT-VIC: Improving Noise-Robust Automatic Speech Recognition of
+Speech Foundation Model via Variance-Invariance-Covariance Regularization
+Hyebin Ahn, Kangwook Jang, Hoirin Kim
+School of Electrical Engineering, KAIST, Republic of Korea
+ahb9900@kaist.ac.kr, dnrrkdwkd12@kaist.ac.kr, hoirkim@kaist.ac.kr
+Abstract
+Noise robustness in speech foundation models (SFMs) has been
+a critical challenge, as most models are primarily trained on
+clean data and experience performance degradation when the
+models are exposed to noisy speech. To address this issue, we
+propose HuBERT-VIC, a noise-robust SFM with variance, in-
+variance, and covariance regularization (VICReg) objectives.
+These objectives adjust the statistics of noisy speech representa-
+tions, enabling the model to capture diverse acoustic character-
+istics and improving the generalization ability across different
+types of noise. When applied to HuBERT, our model shows rel-
+ative performance improvements of 23.3% on LibriSpeechtest-
+clean and 13.2% on test-other, compared to the baseline model
+pre-trained on noisy speech.
+Index Terms: automatic speech recognition, noise robustness,
+speech foundation model
+1. Introduction
+Over the past few years, speech foundation models (SFMs) have
+significantly advanced the field of speech processing, achiev-
+ing impressive improvements in automatic speech recognition
+(ASR) [1, 2, 3, 4, 5, 6] and other speech-related tasks [7, 8,
+9, 10, 11]. SFMs such as wav2vec 2.0 [2] and HuBERT [4]
+have demonstrated exceptional performance by leveraging large
+amounts of unlabeled speech data, reducing the reliance on an-
+notated data. A key factor behind the success of SFMs is a
+pretext scheme that predicts codewords of masked frames [12],
+and this enables SFMs to capture the complex acoustic patterns
+from speech. However, since these models are mainly trained
+on clean speech, their recognition capability is weakened when
+the models are exposed to noisy environments and this leads to
+severe performance degradation in real-world noisy scenarios.
+Several studies have attempted to enhance the noise robust-
+ness of SFMs, employing contrastive learning [13, 14, 15, 16],
+reconstruction loss [17, 18] or knowledge distillation [19] dur-
+ing the pre-training stage. Wav2vec-Switch [14] incorporates
+additional contrastive losses with clean-noisy switched contex-
+tualized targets into wav2vec 2.0 to enforce prediction consis-
+tency between the clean and noisy speech. Another work [17]
+introduces a reconstruction module, where the model is trained
+to minimize the difference from clean speech using contrastive
+learning. HuBERT-AGG [19] learns noise-invariant represen-
+tations by distilling clean teacher’s knowledge with layer-wise
+aggregation, making the model well-suited for ASR.
+However, previous methods are generally vulnerable to rep-
+resentation collapse, as they rely heavily on joint embedding
+networks without explicit regularization to control the vari-
+ability of feature channel dimensions [20]. Another issue is
+that since previous methods are mostly based on contrastive
+loss [14], which requires large batch sizes and high resources,
+training become more difficult due to the slow convergence
+and various hyperparameter settings. There is an another work
+based on knowledge distillation [19]. However, they require an
+additional ASR fine-tuning stage to measure each transformer
+layer’s contribution to ASR for the effective distillation of the
+clean teacher’s knowledge to the student.
+From this perspective, we propose a Variance-Invariance-
+Covariance Regularization (VICReg) [20]-based loss to ef-
+fectively control the feature-level statistics on noise-robust
+pre-training of SFM. VICReg consists of three distinct
+terms—Variance, Invariance, and Covariance—applied within
+the clean-noise knowledge distillation framework. While the in-
+variance term ensures that the noisy representations align with
+the clean representations as a reference, the variance term di-
+rectly controls the statistics of noisy speech representations by
+regulating the variability of channel dimensions. Additionally,
+the covariance term improves the quality of noisy speech repre-
+sentations by reducing redundancy between every pair of chan-
+nel dimensions. This decorrelation enables the model to better
+capture diverse speech characteristics. Simply adding VICReg
+terms improves performance in noisy environments, highlight-
+ing its potential as a noise-robust pre-training method.
+Our contributions can be summarized as follows: (i) we pro-
+pose HuBERT-VIC, a novel noise-robust pre-training method
+that integrates variance, invariance, and covariance regulariza-
+tion terms to pretext task of SFMs. (ii) Experimental results
+conducted on LibriSpeech [21] with MUSAN [22] noise added
+show that our proposed HuBERT-VIC surpasses other methods
+across various noise types and Signal-to-Noise Ratio (SNR) lev-
+els. (iii) We analyze the relationship between variance, SNRs,
+and ASR performance, demonstrating how the variance of chan-
+nel dimensions contributes to the noise robustness in SFMs.
+2. Method
+2.1. HuBERT
+HuBERT [4] is a SFM that employs the masked prediction
+task [12, 23]. In this task, segments of the input sequence
+are masked, and the model predicts the corresponding hidden
+unit codeword. HuBERT consists of convolutional neural net-
+work (CNN) feature encoder followed by dozens of consecutive
+Transformer [24] layers. Given a lengthT sequence of masked
+representations X = [x1, x2,..., xT ] from the CNN feature ex-
+tractor with masked timestepsM, the masked prediction objec-
+tive of HuBERT can be defined as,
+Lm(X) =
+X
+t∈M
+logp (ct|X,t ), (1)
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+3419 10.21437/Interspeech.2025-397
+
+Figure 1: Overview of the proposed HuBERT-VIC training pipeline. Teacher model is pre-trained on clean speech and remains frozen
+during noise-robust pre-training of student model. The student model is initialized with the same clean pre-trained weights as the
+teacher, and then trained with noise-augmented speech inputs. Randomly selected frames of the final Transformer layer representations
+from both models are used to compute the VICReg loss, guiding the noise-robust pre-training.
+where C = [c1, c2,..., cT ] is the probability distributions ofT
+timesteps overC codeword candidates.
+2.2. HuBERT-VIC
+To enhance the noise robustness of speech representations, we
+adapt the variance, invariance, and covariance regularization
+terms originally designed for joint embedding networks in com-
+puter vision domain [20]. Incorporating all these regularization
+terms maintains sufficient variance of noisy speech represen-
+tations, enforces invariance to noise, and prevents overfitting
+to specific noise characteristics. This approach improves the
+model’s noise robustness and generalization ability.
+Fig. 1 shows the training pipeline of our proposed HuBERT-
+VIC. The teacher model is pre-trained on clean speech and re-
+mains frozen during noise-robust pre-training with clean speech
+inputs. The student model, initialized with the same clean
+pre-trained weights with the teacher’s, is trained on noise-
+augmented speech inputs that retain the same linguistic infor-
+mation with the teacher’s inputs. We sample n time frames
+along the time axis from the output of the final Transformer
+layer of both the teacher and student models. These frames
+are randomly selected from multiple utterances within a batch.
+Then Z, Z′ ∈ Rn×d represent the sampled representations
+for the teacher and student models, where d represents the
+channel dimensions. These representations can be written as
+Z = [ z1, z2,..., zn] and Z′ = [ z′
+1, z′
+2,..., z′
+n]. This sam-
+pling process makes the features more independent of consec-
+utive time frames and promotes training stability, similar to a
+prior work [25].
+Invariance term Given the sampled representations Z and
+Z′, the invariance regularization term minimizes the discrep-
+ancy between the teacher’s clean speech representations and the
+student’s noisy counterparts. Encouraging the invariance for the
+teacher and student is crucial for noise robustness, as it ensures
+that the model learns to maintain consistency in the representa-
+tions even in the presence of noise. Then the model becomes
+more robust to varying noise conditions and better generalize
+across different noise types. The invariance term is defined as
+the mean squared error (MSE),
+s(Z, Z′) = 1
+n
+nX
+i=1
+zi− z′
+i
+2
+2. (2)
+Variance term The variance regularization ensures sufficient
+dispersion across the channel dimensions of Z′ and prevents
+representation collapse where the learned representations be-
+come overly concentrated in certain dimensions. Based on the
+jth column vector Z′
+·j = [Z′
+1j,Z′
+2j,...,Z ′
+nj]T , the variance
+term is defined as follows,
+v(Z′) = 1
+d
+dX
+j=1
+max(0,γ−
+q
+Var(Z′
+·j) +ϵ). (3)
+Each channel dimension maintains a minimum level of vari-
+ability by applying a hinge loss with a hyperparameterγ, which
+controls the threshold, and a small scalar ϵ to prevent numer-
+ical instabilities. The variance term ensures a balanced distri-
+bution of information across channel dimensions and induces
+the model to capture diverse essential acoustic characteristics
+for noise robustness. Certain level of high variance in chan-
+nel dimensions correlates with better handling of noisy speech,
+as it allows the model to capture a broader range of variations
+on speech (See Sec. 4.2). The variance term complements the
+invariance term by enabling the model to learn differences be-
+tween clean and noisy representations. By capturing varied
+acoustic characteristics, this term can help the model to learn
+noise-specific features and reduce the impact of noise.
+Covariance term The covariance regularization aims to re-
+duce redundancy between every pair of channel dimensions
+so that each channel dimension can capture distinct and in-
+dependent information from the others. Covariance matrix of
+noise-perturbed representations C(Z′) ∈ Rd×d is calculated
+to capture relationships between channel dimensions. The off-
+diagonal elements of C(Z′) are then penalized with c(Z′) by
+pushing toward zero.
+C(Z′) = 1
+n− 1
+nX
+i=1
+(z′
+i−¯ z′)T (z′
+i−¯ z′), ¯ z′ = 1
+n
+nX
+i=1
+z′
+i. (4)
+3420
+
+c(Z′) = 1
+d
+X
+i̸=j
+C(Z′)ij
+2
+2. (5)
+The covariance term enhances the noise robustness by reduc-
+ing redundancy across channel dimensions, enabling the model
+to capture more distinct and diverse features of speech and im-
+proving its ability to generalize well to various environments.
+By combining these three regularization terms, the VIC loss
+is defined as follows,
+LV IC =λs(Z, Z′) +µv(Z′) +νc(Z′). (6)
+Ltot =Lm +αLV IC. (7)
+The combined final objective Ltot consists of regularization
+lossLV IC and the masked prediction loss Lm of HuBERT.
+These components are jointly optimized during the noise-robust
+pre-training of HuBERT.
+3. Experiments
+3.1. Dataset and Evaluation Descriptions
+For noise-robust pre-training, we utilize unlabeled 960 hours
+of LibriSpeech [21] and MUSAN [22] (babble, music, and nat-
+ural) with SNRs uniformly sampled between 5 to 10dB. Pre-
+processing for MUSAN dataset, such as dataset partitioning and
+babble noise synthesis, follows the pipeline used in [26]. Then
+we evaluate on LibriSpeech exploiting all noise categories of
+MUSAN dataset with discrete SNR levels of {0, 5, 10, 15}dB
+to assess the model performance across a wide range of noise
+conditions (Tab. 1).
+For direct comparison with prior work [19], we conduct
+another experiment following a protocol where LibriSpeech
+is augmented using only MUSAN music and natural noise
+with random SNR levels between 5 and 10dB for pre-training
+(Tab. 2). In this case, the SNR level for noise augmentation dur-
+ing evaluation is also randomly chosen in the same range. In
+both settings, we fine-tune our model on labeled train-clean-
+100 subset of LibriSpeech without noise perturbation to im-
+prove core ASR capabilities [14, 19]. Word error rate (WER)
+and average WER across different noise types, N-WER [26, 27]
+are reported for ASR performance.
+3.2. Model and Training Descriptions
+Noise-robust pre-training Both the teacher and student mod-
+els are initialized with officially released HuBERT-BASE check-
+point, which consists of 7 layers of 1D convolution and 12
+Transformer [24] layers with embedding dimension d as 768.
+Masking and dropouts are turned off in the teacher model to
+distill clear representations to the student model. We implement
+the masked prediction objective of HuBERT with default con-
+figuration in Fairseq recipe [28] for 50k training steps, applying
+Adam optimizer and pre-trainedk-means clustering model with
+k = 500 . For regularization terms, we set λ as 5, µ andν as
+1, respectively, for each V-I-C weight in Eq. 6. We adopt γ as
+1,ϵ as 1e-4 in Eq. 3, and α for 1 in Eq. 7. The number of ran-
+domly selected samples n is set to 512, and the same samples
+are selected for both the teacher and student models.
+ASR fine-tuning and decoding We follow base 100h con-
+figuration from Fairseq, which adds a linear layer after the last
+Transformer layer and optimizes with Connectionist Temporal
+Classification (CTC) loss [29]. The teacher model is discarded
+and only noise-robust pre-trained student model is fine-tuned.
+For decoding, we adopt a publicly available 4-gram language
+model trained on LibriSpeech with a beam size of 1500. We
+set the other decoding-related hyperparameters based on in-
+fer kenlm configuration from Fairseq.
+4. Results
+4.1. Main Results
+We compare the WER evaluated under different noise types and
+SNR levels in Tab. 1 with the original HuBERT and previous
+work. When comparing the overall performance across all noise
+types by N-WER, our model achieves the lowest N-WER of
+5.6% on test-clean, outperforming all other models. This in-
+cludes a relative N-WER improvement of 23.3%, with relative
+A VG WER improvements across three noise types for 23.0%-
+23.5% compared to HuBERT with noisyPT. On test-other, our
+model also achieves the lowest N-WER of 15.1%, demonstrat-
+ing a relative improvement of 13.2%, with average WER reduc-
+tions of 11.2%-14.1% across the three noise types.
+While the clean teacher’s knowledge is distilled to the stu-
+dent through invariance regularization, the variance regulariza-
+tion helps maintain robust feature representations by capturing
+the inherent characteristics in the noisy speech. The covariance
+regularization further enhances the model’s ability to learn the
+relationships between features’ channel dimensions. Together,
+these terms help the model to exhibit strong generalization abil-
+ity across various noise types, consistently outperforming ex-
+isting models on both test-clean and test-other on diverse noise
+conditions. Furthermore, unlike previous methods which expe-
+rienced performance degradation on clean speech compared to
+the original HuBERT, our model effectively prevents this degra-
+dation. We have confirmed the effectiveness of our method in
+terms of generalization ability on clean speech.
+We also compare the performance of our proposed method
+with an experimental protocol of prior work [19], as shown in
+Tab. 2. While HuBERT pre-trained on noisy speech enhances
+noise robustness, it underperforms on clean speech compared to
+its clean pre-trained counterpart. HuBERT-NIT and HuBERT-
+AGG show further improvements in noise robustness while they
+also cause slight performance degradations on clean speech.
+In contrast, HuBERT-VIC achieves the best performance under
+noisy conditions without sacrificing clean speech performance.
+This demonstrates the efficacy of our method in clean speech,
+which achieves performance improvements through simple reg-
+ularization terms without the need for additional training stages
+or preliminary ASR fine-tuning.
+4.2. Ablation and Analysis
+Regularization term ablation To analyze the contribution of
+three V-I-C terms in noise-robust ASR, we conduct an abla-
+tion study by selectively applying the regularization terms and
+evaluate the model’s performance on both clean (SNR=∞) and
+noisy (SNR= 5 –10) speech. We follow the same experimental
+setup as Tab. 2 for faster convergence of the experiments.
+The results of this ablation study are presented in Tab. 3.
+Compared to the model only trained with the masked predic-
+tion lossLm, adding the invariance term shows significant per-
+formance improvements on both clean and noisy speech in the
+second row. The invariance term is effective as it reduces the
+discrepancy between clean and noisy speech representations
+more directly and encourages the model to learn clean phonetic
+features regardless of the noise. By applying the invariance
+term after timestep sampling, we can better match the scale of
+the regularization terms and improve the model’s convergence,
+3421
+
+Table 1: WER (%) of noise-robust pre-trained models on LibriSpeech test-clean and test-other, with MUSAN Babble, Music, and
+Natural subsets augmented at SNRs ranging from 0 to 15dB. PT Type refers to whether the model is trained on clean speech or noise-
+augment speech. HuBERT-AGG† is reproduced.
+Method PT Type Babble, SNR (dB) = Music, SNR (dB) = Natural, SNR (dB) = N-WER Clean
+0 5 10 15 A VG 0 5 10 15 A VG 0 5 10 15 A VG A VG ∞
+test-clean eval.
+HuBERT [4] clean 60.7 20.6 7.3 4.6 23.3 35.0 15.1 6.6 4.5 15.3 22.8 10.1 5.4 4.1 10.6 16.4 3.4
+HuBERT [4] noisy 17.2 7.4 5.3 4.7 8.7 11.2 6.3 5.0 4.6 6.8 9.8 6.1 5.1 4.7 6.4 7.3 4.3
+HuBERT-AGG† [19] noisy 14.6 6.2 4.6 4.2 7.4 9.4 5.3 4.4 4.1 5.8 8.3 5.3 4.5 4.1 5.6 6.3 3.7
+Ours noisy 13.4 5.7 4.1 3.7 6.7 8.6 4.7 3.9 3.7 5.2 7.5 4.7 3.9 3.6 4.9 5.6 3.4
+test-other eval.
+HuBERT [4] clean 79.4 44.4 21.8 12.9 39.6 53.3 32.1 18.1 12.1 28.9 39.6 24.1 15.2 11.2 22.5 30.4 8.2
+HuBERT [4] noisy 38.7 19.8 13.3 10.2 20.5 26.3 16.1 12.1 10.8 16.3 23.2 15.5 12.1 10.7 15.4 17.4 9.5
+HuBERT-AGG† [19] noisy 35.0 17.1 11.7 9.9 18.4 23.0 13.9 10.7 9.4 14.3 20.1 13.3 10.6 9.4 13.4 15.4 8.6
+Ours noisy 34.8 16.9 11.4 9.5 18.2 22.8 13.5 10.4 9.1 14.0 20.0 13.2 10.5 9.3 13.3 15.1 8.1
+Table 2: WER (%) on MUSAN Music, Natural subsets. Noisy
+speech is synthesized with random SNRs from 5 to 10dB. PT
+Type refers to whether the model is trained on clean speech
+or noise-augment speech. The results of the other methods are
+taken from previous work [19].
+Method PT Type SNR (dB) =∞ SNR (dB) = 5–10
+test-clean test-other test-clean test-other
+HuBERT [4] clean 3.4 8.2 8.7 21.2
+HuBERT [4] noisy 4.1 9.0 5.4 14.1
+HuBERT-NIT [19] noisy 3.7 8.7 4.6 11.7
+HuBERT-AGG [19] noisy 3.5 8.5 4.3 11.6
+Ours noisy 3.4 8.1 4.2 11.3
+Table 3: WER (%) on MUSAN Music, Natural subsets for ab-
+lation. Noisy speech is synthesized with random SNRs from 5
+to 10dB. The results of the first row † are taken from previous
+work [19].
+Loss SNR (dB) =∞ SNR (dB) = 5–10
+test-clean test-other test-clean test-other
+Lm
+† 4.1 9.0 5.4 14.1
+(+) inv. 3.5 8.2 4.4 11.7
+(+) var. 3.5 8.2 4.3 11.5
+(+) cov. (Ours) 3.4 8.1 4.2 11.3
+leading to further performance improvements. Adding the vari-
+ance term results in slightly better performance as it allows the
+model to capture a broader spectrum of features on each channel
+and learn diverse features related to noise. By those characteris-
+tics, the variance term supports the invariance term by reducing
+the impact of noise and helps the model maintain consistency
+between clean and noisy representations. Finally, adding the
+covariance term improves the ASR performance by reducing re-
+dundancy across channel dimensions, which allows the model
+to capture more distinct relationships between features. The co-
+variance term also supports the invariance term by improving
+the alignment between clean and noisy representations. When
+all three terms are applied, the model achieves the best WER
+of 3.4%, 8.1% on clean speech, 4.2%, 11.3% on noisy speech.
+These results show that while the masked prediction loss and
+invariance term are fundamental for noise-robust pre-training,
+the variance and covariance terms complement these losses and
+contribute to the superior performance.
+Analysis on variance term We conduct an analysis to gain
+insights from the statistics of noisy speech representations in
+noise-robust pre-trained models, examining the relationship be-
+tween channel dimensions’ variance, SNR and ASR perfor-
+mance. Fig. 2 shows various models’ channel dimension vari-
+(a) Result on babble noise.
+ (b) Result on music noise.
+Figure 2: Variance of the channel dimensions in the last trans-
+former output representations from the noise-robust pre-trained
+models, analyzed across different SNR levels.
+ances of the last Transformer layer output representations. The
+noisy speech inputs are based on LibriSpeech test-clean with
+a mixture of MUSAN Babble, Music noise. The x-axis rep-
+resents the SNR levels, illustrating how the variance changes
+under different noise levels. There is a trend in the variance of
+noisy speech representations; Higher SNR in input speech leads
+to higher variance in the channel dimensions of representations
+from noise-robust models. We have observed that higher vari-
+ance is present in higher SNR settings as shown in the Fig. 2a
+and Fig. 2b. As SNR increases, the influence of noise dimin-
+ishes and the model can capture diverse speech-related acous-
+tic and phonetic features more than less-diverse noise features.
+Based on the fact that ASR performance is better at high SNR
+compared to low SNR, the increase in the variance can be inter-
+preted as the model’s enhanced ability to distinguish important
+speech characteristics, and ultimately its improved ASR perfor-
+mance at the end. These findings show that analyzing noisy
+speech statistics and applying the variance regularization is a
+simple yet effective approach for improving the noise robust-
+ness of SFMs.
+5. Conclusion
+In this paper, we propose HuBERT-VIC for noise-robust ASR.
+The model consists of the invariance term, which learns knowl-
+edge from a teacher model to align clean and noisy speech rep-
+resentations, the variance term, which ensures sufficient vari-
+ability across channel dimensions, and the covariance term,
+which reduces redundancy between different channel dimen-
+sions. These terms are incorporated into the HuBERT pre-
+training process to enhance the model’s robustness to noisy
+speech. Experimental results demonstrate that our approach
+shows significant performance improvements compared to ex-
+isting methods across various noise types and conditions, while
+also preventing performance degradation on clean speech and
+highlighting strong generalization ability.
+3422
+
+6. Acknowledgements
+This work was conducted by Center for Applied Research in Ar-
+tificial Intelligence(CARAI) grant funded by DAPA and ADD
+(UD190031RD).
+7. References
+[1] S. Schneider, A. Baevski, R. Collobert, and M. Auli, “wav2vec:
+Unsupervised pre-training for speech recognition,”arXiv preprint
+arXiv:1904.05862, 2019.
+[2] A. Baevski, Y . Zhou, A. Mohamed, and M. Auli, “wav2vec 2.0:
+A framework for self-supervised learning of speech representa-
+tions,” in Proc. NeurIPS, 2020, pp. 12 449–12 460.
+[3] A. Baevski, W.-N. Hsu, Q. Xu, A. Babu, J. Gu, and M. Auli,
+“Data2vec: A general framework for self-supervised learning in
+speech, vision and language,” inInternational Conference on Ma-
+chine Learning. PMLR, 2022, pp. 1298–1312.
+[4] W.-N. Hsu, B. Bolte, Y .-H. H. Tsai, K. Lakhotia, R. Salakhut-
+dinov, and A. Mohamed, “Hubert: Self-supervised speech rep-
+resentation learning by masked prediction of hidden units,”
+IEEE/ACM Transactions on Audio, Speech, and Language Pro-
+cessing, vol. 29, pp. 3451–3460, 2021.
+[5] S. Ling and Y . Liu, “Decoar 2.0: Deep contextualized acous-
+tic representations with vector quantization,” arXiv preprint
+arXiv:2012.06659, 2020.
+[6] Y .-A. Chung, Y . Zhang, W. Han, C.-C. Chiu, J. Qin, R. Pang, and
+Y . Wu, “W2v-bert: Combining contrastive learning and masked
+language modeling for self-supervised speech pre-training,” in
+2021 IEEE Automatic Speech Recognition and Understanding
+Workshop (ASRU). IEEE, 2021, pp. 244–250.
+[7] S. Chen, C. Wang, Z. Chen, Y . Wu, S. Liu, Z. Chen, J. Li,
+N. Kanda, T. Yoshioka, X. Xiaoet al., “Wavlm: Large-scale self-
+supervised pre-training for full stack speech processing,” IEEE
+Journal of Selected Topics in Signal Processing , vol. 16, no. 6,
+pp. 1505–1518, 2022.
+[8] K. Jang, S. Kim, and H. Kim, “Star: Distilling speech temporal
+relation for lightweight speech self-supervised learning models,”
+in ICASSP 2024-2024 IEEE International Conference on Acous-
+tics, Speech and Signal Processing (ICASSP) . IEEE, 2024, pp.
+10 721–10 725.
+[9] A. T. Liu, S.-w. Yang, P.-H. Chi, P.-c. Hsu, and H.-y. Lee, “Mock-
+ingjay: Unsupervised speech representation learning with deep
+bidirectional transformer encoders,” in ICASSP 2020-2020 IEEE
+International Conference on Acoustics, Speech and Signal Pro-
+cessing (ICASSP). IEEE, 2020, pp. 6419–6423.
+[10] A. T. Liu, S.-W. Li, and H.-y. Lee, “Tera: Self-supervised learn-
+ing of transformer encoder representation for speech,”IEEE/ACM
+Transactions on Audio, Speech, and Language Processing ,
+vol. 29, pp. 2351–2366, 2021.
+[11] D. Ng, J. Q. Yip, T. Surana, Z. Yang, C. Zhang, Y . Ma, C. Ni,
+E. S. Chng, and B. Ma, “I2cr: Improving noise robustness on
+keyword spotting using inter-intra contrastive regularization,” in
+2022 Asia-Pacific Signal and Information Processing Association
+Annual Summit and Conference (APSIPA ASC). IEEE, 2022, pp.
+605–611.
+[12] J. Devlin, M.-W. Chang, K. Lee, and K. Toutanova, “BERT: Pre-
+training of deep bidirectional transformers for language under-
+standing,” in Proc. NAACL, 2019, pp. 4171–4186.
+[13] Q.-S. Zhu, J. Zhang, Z.-Q. Zhang, M.-H. Wu, X. Fang, and L.-
+R. Dai, “A noise-robust self-supervised pre-training model based
+speech representation learning for automatic speech recognition,”
+in ICASSP 2022-2022 IEEE International Conference on Acous-
+tics, Speech and Signal Processing (ICASSP) . IEEE, 2022, pp.
+3174–3178.
+[14] Y . Wang, J. Li, H. Wang, Y . Qian, C. Wang, and Y . Wu, “Wav2vec-
+switch: Contrastive learning from original-noisy speech pairs for
+robust speech recognition,” in ICASSP 2022-2022 IEEE Interna-
+tional Conference on Acoustics, Speech and Signal Processing
+(ICASSP). IEEE, 2022, pp. 7097–7101.
+[15] Q.-S. Zhu, L. Zhou, J. Zhang, S.-J. Liu, Y .-C. Hu, and L.-R. Dai,
+“Robust data2vec: Noise-robust speech representation learning
+for asr by combining regression and improved contrastive learn-
+ing,” in ICASSP 2023-2023 IEEE International Conference on
+Acoustics, Speech and Signal Processing (ICASSP). IEEE, 2023,
+pp. 1–5.
+[16] Q.-S. Zhu, J. Zhang, Z.-Q. Zhang, and L.-R. Dai, “Joint training of
+speech enhancement and self-supervised model for noise-robust
+asr,” arXiv preprint arXiv:2205.13293, 2022.
+[17] H. Wang, Y . Qian, X. Wang, Y . Wang, C. Wang, S. Liu, T. Yosh-
+ioka, J. Li, and D. Wang, “Improving noise robustness of con-
+trastive speech representation learning with speech reconstruc-
+tion,” in ICASSP 2022-2022 IEEE International Conference on
+Acoustics, Speech and Signal Processing (ICASSP). IEEE, 2022,
+pp. 6062–6066.
+[18] S. Sadhu, D. He, C.-W. Huang, S. H. Mallidi, M. Wu, A. Ras-
+trow, A. Stolcke, J. Droppo, and R. Maas, “Wav2vec-c: A
+self-supervised model for speech representation learning,” arXiv
+preprint arXiv:2103.08393, 2021.
+[19] W. Wang and Y . Qian, “Hubert-agg: Aggregated representation
+distillation of hidden-unit bert for robust speech recognition,” in
+ICASSP 2023-2023 IEEE International Conference on Acoustics,
+Speech and Signal Processing (ICASSP). IEEE, 2023, pp. 1–5.
+[20] A. Bardes, J. Ponce, and Y . Lecun, “Vicreg: Variance-invariance-
+covariance regularization for self-supervised learning,” in ICLR
+2022-International Conference on Learning Representations ,
+2022.
+[21] V . Panayotov, G. Chen, D. Povey, and S. Khudanpur, “Lib-
+rispeech: an asr corpus based on public domain audio books,”
+in Proc. ICASSP, 2015, pp. 5206–5210.
+[22] D. Snyder, G. Chen, and D. Povey, “Musan: A music, speech, and
+noise corpus,” arXiv preprint arXiv:1510.08484, 2015.
+[23] W. L. Taylor, ““cloze procedure”: A new tool for measuring read-
+ability,”Journalism quarterly, vol. 30, no. 4, pp. 415–433, 1953.
+[24] A. Vaswani, N. Shazeer, N. Parmar, J. Uszkoreit, L. Jones, A. N.
+Gomez, L. u. Kaiser, and I. Polosukhin, “Attention is all you
+need,” in Proc. NeurIPS, 2017, pp. 6000–6010.
+[25] D. Ng, R. Zhang, J. Q. Yip, Z. Yang, J. Ni, C. Zhang, Y . Ma,
+C. Ni, E. S. Chng, and B. Ma, “De’hubert: Disentangling noise in
+a self-supervised model for robust speech recognition,” inICASSP
+2023-2023 IEEE International Conference on Acoustics, Speech
+and Signal Processing (ICASSP). IEEE, 2023, pp. 1–5.
+[26] B. Shi, W.-N. Hsu, and A. Mohamed, “Robust self-
+supervised audio-visual speech recognition,” arXiv preprint
+arXiv:2201.01763, 2022.
+[27] S. Kim, K. Jang, S. Bae, H. Kim, and S.-Y . Yun, “Learning video
+temporal dynamics with cross-modal attention for robust audio-
+visual speech recognition,” in 2024 IEEE Spoken Language Tech-
+nology Workshop (SLT). IEEE, 2024, pp. 447–454.
+[28] M. Ott, S. Edunov, A. Baevski, A. Fan, S. Gross, N. Ng, D. Grang-
+ier, and M. Auli, “fairseq: A fast, extensible toolkit for sequence
+modeling,” in Proceedings of NAACL-HLT 2019: Demonstra-
+tions, 2019.
+[29] A. Graves, S. Fern ´andez, F. Gomez, and J. Schmidhuber, “Con-
+nectionist temporal classification: labelling unsegmented se-
+quence data with recurrent neural networks,” in Proceedings of
+the 23rd international conference on Machine learning, 2006, pp.
+369–376.
+3423

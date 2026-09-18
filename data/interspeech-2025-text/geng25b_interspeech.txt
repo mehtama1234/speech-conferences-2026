@@ -1,0 +1,640 @@
+EEG-based Voice Conversion : Hearing the Voice of Your Brain
+Yizhong Geng, Wenxin Fu, Qihang Lu, Bingsong Bai, Cong Wang, Yingming Gao, Ya Li∗
+Beijing University of Posts and Telecommunications, China
+yzgeng@bupt.edu.cn, fuwenxin2003@bupt.edu.cn, lqh2021213559@bupt.edu.cn,
+bingsongbai@bupt.edu.cn, congwang@bupt.edu.cn, yingming.gao@bupt.edu.cn,
+yli01@bupt.edu.cn
+Abstract
+The connection between Electroencephalography (EEG) sig-
+nals and human voice has gained significant attention, with
+studies demonstrating the feasibility of speech synthesis from
+EEG data.
+However, EEG-based voice conversion (VC) re-
+mains largely unexplored. To address this, we present the first
+EEG-based zero-shot VC system that converts speech into a tar-
+get speaker’s voice without prior target data. Our method in-
+tegrates an EEG feature extraction module with an alignment
+module to map EEG features to speaker-specific voice features.
+By leveraging an innovative three-stage training strategy and
+a pre-trained VC model—trained solely on speech data—we
+achieve zero-shot conversion. Experiments on the Single-Word-
+Production Dutch-iBIDS dataset confirm the system’s ability to
+reliably convert speech to a target speaker’s voice. This work
+highlights the potential of EEG-based VC for advancing assis-
+tive communication and brain-computer interfaces. All demos
+are available in https://doi.org/10.5281/zenodo.
+15510829.
+Index Terms: EEG, zero-shot voice conversion, cross modal
+generation, speaker embedding
+1. Introduction
+Brain-computer interfaces (BCIs) have seen significant ad-
+vancements in recent years, with their potential to revolutionize
+various fields, including communication, neuroprosthetics, and
+assistive technologies [1, 2]. One of the most promising appli-
+cations of BCIs is their ability to assist individuals with disabili-
+ties, enabling them to regain lost functions and interact with the
+world more effectively [3, 4]. Inspired by these applications,
+we propose a novel EEG-based voice conversion system. To
+the best of our knowledge, this study is the first to successfully
+introduce EEG-based voice conversion, offering the potential
+to restore a key element of human expression—one’s voice. By
+leveraging EEG signals to drive voice conversion, this technol-
+ogy can help individuals without speech abilities recover a per-
+sonalized version of their original voice.
+Voice, as the foundation of human expression, plays a vi-
+tal role in interpersonal communication, serving not only as a
+means to exchange information but also as a key aspect of per-
+sonal identity. The unique qualities of a person’s voice are a
+defining aspect of their identity. Losing the ability to speak
+strips away a distinctive personal trait, leaving individuals with-
+out a vital element of their individuality and self-expression [5].
+Voice conversion (VC) modifies a source speaker’s voice to
+match the target speaker’s characteristics while preserving lin-
+guistic content [6]. Recent zero-shot VC advances, like FreeVC
+∗Corresponding author
+[7], enable direct extraction of speaker features from speech,
+offering a more flexible and scalable approach. This innovation
+has sparked the use of other modalities, such as face [8, 9] and
+EEG signals, to extract and align features for voice conversion.
+EEG signals are inherently unique, with each individual ex-
+hibiting distinct patterns that can serve as reliable identifiers
+for personal differentiation and authentication [10]. Recent re-
+search has delved into the relationship between EEG signals and
+vocal, exploring how neural activity can be leveraged to recog-
+nize the heard speaker [11, 12] or reconstruct speech [13, 14].
+However, most of these studies focus on extracting semantic
+content or basic sound features from EEG data, neglecting the
+timbral qualities that define the individual’s voice [15].
+Building on recent research linking brain activity to vo-
+cal identity [11, 12], we present a novel EEG-based zero-shot
+voice conversion framework. Our approach leverages solely the
+target speaker’s EEG features, thereby eliminating the depen-
+dence on conventional vocal data and underscoring the intrinsic
+connection between neural patterns and voice timbre. To ad-
+dress the challenges of cross-modal feature mapping and data
+scarcity, we propose an innovative three-stage training strategy
+[16]. This comprehensive training process ensures that even in
+the absence of target speaker data, accurate voice conversion
+can be achieved. Our framework not only minimizes data re-
+quirements but also paves the way for advancements in person-
+alized voice synthesis, assistive communication technologies,
+and brain-to-speech systems.
+To contextualize our research, we delineate our contribu-
+tions as follows:
+• We
+propose
+a
+Zero-Shot
+EEG-based
+Voice
+Conver-
+sion framework, enables speaker-specific voice conversion
+through EEG signals.
+• We introduce a phased training strategy, leverages pre-trained
+voice conversion models to achieve effective zero-shot per-
+formance even with limited data.
+• We demonstrate the connection between EEG features and
+voice features, validating the relationship between EEG sig-
+nals and speaker-specific vocal attributes.
+2. Related work
+2.1. EEG-voice association
+EEG signals are unique to individuals, exhibiting distinct pat-
+terns that make them valuable for tasks such as personal iden-
+tification [10]. Beyond this, EEG signals are closely associ-
+ated with acoustic features, as demonstrated by studies that re-
+construct speech from neural activity, including imagined and
+overt speech [15]. Researchers have also utilized EEG to aid
+speaker recognition by combining neural and acoustic infor-
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+4158
+10.21437/Interspeech.2025-656
+
+Parameter Learnable
+Parameter Frozen
+c
+Concatenate
+Training Objective
+Stage I
+Generator G
+Speaker Encoder Es
+espk
+Content
+Encoder
+Speech
+Decoder
+c
+econt
+EEG Encoder Ee
+EEG
+Feature
+Extraction
+EEG-Voice
+Feature Aligiment
+Speaker Encoder Es
+evfe
+Generator G
+EEG Encoder Ee
+eeeg
+Content
+Encoder
+Speech
+Decoder
+c
+econt
+EEG Feature Extraction
+PCA
++
+CNN
+     Self Attention
+einit
+Q
+K
+V
+softmax
+Attention
+map
+EEG-Voice Feature Alignment
+Pool
+Linear
+Linear
+ReLU
+Linear
+ReLU
+Linear
+ReLU
+Linear
+eeeg
+ceeg
+Source Speaker
+Target Speaker
+Stage II
+Stage III
+eeeg
+espk
+ceeg
+cspk
+eefe
+eefe
+eefe
+EEG-Voice
+Feature Aligiment
+Voice
+Feature
+Extraction
+evfe
+EEG-Voice
+Feature Aligiment
+EEG-Voice
+Feature Aligiment
+eefe
+Voice
+Feature
+Extraction
+EEG
+Feature
+Extraction
+Figure 1: Overview of the proposed system architecture and training strategy. The upper section outlines the three-stage training
+process: I) Generator and speaker encoder pre-training with speech data; II) EEG-speaker embedding alignment; III) Generator fine-
+tuning for EEG-based synthesis (training reconstructs the source voice; inference converts to the target voice via EEG). The bottom
+section highlights the EEG encoder, which includes a feature extraction module and an EEG-voice feature alignment module.
+mation [17]. Additionally, cross-modal approaches like face-
+driven voice conversion show that non-speech modalities can
+guide vocal synthesis [8, 9]. Inspired by these works, we pro-
+pose a novel framework that leverages an individual’s EEG sig-
+nals to drive voice conversion, linking neural activity with vocal
+identity and enabling EEG-based voice transformation.
+2.2. Voice conversion
+Voice conversion (VC) aims to modify a source speaker’s voice
+to match the target speaker’s characteristics while preserv-
+ing linguistic content [6].
+Traditional VC methods, such as
+GMMs [18], required parallel datasets, limiting scalability [19].
+Deep learning models like StarGAN-VC [20] and CycleGAN-
+VC [21] removed this need by enabling non-parallel training,
+improving flexibility.
+More recently, self-supervised learn-
+ing (SSL) techniques, extract robust features that allow for
+zero-shot conversion of unseen speakers, further advancing VC
+[22, 23, 24, 25]. Following this trend, non-speech modalities
+like facial features have been explored for guiding VC [8, 9].
+Inspired by these developments, we propose using EEG signals
+for voice conversion, linking neural activity directly to vocal
+identity and enabling EEG-based transformations.
+3. Method
+In this work, we propose an EEG-based zero-shot voice con-
+version (VC) system that transforms speech based on the target
+speaker’s EEG signals while preserving the source audio’s se-
+mantic information. The system comprises: 1) an EEG Encoder
+for EEG Feature Extraction and EEG-voice Feature Alignment;
+2) a Speaker Encoder for speaker-specific embeddings [26]; and
+3) a Generator, built on a modified FreeVC framework [7], with
+a Content Encoder for semantic extraction and a Speech De-
+coder for final audio generation. The detailed architecture and
+training strategy are illustrated in Figure 1.
+3.1. EEG encoder
+The EEG encoder is designed to extract robust, discriminative
+features from noisy, high-dimensional, and time-series EEG
+signals. To achieve zero-shot voice conversion, the extracted
+features must not only uniquely represent each speaker but also
+encode timbre-related information. Therefore, the EEG encoder
+consists of two components: EEG feature extraction and EEG-
+voice feature alignment.
+3.1.1. EEG feature extraction
+The EEG feature extraction module processes high-dimensional
+EEG data, X ∈RT ×N, with T time steps and N electrodes,
+into compact representations for voice conversion.
+PCA re-
+duces the dimensionality, preserving the most significant vari-
+ance:
+XPCA = PCA(X) ∈RT ×M
+(1)
+where M is the reduced number of principal components, min-
+imizing redundancy and complexity.
+Building on EEG Conformer [27], we employ a hybrid
+model combining CNNs and Transformer-based self-attention.
+A shallow CNN processes XPCA to capture local spatiotempo-
+ral patterns, producing an intermediate representation einit =
+CNN(XPCA). Then, the Transformer encoder models global de-
+pendencies via multi-head self-attention, computing queries Q,
+keys K, and values V :
+Q = einitWQ,
+K = einitWK,
+V = einitWV
+(2)
+4159
+
+Table 1: Evaluation results of different voice conversion methods across various metrics. The definitions of all metrics are provided in
+Section 4.3.
+Method
+Homogeneity (↑)
+Consistency (obj) (↑)
+Consistency (sub) (↑)
+Naturalness (↑)
+Ground Truth (GT)
+0.9001
+-
+-
+-
+FreeVC(unseen speakers)
+0.9371
+0.8216
+3.59
+3.95
+EEG-based VC (seen speakers)
+0.9465
+0.8391
+3.68
+4.15
+EEG-based VC (unseen speakers)
+0.9437
+0.8026
+3.45
+4.00
+The attention mechanism computes:
+Attention(Q, K, V ) = softmax
+QK⊤
+√dk
+
+V
+(3)
+where dk is the dimension of keys, and √dk stabilizes
+gradients.
+The multi-head attention mechanism enhances
+pattern capture.
+The final feature representation, eefe
+=
+Transformer(einit), integrates both local and global EEG pat-
+terns, encoding speaker-specific and timbre-related informa-
+tion.
+3.1.2. EEG-voice feature alignment
+The EEG-voice feature alignment module bridges neural rep-
+resentations with speaker-specific voice characteristics by map-
+ping EEG features to a shared embedding space. Given the EEG
+feature representation eefe ∈Rd (extracted from 3.1.1) and
+the speaker embedding espk ∈Rs (obtained from the Speaker
+Encoder), this module ensures alignment between EEG-derived
+features and the target speaker’s vocal identity while predicting
+speaker categories for auxiliary supervision. The architecture
+comprises two parallel branches:
+Feature projection: This branch compresses the EEG fea-
+tures temporally and projects them into the speaker embedding
+space using adaptive pooling followed by a two-layer MLP. The
+final projection is computed as:
+ehidden = ReLU(W1 · AdaptiveAvgPool1D(evfe) + b1)
+(4)
+eeeg = W2 · ehidden + b2
+(5)
+Speaker classification: This branch predicts the speaker
+category by first compressing EEG features temporally and then
+passing them through a multi-layer network. The process is
+summarized as follows:
+Temporal Pooling and Initial Projection:The EEG features
+are compressed via adaptive average pooling and projected into
+a higher-dimensional space:
+h1 = ReLU(W1 · AdaptiveAvgPool1D(evfe) + b1)
+(6)
+Regularization and Final Classification:The features un-
+dergo dropout regularization, followed by further projection and
+softmax normalization:
+h2 = ReLU(W2 · Dropout(h1) + b2)
+(7)
+ceeg = Softmax(W3h2 + b3)
+(8)
+3.2. Training strategy
+To enhance the system’s performance, we employ a three-stage
+training strategy. The training process is illustrated in Figure
+1. This strategy leverages a pre-trained voice conversion model
+that has been trained exclusively on speech data, allowing our
+EEG-based VC system to benefit from the rich representations
+learned from large-scale speech datasets. By integrating these
+components, our method enables the conversion of speech to a
+target speaker’s voice without requiring prior exposure to their
+EEG or voice data.
+Stage I: Speech-driven voice conversion pre-training
+In this stage, we pre-train the generator G and the speaker
+encoder Es on speech data to synthesize speech by mapping
+semantic content to speaker-specific features extracted from the
+target speech data.
+LStage I = ||G(econt, espk) −xtarget||2
+2
+(9)
+Stage II: EEG-voice feature alignment
+In this stage, we train only the EEG encoder Ee to align
+EEG features with pre-trained speaker features espk using an
+embedding fitting loss and a classification loss between the pre-
+dicted speaker class ceeg and the true speaker class cspk.
+LStage II = λ1 · ||Ee(xEEG) −espk||2
+2 −λ2 ·
+X
+i
+cspk,i log(ceeg,i)
+(10)
+Stage III: EEG-based voice conversion
+In the final stage, we fine-tune both the generator G and the
+EEG encoder Ee to directly generate speech from EEG-derived
+features.
+LStage III = ||G(econt, Ee(xEEG)) −xtarget||2
+2
+(11)
+4. Experiment
+4.1. Dataset
+We conducted experiments using two datasets:
+the Single-
+Word-Production Dutch-iBIDS [28] and VCTK [29].
+The
+VCTK dataset contains pure speech recordings, which are used
+in Stage I for pre-training the model in voice conversion without
+EEG inputs. In this stage, we train the generator and speaker en-
+coder to capture voice characteristics from the speech data. The
+Single-Word-Production Dutch-iBIDS dataset provides paired
+EEG and voice recordings from 10 speakers, capturing neural
+activity during speech production. This dataset is used in Stage
+II and Stage III, where the model learns to align EEG signals
+with voice features. Both EEG and audio data are segmented
+into 10-second intervals to maintain consistency in data length
+and ensure comparability between the two modalities.
+For the EEG feature extraction in Stage II, we apply PCA
+to reduce the dimensionality of the EEG signals. Specifically,
+the raw EEG data is reduced to 25 principal components, using
+PCA with M = 25, which minimizes redundancy while retain-
+ing the key features necessary for voice conversion. The model
+training in Stage II is guided by two loss terms, λ1 and λ2,
+which balance the objectives of feature alignment and model
+regularization. We set λ1 = 0.9 and λ2 = 0.1, ensuring that
+4160
+
+the model focuses primarily on aligning the EEG and voice fea-
+tures while maintaining regularization to prevent overfitting.
+The evaluation process involves several steps.
+For seen
+speakers, 80% of the EEG data is used for training and 20%
+for testing, resulting in about 1500 generated samples.
+For
+unseen speakers, we use k-fold cross-validation, training the
+model on EEG data from 9 speakers and testing on data from
+1 unseen speaker, repeated for each speaker, yielding approx-
+imately 1500 samples. We then compare our method with the
+baseline Free-VC model, segmenting each audio sample into
+10-second intervals for conversion, generating around 1500 re-
+sults for comparison.
+4.2. Comparison systems
+Since our work is the first to explore EEG-driven voice con-
+version (VC), there are no directly comparable systems, so we
+evaluate our method against conventional speech-driven VC.
+Ground Truth (GT): The original target speech recordings,
+serving for the evaluation.
+FreeVC: A zero-shot voice conversion model that operates
+purely on speech data, selected as a baseline since our EEG-
+based VC is built upon its framework.
+EEG-based VC (seen speakers): Our proposed system that
+leverages EEG signals for voice conversion on seen speakers,
+using EEG data from speakers the model has been trained on.
+EEG-based VC (unseen speakers): Our proposed system
+that leverages EEG signals to achieve zero-shot voice conver-
+sion without requiring speech data from the target speaker.
+4.3. Metrics
+We adopt the evaluation methodology from Lee et al. [9], us-
+ing several metrics to assess our EEG-based voice conversion
+(VC) system, including Homogeneity, Consistency (obj), Con-
+sistency (sub), and Naturalness. These metrics provide a com-
+prehensive evaluation of both objective and subjective voice
+conversion quality.
+For subjective evaluation, 20 testers as-
+sessed 16 audio sample groups.
+Homogeneity: Measures cosine similarity of speaker em-
+beddings in synthesized audio from different EEG signals of
+the same speaker.
+Consistency (obj): Compares cosine similarity between
+synthesized and ground-truth audio from the same speaker, as-
+sessing the consistency of the synthesized voice with the origi-
+nal.
+Consistency (sub):
+Assesses subjective consistency be-
+tween synthesized audio and the corresponding EEG signals,
+using a 5-point MOS scale from completely inconsistent to con-
+sistent.
+Naturalness: Evaluates the perceptual quality of synthe-
+sized audio on a 5-point MOS scale, ranging from unnatural to
+natural, indicating how natural the speech sounds to listeners.
+4.4. Results
+We evaluated our EEG-based voice conversion (VC) system fol-
+lowing the procedures in Section 4.1 and using the metrics de-
+scribed in Section 4.3. The evaluation results are summarized
+in Table 1.
+4.4.1. Objective results
+Our EEG-based VC system for seen speakers (EEG-based VC
+(seen speakers)) achieved the highest score for Homogene-
+ity (0.9465), indicating strong preservation of speaker iden-
+Figure 2: t-SNE visualization of the generated speech. The cir-
+cles represent the synthesized speech, and the plus signs repre-
+sent the reference audio.
+tity across different EEG signals, followed closely by FreeVC
+(0.9371). For Consistency (obj), EEG-based VC (seen speak-
+ers) scored 0.8391, outperforming FreeVC (0.8216), while
+EEG-based VC (unseen speakers) for unseen speakers achieved
+a consistency score of 0.8026. These results highlight the effec-
+tiveness of our EEG-based approach, particularly for zero-shot
+voice conversion, where the model performs well even without
+prior exposure to the target speaker’s voice. Additionally, as
+shown in Figure 2, a t-SNE visualization confirms the system’s
+ability to maintain speaker identity, showing that the generated
+speech (circles) clusters closely with the reference audio (plus
+signs). This demonstrates that EEG-based VC successfully cap-
+tures and preserves speaker characteristics, supporting the fea-
+sibility of using EEG for voice conversion.
+4.4.2. Subjective results
+In subjective evaluations, our EEG-based voice conversion sys-
+tem achieved strong perceptual performance. For seen speak-
+ers, it attained a Consistency (sub) MOS of 3.68 and a Natural-
+ness MOS of 4.15, both slightly outperforming FreeVC. For un-
+seen speakers, the scores were marginally lower (3.45 for con-
+sistency and 4.00 for naturalness) yet still indicate high qual-
+ity. These results clearly demonstrate that our approach effec-
+tively preserves speaker characteristics from EEG signals and
+produces natural-sounding speech, highlighting its potential for
+real-world applications.
+5. Conclusion
+In this work, we introduce the first EEG-based voice conver-
+sion (VC) system, linking neural signals to voice characteristics.
+Our system preserves speaker identity and generates natural-
+sounding speech for both seen and unseen speakers, demon-
+strating EEG-based voice conversion feasibility. Unlike tradi-
+tional EEG synthesis methods, which focus on reconstructing
+speech content but overlook voice timbre, EEG-based VC en-
+ables personalized voice restoration. This capability holds par-
+ticular significance for individuals with speech impairments, of-
+fering the potential to recover their natural vocal identity. While
+current results are limited by data, we believe more data will
+improve performance and broaden applications. This work lays
+the foundation for advancements in personalized communica-
+tion, brain-to-speech interfaces, and neuroprosthetics, enabling
+assistive technologies and customized speech synthesis.
+4161
+
+6. Acknowledgements
+The work was supported by the National Natural Science
+Foundation of China (NSFC) (No.62271083), the Key Project
+of the National Language Commission (No.
+ZDI145-81),
+the Fundamental Research Funds for the Central Universities
+(No.2023RC73), and partly supported by the Major Program of
+the National Social Science Fund of China (13&ZD189).
+7. References
+[1] N. Rahman, D. M. Khan, K. Masroor, M. Arshad, A. Rafiq, and
+S. M. Fahim, “Advances in brain-computer interface for decoding
+speech imagery from eeg signals: a systematic review,” Cognitive
+Neurodynamics, pp. 1–19, 2024.
+[2] A. Pirasteh, M. Shamseini Ghiyasvand, and M. Pouladian, “Eeg-
+based brain-computer interface methods with the aim of rehabili-
+tating advanced stage als patients,” Disability and Rehabilitation:
+Assistive Technology, pp. 1–11, 2024.
+[3] S. Ghasemi, D. Graˇcanin, and M. Azab, “Empowering mobility:
+Brain-computer interface for enhancing wheelchair control for in-
+dividuals with physical disabilities,” in International Conference
+on Human-Computer Interaction.
+Springer, 2024, pp. 234–245.
+[4] Y. An, D. Mitchell, J. Lathrop, D. Flynn, and S.-J. Chung, “Motor
+imagery teleoperation of a mobile robot using a low-cost brain-
+computer interface for multi-day validation,” in 2024 IEEE Con-
+ference on Telepresence.
+IEEE, 2024, pp. 103–110.
+[5] J. Stern, C. Schild, B. C. Jones, L. M. DeBruine, A. Hahn, D. A.
+Puts, I. Zettler, T. L. Kordsmeyer, D. Feinberg, D. Zamfir et al.,
+“Do voices carry valid information about a speaker’s personal-
+ity?” Journal of Research in Personality, vol. 92, p. 104092, 2021.
+[6] T. Walczyna and Z. Piotrowski, “Overview of voice conversion
+methods based on deep learning,” Applied sciences, vol. 13, no. 5,
+p. 3100, 2023.
+[7] J. Li, W. Tu, and L. Xiao, “Freevc: Towards high-quality text-free
+one-shot voice conversion,” in ICASSP 2023-2023 IEEE Inter-
+national Conference on Acoustics, Speech and Signal Processing
+(ICASSP).
+IEEE, 2023, pp. 1–5.
+[8] H.-H. Lu, S.-E. Weng, Y.-F. Yen, H.-H. Shuai, and W.-H. Cheng,
+“Face-based voice conversion: Learning the voice behind a face,”
+in Proceedings of the 29th ACM International Conference on Mul-
+timedia, 2021, pp. 496–505.
+[9] J. Lee, Y. Oh, I. Hwang, and K. Lee, “Hear your face: Face-
+based voice conversion with f0 estimation,” arXiv preprint
+arXiv:2408.09802, 2024.
+[10] W. Alsumari, M. Hussain, L. Alshehri, and H. A. Aboalsamh,
+“Eeg-based person identification and authentication using deep
+convolutional neural network,” Axioms, vol. 12, no. 1, p. 74, 2023.
+[11] H. Zhu, S. Cai, Y. Jiang, Q. Zhang, and H. Li, “Eeg-derived
+voice signature for attended speaker detection,” arXiv preprint
+arXiv:2308.14774, 2023.
+[12] L. Hu, L. Zhu, H. Huang, G. Lin, B. Ren, and J. Zhang, “Speaker
+recognition with voice evoked eeg,” in 2021 IEEE International
+Conference on Bioinformatics and Biomedicine (BIBM).
+IEEE,
+2021, pp. 2231–2236.
+[13] X. Xu and C. Fu, “Robust imagined speech production using
+ai-generated content network for patients with language impair-
+ments,” IEEE Transactions on Consumer Electronics, 2024.
+[14] D. Qi, L. Kong, L. Yang, and C. Li, “Audiodiffusion: Generating
+high-quality audios from eeg signals: Reconstructing audio from
+eeg signals,” in 2023 4th International Symposium on Computer
+Engineering and Intelligent Communications (ISCEIC).
+IEEE,
+2023, pp. 344–348.
+[15] S.-H. Lee, Y.-E. Lee, and S.-W. Lee, “Voice of your brain: Cogni-
+tive representations of imagined speech, overt speech, and speech
+perception based on eeg,” arXiv preprint arXiv:2105.14787, 2021.
+[16] B. Liu, L. Hu, Q. Dong, and Z. Hu, “An iterative co-training trans-
+ductive framework for zero shot learning,” IEEE Transactions on
+Image Processing, vol. 30, pp. 6943–6956, 2021.
+[17] G. Krishna, C. Tran, M. Carnahan, and A. Tewfik, “Speaker iden-
+tification using eeg,” arXiv preprint arXiv:2003.04733, 2020.
+[18] Y. Ohtani, T. Toda, H. Saruwatari, and K. Shikano, “Maximum
+likelihood voice conversion based on gmm with straight mixed
+excitation,” 2006.
+[19] S. H. Mohammadi and A. Kain, “An overview of voice conversion
+systems,” Speech Communication, vol. 88, pp. 65–82, 2017.
+[20] H. Kameoka, T. Kaneko, K. Tanaka, and N. Hojo, “Stargan-vc:
+Non-parallel many-to-many voice conversion using star genera-
+tive adversarial networks,” in 2018 IEEE Spoken Language Tech-
+nology Workshop (SLT).
+IEEE, 2018, pp. 266–273.
+[21] T. Kaneko and H. Kameoka,
+“Cyclegan-vc:
+Non-parallel
+voice conversion using cycle-consistent adversarial networks,” in
+2018 26th European Signal Processing Conference (EUSIPCO).
+IEEE, 2018, pp. 2100–2104.
+[22] W.-N. Hsu, B. Bolte, Y.-H. H. Tsai, K. Lakhotia, R. Salakhutdi-
+nov, and A. Mohamed, “Hubert: Self-supervised speech represen-
+tation learning by masked prediction of hidden units,” IEEE/ACM
+transactions on audio, speech, and language processing, vol. 29,
+pp. 3451–3460, 2021.
+[23] K. Qian, Y. Zhang, H. Gao, J. Ni, C.-I. Lai, D. Cox, M. Hasegawa-
+Johnson, and S. Chang, “Contentvec:
+An improved self-
+supervised speech representation by disentangling speakers,” in
+International Conference on Machine Learning.
+PMLR, 2022,
+pp. 18 003–18 017.
+[24] Z. Li, B. Tang, X. Yin, Y. Wan, L. Xu, C. Shen, and Z. Ma,
+“Ppg-based singing voice conversion with adversarial represen-
+tation learning,” in ICASSP 2021-2021 IEEE International Con-
+ference on Acoustics, Speech and Signal Processing (ICASSP).
+IEEE, 2021, pp. 7073–7077.
+[25] H. Chung, H. Nam et al., “Zero-shot voice conversion with hu-
+bert,” Phonetics and Speech Sciences, vol. 15, no. 3, pp. 69–74,
+2023.
+[26] A. Gulati, J. Qin, C.-C. Chiu, N. Parmar, Y. Zhang, J. Yu, W. Han,
+S. Wang, Z. Zhang, Y. Wu et al., “Conformer: Convolution-
+augmented transformer for speech recognition,” arXiv preprint
+arXiv:2005.08100, 2020.
+[27] Y. Song, Q. Zheng, B. Liu, and X. Gao, “Eeg conformer: Con-
+volutional transformer for eeg decoding and visualization,” IEEE
+Transactions on Neural Systems and Rehabilitation Engineering,
+vol. 31, pp. 710–719, 2022.
+[28] M. Verwoert, M. C. Ottenhoff, S. Goulis, A. J. Colon, L. Wagner,
+S. Tousseyn, J. P. Van Dijk, P. L. Kubben, and C. Herff, “Dataset
+of speech production in intracranial electroencephalography,” Sci-
+entific data, vol. 9, no. 1, p. 434, 2022.
+[29] C. Veaux, J. Yamagishi, and K. MacDonald, “Dataset: Vctk
+corpus,” https://doi.org/10.57702/bw3hjwag, 2024, dOI retrieved:
+December 2, 2024.
+4162

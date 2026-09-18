@@ -1,0 +1,1105 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+Towards Machine Unlearning for Paralinguistic Speech Processing
+Orchid Chetia Phukan*1, Girish* 1,2, Mohd Mujtaba Akhtar*1,3, Shubham Singh4, Swarup Ranjan
+Behera5, Vandana Rajan6, Muskaan Singh7, Arun Balaji Buduru1, Rajesh Sharma8,9
+1IIIT-Delhi, India, 2UPES, India, 3V.B.S.P.U, India, 4BIT Mesra, India, 5Independent Researcher,
+India, 6Independent Researcher, UK, 7Ulster University, UK, 8University of Tartu, Estonia, 9Plaksha
+University, India
+Correspondence: orchidp@iiitd.ac.in
+Abstract
+In this work, we pioneer the study of Machine Unlearning (MU)
+for Paralinguistic Speech Processing (PSP). We focus on two
+key PSP tasks: Speech Emotion Recognition (SER) and De-
+pression Detection (DD). To this end, we propose, SISA++, a
+novel extension to previous state-of-the-art (SOTA) MU method,
+SISA by merging models trained on different shards with weight-
+averaging. With such modifications, we show that SISA++ pre-
+serves performance more in comparison to SISA after unlearning
+in benchmark SER (CREMA-D) and DD (E-DAIC) datasets.
+Also, to guide future research for easier adoption of MU for PSP,
+we present “cookbook recipes” - actionable recommendations
+for selecting optimal feature representations and downstream
+architectures that can mitigate performance degradation after the
+unlearning process.
+Index Terms: Machine Unlearning, Paralinguistic Speech Pro-
+cessing, Speech Emotion Recognition, Depression Detection
+1. Introduction
+The widespread use of ML models in applications ranging from
+personalized recommendations to health diagnostics has brought
+privacy issues to the forefront. As these models rely on vast
+amounts of personal data to optimize their performance, en-
+suring the ethical handling of such data has become a critical
+challenge. With such comes the risk of leakage of personal data,
+which can lead to identity theft, financial fraud, or other mali-
+cious exploitation. Furthermore, there has been a significant rise
+in adversarial attacks on ML models, specifically, membership
+inference attacks (MIA) [1] where attackers makes efforts for ex-
+tracting sensitive information from the models. These attacks not
+only compromise model integrity but also pose a serious threat
+to user privacy and trust in AI systems, highlighting the urgent
+need for enhanced model robustness and security measures.
+In response, various privacy-preserving techniques such as
+homomorphic encryption [2], federated learning [3], and differ-
+ential privacy [4] have been developed to mitigate these risks.
+However, the balance between maintaining high-performance
+and ensuring robust privacy protection remains difficult to
+achieve [2]. Also, one notable issue in this context is the is
+the principle of the right to be forgotten bestowed to individuals
+within regulations like the GDPR [5]. This regulation empowers
+individuals to request the removal of their personal data from
+training datasets. However, retraining a model to comply with
+such a request is computationally expensive and unfeasible when
+datasets grow to large sizes and use of larger models for better
+performance. MU, by enabling targeted removal of specific data
+points, offers an elegant solution to this problem [6, 7, 8, 9, 10].
+* Contributed equally as a first authors.
+MU is primarily categorized into three types: model-agnostic,
+model-intrinsic, and data-driven methods. Model-agnostic ap-
+proaches [11], enable selective data removal across architectures.
+Model-intrinsic methods [12], modify internal structures for un-
+learning. Data-driven techniques [13], focus on data partitioning
+or augmentation. While MU has been widely explored in do-
+mains like recommendation systems [14], image classification
+[9], and NLP [15] , its application to speech-based tasks, partic-
+ularly in paralinguistics, has not been fully explored. Paralin-
+guistic speech processing (PSP) centers around the retrieval of
+information outside of literal speech content and has wide range
+of applications ranging from entertainment industry to healthcare.
+In this study, we introduce Machine Unlearning (MU) to the field
+of PSP for the first time. PSP encompasses tasks such as Speech
+Emotion Recognition (SER) and Depression Detection (DD),
+which rely on prosodic features of speech and present unique
+ethical challenges. The intimate nature of voice data, which car-
+ries sensitive emotional and mental health information, makes
+it particularly susceptible to unintentional memorization by ma-
+chine learning models. This raises significant privacy concerns
+if such data is misused or inappropriately retained. Additionally,
+ML models built for PSP tasks face growing vulnerabilities to
+adversarial attacks [16, 17]. Given these challenges, application
+of MU to PSP tasks offers a promising solution. As this approach
+allows models to selectively forget sensitive voice samples while
+maintaining their overall performance capabilities [18, 19].
+We focus on two critical PSP tasks: SER and DD. Addi-
+tionally especially given the current research trend of leverag-
+ing large pre-trained models (PTMs) as feature extractors for
+enhanced performance benefits, MU is more beneficial as re-
+training models with these PTMs is cost-inefficient. This calls
+for unlearning novel MU methods that provides efficient retrain-
+ing for unlearning as well as retains the performance after the
+unlearning process. To our end, we present, SISA++, a novel
+extension of the previous state-of-the-art (SOTA) MU method,
+SISA [7]. SISA++ introduces a critical enhancement by em-
+ploying weight averaging to merge models trained on separate
+data shards1, effectively consolidating knowledge while main-
+taining modularity. This approach reduces inconsistencies and
+preserves the performance of the overall model after data un-
+learning. With these refinements, SISA++ achieves superior
+performance retention compared to SISA as evidenced by eval-
+uations on benchmark datasets such as CREMA-D (SER) and
+E-DAIC (DD). Furthermore, to facilitate widespread adoption
+of MU in PSP applications, we provide insights in the form of
+“cookbook recipes”. These include step-by-step recommendations
+for selecting suitable feature representations, designing effective
+downstream architectures, and mitigating potential performance
+1shard or subset term is used interchangebly
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+4473
+10.21437/Interspeech.2025-2326
+
+degradation caused by unlearning processes. These additions en-
+sures that our study also serves as a resourceful guide for future
+researchers.
+The key contributions of this paper are:
+• We pioneer the application of MU in PSP, specifically focusing
+on SER and DD.
+• We propose, SISA++, an MU method utilizing weight averag-
+ing to merge models trained on data shards, demonstrating
+superior performance retention compared to SISA on bench-
+mark datasets (CREMA-D and E-DAIC).
+• We provide “cookbook recipes” - actionable guideline swith
+practical recommendations for selecting optimal feature rep-
+resentations and downstream architectures, enabling easier
+adoption of MU while mitigating performance degradation.
+• We give a comprehensive comparative investigation of features
+from various PTMs and downstream networks to find out the
+most optimal pairs as part of “cookbook recipes”. TRILLsson
+features with transformer as downstream network are the most
+robust to the unlearning process.
+The code and models developed in this work are pub-
+licly available at: https://github.com/Helix-IIIT-Delhi/
+SISA-Unlearning
+2. Methodology
+In this section, we discuss preliminaries on SISA, the proposed
+novel extension, SISA++ and lastly followed by the “cookbook
+recipes”.
+2.1. Preliminary on SISA
+SISA [7] is a SOTA data-driven technique for MU. It em-
+ploys a data partitioning strategy with structured model train-
+ing to enable efficient unlearning. The initial dataset D =
+{(xi, yi)}N
+i=1, where xi represents input features and yi the cor-
+responding labels, is split into K disjoint shards, denoted as
+Dk = {(xik, yik)}Nk
+i=1, ensuring that each shard contains a sub-
+set of the data without replacement. Independent sub-models
+Mi are trained on these shards without communication between
+them. This structured approach facilitates efficient unlearning
+through partition-based retraining, requiring only the sub-models
+corresponding to the impacted shards to be updated when a data
+point (xi, yi) is removed or modified. The updated dataset D−i
+is used to refresh the necessary sub-models while preserving the
+others. By minimizing the need for full model retraining, SISA
+significantly enhances computational efficiency and scalability,
+making the unlearning process more resource-efficient. During
+inference, a new input x is passed through all sub-models, and
+their outputs are aggregated using majority voting for classifica-
+tion and averaging for regression.
+2.2. SISA++
+SISA++ is a novel extension of SISA that keeps its structured
+partitioning strategy and follows the same steps as in SISA dur-
+ing the training time and as well as during retraining of models
+on certain shards.SISA++ algorithm is given in Algorithm 1 and
+the workflow diagram in Figure 1. The critical point of differen-
+tiation in SISA++ is inference: rather than majority vote or plain
+averaging, it combines knowledge through weight averaging
+[20, 21]. The final model MA is obtained by averaging these
+accumulated model weights across all shards. This maintains
+performance without introducing any extra computational cost,
+such as longer inference time, ensuring stable and consistent
+Figure 1: Workflow of SISA++; Original training dataset D and
+its multiple shards (D1, D2, . . . , DN), which are further divided
+into slices (D1,1, D1,2, . . . , DN,R); Constituent model for each
+shard (M1, M2, . . . , MN); Orange symbol indicates the data
+point to be unlearned; (MA) represents the final model after
+weight averaging
+predictions.
+Algorithm 1 SISA++
+Require: A set of models {M1, M2, . . . , MN}, each trained
+on a distinct data shard; N is the total shards
+Ensure: Final merged model MA
+1: Initialize aggregated model: MN ←0
+2: for each model Mi ∈{M1, . . . , MN} do
+3:
+MN ←MN + Mi
+4: end for
+5: Compute weight averaging:
+6: MA ←
+1
+N MN
+7: return MA
+2.3. Cookbook Recipes
+These “cookbook recipes” will serve as structured guidelines
+for researchers, covering the selection of effective feature rep-
+resentations and the design of downstream architectures. By
+incorporating these elements, our study acts as a resourceful
+guide for future advancements in the field. Below, we detail the
+specific feature sets and downstream model architectures used in
+our experiments, providing a basis for selecting the most suitable
+configurations.
+Feature Set: We use TRILLsson2 [22], distilled from Conformer
+(CAP12) [23] and trained on AudioSet and Libri-light datasets.
+It excels in NOSS benchmark tasks such as SER, speaker recog-
+nition, synthetic speech detection. We consider XLS-R [24], a
+self-supervised model pre-trained on 436k hours of multilingual
+speech data. We use 0.3B parameter variant3. Further, we in-
+clude WavLM4 [25], a SOTA model in the SUPERB benchmark
+across various speech tasks including paralinguistic providing.
+We use its base version with 94.70M parameters. Lastly, we con-
+2https://tfhub.dev/google/nonsemantic-speech-benchmark/
+trillsson4/1
+3https://huggingface.co/facebook/wav2vec2-xls-r-300m
+4https://huggingface.co/microsoft/wavlm-base
+4474
+
+Features
+E-DAIC
+CREMA-D
+SVM
+CNN
+TRA
+SVM
+CNN
+TRA
+M ↓
+R ↓
+M ↓
+R ↓
+M ↓
+R ↓
+A(%) ↑
+F1 (%) ↑
+A(%) ↑
+F1 (%) ↑
+A(%) ↑
+F1(%) ↑
+x-vector
+6.31
+7.60
+4.17
+5.29
+3.80
+5.75
+62.17
+61.30
+65.37
+64.54
+71.32
+70.45
+XLS-R
+6.35
+7.41
+4.28
+5.10
+3.92
+4.47
+64.23
+63.89
+69.31
+67.83
+76.83
+75.99
+TRILLsson
+5.76
+7.24
+4.25
+4.83
+3.59
+4.43
+67.82
+66.14
+68.52
+67.35
+77.69
+76.02
+WavLM
+7.60
+7.34
+4.25
+5.70
+3.76
+4.66
+63.78
+62.91
+68.84
+67.61
+76.75
+74.29
+MFCC
+7.96
+8.23
+4.39
+6.08
+4.74
+6.10
+39.67
+37.55
+44.24
+43.19
+51.69
+48.64
+Table 1: Evalution Scores of different features with different downstream networks; TRA Stands for Transformer; M, R, A, F1 stands for
+MAE, RMSE, Accuracy, marco average F1 score; The abbreviations used in this Table are also used in Table 2; The values in BOLD
+indicate the top model in that particular dataset
+sider x-vector5 [26], originally designed for speaker recognition,
+has been effectively applied to SER [27] and DD [28]. For all
+models, the final hidden states are extracted and averaged pooled
+to obtain fixed-length feature vectors: 1024 for TRILLsson, 768
+for WavLM, 1280 for XLS-R, 512 for x-vector. All the audio
+data is sampled at 16kHz before passing through these models
+for feature extraction. We also make use of MFCC features in
+our experiments.
+Downstream Modeling: We use SVM, CNN, and Transformer
+as downstream modeling networks. For SVM, we used a linear
+SVM and kept the default parameters as given in the Scikit-learn
+library. The CNN architecture consists of 1D convolutional
+layers with 64 and 128 filters (kernel size of 3) and maxpooling
+after consecutive 1D convlutional layer. The output is flattened,
+followed by a dense layer with 128 neurons and ending with a
+output layer with softmax or linear for classification or regression.
+The FCN flattens input features before passing through dense
+layers with 64 and 128 neurons. For transformer, we use the
+vanilla transformer encoder [29] with a single head and then
+flattening the features to be fed to a dense layer with 128 neurons
+and lastly, followed by a output layer. FCN models trainable
+parameters ranges from 0.8M to 1.5M followed by CNN with
+1.1M to 1.7M depending on the input feature shape.
+3. Experiments
+3.1. Dataset
+Crowd-sourced Emotional Multimodal Actors Dataset
+(CREMA-D) [30] is widely used SER dataset containing 7,442
+utterances from 91 speakers (48 male, 43 female) across six emo-
+tions: Anger, Happiness, Sadness, Fear, Disgust, and Neutral.
+We use 80:20 split ratio for training and testing our models.
+E-DAIC [31] is a benchmark DD dataset comprising 275 clinical
+interview sessions (163 training, 56 development, 56 test) with a
+balanced gender distribution. For our experiments, we segment
+each session into 5-second audio clips. We use the official split
+for training and evaluating our models.
+Training Details: During initial training, we train the models
+for 20 epochs with learning rate 1e-3 and Adam as the optimizer
+with batch size of 32. We also use dropout and early stopping
+for preventing overfitting. After removal of data points from cer-
+tain shards, we retrain the models associated with these shards
+with the same training details as mentioned above during initial
+training.
+5https://huggingface.co/speechbrain/
+spkrec-xvect-voxceleb
+3.2. Analysis and Results
+Before Unlearning Request: We evaluate the baseline perfor-
+mance of models before unlearning to establish a reference for
+comparison. From Table 1, we observe that TRILLsson with
+Transformer downstream attains the best performance in both
+E-DAIC and CREMA-D.
+After Unlearning Request: We evaluate the efficacy of SISA++
+against SISA by simulating user removal under different shard-
+ing configurations, as summarized in Table 2. Suppose, one or
+two users presents their request for removal of their correspond-
+ing datapoints from the training points. So, we simulate and
+analyze the impact of removing (i) one user datapoints from a
+single shard in both 4-shard and 8-shard setups and (ii) two users
+points from two different shards in the same configurations. In
+these setups, the dataset is divided into either 4 or 8 shards for as-
+sessing of the granularity of sharding on unlearning performance.
+We conduct experiments using various feature sets and down-
+stream architectures for both SER and DD. For experiments with
+SISA, our results indicates that finer-grained sharding (i.e., 8
+shards) mitigates sometimes performance degradation compared
+to 4-shards and attains comparable or better performance than
+4-shards. This behavior can be observed across both one user
+and two user datapoints removal for SER and DD. This occurs
+because each shard contains fewer users, thereby reducing the
+overall impact of data removal. In comparing the results of SISA
+baseline with our proposed novel method, it can be observed that
+SISA++ consistently outperforms SISA, demonstrating superior
+retention of performance post-unlearning. Moreover, TRILLs-
+son exhibit higher robustness to unlearning compared to tradi-
+tional features such MFCC and other neural features followed by
+Transformer as the best downstream network. We can see that
+TRILLsson with transformer downstream as the best performing
+pair for all the sharding and user datapoints removal settings.
+This is observed for experiments with both SISA and SISA++
+with TRILLsson and Transformer with SISA++ as the best combi-
+nation. This trend is evident in both SER and DD tasks. Overall,
+we can see that the performance generally becomes low after un-
+learning in comparison to before unlearning request (See Table
+1). However, SISA++ we were able to match the performance
+even after data removal in a better manner than SISA. These find-
+ings highlight that SISA++ provides a more resilient unlearning
+framework for PSP. Also, SISA++ maintains the same training
+time and achieves comparable or even lower inference time than
+SISA, all while offering significantly better performance reten-
+tion post-unlearning. This efficiency, combined with its superior
+ability to preserve model performance, underscores the advan-
+tage of SISA++ for MU in PSP. These advantages calls for the
+usage of textbfSISA++ in diverse applications.
+4475
+
+E-DAIC
+CREMA-D
+SVM
+CNN
+TRA
+SVM
+CNN
+TRA
+M ↓
+R ↓
+M ↓
+R ↓
+M ↓
+R ↓
+A(%) ↑
+F1 (%) ↑
+A(%) ↑
+F1 (%) ↑
+A(%) ↑
+F1(%) ↑
+S I S A
+1 USER REMOVED (4-shard)
+x-vector
+6.92
+8.11
+4.83
+6.20
+4.32
+6.03
+61.34
+60.81
+63.47
+62.18
+68.25
+67.26
+XLS-R
+6.85
+7.74
+4.81
+6.12
+4.32
+5.58
+57.25
+56.47
+64.78
+63.34
+70.14
+69.08
+TRILLsson
+6.46
+7.63
+4.70
+5.71
+4.23
+5.52
+56.14
+55.81
+65.33
+64.87
+72.36
+71.58
+WavLM
+7.70
+8.41
+5.54
+6.53
+4.96
+5.73
+52.21
+51.34
+65.21
+64.28
+70.28
+69.16
+MFCC
+8.73
+9.91
+5.55
+7.14
+5.14
+6.83
+29.25
+28.89
+41.60
+40.90
+45.75
+44.28
+2 USER REMOVED (4-shard)
+x-vector
+7.12
+8.43
+4.93
+6.42
+4.40
+6.25
+58.31
+57.26
+63.07
+61.63
+64.26
+63.64
+XLS-R
+7.08
+8.31
+5.00
+6.53
+4.53
+6.04
+57.25
+56.85
+64.13
+63.22
+70.25
+69.64
+TRILLsson
+6.74
+8.03
+4.91
+6.32
+4.31
+5.82
+56.85
+55.21
+66.58
+65.97
+71.36
+70.64
+WavLM
+7.92
+8.53
+5.42
+6.73
+5.02
+6.28
+52.36
+51.63
+67.01
+65.92
+70.63
+69.15
+MFCC
+8.87
+10.27
+5.74
+7.35
+5.32
+7.02
+27.28
+26.15
+40.17
+40.39
+42.63
+41.96
+1 USER REMOVED (8-shard)
+x-vector
+6.56
+8.32
+5.03
+7.23
+4.54
+6.32
+56.22
+55.02
+62.08
+59.36
+61.81
+60.02
+XLS-R
+6.03
+8.10
+4.94
+7.01
+4.44
+6.00
+56.74
+55.37
+63.88
+61.27
+71.52
+70.61
+TRILLsson
+5.92
+7.82
+4.80
+6.72
+4.35
+5.92
+57.91
+56.63
+66.24
+64.79
+72.80
+71.53
+WavLM
+8.21
+10.53
+7.12
+9.10
+6.51
+8.05
+57.85
+56.28
+65.49
+64.90
+71.80
+70.63
+MFCC
+8.71
+10.92
+7.49
+9.33
+7.01
+8.83
+26.12
+25.85
+39.63
+38.11
+43.22
+42.61
+2 USER REMOVED (8-shard)
+x-vector
+6.33
+8.54
+5.22
+7.33
+4.62
+6.44
+55.38
+54.17
+61.87
+60.35
+61.94
+60.98
+XLS-R
+6.21
+8.32
+5.13
+7.11
+4.51
+6.04
+56.61
+55.43
+63.31
+62.60
+70.85
+69.44
+TRILLsson
+6.12
+8.04
+5.06
+7.04
+4.45
+6.02
+55.38
+54.17
+66.19
+64.72
+72.17
+71.84
+WavLM
+8.43
+10.73
+7.23
+9.23
+6.65
+8.13
+55.26
+54.30
+65.69
+63.76
+68.34
+67.56
+MFCC
+8.84
+11.04
+7.59
+9.53
+7.00
+9.03
+26.01
+25.64
+39.31
+38.01
+42.48
+42.76
+S I S A + +
+1 USER REMOVED (4-shard)
+x-vector
+6.66
+7.90
+4.60
+6.04
+4.02
+5.73
+63.29
+62.52
+64.22
+63.01
+71.24
+70.61
+XLS-R
+6.12
+7.51
+4.52
+5.83
+3.96
+5.30
+61.24
+60.47
+64.13
+63.22
+70.25
+69.64
+TRILLsson
+6.44
+7.31
+4.46
+5.41
+3.91
+5.22
+60.88
+59.21
+66.58
+65.97
+75.39
+74.64
+WavLM
+7.47
+8.09
+5.00
+6.31
+4.59
+5.39
+52.36
+51.63
+67.01
+65.92
+70.63
+69.75
+MFCC
+8.32
+9.58
+5.20
+6.88
+4.92
+6.67
+29.28
+28.96
+42.17
+41.40
+47.63
+46.96
+2 USER REMOVED (4-shard)
+x-vector
+6.87
+8.41
+4.79
+6.25
+4.16
+5.97
+63.69
+62.85
+64.83
+63.28
+69.34
+68.64
+XLS-R
+6.60
+7.69
+4.65
+5.89
+4.09
+5.48
+60.79
+59.64
+64.99
+64.02
+73.85
+72.96
+TRILLsson
+6.32
+7.44
+4.59
+5.40
+4.05
+5.34
+62.74
+61.35
+67.24
+66.41
+73.88
+73.75
+WavLM
+7.54
+8.36
+5.13
+6.41
+4.85
+5.53
+59.64
+58.14
+67.59
+66.80
+74.14
+73.92
+MFCC
+8.44
+9.87
+5.35
+7.05
+5.07
+6.83
+33.96
+32.84
+43.19
+42.05
+46.24
+45.41
+1 USER REMOVED (8-shard)
+x-vector
+6.53
+8.20
+4.90
+7.11
+4.42
+6.23
+59.03
+58.05
+62.61
+62.61
+64.08
+61.61
+XLS-R
+5.93
+8.03
+4.82
+6.81
+4.34
+6.12
+58.41
+59.74
+64.74
+62.96
+73.85
+72.64
+TRILLsson
+5.82
+6.93
+4.73
+6.22
+4.24
+5.73
+60.62
+57.64
+66.41
+65.28
+74.96
+73.21
+WavLM
+8.11
+10.47
+7.00
+9.03
+6.42
+7.83
+58.94
+57.37
+66.73
+65.34
+73.14
+72.87
+MFCC
+8.44
+10.77
+7.22
+9.13
+6.70
+8.11
+34.47
+33.61
+42.36
+40.74
+45.31
+44.47
+2 USER REMOVED (8-shard)
+x-vector
+6.20
+8.44
+5.11
+7.23
+4.51
+6.55
+58.46
+57.55
+63.28
+62.17
+62.78
+61.85
+XLS-R
+6.11
+8.22
+5.00
+7.02
+4.43
+6.02
+57.65
+56.43
+64.73
+63.09
+71.85
+70.64
+TRILLsson
+6.05
+7.02
+4.90
+6.25
+4.30
+5.82
+58.64
+57.85
+67.36
+65.78
+73.51
+72.47
+WavLM
+8.36
+10.67
+7.12
+9.03
+6.54
+8.01
+56.82
+55.33
+66.61
+64.88
+70.34
+69.14
+MFCC
+8.59
+10.97
+7.43
+9.23
+6.81
+8.34
+32.74
+31.64
+41.04
+39.67
+43.98
+42.98
+Table 2: Performance comparison on the E-DAIC and CREMA-D datasets; For EDAIC, metrics are Mean Absolute Error (M) and Root
+Mean Squared Error (R); For CREMA-D, metrics are Accuracy (A) and marco average F1-score; Results are reported under different
+conditions: one or two users datapoints removed, with evaluations on four-shards and eight-shards, and for both SISA and SISA++
+settings
+4. Conclusion
+In this study, we pioneered MU for PSP and proposed SISA++,
+an novel extension to previous SOTA MU method SISA. It
+merges models trained on different shards via weight averaging,
+outperforming SISA in preserving performance post-unlearning.
+To aid future research, we provide “cookbook recipes” and
+as a part of this we recommend the use of transformer-based
+downstream with TRILLsson features for MU in PSP as they
+offer the best performance retention and validated through our
+experiments. Our findings will facilitate the easier adoption of
+MU in PSP applications. Our research calls for exploration of
+MU to various speech processing applications where privacy is
+a concern. Our work will also act as reference as for speech
+processing domain as MU in relatively underexplored in speech
+processing compared to other domains such as vision and NLP.
+4476
+
+5. References
+[1] R. Shokri, M. Stronati, C. Song, and V. Shmatikov, “Membership
+inference attacks against machine learning models,” in 2017 IEEE
+symposium on security and privacy (SP).
+IEEE, 2017, pp. 3–18.
+[2] S. Mohammadi, S. Sinaei, A. Balador, and F. Flammini, “Secure
+and efficient federated learning by combining homomorphic en-
+cryption and gradient pruning in speech emotion recognition,” in
+International Conference on Information Security Practice and
+Experience.
+Springer, 2023, pp. 1–16.
+[3] V. Tsouvalas, T. Ozcelebi, and N. Meratnia, “Privacy-preserving
+speech emotion recognition through semi-supervised federated
+learning,” in 2022 IEEE International Conference on Pervasive
+Computing and Communications Workshops and other Affiliated
+Events (PerCom Workshops).
+IEEE, 2022, pp. 359–364.
+[4] C. Dwork, “Differential privacy: A survey of results,” in Interna-
+tional conference on theory and applications of models of compu-
+tation.
+Springer, 2008, pp. 1–19.
+[5] A. Mantelero, “The eu proposal for a general data protection regu-
+lation and the roots of the ‘right to be forgotten’,” Computer Law
+& Security Review, vol. 29, no. 3, pp. 229–235, 2013.
+[6] D. M. Sommer, L. Song, S. Wagh, and P. Mittal, “Towards
+probabilistic verification of machine unlearning,” arXiv preprint
+arXiv:2003.04247, 2020.
+[7] L. Bourtoule, V. Chandrasekaran, C. A. Choquette-Choo, H. Jia,
+A. Travers, B. Zhang, D. Lie, and N. Papernot, “Machine un-
+learning,” in 2021 IEEE Symposium on Security and Privacy (SP).
+IEEE, 2021, pp. 141–159.
+[8] T. T. Nguyen, T. T. Huynh, P. L. Nguyen, A. W.-C. Liew, H. Yin,
+and Q. V. H. Nguyen, “A survey of machine unlearning,” arXiv
+preprint arXiv:2209.02299, 2022.
+[9] S. Lin, X. Zhang, C. Chen, X. Chen, and W. Susilo, “Erm-ktp:
+Knowledge-level machine unlearning via knowledge transfer,” in
+Proceedings of the IEEE/CVF Conference on Computer Vision and
+Pattern Recognition, 2023, pp. 20 147–20 155.
+[10] G. Li, H. Hsu, R. Marculescu et al., “Machine unlearning for image-
+to-image generative models,” arXiv preprint arXiv:2402.00351,
+2024.
+[11] P. W. Koh and P. Liang, “Understanding black-box predictions
+via influence functions,” in International conference on machine
+learning.
+PMLR, 2017, pp. 1885–1894.
+[12] Z. Liu, T. Wang, M. Huai, and C. Miao, “Backdoor attacks via
+machine unlearning,” in Proceedings of the AAAI Conference on
+Artificial Intelligence, vol. 38, no. 13, 2024, pp. 14 115–14 123.
+[13] R. Chen, J. Yang, H. Xiong, J. Bai, T. Hu, J. Hao, Y. Feng, J. T.
+Zhou, J. Wu, and Z. Liu, “Fast model debias with machine unlearn-
+ing,” Advances in Neural Information Processing Systems, vol. 36,
+2024.
+[14] Y. Li, C. Chen, X. Zheng, J. Liu, and J. Wang, “Making rec-
+ommender systems forget: Learning and unlearning for erasable
+recommendation,” Knowledge-Based Systems, vol. 283, p. 111124,
+2024.
+[15] L. Wang, T. Chen, W. Yuan, X. Zeng, K.-F. Wong, and
+H. Yin, “KGA: A general machine unlearning framework
+based on knowledge gap alignment,” in Proceedings of the
+61st Annual Meeting of the Association for Computational
+Linguistics (Volume 1: Long Papers), A. Rogers, J. Boyd-Graber,
+and N. Okazaki, Eds.
+Toronto, Canada:
+Association for
+Computational Linguistics, Jul. 2023, pp. 13 264–13 276. [Online].
+Available: https://aclanthology.org/2023.acl-long.740
+[16] B. Alsenani, T. Guha, and A. Vinciarelli, “Privacy risks in speech
+emotion recognition: A systematic study on gender inference at-
+tack,” in Interspeech 2023, 2023, pp. 651–655.
+[17] B. Alsenani, A. Esposito, A. Vinciarelli, and T. Guha, “Assessing
+privacy risks of attribute inference attacks against speech-based
+depression detection system,” 2024.
+[18] S. Scherer, G. M. Lucas, J. Gratch, A. S. Rizzo, and L.-P. Morency,
+“Self-reported symptoms of depression and ptsd are associated with
+reduced vowel space in screening interviews,” IEEE Transactions
+on Affective Computing, vol. 7, no. 1, pp. 59–73, 2015.
+[19] P. Gooding and T. Kariotis, “Ethics and law in research on algo-
+rithmic and data-driven technology in mental health care: scoping
+review,” JMIR Mental Health, vol. 8, no. 6, p. e24668, 2021.
+[20] M. Wortsman, G. Ilharco, S. Y. Gadre, R. Roelofs, R. Gontijo-
+Lopes, A. S. Morcos, H. Namkoong, A. Farhadi, Y. Carmon,
+S. Kornblith et al., “Model soups: averaging weights of multiple
+fine-tuned models improves accuracy without increasing inference
+time,” in International conference on machine learning.
+PMLR,
+2022, pp. 23 965–23 998.
+[21] S. Vander Eeckt and H. Van Hamme, “Weight averaging: A sim-
+ple yet effective method to overcome catastrophic forgetting in
+automatic speech recognition,” in ICASSP 2023 - 2023 IEEE Inter-
+national Conference on Acoustics, Speech and Signal Processing
+(ICASSP), 2023, pp. 1–5.
+[22] J. Shor and S. Venugopalan, “Trillsson: Distilled universal paralin-
+guistic speech representations,” arXiv preprint arXiv:2203.00236,
+2022.
+[23] J. Shor, A. Jansen, W. Han, D. Park, and Y. Zhang, “Universal
+paralinguistic speech representations using self-supervised con-
+formers,” in ICASSP 2022-2022 IEEE International Conference
+on Acoustics, Speech and Signal Processing (ICASSP).
+IEEE,
+2022, pp. 3169–3173.
+[24] A. Babu, C. Wang, A. Tjandra, K. Lakhotia, Q. Xu, N. Goyal,
+K. Singh, P. von Platen, Y. Saraf, J. Pino, A. Baevski, A. Conneau,
+and M. Auli, “XLS-R: Self-supervised Cross-lingual Speech Rep-
+resentation Learning at Scale,” in Proc. Interspeech 2022, 2022,
+pp. 2278–2282.
+[25] S. Chen, C. Wang, Z. Chen, Y. Wu, S. Liu, Z. Chen, J. Li, N. Kanda,
+T. Yoshioka, X. Xiao et al., “Wavlm: Large-scale self-supervised
+pre-training for full stack speech processing,” IEEE Journal of
+Selected Topics in Signal Processing, vol. 16, no. 6, pp. 1505–
+1518, 2022.
+[26] D. Snyder, D. Garcia-Romero, G. Sell, D. Povey, and S. Khudanpur,
+“X-vectors: Robust dnn embeddings for speaker recognition,” in
+2018 IEEE International Conference on Acoustics, Speech and
+Signal Processing (ICASSP), 2018, pp. 5329–5333.
+[27] R. Pappagari, T. Wang, J. Villalba, N. Chen, and N. Dehak, “X-
+vectors meet emotions: A study on dependencies between emotion
+and speaker recognition,” in ICASSP 2020 - 2020 IEEE Interna-
+tional Conference on Acoustics, Speech and Signal Processing
+(ICASSP), 2020, pp. 7169–7173.
+[28] J. V. Egas-López, G. Kiss, D. Sztahó, and G. Gosztolya, “Auto-
+matic assessment of the degree of clinical depression from speech
+using x-vectors,” in ICASSP 2022 - 2022 IEEE International Con-
+ference on Acoustics, Speech and Signal Processing (ICASSP),
+2022, pp. 8502–8506.
+[29] A. Vaswani, “Attention is all you need,” Advances in Neural Infor-
+mation Processing Systems, 2017.
+[30] H. Cao, D. G. Cooper, M. K. Keutmann, R. C. Gur, A. Nenkova,
+and R. Verma, “Crema-d: Crowd-sourced emotional multimodal
+actors dataset,” IEEE transactions on affective computing, vol. 5,
+no. 4, pp. 377–390, 2014.
+[31] F. Ringeval, B. Schuller, M. Valstar, R. Cowie, H. Kaya,
+M. Schmitt, S. Amiriparian, N. Cummins, D. Lalanne, A. Michaud
+et al., “Avec 2018 workshop and challenge: Bipolar disorder and
+cross-cultural affect recognition,” in Proceedings of the 2018 on
+audio/visual emotion challenge and workshop, 2018, pp. 3–13.
+4477
+

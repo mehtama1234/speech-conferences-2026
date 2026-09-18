@@ -1,0 +1,821 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+Visual Cues Support Robust Turn-taking Prediction in Noise
+Sam O’Connor Russell, Naomi Harte
+ADAPT Centre, School of Engineering, Trinity College Dublin, Ireland
+russelsa@tcd.ie, nharte@tcd.ie
+Abstract
+Accurate predictive turn-taking models (PTTMs) are essen-
+tial for naturalistic human-robot interaction.
+However, little
+is known about their performance in noise. This study there-
+fore explores PTTM performance in types of noise likely to be
+encountered once deployed. Our analyses reveal PTTMs are
+highly sensitive to noise. Hold/shift accuracy drops from 84%
+in clean speech to just 52% in 10 dB music noise. Training
+with noisy data enables a multimodal PTTM, which includes
+visual features to better exploit visual cues, with 72% accuracy
+in 10 dB music noise. The multimodal PTTM outperforms the
+audio-only PTTM across all noise types and SNRs, highlighting
+its ability to exploit visual cues; however, this does not always
+generalise to new types of noise. Analysis also reveals that suc-
+cessful training relies on accurate transcription, limiting the use
+of ASR-derived transcriptions to clean conditions. We make
+code publicly available for future research.
+Index Terms:
+multimodal interaction, turn-taking, human-
+robot interaction, noise
+1. Introduction
+Human turn-taking is a remarkable process. There is only 200
+milliseconds of silence on average between speaking turns [1],
+yet language production takes over 600 milliseconds [2]. Lis-
+teners must therefore plan what they are about to say whilst their
+conversational partner is still speaking [3]. Although effortless
+for humans, turn-taking is highly challenging for robots. Most
+turn-taking algorithms in use today are based on a robot react-
+ing to silence after a turn [4], resulting in interactions that are
+less fluid than those between humans [5, 6]. Predictive turn-
+taking models (PTTMs) have been proposed to overcome these
+limitations [7, 4]. PTTMs learn human-like turn-taking from
+large corpora of human interaction, e.g. continuously predict-
+ing whether a shift between speakers will occur [7, 8, 9, 5], akin
+to human turn-taking [3].
+Most PTTMs use speech features [4]. Yet in human-human
+interaction, listeners make faster and more accurate turn-taking
+decisions when they can see and hear a speaker [10].
+Re-
+cent work shows multimodal PTTMs, which also use gaze,
+head pose and facial expression, outperform audio-only PTTMs
+[11, 12], illustrating the known role of visual cues in turn-taking
+[13, 10]. This reflects the many communicative advantages of
+multimodality [14], which include boosting the intelligibility of
+speech in noise [15]. MacLeod and Summerfield found that the
+intelligibility gain from being able to see a speaker was equiva-
+lent to an 11 dB increase in the signal-to-noise ratio (SNR) [15].
+This motivates audio-visual speech recognition (AVSR), which
+exploits visual cues to overcome the performance degradation
+of automatic speech recognition (ASR) in noise [16].
+This paper asks if multimodality confers similar perfor-
+mance benefits to PTTMs in noisy environments. Surprisingly,
+PTTMs have to date only been tested on interactions free from
+background noise interference [4, 11].
+The impact of noise
+on PTTM performance is therefore unknown and unquantified.
+This presents a major oversight as PTTMs will be deployed in-
+the-wild, where they will inevitably encounter diverse sources
+and levels of noise. We therefore present the first exploration of
+PTTM performance in background noise, asking:
+1. How is the performance of predictive turn-taking models af-
+fected by background noise? and
+2. Does the inclusion of visual features make multimodal
+PTTMs robust to background noise?
+This paper explores the crucial capability of a PTTM to
+distinguish holds (no speaker change) from shifts (changes be-
+tween speakers). In noise-free conditions, a multimodal PTTM
+which incorporates visual features outperforms an audio-only
+model (84% and 80% accuracy, Table 1). When we add ar-
+tificial music, babble, and speech noise, the accuracy of both
+PTTMs is poor (51% and 52% in music). Including noise dur-
+ing training increases accuracy (61% and 72% in music). It also
+‘primes’ the multimodal PTTM to better exploit visual infor-
+mation (10 dB effective SNR gain over the audio-only PTTM).
+We find this effect generalises to types of noises unseen by the
+model during training. The inclusion of visual cues therefore
+makes PTTM performance more robust to noise. We also in-
+vestigate the reliance of PTTMs training on accurate transcrip-
+tions. When noisy data is re-transcribed with ASR PTTM per-
+formance collapses (50-54%). PTTMs training therefore relies
+heavily on accurately aligned transcripts collected from noise-
+free recordings, complicating the use of ASR in noisy data.
+PTTMs are essential to facilitating interaction between hu-
+mans and robots, but there is little understanding of how well
+they could work in-the-wild. Part of the puzzle is understand-
+ing how they handle noise and our work therefore represents a
+significant step forward in PTTMs development.
+2. Predictive turn-taking models
+PTTMs continually predict future speaking activity, from which
+turn-taking predictions can be made [7, 8, 17]. For example, if
+speaker 0 is currently talking, but the model prediction favours
+speaker 1, a shift is predicted. PTTMs are developed on corpora
+of human-human interaction with the long-term eventual goal
+of deployment to human-robot interaction. Our work considers
+two-party interaction, where most work has been conducted [4].
+We evaluate two PTTMs based on the state-of-the-art voice-
+activity projection (VAP) approach introduced by Ekstedt et al.
+[17] as it has been thoroughly explored [18, 9, 11]. VAP models
+predict future speaking activity in 8 bins (4 per speaker). At
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+1073
+10.21437/Interspeech.2025-668
+
+time t = 0, bins span [0, 0.2], [0.2, 0.6], [0.6, 1.2] and [1.2, 2.0]
+seconds into the future. Each bin has a binary label (1=speech
+if > 50% frames contain speech), giving 256 possible outputs.
+VAP models are neural networks consisting of stacked
+transformer decoder layers [17, 19].
+The first model is an
+audio-only VAP model which we re-implement from [19]. The
+initial VAP model used mono audio and ground-truth knowl-
+edge of the current speaker [17]; i.e. it knew when each turn
+ended. The updated model used here takes stereo audio with
+1 channel per speaker and removes the dependency on ground-
+truth knowledge, reflecting a real-world deployment. We also
+use a multimodal VAP (MM-VAP) model that incorporates fa-
+cial action unit, facial landmark, gaze and head pose features
+from OpenFace [20, 11, 12]. As the initial MM-VAP model also
+depended on the ground-truth knowledge of the current speaker
+[11], we similarly extended the model to support stereo audio
+and remove this dependency [12]. For comparison, we also
+train a video-only VAP model, identical to VAP with the audio
+encoder removed [19]. Our implementations, along with full
+architectural details are publicly available in our repository1.
+PTTMs require labels of the start and end of each utterance
+for training (the alignment). Manual transcriptions are typically
+used e.g. the Switchboard telephone corpus [21, 17, 22, 5].
+ASR more closely represents real-world deployments and has
+been shown to work well in PTTM training [23, 24].
+3. Data preparation
+This work uses the Candor corpus [25], an 850 hr corpus of
+1657 unscripted two-party videoconferencing interactions be-
+tween speakers in US English. The average session duration is
+34 min. Recordings are 60 fps video, 32 kHz stereo audio with
+one channel per speaker. There is no controlled background
+noise. Recordings take place at a location of the participant’s
+choosing e.g. home offices. We transcribe with Amazon Tran-
+scribe (EN-US model) which outputs word-level timings and
+preserves most disfluencies [23]. We extract gaze, head pose,
+facial action units, and facial landmarks with OpenFace [20].
+We follow the AVSR literature by artificially simulating
+noisy conditions, adding noise separately to each channel at
+controlled SNRs [16]. Babble noise consists of 65,000 unique
+30 speaker babbles which is synthesised from LRS-3 [26, 16]
+(46 hr train, 14 hr test). Music noise is sourced from MUSAN
+[27] (15 hr train from the Jamendo genre, 70 hr test). Interfer-
+ence from other speakers (speech noise) is simulated by over-
+laying another speaker from Candor, ensuring train/test separa-
+tion.
+In AVSR research, noise is typically added to isolated
+speech segments. However, PTTMs are trained using conver-
+sational speech which includes long pauses. A standard method
+of adding controlled noise to conversational speech has not been
+reported. We propose to add noise at a given SNR by consider-
+ing signal energy during speaking times and then adding scaled
+noise to the complete recording. Natural variation in amplitude
+means this yields an average SNR over all utterances.
+The clean test audio comprises 70 sessions withheld for
+evaluation. The test audio is also corrupted with -10 to +10 dB
+SNRs noise in 2.5 dB increments (noisy test audio). Shi et
+al. found that adding noise in training increased AVSR perfor-
+mance. Following their method, in each training session, with
+probability 0.25 we add either babble, music or speech noise at
+0 dB [16], yielding the augmented training audio. Note that
+1https://github.com/russelsa/mm-vap
+clean and augmented training sets are the same length. We ob-
+tain both clean and augmented alignments for both training
+sets with Amazon ASR.
+4. Model training and evaluation
+First, we train with the clean audio + clean alignment, as is
+standard in the turn-taking literature [17, 24]. Then we train on
+the augmented audio + clean alignment, where noise is added
+but the transcription remains unchanged [16]. To test the re-
+liance on accurate ASR, we train using the augmented audio +
+augmented alignment. This represents a situation where there
+is noisy data transcribed with ASR. Training batches consist
+of 20-second windows with 2 second overlap randomly sam-
+pled from training sessions. The training procedure is a 5-fold
+cross-validation with 10 epochs per fold on an NVidia RTX
+6000 GPU. A grid search sets the batch size to 16 and the learn-
+ing rate to 1e-4. The loss function is the sum of cross-entropy
+(future speaking prediction) and binary cross-entropy (current
+speaker prediction) losses minimised with AdamW [28].
+We report the hold/shift (H/S) prediction accuracy: the abil-
+ity of the model to distinguish holds (no speaker change) from
+shifts (speaker change), a common metric in the turn-taking lit-
+erature [17, 19]. First, all silences > 250 ms are identified.
+Those with speaker changes are shifts (83,158) and those with-
+out are holds (206,830) [17]. Then, the probability of speech in
+the latter half of the VAP bins is computed [17]. If speaker 0
+has finished speaking and the probability of speaker 1 exceeds
+a binary threshold, a shift is predicted. We set the threshold to
+maximise balanced accuracy on validation sessions and report a
+5-fold average on test sessions.
+We report effective SNR gain i.e. the SNR at which MM-
+VAP achieves the same accuracy as VAP at 0 dB, following the
+AVSR literature [29]. We compare VAP and MM-VAP model
+performance with two-tailed independent t-tests [30].
+5. Turn-taking model performance in noise
+5.1. Baseline performance on clean speech
+We begin our analysis by training VAP and MM-VAP models
+using the clean audio and clean alignment, establishing a base-
+line H/S prediction accuracy without added noise (clean test au-
+dio, Table 1, first two rows). The 5-fold average H/S prediction
+accuracy of MM-VAP model is 84%, greater than the audio-
+only VAP at 80% (p < 0.001). The accuracy and the superior
+performance of MM-VAP are in agreement with the PTTM lit-
+erature [19, 24].
+5.2. The impact of noise on turn-taking models
+Figure 1 shows the average H/S accuracy on the noisy test data,
+where solid colours are VAP (audio-only) and hatched are MM-
+VAP (audio and video). We first consider the models trained on
+clean audio + alignment in green. The plot reveals noise has
+a strong impact on PTTM accuracy, most severe in speech and
+music where accuracy falls to 51-52% (the first two rows of Ta-
+ble 1). At high SNR there is a smaller impact from babble noise
+at 76-80% at 10 dB SNR. However, both models are extremely
+sensitive to music and speech interference with 51-52% accu-
+racy at 10 dB SNR, i.e. a random hold/shift prediction.
+Figure 2 shows average H/S prediction accuracy at each
+SNR for VAP and MM-VAP. The higher the SNR, the lower the
+noise energy relative to the speech signal (equal at 0 dB). Above
+0 dB, the average accuracy increases as the SNR increases. Be-
+1074
+
+Table 1: Average hold/shift prediction accuracy (%, ¯x=mean all SNRs) across 5-folds of cross-validation of VAP (audio, A), MM-VAP
+(audio+video, A+V), and video-only (V) models on the same test set at varying noise levels (2.5 dB increments, 5 dB shown for brevity).
+Training is conducted on the clean and augmented (aug., 25% of sessions corrupted with 0 dB noise) audio and ASR alignments.
+Model
+Training
+Input Modality
+Test set + babble @ SNR dB =
+Test set + speech @ SNR dB =
+Test set + music @ SNR dB =
+Clean
+Audio
+Alignment
+-10
+-5
+0
+5
+10
+¯x
+-10
+-5
+0
+5
+10
+¯x
+-10
+-5
+0
+5
+10
+¯x
+∞
+VAP
+clean
+clean
+A
+61
+50
+58
+69
+76
+60
+51
+51
+51
+51
+52
+51
+51
+50
+51
+51
+52
+51
+80
+MM-VAP
+clean
+clean
+A+V
+57
+56
+68
+76
+80
+68
+53
+52
+52
+53
+54
+52
+53
+51
+51
+52
+53
+52
+84
+VAP
+aug.
+clean
+A
+49
+50
+65
+74
+77
+63
+51
+59
+65
+66
+64
+61
+55
+58
+62
+66
+65
+61
+84
+MM-VAP
+aug.
+clean
+A+V
+61
+62
+75
+79
+80
+71
+66
+69
+74
+74
+75
+72
+67
+68
+74
+76
+74
+72
+86
+VAP
+aug.
+aug.
+A
+50
+50
+55
+55
+56
+53
+50
+50
+50
+49
+49
+50
+50
+50
+50
+50
+50
+50
+57
+MM-VAP
+aug.
+aug.
+A+V
+55
+56
+57
+58
+58
+57
+50
+50
+50
+50
+49
+50
+50
+50
+50
+50
+50
+50
+57
+video-only
+—
+clean
+V
+66
+66
+66
+66
+babble
+speech
+music
+clean
+Noise type
+50
+55
+60
+65
+70
+75
+80
+85
+90
+Mean balanced accuracy (%)
+Hold/shift Accuracy by Noise Type
+audio + align.
+clean + clean
+aug. + clean
+aug. + aug.
+model (modality)
+VAP (A)
+MM-VAP (A + V)
+Figure 1: Average hold/shift prediction accuracy of VAP (audio-
+only) and MM-VAP (audio+video) models in each noise type.
+The average is across the -10 dB, +10 dB SNR range.
+10.0
+7.5
+5.0
+2.5
+0.0
+2.5
+5.0
+7.5
+10.0
+SNR
+50
+55
+60
+65
+70
+75
+80
+85
+90
+Mean Balanced Accuracy (%)
++10 dB GAIN
++3.75 dB GAIN
+Hold/Shift Accuracy by SNR
+audio + align.
+clean + clean
+aug. + clean
+aug. + aug.
+model (modality)
+VAP (A)
+MM-VAP (A + V)
+Figure 2: Average hold/shift prediction accuracy of VAP (audio-
+only) and MM-VAP (audio+video) models at each SNR. An av-
+erage accuracy in speech, music and babble noise is shown.
+low 0 dB, accuracy levels off to 50-54%. The effective SNR
+gain of MM-VAP over VAP is +3.75 dB. A breakdown of aver-
+age accuracy by noise type reveals the superior performance of
+MM-VAP originates from accuracy in babble noise, as accuracy
+in music and speech is always 51-54% (Table 1).
+5.3. Training with noisy examples
+We re-train both models on the augmented training set and show
+H/S prediction accuracy by noise type in blue in Figure 1. There
+is a clear performance increase, e.g. average accuracy in music
+is 61% for VAP and 72% for MM-VAP, up from 51-52% (p <
+0.001). A large gap in model accuracy has also emerged.
+The blue lines in Figure 2 show performance at each SNR.
+At -10 dB SNR, the average accuracy of VAP is 50% whereas
+MM-VAP is 65% (p < 0.01). The effective SNR gain of MM-
+VAP has increased to +10 dB and the extreme sensitivity to
+speech and music noise is reduced. At +10 dB SNR of speech
+noise, the average accuracy is 64% for VAP and 75% for MM-
+VAP (second two rows of Table 1), up from 51% and 52% pre-
+viously (p < 0.01). At -10 dB SNR, VAP has a 50% accu-
+racy. On the other hand, MM-VAP backs off to the accuracy
+of a PTTM model trained exclusively on video features (67%
+vs 66% in -10 dB music noise). The only difference in input is
+MM-VAP receives visual features. However, it achieves supe-
+rior performance in all types of noise and across the full range
+of SNRs, and performance is similar to a video-only model in
+extreme (-10 dB) noise. This demonstrates that it exploits visual
+information to improve accuracy in acoustic interference.
+Table 2: H/S prediction accuracy (%) of MM-VAP trained with
+speech, babble, music, or a mixture (augmented) at 0 dB SNR.
+Test set, 0 dB SNR
+babble
+music
+speech
+clean
+Train set
+babble
+71
+51
+52
+85
+music
+58
+75
+57
+86
+speech
+70
+77
+76
+86
+augmented
+75
+74
+74
+86
+5.4. Predicting a shift between speakers
+We show predictions during a shift in Figure 3 (MM-VAP solid,
+VAP dashed) by plotting speaker 1 probability in the next 1.2-2
+seconds (greater than 0.5 highlighted red). In clean audio (B),
+the shift between speakers is predicted ahead of time by MM-
+VAP. In 0 dB babble noise (C), MM-VAP predicts the shift,
+whereas VAP always outputs approx 0.5, demonstrating the im-
+pact of noise. MM-VAP predictions in noise (C + D) resem-
+ble predictions in clean audio (B), further demonstrating the ex-
+ploitation of visual cues by MM-VAP.
+5.5. Generalisation to noise unseen during training
+We investigate if MM-VAP performance extends to types of
+noise unseen during training. We retrain three times with ei-
+ther 0 dB SNR speech, music or babble noise in 25% of train-
+ing sessions. The balanced accuracy of H/S prediction in Table
+1075
+
+A
+0.0
+0.5
+1.0
+clean
+B
+0.0
+0.5
+1.0
+C
+960
+962
+964
+966
+968
+Time [seconds]
+0.0
+0.5
+1.0
+D
+speaker
+speaker 0
+speaber 1
+audio + align.
+clean + clean
+aug. + clean
+model (modality)
+VAP (A)
+MM-VAP (A + V)
+Shift Prediction in VAP and MM-VAP
+Speaker 1 Probability
+0dB babble
+Figure 3: Model output during a shift in the Candor corpus
+(unseen during training). Speaker 0 (grey): ”So uhm would you
+feel comfortable telling me about what you do for a living?”,
+Speaker 1 (red) ”Uhm yeah well for the most part I test and
+tweak algorithms”. VAP and MM-VAP model output is shown
+in clean speech (B) and 0 dB babble speech (C) and (D).
+2 shows that when the training set includes speech or babble
+noise, accuracy is poor in other types of noise: e.g. 71% for
+the babble-trained model in babble noise but only 54% in mu-
+sic. However, when trained on speech noise, similar accuracy
+is obtained in all types of noise 74 −75% (Table 2, second-last
+row). This suggests training on a speech signal with an interfer-
+ing speaker ‘forces’ MM-VAP to exploit visual cues, leading to
+better generalisation when new types of noise are encountered.
+5.6. The critical role of the alignment in training
+Finally, we re-train both models using the augmented alignment
+obtained from Amazon ASR. The orange bars in Figure 1 reveal
+a stark fall in accuracy to 50 −58% and Figure 2 shows that
+this is consistent across all SNRs. The drop in performance to
+the 50% range indicates models are comparable to a random
+hold/shift prediction. This is due to alignment and transcription
+errors that ASR experiences in noise [31]. PTTM training is
+therefore dependent on accurate transcriptions which are either
+manual [17] or obtained from ASR and clean recordings [24].
+6. Discussion
+Our results show PTTMs do not maintain high accuracy in types
+of noises they are likely to encounter in-the-wild (Section 5.2).
+We found slight (10 dB SNR) interference from music and
+other speakers caused accuracy to plummet to 50%. Includ-
+ing noise during training dramatically increased performance
+(Section 5.3). This is a common technique in AVSR [16] that
+has not previously been considered in the turn-taking literature.
+Returning to our first research question, our findings therefore
+show that the PTTMs in this work are not robust to noise with-
+out the prior inclusion of noise in training.
+The initial poor performance shows MM-VAP does not ex-
+ploit visual cues to their fullest extent (Section 5.2) without ap-
+propriate training. Training on augmented data led to consider-
+ably more improvement in the accuracy of MM-VAP than VAP
+across the SNR range. At extreme levels of noise interference
+(e.g. -10 dB music noise) VAP fails (50%, i.e. chance) but MM-
+VAP backs off to the accuracy of the video-only model (67% vs
+66%, Section 5.3). This highlights the role visual cues play in
+achieving robust H/S accuracy in noise.
+If MM-VAP is truly able to utilise visual cues to overcome
+noise, this should generalise to new sources of noise. However,
+we found that this was only true for the MM-VAP model trained
+on speech-noise (Section 5.5). Our working hypothesis is that
+mixing in random speakers over the speech signal training pro-
+cess ‘forces’ MM-VAP to use visual information, rather than
+relying on the acoustic properties of the noise. Thus, returning
+to our second research question, PTTMs can achieve robust per-
+formance in noise, but this is intimately related to the training
+process and does not inherently generalise to new noise types.
+It is difficult to interpret H/S prediction accuracy numbers
+as no studies have determined a minimum accuracy needed to
+support fluid interaction in a human-robot deployment. Taking
+our 80-84% accuracy on clean speech as a baseline and ignor-
+ing the many complexities of a real-world deployment includ-
+ing hardware, real-time performance and human-machine dia-
+logue, a robot would make a correct H/S decision 8/10 times.
+Both MM-VAP and VAP would only be correct 5/10 times in
+10 dB SNR music interference when trained using conventional
+methods, significantly complicating interaction. This rises to
+6.5/10 for VAP and 7.5/10 for MM-VAP when noise is included
+in training; close to baseline performance, illustrating the power
+of visual cues in achieving robust performance in noise.
+A limitation of our work is we artificially add noise to
+speech recorded in noise-free settings. Although this is com-
+monplace [31, 16, 29], it means we do not capture changes to
+verbal and non-verbal [32] communication and turn-taking [33]
+in noise. Another limitation is our use of videoconferencing.
+However, no in-person corpora match the size and quality of
+Candor. Finally, our mixing of noise at a constant energy level
+means the audio-only VAP model may be partly capitalising on
+the natural variations in SNR in long recordings of speech.
+Training techniques for multimodal PTTMs should be fur-
+ther explored to ensure their ability to exploit visual cues gener-
+alises to new noise types. As AVSR can exploit visual informa-
+tion in datasets unseen in training [34], AVSR forms a natural
+starting point for future multimodal PTTMs architectures [16].
+Turn-taking in noise is quite similar to the channel separation
+problem of speaker diarisation [35] and our findings support
+further exploration and the extension to the multimodal setting.
+There are many other turn-taking events (e.g. backchannels)
+which require consideration in future work.
+7. Conclusion
+Accurate turn-taking models are an important milestone on the
+path to viable human-robot interaction. We have conducted the
+first exploration of PTTM performance in noise, showing that
+PTTMs are not robust to typical noises a PTTM may encounter
+once deployed. Training with noise improves overall accuracy
+and enables multimodal PTTM to leverage visual features to
+overcome acoustic interference. However, this capability does
+not necessarily generalise to new types of noise. This issue must
+be solved prior to their deployment in real-world settings. Our
+work therefore constitutes a significant step forward in our un-
+derstanding of PTTMs. Future work in PTTM architectures,
+training techniques and in-the-wild deployment are therefore
+imperative before deployment to human-robot interaction.
+1076
+
+8. Acknowledgements
+This research was conducted with the financial support of
+Science Foundation Ireland under Grant Agreement No.
+13/RC/2106 P2 at the ADAPT SFI Research Centre at Trinity
+College Dublin. Amazon provided academic access to the AWS
+Transcribe service.
+9. References
+[1] T. Stivers, N. J. Enfield, P. Brown, C. Englert, M. Hayashi,
+T. Heinemann, G. Hoymann, F. Rossano, J. P. De Ruiter, K.-E.
+Yoon et al., “Universals and cultural variation in turn-taking in
+conversation,” Proceedings of the National Academy of Sciences,
+vol. 106, no. 26, pp. 10 587–10 592, 2009.
+[2] P. Indefrey, “The spatial and temporal signatures of word pro-
+duction components: a critical update,” Frontiers in psychology,
+vol. 2, p. 255, 2011.
+[3] H. Sacks, E. A. Schegloff, and G. Jefferson, “A simplest systemat-
+ics for the organization of turn-taking for conversation,” language,
+vol. 50, no. 4, pp. 696–735, 1974.
+[4] G. Skantze, “Turn-taking in conversational systems and human-
+robot interaction:
+a review,” Computer Speech & Language,
+vol. 67, p. 101178, 2021.
+[5] S. Li, A. Paranjape, and C. D. Manning, “When can i speak?
+predicting initiation points for spoken dialogue agents,” arXiv
+preprint arXiv:2208.03812, 2022.
+[6] A. Woodruff and P. M. Aoki, “How push-to-talk makes talk less
+pushy,” in Proceedings of the 2003 ACM International Conference
+on Supporting Group Work, 2003, pp. 170–179.
+[7] G. Skantze, “Towards a general, continuous model of turn-taking
+in spoken dialogue using lstm recurrent neural networks,” in Pro-
+ceedings of the 18th Annual SIGdial Meeting on Discourse and
+Dialogue, 2017, pp. 220–230.
+[8] M. Roddy, G. Skantze, and N. Harte, “Investigating speech fea-
+tures for continuous turn-taking prediction using lstms,” in Inter-
+speech 2018, 2018, pp. 586–590.
+[9] E. Ekstedt and G. Skantze, “How much does prosody help turn-
+taking? investigations using voice activity projection models,” in
+Proceedings of the 23rd Annual Meeting of the Special Interest
+Group on Discourse and Dialogue, 2022, pp. 541–551.
+[10] P. Barkhuysen, E. Krahmer, and M. Swerts, “The interplay be-
+tween the auditory and visual modality for end-of-utterance de-
+tection,” The journal of the Acoustical Society of America, vol.
+123, no. 1, pp. 354–365, 2008.
+[11] K. Onishi, H. Tanaka, and S. Nakamura, “Multimodal voice activ-
+ity prediction: Turn-taking events detection in expert-novice con-
+versation,” in Proceedings of the 11th International Conference
+on Human-Agent Interaction, 2023, pp. 13–21.
+[12] S. O’Connor Russell and N. Harte, “Visual cues enhance
+predictive turn-taking for two-party human interaction,” in The
+63rd Annual Meeting of the Association for Computational
+Linguistics, ACL 2025, Vienna, Austria. [Online]. Available:
+http://arxiv.org/abs/2505.21043
+[13] J. Holler, K. H. Kendrick, M. Casillas, and S. C. Levinson, Turn-
+taking in human communicative interaction.
+Frontiers Media
+SA, 2016.
+[14] J. Holler and S. C. Levinson, “Multimodal language processing
+in human communication,” Trends in Cognitive Sciences, vol. 23,
+no. 8, pp. 639–652, 2019.
+[15] A. MacLeod and Q. Summerfield, “Quantifying the contribution
+of vision to speech perception in noise,” British journal of audiol-
+ogy, vol. 21, no. 2, pp. 131–141, 1987.
+[16] B.
+Shi,
+W.-N.
+Hsu,
+and
+A.
+Mohamed,
+“Robust
+self-
+supervised audio-visual speech recognition,”
+arXiv preprint
+arXiv:2201.01763, 2022.
+[17] E. Ekstedt and G. Skantze, “Voice activity projection:
+Self-
+supervised learning of turn-taking events,” in Interspeech 2022,
+2022, pp. 5190–5194.
+[18] E. Ekstedt, S. Wang, ´Eva Sz´ekely, J. Gustafson, and G. Skantze,
+“Automatic evaluation of turn-taking cues in conversational
+speech synthesis,” in INTERSPEECH 2023, 2023, pp. 5481–5485.
+[19] K. Inoue, B. Jiang, E. Ekstedt, T. Kawahara, and G. Skantze,
+“Multilingual turn-taking prediction using voice activity projec-
+tion,” in Proceedings of the 2024 Joint International Conference
+on Computational Linguistics, Language Resources and Evalua-
+tion (LREC-COLING 2024), Torino, Italia, May 2024.
+[20] T. Baltruˇsaitis, P. Robinson, and L.-P. Morency, “Openface: an
+open source facial behavior analysis toolkit,” in 2016 IEEE winter
+conference on applications of computer vision (WACV).
+IEEE,
+2016, pp. 1–10.
+[21] J. J. Godfrey, E. C. Holliman, and J. McDaniel, “Switchboard:
+Telephone speech corpus for research and development,” in
+Acoustics, speech, and signal processing, ieee international con-
+ference on, vol. 1.
+IEEE Computer Society, 1992, pp. 517–520.
+[22] M. Roddy and N. Harte, “Neural generation of dialogue response
+timings,” in Proceedings of the 58th Annual Meeting of the As-
+sociation for Computational Linguistics, D. Jurafsky, J. Chai,
+N. Schluter, and J. Tetreault, Eds., Jul. 2020, pp. 2442–2452.
+[23] S. O. Russell, I. Gessinger, A. Krason, G. Vigliocco, and N. Harte,
+“What automatic speech recognition can and cannot do for con-
+versational speech transcription,” Research Methods in Applied
+Linguistics, vol. 3, no. 3, p. 100163, 2024.
+[24] S. O’Connor Russell and N. Harte, “Towards multimodal turn-
+taking for naturalistic human-robot interaction,” in 2nd Interna-
+tional Multimodal Communication Symposium, Frankfurt, Ger-
+mamy, 2024, pp. 91–92.
+[25] A. Reece, G. Cooney, P. Bull, C. Chung, B. Dawson, C. Fitz-
+patrick, T. Glazer, D. Knox, A. Liebscher, and S. Marin, “The can-
+dor corpus: Insights from a large multimodal dataset of naturalis-
+tic conversation,” Science Advances, vol. 9, no. 13, p. eadf3197,
+2023.
+[26] T. Afouras, J. S. Chung, and A. Zisserman, “Lrs3-ted:
+a
+large-scale dataset for visual speech recognition,” arXiv preprint
+arXiv:1809.00496, 2018.
+[27] D. Snyder, G. Chen, and D. Povey, “Musan: A music, speech, and
+noise corpus,” arXiv preprint arXiv:1510.08484, 2015.
+[28] I. Loshchilov, “Decoupled weight decay regularization,” arXiv
+preprint arXiv:1711.05101, 2017.
+[29] Z. Lin and N. Harte, “Uncovering the visual contribution in audio-
+visual speech recognition,” in ICASSP 2025 - 2025 IEEE Inter-
+national Conference on Acoustics, Speech and Signal Processing
+(ICASSP), 2025.
+[30] Student, “The probable error of a mean,” Biometrika, vol. 6, no. 1,
+pp. 1–25, 1908.
+[31] R. Marxer, J. Barker, N. Alghamdi, and S. Maddock, “The im-
+pact of the lombard effect on audio and visual speech recognition
+systems,” Speech communication, vol. 100, pp. 58–68, 2018.
+[32] J. Trujillo, A. ¨Ozy¨urek, J. Holler, and L. Drijvers, “Speakers ex-
+hibit a multimodal lombard effect in noise,” Scientific Reports,
+vol. 11, no. 1, p. 16721, 2021.
+[33] A. Sørensen, M. Fereczkowski, and E. MacDonald, “Effects of
+noise and l2 on the timing of turn taking in conversation,” ser.
+Proceedings of the International Symposium on Audiological and
+Auditory Research, vol. 7, 2020, pp. 86–92.
+[34] G. Sterpu, C. Saam, and N. Harte, “How to teach dnns to
+pay attention to the visual modality in speech recognition,”
+IEEE/ACM Transactions on Audio, Speech, and Language Pro-
+cessing, vol. 28, pp. 1052–1064, 2020.
+[35] T. Chen, Q. Wang, B. Wu, M. Itani, E. S. Eskimez, T. Yoshioka,
+and S. Gollakota, “Target conversation extraction: Source separa-
+tion using turn-taking dynamics,” in Interspeech 2024, 2024, pp.
+3550–3554.
+1077
+

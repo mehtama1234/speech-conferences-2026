@@ -1,0 +1,520 @@
+TalTech Systems for the Interspeech 2025 ML-SUPERB 2.0 Challenge
+Tanel Alum¨ae, Artem Fedorchenko
+Department of Software Science, Tallinn University of Technology, Estonia
+tanel.alumae@taltech.ee, artem.fedorchenko@taltech.ee
+Abstract
+This paper describes the language identification and multilin-
+gual speech recognition system developed at Tallinn University
+of Technology for the Interspeech 2025 ML-SUPERB 2.0 Chal-
+lenge. A hybrid language identification system is used, con-
+sisting of a pretrained language embedding model and a light-
+weight speech recognition model with a shared encoder across
+languages and language-specific bigram language models. For
+speech recognition, three models are used, where only a single
+model is applied for each language, depending on the training
+data availability and performance on held-out data. The model
+set consists of a finetuned version of SeamlessM4T, MMS-1B-
+all with custom language adapters and MMS-zeroshot. The sys-
+tem obtained the top overall score in the challenge.
+Index Terms: multilingual speech recognition, spoken lan-
+guage identification
+1. Introduction
+The ML-SUPERB 2.0 Interspeech 2025 Challenge was held
+with the aim to advance the state-of-the-art in multilingual au-
+tomatic speech recognition (ASR) and language identification
+(LID) systems, with a particular focus on improving perfor-
+mance across a diverse range of languages and language vari-
+eties. The challenge evaluated systems on 154 unique languages
+and over 200 language varieties, using a comprehensive scoring
+system that considers six metrics: average LID accuracy and
+Character Error Rate (CER) across all languages, average CER
+for the 15 worst-performing languages, CER standard devia-
+tion, and average LID accuracy and CER across language vari-
+eties. Participants were allowed to use any available datasets
+and pretrained models, provided they can perform inference
+within 24GB of GPU VRAM and without internet connection.
+This challenge built upon previous SUPERB initiatives [1] but
+shifted focus from speech representations to developing robust
+multilingual ASR and LID systems that ensure no language is
+”left behind” in speech technology advancement.
+The system developed at Tallinn University of Technology
+(TalTech) for this challenge follows an rule-based pipeline ap-
+proach: first, a LID model determines the utterance language,
+then selects the most appropriate ASR model for that language.
+Since LID accuracy is crucial in this setup, we focused on de-
+veloping a robust LID system that combines two components:
+an audio-based language embedding model and a novel gener-
+ative model. The generative model uses a lightweight multi-
+lingual ASR system to identify the language with the highest
+likelihood decode path, allowing thus to also rely on linguis-
+tic constraints. Given the challenge’s diverse language set, we
+primarily used existing multilingual ASR models, developing
+new models only for languages that were not supported by these
+models or performed poorly. Our system achieved the high-
+est combined score in the challenge, including the lowest mean
+ASR CER, the best overall LID accuracy and the highest dialec-
+tal LID accuracy.
+2. Methods
+2.1. Language identification
+We use a hybrid spoken LID model, consisting of a language
+embedding model with a logistic regression classifier and a gen-
+erative multilingual speech recognition model.
+2.1.1. Language embeddings model
+The backbone of the language embedding model is the speech
+encoder module from the SeamlessM4T speech translation
+and recognition model 1 [2]. This speech encoder employs a
+W2V-BERT 2.0 model with a Conformer architecture. It was
+fine-tuned on 43,772 hours of supervised ASR and speech trans-
+lation data (as part of the encoder-decoder model), after being
+pre-trained on vast amounts of unlabelled speech. This com-
+bination enables it to capture a wide range of phonetic and
+prosodic features across languages.
+The speech encoder module has 24 Conformer layers with
+1024-dimensional outputs that are kept frozen during training
+the language embedding model. The outputs from individual
+layers are aggregated using dimension-specific weighted aver-
+age, where the weights specific to each dimension sum to one.
+That is, the weights are represented by a 1024× 24 matrix.
+The sequence of 1024-dimensional aggregated speech encod-
+ings is then pooled using multi-resolution multi-head attention
+[3]. We used 4 attention heads with two-layer 256-dimensional
+affine hidden layers. The output from the pooling layer is 8192-
+dimensional, corresponding to 4 heads and both mean and stan-
+dard deviation based pooling. This output is then further pro-
+cessed by two 512-dimensional hidden layers with ReLU non-
+linearity and finally by a softmax layer. The model is trained
+on the V oxLingua107 dataset [4] using cross-entropy loss. The
+model is trained for four epochs, using an effective batch size of
+384 utterances, peak learning rate of 10−2 and weight decay of
+0.0001. Reverberation and background noises were used during
+training, both with a probability of 0.5 per training utterance.
+We employed the Room Impulse Response and Noise Database
+from OpenSLR2 and used background noises from the MUSAN
+corpus and simulated impulse responses generated for training
+ASR models [5]. After training is complete, 512-dimensional
+language embeddings can be extracted from the output of the
+1https://huggingface.co/facebook/
+seamless-m4t-v2-large
+2https://www.openslr.org/28/
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+2098 10.21437/Interspeech.2025-1797
+
+MMS zeroshot
+CTC model of uroman characters
+CTC posteriors of uroman chacters
+Afrikaans:
+Lexicon
+Bigram LM
+Amharic:
+Lexicon
+Bigram LM
+Russian:
+Lexicon
+Bigram LM
+Text: nakom is
+paal as ta
+Score: 1785
+Text: እነ ከምቲ
+በዘለለ
+Score: 1786
+Text: по знаком
+тыс казалось та
+Score: 1810
+...
+...
+Figure 1: Schematic diagram of the generative LID model based
+on the MMS-zeroshot model.
+first hidden layer after the pooling layer (before applying the
+ReLU activation).
+In order to train the final language embedding based lan-
+guage classifier, we extracted embeddings for a subset of ML-
+SUPERB 2.0 training data, augmented with our custom web-
+scraped data for languages that were not present in the provided
+data (see Section 3). This aggregated dataset was filtered to con-
+tain up to one hour of speech per language. The final classifier
+consists of length normalization, LDA with the output dimen-
+sionality of 100 and logistic regression.
+2.1.2. Generative language identifier
+The generative classifier is inspired by phonotactic LID mod-
+els (e.g., [6, 7] and previous work on accent-robust language
+classification [8]. Phonotactic spoken LID models work by
+converting speech into sequences of phonetic units, using sev-
+eral monolingual or one universal phone recognition model.
+The likelihood of observed phoneme sequences under each lan-
+guage’s phonotactic constraints, typically modeled using N-
+gram models that are estimated on the phone transcripts of
+language-specific training data, is then used to classify the spo-
+ken language.
+The backbone of our generative language classifier is the
+recently proposed MMS-zeroshot ASR model [9]. Instead
+of language-independent allophones, the model uses common
+Latin script characters (known as uroman characters) as its in-
+termediate representation. The model trains on labeled data
+from 1,078 languages, with all labels converted to romanized
+text (so-called uroman characters). Using uroman characters
+instead of allophones offers a key advantage: mapping low-
+resource languages to uroman is more reliable than creating
+word pronunciation lexicons or grapheme-to-phoneme convert-
+ers, which typically require linguistic expertise. The model uses
+the uroman toolkit [10] for romanization, which maps charac-
+ters through heuristics rather than language-specific dictionar-
+ies, enabling support for diverse scripts and languages. Also,
+unlike phonotactic models that need language-specific audio
+training data to estimate phoneme-based N-gram models, the
+proposed model needs only textual data for each target language
+for training.
+Figure 1 illustrates our LID model based on MMS-zeroshot.
+The process begins by passing an utterance through the MMS-
+zeroshot CTC model, which produces a sequence of poste-
+rior probabilities over uroman characters and the blank symbol.
+These posteriors are then decoded using language-specific de-
+coders, each combining a bigram language model (LM) with a
+lexicon that maps words to uroman. This generates ASR hy-
+potheses and total decoding scores for each language. We use
+only the scores, selecting the language with the highest score
+as the identification result (i.e., Russian on Figure 1). When
+a probability distribution over target languages is needed, we
+normalize the scores to sum to one. While this approach re-
+quires separate n-gram based decoding for each target language,
+the computational cost remains reasonable. The CTC posterior
+computation occurs only once, and the language-specific de-
+coding steps can run in parallel on CPUs using compact bigram
+LMs. Our implementation applies this model to an average ut-
+terance from the development set in around one second.
+Since we use a pretrained MMS-zeroshot ASR model, we
+don’t need any audio data for training this model – only textual
+data is needed for building the LMs. For most target languages,
+we used data from the GlotLID Corpus 3 which contains texts
+for training the GlotLID text-based LID model [11]. For six
+languages not present in this corpus (Batak, Fulah, Min Nan
+Chinese, Southern Thai, Northeastern Thai, Yoloxochitl Mix-
+tec), we scraped data from web sources.
+To create the LMs for the LID system, we first sampled up
+to 100 000 lines randomly from each language’s training data.
+For each language, we then generated a 10 000-token vocabu-
+lary using the unigram LM sentence-piece approach [12]. These
+tokens served as the basis for training bigram LMs with Kneser-
+Ney smoothing. We used the uroman library [10] to create the
+lexicon that maps these subword tokens to uroman characters.
+2.2. Speech recognition
+For speech recognition, we relied on three models: Seam-
+lessM4Tv2, MMS-1B-all, and MMS-zeroshot.
+2.2.1. SeamlessM4Tv2
+SeamlessM4Tv2 is a large pretrained speech recognition and
+translation model using an encoder-decoder architecture. The
+model supports speech recognition for approximately 100 lan-
+guages and is primarily trained on web-scraped data containing
+both audio and corresponding (pseudo-)transcripts, such as sub-
+titles.
+Due to the use of weakly-supervised transcripts during
+training, SeamlessM4Tv2 doesn’t always produce exact tran-
+scriptions of speech segments. For example, it might reorder
+words or replace them with synonyms. To address this limita-
+tion and ensure the model follows the challenge data’s transcrip-
+tion conventions (such as writing numbers as words), we fine-
+tuned SeamlessM4Tv2 using the provided training set. We fil-
+tered this training data to include only the languages and scripts
+that SeamlessM4Tv2 supports.
+3https://huggingface.co/datasets/cis-lmu/
+glotlid-corpus
+2099
+
+Table 1: Summary of the sources of extra data that was used for training audio-based LID, ASR and LM-based LID models.
+LID ASR LM
+Amis https://klokah.tw https://klokah.tw
+Sediq https://klokah.tw https://klokah.tw
+Balinese IND-eth [13]
+Batak IND-eth [13] https://halomoantondang.blogspot.com
+Haitian IARPA-babel201b-v0.2b (LDC2017S03)
+Northern Thai Thai Dialect Corpus [14] [14]
+Quechua Siminchik [15]
+Southern Thai Thai Dialect Corpus [14] [14] https://www.sanook.com
+Tagalog IARPA-babel106-v0.2g (LDC2016S13)
+Tok Pisin IARPA-babel207b-v1.0e (LDC2018S02)
+Northeastern Thai Thai Dialect Corpus [14] [14] [14]
+Fulah Leipzig Corpus [16]
+Min Nan Chinese CommonV oice CommonV oice
+Yoloxochitl Mixtec OpenSLR 89 [17] [17] [17]
+Sinhala OpenSLR 52 [18]
+Highland Totonac OpenSLR 107 [19]
+2.2.2. MMS-1B-all
+This multilingual ASR model is part of Facebook’s Massive
+Multilingual Speech (MMS) project [20]. The model uses a
+wav2vec2.0 encoder with 1 billion parameters. The encoder
+was first pretrained using wav2vec2’s self-supervised approach
+on approximately 500,000 hours of speech data covering over
+1,400 languages. The model is finetuned for multilingual CTC-
+based ASR in two stages: first, a multilingual dataset contain-
+ing 1,107 languages and 44.7K hours of speech is used to train
+shared model parameters and a shared output layer. In the sec-
+ond stage, the main model is frozen, the output layer is removed,
+and only language-specific adapter layers and new output layers
+are trained for each language.
+We employ MMS-1B-all for many languages that Seam-
+lessM4Tv2 either doesn’t support or handles poorly. Addition-
+ally, we trained new language adapters for several languages
+and scripts that either lack native support in MMS-1B-all or for
+which we discovered suitable training data. These languages
+include Amis, Min Nan Chinese, Sinhala, Southern Thai, High-
+land Totonac, Sediq, Northeastern Thai, and Yoloxochitl Mix-
+tec.
+2.2.3. MMS-zeroshot
+As described in section 2.1.2, MMS-zeroshot is a multilingual
+ASR model that intrinsically produces a CTC probability distri-
+bution over uroman characters and can be thus used for decod-
+ing any language, given a LM (using language’s native charac-
+ters) and a lexicon that maps LM units to uroman characters.
+We used MMS-zeroshot for a few languages that were not
+supported by neither SeamlessM4T nor MMS-1b-all and for
+which we could not find labelled ASR training data. For each
+of those individual languages, we trained a 4-gram LM, using
+the same vocabulary of 10,000 subwords units as was used for
+LID.
+3. Data
+The challenge organizers provided the ML-SUPERB 2.0 pub-
+lic set as a baseline dataset for both training and development.
+This dataset combines various multilingual speech corpora and
+covers 141 of the 153 target languages. They also provided a
+Table 2: LID accuracies (%) of the two models and their uni-
+form interpolation on two development sets.
+Embeddings Gener. (MMS-
+zeroshot)
+Inter-
+polated
+Dev 85.3 70.7 89.9
+Devdialects 80.5 73.2 84.9
+development set containing 56 dialects and accents.
+For training our audio-based LID model, we needed ap-
+proximately one hour of unlabeled speech data per language.
+We primarily used data from the public training set. For the
+12 target languages not included in the public set, we collected
+data from websites, public speech datasets, and IARPA BABEL
+datasets obtained from the Linguistic Data Consortium (see Ta-
+ble 1, column ’LID’).
+To train the LMs for both the generative LID model and
+MMS-zeroshot based ASR model, we used the GlotLID Cor-
+pus, version 3.1. While this corpus contains data for 1941 lan-
+guage/script pairs, six challenge target languages were missing.
+For these languages, we gathered text data from websites and
+public web corpora (Table 1, column ’LM’).
+Collecting and preparing custom ASR training data is labor-
+intensive due to the diverse formats of annotated speech data.
+We gathered additional data for nine languages (Table 1, col-
+umn ’ASR’). For Yoloxochitl Mixtec and Highland Totonac,
+we utilized existing data preparation scripts from the ESPnet
+toolkit [21]. For the Taiwanese indigenous languages Amis and
+Sediq, we used web-scraping scripts available online 4. For the
+few remaining languages, we developed our own data prepara-
+tion scripts.
+4. Experimental results
+4.1. Language identification
+Table 2 shows the LID accuracies for both individual models
+and the uniform linear interpolation of the predicted likelihoods
+4https://github.com/FormoSpeech/klokah_
+crawler
+2100
+
+Table 3: Most common confusion errors (reference → pre-
+dicted) of the combined LID model.
+Dev Devdialects
+Tamil→ Telugu German→ Luxembourgish
+Tswana→ Southern Sotho German→ Dutch
+Lungga→ Ganda Arabic→ Kabyle
+Northern Frisian→ Dutch Greek→ H. P. Nahuatl
+Urdu→ Hindi Arabic→ NE Thai
+of the individual models. While the language embedding model
+consistently performs better, combining both models through
+interpolation yields substantial improvements. This combina-
+tion reduces the number of errors by 31% on the regular de-
+velopment set and by 23% on the development set containing
+dialectal speech. We experimented with more complex meth-
+ods for model combination, such as optimizing interpolation
+parameters (weight and temperature scaler) based on develop-
+ment data but since it provided only a slight improvements over
+linear interpolation, we opted for the simpler method.
+Table 3 presents the most frequent language confusion pairs
+in both development sets. Most substitution errors occur be-
+tween linguistically related languages, as expected. However,
+two unexpected confusions appear in the dialectal development
+set: Greek being misidentified as Highland Puebla Nahuatl, and
+Arabic as Northeastern Thai. Since these language pairs are
+linguistically distant, these errors suggest that our model hasn’t
+learned robust representations for Highland Puebla Nahuatl and
+Northeastern Thai. This may be due to the quality of the web-
+sourced training data we used for these languages. Further anal-
+ysis is needed to understand the exact causes of these errors.
+4.2. Speech recognition
+Table 4 shows the ASR CER results across different mod-
+els, presenting the mean CER averaged over language-specific
+CERs. For languages not supported by a particular model, we
+use the CER from the next model up in the “hierarchy” when
+calculating the overall mean. While adding larger models gen-
+erally improves the average CER, this improvement doesn’t ap-
+ply uniformly across all languages. Therefore, we developed
+an optimized mapping of languages to models based on devel-
+opment set performance, which we used as our final combined
+model. This mapping is listed in Table 5. The last line in Table
+4 represents our final system, which uses predicted language la-
+bels from our combined LID model and an optimized mix of
+ASR models, reflecting the evaluation scenario. CER results at
+the language level are provided in the supplementary material5.
+4.3. Evaluation
+Evaluation was performed on a Dynabench server [22], using a
+blind test dataset. In order to run evaluation, teams had to pack
+the model’s logic and all models’ parameters to a zip file which
+would then be uploaded, compiled into a container and run on
+a server. The uncompressed size of our system was around 28
+GB. The evaluation scores of the system, together with those
+of two organizer baseline systems, are given in Table 6. Our
+system was ranked as the highest in the evaluation leaderboard,
+obtaining top scores in three subcategories.
+5https://doi.org/10.5281/zenodo.15550990
+Table 4: CER(%) results on the two development sets, using
+different ASR models, using either oracle (O) or predicted (P)
+language labels.
+LID Model Dev Dev dialect
+O MMS-zeroshot 22.0 24.2
+O + MMS-1b-all (custom) for 133 langs 9.7 17.2
+O + SeamlessM4T (ft.) for 89 langs 8.2 12.7
+O Optimized combination 7.9 13.6
+P Optimized combination 11.7 18.5
+Table 5: Mapping of languages to ASR models in our final sys-
+tem.
+Model: languages
+MMS-zeroshot: nbl, ssw, tok, tsn, ven
+MMS-1b-all: abk, amh, ami, asm, ast, azz, bak, ban, bas, bel,
+bos, bre, btk, ceb, chv, cnh, cym, div, epo, frr, ful, grn, hat, hau,
+heb, hin, hsb, ibo, ina, kab, kam, kan, kaz, kea, khm, kin, kmr,
+lga, lin, lit, ltz, lug, luo, mhr, mkd, mri, mrj, msa, myv, nan,
+nod, nso, nya, oci, orm, pan, pus, que, sah, sin, skr, slk, sna,
+snd, som, sot, sou, spa, sun, tam, tat, tel, tgk, tgl, tos, tpi, trv,
+tso, tts, uig, umb, uzb, wol, xho, xty, yor, zul
+SeamlessM4T: afr, ara, aze, ben, bul, cat, ces, ckb, cmn, dan,
+deu, ell, eng, est, eus, fas, fin, fra, gle, glg, guj, hrv, hun, hye,
+ind, isl, ita, jav, jpn, kat, kir, kor, lao, lav, mal, mar, mlt, mon,
+mya, nep, nld, ori, pol, por, ron, rus, slv, srp, swa, swe, tha, tur,
+ukr, urd, vie, yue
+5. Conclusion
+We presented TalTech’s system for the ML-SUPERB 2.0 Chal-
+lenge, which combines a hybrid LID approach with a hierarchi-
+cal ASR model selection strategy. The LID system uses both
+acoustic and linguistic information through the combination of
+a language embedding model and a generative classifier, achiev-
+ing 86.8% accuracy on the evaluation set. For speech recogni-
+tion, we employed an optimized combination of three pretrained
+and customized multilingual models, selecting the most appro-
+priate model for each language based on development set per-
+formance. This approach resulted in a mean CER of 27.4%
+across all languages on the evaluation set.
+Future work could focus on developing more efficient ways
+to leverage linguistic constraints in LID. Additionally, the sig-
+nificant performance variations across languages indicate that
+developing targeted approaches for the most challenging lan-
+guages remains an important area for improvement.
+Table 6: Results of our system and two organizer baselines on
+evaluation data. Rankings of our system in each individual cat-
+egory are given in underscores.
+Model LID↑ CER↓ STD
+CER↓
+CER 15
+worst↓
+Dialect
+LID↑
+Dialect
+CER↓
+Baseline 1 53.8 51.9 19.4 92.8 18.8 74.5
+Baseline 2 74.6 57.1 33.5 118.8 0.0 65.9
+Ours 86.8 1 27.4 1 23.9 5 82.5 4 56.6 1 50.0 2
+2101
+
+6. Acknowledgments
+This work was supported by the Estonian Centre of Excellence
+in Artificial Intelligence (EXAI).
+7. References
+[1] S. Yang, P. Chi, Y . Chuang, C. J. Lai, K. Lakhotia, Y . Y . Lin,
+A. T. Liu, J. Shi, X. Chang, G. Lin, T. Huang, W. Tseng, K. Lee,
+D. Liu, Z. Huang, S. Dong, S. Li, S. Watanabe, A. Mohamed,
+and H. Lee, “SUPERB: speech processing universal performance
+benchmark,” in Proc. of Interspeech, 2021.
+[2] Seamless Communication, L. Barrault, Y .-A. Chung, M. C.
+Meglioli, D. Dale, N. Dong, M. Duppenthaler, P.-A. Duquenne,
+B. Ellis, H. Elsahar, J. Haaheim, J. Hoffman, M.-J. Hwang, H. In-
+aguma, C. Klaiber, I. Kulikov, P. Li, D. Licht, J. Maillard, R. Mav-
+lyutov, A. Rakotoarison, K. R. Sadagopan, A. Ramakrishnan,
+T. Tran, G. Wenzek, Y . Yang, E. Ye, I. Evtimov, P. Fernandez,
+C. Gao, P. Hansanti, E. Kalbassi, A. Kallet, A. Kozhevnikov,
+G. M. Gonzalez, R. S. Roman, C. Touret, C. Wong, C. Wood,
+B. Yu, P. Andrews, C. Balioglu, P.-J. Chen, M. R. Costa-juss `a,
+M. Elbayad, H. Gong, F. Guzm ´an, K. Heffernan, S. Jain, J. Kao,
+A. Lee, X. Ma, A. Mourachko, B. Peloquin, J. Pino, S. Pop-
+uri, C. Ropers, S. Saleem, H. Schwenk, A. Sun, P. Tomasello,
+C. Wang, J. Wang, S. Wang, and M. Williamson, “Seamless:
+Multilingual expressive and streaming speech translation,” ArXiv
+preprint, 2023.
+[3] Z. Wang, K. Yao, X. Li, and S. Fang, “Multi-resolution multi-head
+attention in deep speaker embedding,” in Proc. of ICASSP, 2020.
+[4] J. Valk and T. Alum ¨ae, “V oxLingua107: a dataset for spoken lan-
+guage recognition,” in Proc. IEEE SLT Workshop, 2021.
+[5] T. Ko, V . Peddinti, D. Povey, M. L. Seltzer, and S. Khudanpur,
+“A study on data augmentation of reverberant speech for robust
+speech recognition,” in Proc. of ICASSP, 2017.
+[6] L. Lamel and J. Gauvain, “Language identification using phone-
+based acoustic likelihoods,” in Proc. of ICASSP, 1994.
+[7] M. A. Zissman, “Language identification using phoneme recog-
+nition and phonotactic language modeling,” in Proc. of ICASSP.
+IEEE, 1995.
+[8] K. Kukk and T. Alum ¨ae, “Improving language identification of
+accented speech,” in Proc. of Interspeech, 2022.
+[9] J. Zhao, V . Pratap, and M. Auli, “Scaling a simple approach to
+zero-shot speech recognition,” ArXiv preprint, 2024.
+[10] U. Hermjakob, J. May, and K. Knight, “Out-of-the-box universal
+Romanization tool uroman,” in Proceedings of ACL 2018, System
+Demonstrations, 2018.
+[11] A. H. Kargaran, A. Imani, F. Yvon, and H. Schuetze, “GlotLID:
+Language identification for low-resource languages,” in Findings
+of the Association for Computational Linguistics: EMNLP 2023 ,
+2023.
+[12] T. Kudo, “Subword regularization: Improving neural network
+translation models with multiple subword candidates,” in Proc.
+of ACL, 2018.
+[13] S. Sakti and B. A. Titalim, “Leveraging the multilingual Indone-
+sian ethnic languages dataset in self-supervised models for low-
+resource ASR task,” Proc. of ASRU, 2023.
+[14] A. Suwanbandit, B. Naowarat, O. Sangpetch, and E. Chuang-
+suwanich, “Thai dialect corpus and transfer-based curriculum
+learning investigation for dialect automatic speech recognition,”
+in Proc. of Interspeech, 2023.
+[15] R. Cardenas, R. Zevallos, R. Baquerizo, and L. Camacho, “Sim-
+inchik: A speech corpus for preservation of Southern Quechua,”
+ISI-NLP 2, 2018.
+[16] D. Goldhahn, T. Eckart, and U. Quasthoff, “Building large mono-
+lingual dictionaries at the Leipzig corpora collection: From 100
+to 200 languages,” in Proc. of LREC, 2012.
+[17] J. Shi, J. D. Amith, R. Castillo Garc ´ıa, E. Guadalupe Sierra,
+K. Duh, and S. Watanabe, “Leveraging end-to-end ASR for
+endangered language documentation: An empirical study on
+Yol´oxochitl Mixtec,” in Proc. of EACL, 2021.
+[18] O. Kjartansson, S. Sarin, K. Pipatsrisawat, M. Jansche, and
+L. Ha, “Crowd-sourced speech corpora for Javanese, Sundanese,
+Sinhala, Nepali, and Bangladeshi Bengali,” in Proc. The 6th
+Intl. Workshop on Spoken Language Technologies for Under-
+Resourced Languages (SLTU), 2018.
+[19] D. Berrebbi, J. Shi, B. Yan, O. L ´opez-Francisco, J. D. Amith, and
+S. Watanabe, “Combining spectral and self-supervised features
+for low resource speech recognition and translation,” in Proc. of
+Interspeech, 2022.
+[20] V . Pratap, A. Tjandra, B. Shi, P. Tomasello, A. Babu, S. Kundu,
+A. Elkahky, Z. Ni, A. Vyas, M. Fazel-Zarandi, A. Baevski, Y . Adi,
+X. Zhang, W.-N. Hsu, A. Conneau, and M. Auli, “Scaling speech
+technology to 1,000+ languages,” ArXiv preprint, 2023.
+[21] S. Watanabe, T. Hori, S. Karita, T. Hayashi, J. Nishitoba, Y . Unno,
+N. E. Y . Soplin, J. Heymann, M. Wiesner, N. Chen, A. Ren-
+duchintala, and T. Ochiai, “Espnet: End-to-end speech processing
+toolkit,” in Proc. of Interspeech, 2018.
+[22] D. Kiela, M. Bartolo, Y . Nie, D. Kaushik, A. Geiger, Z. Wu,
+B. Vidgen, G. Prasad, A. Singh, P. Ringshia, Z. Ma, T. Thrush,
+S. Riedel, Z. Waseem, P. Stenetorp, R. Jia, M. Bansal, C. Potts,
+and A. Williams, “Dynabench: Rethinking benchmarking in
+NLP,” 2021.
+2102

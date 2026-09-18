@@ -1,0 +1,937 @@
+Finetune Large Pre-Trained Model Based on Frequency-Wise Multi-Query
+Attention Pooling for Anomalous Sound Detection
+Nan Jiang1, Yan Song1, Qing Gu1, Haoyu Song2, Lirong Dai1, Ian McLoughlin2
+1National Engineering Research Center of Speech and Language Information Processing, University
+of Science and Technology of China, Hefei, China
+2ICT Cluster, Singapore Institute of Technology, Singapore
+jiang nan@mail.ustc.edu.cn, songy@ustc.edu.cn, qinggu6@mail.ustc.edu.cn,
+2303822@sit.singaporetech.edu.sg, lrdai@ustc.edu.cn, ian.mcloughlin@singaporetech.edu.sg
+Abstract
+Existing anomalous sound detection (ASD) methods generally
+rely on the learned patterns of normal sounds to identify de-
+viations as anomalies in generative and discriminative ways.
+However, partly due to the diverse and sparse distribution of
+anomalies, they may suffer from poor generalization capability
+to distinguish unseen normal sounds and anomalies. In this pa-
+per, we propose to finetune the large pre-trained model based
+on frequency-wise multi-query attention pooling (FMQAP) for
+ASD. Specifically, FMQAP first dynamically fuses multiple
+output embeddings from the pre-trained model, and then ex-
+ploits a novel frequency-wise attention pooling scheme to im-
+prove the generalization capability for various machine types.
+Evaluations on DCASE 2023 Task2 benchmark demonstrate the
+superiority of FMQAP, achieving the state-of-the-art 77.62% in
+terms of official score.
+Index Terms: anomalous sound detection, pre-trained models,
+frequency-wise, attention pooling
+1. Introduction
+Anomalous sound detection (ASD) aims to automatically iden-
+tify anomalous states through audio signal analysis during ma-
+chine operation [1,2]. Compared with conventional monitoring
+approaches, ASD enables non-contact, cost-effective, and effi-
+cient intelligent monitoring, with broad application potential in
+industrial manufacturing domains.
+Due to the scarcity and diversity of anomalies, existing
+ASD methods typically train the model to characterize the dis-
+tribution of normal audio, and samples deviate from it are iden-
+tified as anomalies [3,4]. For example, autoencoders (AE) [5,6]
+are used to model the distribution of normal samples in an
+unsupervised way. However, due to the strong generalization
+ability of generative based methods, the performance is gener-
+ally far from satisfactory. Discriminative based methods [7–10]
+utilize labels from meta annotation to train the convolutional
+neural networks (CNN). From the perspective of outlier expo-
+sure (OE) [11], they treat the the normal data from other cate-
+gories as outliers to learn a discriminative and compact distri-
+bution.
+Extensions have been proposed by exploiting the time
+and frequency domain information. Guan et.al [12] proposed
+the Time Weighted Frequency Domain Representation with
+GMM (TWFR-GMM) ASD method, which can adapt to differ-
+ent machine types. Chen et.al. [13] proposed to use statics ex-
+change (StEx) on time or frequency axis of input spectrogram to
+construct the pseudo anomalies. In [14], high-pass filtering was
+applied to the audio of certain machine. Li et al. [15] designed
+filterbanks with varying distribution densities across different
+frequencies for each machine type in the MIMII dataset [16].
+These studies indicate that different machines exhibit distinct
+frequency patterns, emphasizing the significance of specific fre-
+quencies and selecting appropriate frequency features for ASD.
+Despite the promising performance of the discriminative
+based ASD methods, they heavily rely on the labels extracted
+from meta information, which may not be able to address the
+first-shot problem in DCASE 2023 Challenge Task 2 [2]. The
+challenge is to train model for a complete new machine, where
+machine types in the development and evaluation datasets are
+completely different. This may incur several issues that signif-
+icantly degrade the ASD performance. 1) The model learned
+from the normal data in training set can hardly discriminate
+whether the deviations are from normal data of new machine
+types or form anomalies. 2) The domain shifts between source
+and target domains of development dataset caused by various
+factors, including different machine’s operation conditions and
+environment, differ from those of evaluation. This issue can-
+not be resolved solely by using additional training dataset or
+data augmentation techniques. It is a dilemma to balance the
+precision and recall metrics that are related to the miss- and
+false-alarm in detection systems.
+Several works have been proposed for first-shot prob-
+lem [15, 17, 18].
+For example, Han et al. [17] suggested
+to leverage self-supervised pre-trained models on large large-
+scale speech data.
+By fusing the output of different layers
+and data augmentation to simulate different machine operat-
+ing sets. Jiang et al. [18] finetuned the pre-trained models on
+AudioSet [19] to adapt to various conditions of machine au-
+dio. Leveraging large pre-trained models enables the acquisi-
+tion of common knowledge about speech and audio from ex-
+tensive training data, effectively mitigating the issue of data
+scarcity [18].
+However, existing methods commonly focus on reduce the
+inconsistency of the pre-trained model and inductive bias of
+machine audio. BEATs and ATST-frame use average-pooling
+to aggregate the patch-level features into a segment-level repre-
+sentation [20,21]. For ASD, Anopatch [18] and Conformer [11]
+employ attentive statistics pooling (ASP) [22]. The simple aver-
+aging or weighted summing aggregation scheme disregards the
+time-frequency characteristics in audio signal, which has been
+demonstrated to be effective for ASD tasks [6,12,15,23].
+In this paper we propose a novel frequency-wise multi-
+query attention pooling (FMQAP) method to address the first-
+shot problem by exploiting the pre-trained model, as shown in
+Fig.1. The key idea is to exploit information extracted from
+multiple transformer layers, frequency sub-bands to improve
+the robustness and effectiveness of first-shot problem in ASD.
+Specifically, the pre-trained model on AudioSet is used as fea-
+ture encoder to extract the patch-level features. Following [17],
+a layer-wise weighted average pooling (L-WAP) is designed to
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+3389
+10.21437/Interspeech.2025-2503
+
+Reshape
+𝑧𝑧1,1
+𝑧𝑧1,2
+𝑧𝑧1,3
+𝑧𝑧1,4
+𝑧𝑧1,5
+𝑧𝑧1,6
+𝑧𝑧2,1
+𝑧𝑧2,2
+𝑧𝑧2,3
+𝑧𝑧2,4
+𝑧𝑧2,5
+𝑧𝑧2,6
+𝑧𝑧3,1
+𝑧𝑧3,2
+𝑧𝑧3,3
+𝑧𝑧3,4
+𝑧𝑧3,5
+𝑧𝑧3,6
+𝑧𝑧4,1
+𝑧𝑧4,2
+𝑧𝑧4,3
+𝑧𝑧4,4
+𝑧𝑧4,5
+𝑧𝑧4,6
+F-WAP
+F-WAP
+MQAP
+MQAP
+MQAP
+MQAP
+𝜇𝜇1
+𝜇𝜇4
+𝜇𝜇2
+𝜇𝜇3
+𝜎𝜎1
+𝜎𝜎4
+𝜎𝜎2
+𝜎𝜎3
+𝐹𝐹1
+𝐹𝐹2
+𝐹𝐹3
+𝐹𝐹4
+WAP
+𝑤𝑤1
+𝑥𝑥1
+𝑥𝑥2
+𝑥𝑥3
+𝑥𝑥𝐾𝐾
+𝑤𝑤2
+𝑤𝑤3
+𝑤𝑤𝐾𝐾
+: Weight
+: Sum
+⊙: Concatenation
+𝑤𝑤
+Augment & Split
+Projection Layer
+Transformer
+Layers
+···
+···
+Linear
+FMQAP
+···
+L-WAP
+Embedding 
+Classifier
+(Training)
+Detector
+(Testing)
+Loss
+×L
+Score
+Feature Encoder
+𝑍𝑍1~𝑍𝑍𝐿𝐿
+Figure 1: Layer-wise Transformer-based decomposition of non-overlapping multi-query patches utilizing learnable time and frequency
+attention weights. “WAP” denotes weighted average pooling.
+aggregate the features from different transformer layers. Af-
+ter that, FMQAP is proposed to aggregate the patch-level fea-
+tures from frequency sub-bands, where a cross-attention mech-
+anism with multiple queries is applied to improve ASD perfor-
+mance of first-shot problem. Finetuning on DCASE 2020 and
+DCASE 2023 Task 2 benchmarks has demonstrated the effec-
+tiveness of that our method, achieving 95.34% and 77.62% of
+mean score and official score, respectively, which significantly
+outperform the state-of-the-arts (SOTA).
+2. Methodology
+2.1. Overview of FMQAP based ASD method
+Fig. 1 presents the overall framework of our method. A fea-
+ture encoder, initialized with BEATs, serves as the feature ex-
+tractor to obtain patch-level representations from the input mel
+spectrogram. The output from each Transformer layers is first
+dynamically fused using L-WAP. And then, we aggregate the
+fused features into a clip-level embedding e using the proposed
+FMQAP, which is used for finetuning ASD model.
+Specifically, given an input audio, we first extract the mel-
+spectrogram X ∈RF ×T . After random masking in both time
+and frequency dimensions as spec-augmentation [30], the spec-
+trogram is then divided into non-overlapping patches {xf,t},
+forming a 2D grid:
+X = {xf,t}NF ,NT
+f=1,t=1 ,
+xf,t ∈RF ′×T ′
+(1)
+where NF = ⌊F/F ′⌋and NT = ⌊T/T ′⌋denote the number of
+patches along the frequency and time dimensions, respectively.
+Next, the patches are flattened into a sequence and fed into
+a vision Transformer (ViT) backbone initialized with BEATs.
+This process produces an output vector sequence for each trans-
+former layer:
+Zl = {zi,l}M
+i=1 ,
+zi ∈RD
+(2)
+where M = NF × NT represents the total number of patches,
+and l indicates the layer index of the transformer layers.
+Following [17], we employ the L-WAP to exploit the out-
+puts from different Transformer layers, and obtain a more com-
+prehensive feature representation by capturing complementary
+information. . L-WAP computes a weighted sum of the outputs
+from each layer using a set of learnable parameters {wl}L
+l=1,
+which enables the model to adaptively select informative layers
+according to finetuning.
+Z =
+L
+X
+l=1
+wl · Zl
+(3)
+Given the fused patch-level features Z, the proposed FMQAP
+is then applied to aggregate them into a clip-level representation
+e, detailed in section 2.2. A linear projection layer is then used
+to reduce e into lower-dimensional embedding, followed by a
+classifier. In the training phase, the ArcFace loss [31] L is uti-
+lized to optimize the model by predicting labels extracted from
+metadata, which is as follows.
+L = −1
+N
+N
+X
+i=1
+log
+es·(cos(θyi +m))
+es·(cos(θyi +m)) + P
+j̸=yi es·cos(θj)
+(4)
+where θj is the angle between the embedding e and the weight
+vector corresponding to the j-th class, representing the angular
+closeness between the quantized sample and each class. The
+margin m and scaling factor s are hyperparameters, with default
+values of m = 0.1 and s = 30.
+In the testing phase, the finetuned network is utilized to ex-
+tract embeddings from the training set, and construct the distri-
+bution of normal samples. The detection is then performed by
+using a k-nearest neighbors (KNN) backend [32], which uses
+the distance between a test sample and the normal samples to
+compute the anomaly score.
+3390
+
+Table 1: Results on DCASE 2020 Task 2 dataset for proposed and existing methods
+Models
+Development set
+Evaluation set
+fan
+pump
+slider
+valve
+ToyCar
+ToyCon.
+mean
+fan
+pump
+slider
+valve
+ToyCar
+ToyCon.
+mean
+Ranked 1st [24]
+80.65
+83.27
+93.41
+94.30
+92.72
+73.28
+86.27
+89.42
+87.69
+93.68
+93.51
+92.04
+82.27
+89.77
+Ranked 2nd [25]
+91.18
+94.94
+96.20
+95.23
+95.93
+81.46
+92.49
+97.77
+92.65
+95.08
+84.19
+88.70
+84.04
+90.40
+ASD-AFPA [26]
+95.52
+90.61
+99.05
+97.27
+92.80
+70.35
+90.93
+-
+-
+-
+-
+-
+-
+-
+PAE+GeCo [27]
+88.80
+90.32
+97.75
+98.34
+94.40
+74.32
+90.66
+-
+-
+-
+-
+-
+-
+-
+AnoPatch [18]
+86.46
+93.10
+99.20
+97.53
+96.10
+73.20
+90.93
+95.56
+94.34
+99.77
+96.26
+96.00
+83.74
+94.28
+baseline
+82.13
+88.36
+98.30
+94.86
+92.99
+69.89
+87.76
+95.82
+88.51
+93.00
+97.15
+90.21
+77.51
+90.37
+FMQAP
+85.30
+94.17
+98.82
+98.85
+95.62
+74.59
+91.23
+97.41
+94.40
+98.95
+99.49
+97.93
+83.83
+95.34
+Table 2: Results on DCASE 2023 Task 2 dataset for proposed and existing methods
+Models
+Development set
+Evaluation set
+ToyCar ToyTrain bearing
+fan
+gearbox slider valve
+hmean ToyDrone ToyNscale ToyTank Vacuum bandsaw grinder shaker hmean
+Ranked 1st [28]
+54.58
+54.20
+64.21
+75.95
+76.92
+92.06 85.67
+69.28
+55.71
+84.92
+60.72
+92.27
+60.97
+65.18
+63.50
+66.97
+Ranked 2nd [29]
+58.92
+55.92
+62.62
+66.66
+77.77
+83.96 68.61
+66.56
+52.89
+71.90
+70.73
+91.48
+55.47
+64.76
+70.98
+66.39
+Han [17]
+63.47
+57.35
+57.10
+62.76
+67.52
+79.11 67.79
+64.31
+-
+-
+-
+-
+-
+-
+-
+-
+AnoPatch [18]
+58.78
+67.16
+70.43
+66.65
+58.67
+81.88 53.73
+64.24
+64.49
+85.04
+72.60
+92.24
+69.71
+64.06
+80.25
+74.23
+baseline
+55.92
+53.99
+70.76
+62.52
+68.77
+86.21 67.55
+65.13
+60.15
+80.87
+72.57
+92.26
+57.12
+65.01
+81.44
+70.87
+FMQAP
+56.69
+59.11
+74.94
+72.05
+69.24
+93.72 63.45
+68.19
+67.92
+94.41
+77.20
+99.56
+63.08
+72.31
+82.02
+77.62
+2.2. Frequency-Wise Multi-Query Attention Pooling
+Most existing pooling methods are designed for frame-level fea-
+ture representation, neglecting the crucial frequency character-
+istics of audio data.
+Different machines exhibit distinct fre-
+quency patterns. As shown in [12–15], selecting appropriate
+frequency sub-band may be beneficial for ASD, especially in
+case of first-shot problem. In [18], statistical pooling is used
+to extract the first and second order statistics according to the
+patch-level features. However, the important frequency infor-
+mation may be ignored. To address this, FMQAP is proposed
+to aggregate frequency-level features across different sub-bands
+by exploiting the cross sub-band context information.
+Specifically, given the patch-level feature sequence Z =
+{zi}M
+i=1 , zi ∈RD, we reshape it into a frequency-wise repre-
+sentation following the 2D grid order:
+Z′ = {zf,t} ∈RNF ×NT ×D
+(5)
+For each sub-band, the output feature is represented as Z′
+f =
+{zf,:}
+∈
+RNT ×D.
+The N learnable queries Qf
+=
+{qn,f}N
+n=1 ∈RN×D are used for the attention score com-
+putation along the time dimension following the self-attention
+mechanism in Transformer, which is as follows:
+at,n,f =
+exp(qn,f · zT
+f,t)
+PNT
+τ=1 exp(qn,f · zT
+f,τ)
+(6)
+where the attention score at,n,f indicates the importance of
+the query qn,f to each temporal patch within the specified fre-
+quency sub-band f. These attention scores are then utilized to
+compute frequency-wise weighted statistics as follows.
+µn,f =
+NT
+X
+t=1
+at,n,f · zf,t
+(7)
+σn,f =
+v
+u
+u
+t
+NT
+X
+t=1
+at,n,f · z2
+f,t −µ2
+n,f
+(8)
+The statistics µ and σ of attentively weighted features of all
+sub-bands. After L2 normalization, the clip-level representation
+can be obtained by concatenating µ and σ.
+µ = [µn,f]N,NF
+n=1,f=1 ,
+σ = [σn,f]N,NF
+n=1,f=1
+(9)
+e = [µ, σ] ∈RD×2×N×NF
+(10)
+where [ · ] denotes concatenation. However, the high dimen-
+sion D × 2 × N × NF of e may lead to an excessive number
+of parameters in the subsequent linear layer used for dimen-
+sion reduction. One potential solution is to reduce the query
+number N to improve the model efficiency with the cost of de-
+grading performance. To address this issue, we introduce the
+WAP again, termed frequency-wise weighted average pooling
+(F-WAP), with two sets of learnable parameters, {αn,f} and
+{βn,f}, to fuse e as follows.
+In experiment section, we demonstrate that F-WAP can bet-
+ter trade-off between the complexity and performace.
+3. Experiments and Results
+3.1. Datasets
+We evaluate our method on the DCASE 2020 Task 2 and
+DCASE 2023 Task 2 datasets. The DCASE 2020 dataset com-
+prises parts of ToyADMOS [33] and the MIMII [16] dataset,
+which contains 6 machine types with multiple machine IDs per
+type. Each ID includes approximately 1,000 normal audio clips
+in the training set and 400 mixed normal/anomalous clips in
+the evaluation set. The DCASE 2023 dataset comprises parts
+of ToyADMOS2 [34] and the MIMII DG [35] dataset, which
+extends the challenge with domain shift scenarios across 14
+machine types. Each machine type contains a single section
+composed of 990 source-domain samples and 10 target-domain
+samples. The evaluation set provides 200 test samples per ma-
+chine section, reflecting diverse operational states through com-
+binations of machine type, section, and attributes.
+3.2. Evaluation Metrics
+Following DCASE challenge protocols [1, 2], we adopt the
+area under the receiver operating characteristics curve (AUC)
+and partial AUC (pAUC) with a low false positive rate restric-
+tion (FPR) range [0, 0.1] as metrics.
+3391
+
+Table 3: Ablation Study of the Proposed Approach on the
+DCASE 2023 Task 2 evaluation dataset.
+System
+Params Source Target pAUC Official
+AUC
+AUC
+Score
+baseline
+91M
+72.11
+78.74
+63.43
+70.87
++ sepc-aug
+91M
+78.23
+72.78
+63.40
+70.93
++ ArcFace
+91M
+82.51
+75.58
+67.11
+74.53
++ FMQAP
+166M
+83.04
+79.16
+70.27
+77.11
++ F-WAP
+91M
+83.61
+80.01
+69.51
+77.23
++ L-WAP
+91M
+84.02
+80.45
+69.83
+77.62
+For DCASE 2020, we report arithmetic means of per-
+machine AUC (%) and pAUC scores (%). For DCASE 2023, we
+report harmonic means of source-domain AUC (SourceAUC,
+%), target-domain AUC (TargetAUC, %), and pAUC per ma-
+chine type, followed by the overall harmonic mean across all
+machine types, aligning with official evaluation criteria.
+3.3. Implementation Details
+Audio inputs are resampled to 16 kHz and processed into 10-
+second clips.
+Mel spectrograms with 128 frequency bands
+are extracted using 25 ms windows and a hop size of 10 ms.
+These spectrograms are then split into patches with patch-size
+of 16 × 16. The BEATsiter3 backbone [20] with 12 transformer
+layers (768-dim hidden states) is used as the feature extractor.
+Optimization is performed using the AdamW optimizer [36],
+with a batch size of 64, an peak learning rate of 1 × 10−4, and
+a total of 100 training epochs are trained. The learning rate
+is warmed up for the first 10 epochs, linearly increasing to its
+target value, and then decayed following a cosine schedule to
+5 × 10−8 over the remaining epochs. The ArcFace loss param-
+eters are set with margin 0.1 and scale 30. In FMQAP, N=24
+learnable queries are used , followed by K = 1 KNN-based
+anomaly scoring.
+In the baseline ASD system, Cross-Entropy (CE) loss is
+used together with average pooling, without L-WAP or any data
+augmentation. All the other settings are kept unchanged.
+3.4. Results
+Tables 1 and 2 present our experimental results on the DCASE
+2020 and DCASE 2023 datasets, respectively. We compare our
+method with previous SOTA methods, including those with pre-
+trained large model.
+On DCASE 2020 development and evaluation datasets, our
+method achieves an average score of 91.23% and 95.34%, re-
+spectively, surpassing both our baseline system and previous
+SOTA approaches. On the DCASE 2023 development and eval-
+uation datasets, our method obtains official scores of 68.19%
+and 77.62%, significantly outperforming our baseline system
+and prior SOTA methods. These results demonstrate the effec-
+tiveness of our proposed approach.
+3.5. Ablation Study
+To further explore the effectiveness of the proposed approach,
+we conducted a series of ablation experiments on the DCASE
+2023 evaluation dataset, as shown in Table 3. The results indi-
+cate that incorporating ArcFace loss and our FMQAP method
+leads to significant performance improvements, with respective
+gains of 3.60% and 2.58%. In particular, FMQAP improves
+performance in the target domain and enhances detection un-
+Table 4: Ablation Study of Query Size on the DCASE 2023 Task
+2 Evaluation Dataset
+Queries
+Source
+Target
+pAUC
+Official
+AUC
+AUC
+Score
+1
+81.60
+76.55
+67.27
+74.65
+4
+82.22
+77.27
+66.67
+74.81
+8
+82.28
+76.75
+68.42
+75.38
+16
+83.30
+79.40
+68.32
+76.46
+24
+84.02
+80.45
+69.83
+77.62
+32
+81.99
+81.99
+66.01
+74.03
+64
+83.48
+76.11
+67.06
+74.94
+Table 5: Ablation Study of Pooling Methods on the DCASE 2023
+Task 2 Evaluation Dataset
+Pooling
+Source
+Target
+pAUC
+Official
+Methods
+AUC
+AUC
+Score
+Average pool
+80.62
+77.39
+67.42
+74.71
+ASP [22]
+82.91
+77.11
+67.17
+75.15
+FMQAP
+84.02
+80.45
+69.83
+77.62
+der low FPR conditions. This indicates that FMQAP can learn
+the frequency patterns of different machines through attention
+mechanism, thereby strengthening the model’s generalization
+capability. While the F-WAP method gives only a limited per-
+formance boost, it substantially reduces the overall number of
+model parameters. Additionally, both L-WAP and data augmen-
+tation (spec-aug) contribute to slight performance gains.
+In addition, we conducted experiments with different query
+sizes and various pooling methods, as shown in Table 4 and
+Table 5. The results in Table 4 indicate that performance gradu-
+ally improves as the query size increases, reaching its peak at 24
+queries. We attribute this to overfitting when the query size is
+too large, and insufficient learning of frequency patterns when
+the query size is too small. Meanwhile, Table 5 demonstrates
+that FMQAP significantly outperforms other frame-level pool-
+ing methods, yielding an official score improvement of 2.91%
+and 2.47%, respectively.
+4. Conclusion
+This paper has proposed a novel FMQAP method to finetune
+the pre-trained large audio model, i.e, BEATs for addressing
+the first-shot problem in ASD tasks. FMQAP explicitly utilized
+the cross-band contextual information by multi-query attention
+pooling to improve the generalization capability for various ma-
+chine types. The information extracted from different layers of
+pre-trained model is further exploited with L-WAP. Extensive
+evaluations have been conducted on DCASE 2020 and DCASE
+2023 Task2 benchmarks. The results of 95.34% and 77.62% of
+mean score and official score have achieved, outperforming the
+previous STOA with a significant gap, demonstrating the effec-
+tiveness of the proposed FMQAP.
+5. Acknowledgements
+Corresponding author Yan Song is supported by Anhui
+Province Major Science and Technology Research and Devel-
+opment Project (S2023Z20004).
+3392
+
+6. References
+[1] Y. Koizumi, Y. Kawaguchi, K. Imoto et al., “Description and dis-
+cussion on DCASE2020 challenge task2: Unsupervised anoma-
+lous sound detection for machine condition monitoring,” in Proc.
+of DCASE, November 2020, pp. 81–85.
+[2] K. Dohi, K. Imoto, N. Harada et al., “Description and discus-
+sion on DCASE 2023 challenge task 2: First-shot unsupervised
+anomalous sound detection for machine condition monitoring,”
+In arXiv e-prints: 2305.07828, 2023.
+[3] V. Zavrtanik, M. Marolt, M. Kristan, and D. Skoˇcaj, “Anomalous
+sound detection by feature-level anomaly simulation,” in Proc. of
+ICASSP, 2024, pp. 1466–1470.
+[4] K. Wilkinghoff, “Self-supervised learning for anomalous sound
+detection,” in Proc. of ICASSP, 2024, pp. 276–280.
+[5] Y. Koizumi, Y. Kawaguchi, K. Imoto et al., “Description and dis-
+cussion on DCASE2020 challenge task2: Unsupervised anoma-
+lous sound detection for machine condition monitoring,” in Proc.
+of DCASE, November 2020, pp. 81–85.
+[6] K. Suefusa, T. Nishida, H. Purohit, R. Tanabe, T. Endo, and
+Y. Kawaguchi, “Anomalous sound detection based on interpola-
+tion deep neural network,” in Proc. of ICASSP, 2020, pp. 271–
+275.
+[7] Y. Kawaguchi, K. Imoto, Y. Koizumi et al., “Description and dis-
+cussion on dcase 2021 challenge task 2: Unsupervised anomalous
+detection for machine condition monitoring under domain shifted
+conditions,” in Proc. of DCASE, 2021, pp. 186–190.
+[8] H. Chen, Y. Song, L.-R. Dai, I. McLoughlin, and L. Liu, “Self-
+supervised representation learning for unsupervised anomalous
+sound detection under domain shift,” in Proc. of ICASSP, 2022,
+pp. 471–475.
+[9] X.-M. Zeng, Y. Song, Z. Zhuo, Y. Zhou, Y.-H. Li, H. Xue, L.-R.
+Dai, and I. McLoughlin, “Joint generative-contrastive representa-
+tion learning for anomalous sound detection,” in Proc. of ICASSP,
+2023, pp. 1–5.
+[10] Y. Liu, J. Guan, Q. Zhu, and W. Wang, “Anomalous sound de-
+tection using spectral-temporal information fusion,” in Proc. of
+ICASSP, 2022, pp. 816–820.
+[11] Y. Zhang, S. Hongbin, Y. Wan, and M. Li, “Outlier-aware inlier
+modeling and multi-scale scoring for anomalous sound detection
+via multitask learning,” in Proc. of Interspeech, 2023, pp. 5381–
+5385.
+[12] J. Guan, Y. Liu, Q. Zhu, T. Zheng, J. Han, and W. Wang, “Time-
+weighted frequency domain audio representation with gmm esti-
+mator for anomalous sound detection,” in Proc. of ICASSP, 2023,
+pp. 1–5.
+[13] H. Chen, Y. Song, Z. Zhuo, Y. Zhou, Y.-H. Li, H. Xue, and
+I. McLoughlin, “An effective anomalous sound detection method
+based on representation learning with simulated anomalies,” in
+Proc. of ICASSP, 2023, pp. 1–5.
+[14] Y. Zeng, H. Liu, L. Xu, Y. Zhou, and L. Gan, “Robust anomaly
+sound detection framework for machine condition monitoring,”
+DCASE2022 Challenge, Tech. Rep., July 2022.
+[15] K. Li, K. Zaman, X. Li, M. Akagi, and M. Unoki, “Machine
+anomalous sound detection using spectral-temporal modulation
+representations derived from machine-specific filterbanks,” arXiv
+preprint arXiv:2409.05319, 2024.
+[16] H. Purohit, R. Tanabe, T. Ichige, T. Endo, Y. Nikaido, K. Suefusa,
+and Y. Kawaguchi, “MIMII Dataset: Sound dataset for malfunc-
+tioning industrial machine investigation and inspection,” in Proc.
+of DCASE, November 2019, pp. 209–213.
+[17] B. Han, Z. Lv, A. Jiang, W. Huang, Z. Chen, Y. Deng, J. Ding,
+C. Lu, W.-Q. Zhang, P. Fan, J. Liu, and Y. Qian, “Exploring large
+scale pre-trained models for robust machine anomalous sound de-
+tection,” in Proc. of ICASSP, 2024, pp. 1326–1330.
+[18] A. Jiang, B. Han, Z. Lv, Y. Deng, W.-Q. Zhang, X. Chen, Y. Qian,
+J. Liu, and P. Fan, “Anopatch: Towards better consistency in ma-
+chine anomalous sound detection,” in Proc. of Interspeech, 2024,
+pp. 107–111.
+[19] J. F. Gemmeke, D. P. W. Ellis, D. Freedman, A. Jansen,
+W. Lawrence, R. C. Moore, M. Plakal, and M. Ritter, “Audio set:
+An ontology and human-labeled dataset for audio events,” in Proc.
+IEEE ICASSP 2017, New Orleans, LA, 2017.
+[20] S. Chen, Y. Wu, C. Wang, S. Liu, D. Tompkins, Z. Chen, W. Che,
+X. Yu, and F. Wei, “Beats: audio pre-training with acoustic tok-
+enizers,” in Proc. of ICML, ser. ICML’23.
+JMLR.org, 2023.
+[21] X. Li, N. Shao, and X. Li, “Self-supervised audio teacher-student
+transformer for both clip-level and frame-level tasks,” IEEE/ACM
+Trans. Audio, Speech and Lang. Proc., vol. 32, pp. 1336–1351,
+Jan 2024.
+[22] B. Desplanques, J. Thienpondt, and K. Demuynck, “Ecapa-tdnn:
+Emphasized channel attention, propagation and aggregation in
+tdnn based speaker verification,” in Proc. of Interspeech, 2020,
+pp. 3830–3834.
+[23] X.-M. Zeng, Y. Song, L.-R. Dai, and L. Liu, “Predictive autoen-
+coders are context-aware unsupervised anomalous sound detec-
+tors,” in Proc. of MMSC, L. Zhenhua, G. Jianqing, Y. Kai, and
+J. Jia, Eds.
+Singapore: Springer Nature Singapore, 2023, pp.
+101–113.
+[24] R. Giri, S. V. Tenneti, K. Helwani, F. Cheng, U. Isik, and A. Krish-
+naswamy, “Unsupervised anomalous sound detection using self-
+supervised classification and group masked autoencoder for den-
+sity estimation,” DCASE2020 Challenge, Tech. Rep., July 2020.
+[25] P. Daniluk, M. Gozdziewski, S. Kapka, and M. Kosmider, “En-
+semble of auto-encoder based systems for anomaly detection,”
+DCASE2020 Challenge, Tech. Rep., July 2020.
+[26] H. Zhang, J. Guan, Q. Zhu, F. Xiao, and Y. Liu, “Anomalous
+sound detection using self-attention-based frequency pattern anal-
+ysis of machine sounds,” in Proc. of Interspeech, 2023, pp. 336–
+340.
+[27] X.-M. Zeng, Y. Song, Z. Zhuo, Y. Zhou, Y.-H. Li, H. Xue, L.-R.
+Dai, and I. McLoughlin, “Joint generative-contrastive representa-
+tion learning for anomalous sound detection,” in Proc. of ICASSP,
+2023, pp. 1–5.
+[28] J. Jie, “Anomalous sound detection based on self-supervised
+learning,” DCASE2023 Challenge, Tech. Rep., June 2023.
+[29] Z. Lv, B. Han, Z. Chen, Y. Qian, J. Ding, and J. Liu, “Unsu-
+pervised anomalous detection based on unsupervised pretrained
+models,” DCASE2023 Challenge, Tech. Rep., June 2023.
+[30] D. S. Park, W. Chan, Y. Zhang, C.-C. Chiu, B. Zoph, E. D.
+Cubuk, and Q. V. Le, “Specaugment: A simple data augmen-
+tation method for automatic speech recognition,” arXiv preprint
+arXiv:1904.08779, 2019.
+[31] J. Deng, J. Guo, N. Xue, and S. Zafeiriou, “Arcface: Additive
+angular margin loss for deep face recognition,” in Proc. of CVPR,
+2019, pp. 4685–4694.
+[32] S. Ramaswamy, R. Rastogi, and K. Shim, “Efficient algorithms
+for mining outliers from large data sets,” SIGMOD Rec., vol. 29,
+no. 2, pp. 427–438, May 2000.
+[33] Y. Koizumi, S. Saito, H. Uematsu, N. Harada, and K. Imoto,
+“ToyADMOS: A dataset of miniature-machine operating sounds
+for anomalous sound detection,” in Proc. of WASPAA, November
+2019, pp. 308–312.
+[34] N. Harada, D. Niizumi, D. Takeuchi, Y. Ohishi, M. Yasuda, and
+S. Saito, “ToyADMOS2: Another dataset of miniature-machine
+operating sounds for anomalous sound detection under domain
+shift conditions,” in Proc. of DCASE, 2021, pp. 1–5.
+[35] K. Dohi, T. Nishida, H. Purohit et al., “MIMII DG: Sound dataset
+for malfunctioning industrial machine investigation and inspec-
+tion for domain generalization task,” in Proc. of DCASE, 2022.
+[36] I. Loshchilov and F. Hutter, “Decoupled weight decay regulariza-
+tion,” in 7th International Conference on Learning Representa-
+tions, ICLR 2019, New Orleans, LA, USA, May 6-9, 2019. Open-
+Review.net, 2019.
+3393

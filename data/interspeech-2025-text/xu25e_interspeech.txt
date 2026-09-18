@@ -1,0 +1,937 @@
+Effective and Efficient One-pass Compression of Speech Foundation Models
+Using Sparsity-aware Self-pinching Gates
+Haoning Xu1, Zhaoqing Li1, Youjun Chen1, Huimeng Wang1, Guinan Li1, Mengzhe Geng2, Chengxi
+Deng1, Xunying Liu1
+1The Chinese University of Hong Kong, Hong Kong SAR, China
+2National Research Council Canada, Canada
+hnxu@se.cuhk.edu.hk, xyliu@se.cuhk.edu.hk
+Abstract
+This paper presents a novel approach for speech foundation
+models compression that tightly integrates model pruning and
+parameter update into a single stage. Highly compact layer-
+level tied self-pinching gates each containing only a single
+learnable threshold are jointly trained with uncompressed mod-
+els and used in fine-grained neuron level pruning. Experiments
+conducted on the LibriSpeech-100hr corpus suggest that our ap-
+proach reduces the number of parameters of wav2vec2.0-base
+and HuBERT-large models by 65% and 60% respectively, while
+incurring no statistically significant word error rate (WER) in-
+crease on the test-clean dataset. Compared to previously pub-
+lished methods on the same task, our approach not only achieves
+the lowest WER of 7.05% on the test-clean dataset under a com-
+parable model compression ratio of 4.26x, but also operates
+with at least 25% less model compression time.
+Index Terms: speech recognition, model pruning, speech foun-
+dation models
+1. Introduction
+In recent years, advancements in self-supervised learning (SSL)
+for speech technologies, particularly through foundation mod-
+els like wav2vec2.0 [1], HuBERT [2] and WavLM [3], have
+greatly improved their utility in applications like automatic
+speech recognition (ASR). Despite these advancements, the
+widespread adoption of these models in resource-constrained
+and on-device environments is limited due to their substantial
+memory and computational demands.
+To address this challenge, extensive research has explored
+diverse neural network compression methods for ASR tasks,
+including but not limited to:
+1) low-bit quantization ap-
+proaches that reduce memory footprint by replacing floating-
+point weights with low-precision values [4–8]; and 2) archi-
+tecture compression methods that focus on reducing struc-
+tural redundancy in models, such as low-rank matrix factor-
+ization [9–11], knowledge distillation [12–18] and model prun-
+ing [19–25]. Furthermore, larger model compression ratios can
+be achieved by combining low-bit quantization and architecture
+compression [10,26–28].
+However, previous studies on model pruning of SSL-based
+ASR systems face the following limitations: 1) Significant per-
+formance degradation is often observed as an increase in WER
+after performing compression.
+Coarse-grained “structured”
+pruning methods, which operate at the level of larger structures
+(e.g., channels) rather than individual parameters, may inad-
+vertently remove critical parameters, resulting in performance
+degradation [22, 25, 29, 30]. It is also important to note that
+most studies failed to clearly define the criterion, such as sta-
+tistical significance tests [31], to differentiate “acceptable” and
+“unacceptable” performance loss due to compression. 2) In-
+consistency between model pruning and parameter update
+creates two separate and disjointed stages during compression,
+often leading to a large performance degradation. Approaches
+adopted in [21,24,32,33] employ sequential paradigms that op-
+timize pruning masks and parameters separately, which decou-
+ple pruning from parameter optimization in the ASR task. For
+example, the parameter pruning in [21] is driven by an indepen-
+dent layer-wise evaluation before post-pruning fine-tuning. 3)
+Substantial training time inevitably arises from post-pruning
+refinement stages, including knowledge distillation [29], fine-
+tuning [21], and iterative pruning [24, 27, 32–34], which not
+only prolong development cycles but also complicate experi-
+mental workflows due to multi-stage requirements. 4) Exces-
+sive pruning-required parameter overhead, such as: i) the
+extra parameters in KD-based pruning [22, 29], ii) the use of
+candidate architecture-specific weights in [10,22,25,29] and iii)
+the parametrization of entire masks as trainable matrices [35].
+To this end, this paper proposes a novel compression ap-
+proach for SSL speech foundation models that tightly integrates
+model pruning and parameter update into a single stage, re-
+ferred to as the one-pass stage. In each layer, the sparsity-aware
+self-pinching gate generates a differentiable pruning probability
+for each parameter by comparing its magnitude with the learn-
+able threshold. For wav2vec2.0-base and HuBERT-large, only
+6 × 12 = 72 and 6 × 24 = 144 additional parameters are
+introduced as thresholds, respectively1.
+Experiments conducted on Librispeech dataset suggest that
+the pruned wav2vec2.0-base and HuBERT-large using our
+method 1) significantly outperform both i) uniform magnitude-
+based pruning where pruning and parameter update are sep-
+arated, and ii) neural architecture search (NAS) [36] based
+channel-wise pruning, which introduces additional parameters
+for coarse-grained pruning, particularly when the overall spar-
+sity reaches 50% or greater, and 2) further achieve lossless2
+compression with sparsity of 65% and 60% on the test-clean
+subset, respectively. It should be noted that the time to compress
+wav2vec2.0-base and HuBERT-large only takes 11 and 13 GPU
+hours, respectively. Compared with prior pruning methods for
+SSL-based ASR systems, the proposed method obtains the low-
+est WER of 7.05% on the test-clean subset, while also reducing
+fine-tuning time with the model size limited to 23M parameters
+under a model compression ratio of 4.26x.
+The main contributions of this paper include:
+1) Our method reduces the fragility to pruning by using the
+1Compared to the uncompressed wav2vec2.0-base and HuBERT-
+large models, the additional pruning-required parameters account for
+only 8e-7 and 5e-7 of the total model size, respectively.
+2“lossless” in this paper refers to no statistically significant WER
+increase against the uncompressed baseline.
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+1983
+10.21437/Interspeech.2025-353
+
+proposed layer-level sparsity-aware self-pinching gate. Com-
+pared to the coarse-grained pruning approaches [22,25,29,30],
+our fine-grained method assigns a specific pruning probability
+to each parameter, leading to better ASR performance.
+2) Our method ensures consistency between model pruning
+and parameter update by integrating them into a single stage for
+SSL-based ASR systems. In contrast, previous fine-grained ap-
+proach [21] performed pruning and fine-tuning separately. This
+one-pass compression stage also enables different layers to be
+pruned in varying sparsity based on their sensitivities, thereby
+achieving optimal mixed-sparsity assignments.
+3) Our method demonstrates efficiency in terms of com-
+pression time, as it eliminates the need for additional operations
+such as post-pruning fine-tuning [21] or iterative pruning [32]
+after the one-pass compression stage.
+4) Our method guarantees the compactness of pruning-
+required parameters by introducing a single threshold as an ad-
+ditional component for each layer. In contrast, the number of
+additional pruning-required parameters in previous methods is
+based on i) the design of teacher-student model [22,29], ii) the
+number of candidates [10,25] or iii) the layer size [35].
+2. wav2vec2.0 and HuBERT Models
+Speech SSL models such as wav2vec2.0 [1], HuBERT [2], and
+WavLM [3] share similar Transformer backbones. For example,
+HuBERT consists of a CNN encoder, a Transformer encoder, a
+projection layer and a code embedding layer. Transformer en-
+coder accounts for over 90% of the total number of parameters,
+where each encoder block contains an MHSA module and an
+FFN module. In this work, we fine-tuned wav2vec2.0-base and
+HuBERT-large with a pure CTC decoder and pruned parame-
+ters in the 6 linear layers of each Transformer encoder block.
+3. Previous works
+3.1. Uniform Magnitude-based Pruning
+The Uniform Magnitude-based Pruning (UMP) is inspired by
+the principle that parameters with smaller magnitudes (abso-
+lute values) have less influence on the output. As shown in
+Fig. 1 (a), in UMP, the parameters of a specific layer are sorted
+by magnitude, and the same proportion of parameters with rel-
+atively small magnitude is pruned across all layers, leading to
+consistent sparsity throughout the network.
+However, UMP enforces isotropic sparsity across layers,
+ignoring layer-specific sensitivity profiles. While some layers
+tolerate aggressive pruning with little accuracy loss, others de-
+grade significantly even with conservative sparsity.
+3.2. NAS-based Channel-wise Pruning
+A channel is defined as a row (index, :) or column (:, index)
+of the weight matrix of a linear layer.
+For example, in
+the p-th Transformer block, 1) the m-th channels in the
+weight matrices of Multi-Head Self-Attention module, de-
+noted as {Queryp
+m,:, Keyp
+m,:, Valuep
+m,:, Outp
+:,m}, are simul-
+taneously pruned and 2) the n-th channels in the weight
+matrices of Feed-Forward Network module,
+denoted as
+{FFN.1p
+n,:, FFN.2p
+:,n}, are pruned together. The channels
+are sorted by the sum of L2-magnitude, which is calcu-
+lated as (∥Qp
+m,:∥2 + ∥Kp
+m,:∥2 + ∥Vp
+m,:∥2 + ∥Op
+:,m∥2) and
+(∥FFN.1p
+n,:∥2 + ∥FFN.2p
+:,n∥2) for the m-th and n-th chan-
+nels, respectively. Here ∥·∥2 indicates the L2-norm.
+In the Gumbel-Softmax differentiable neural architec-
+ture search (DARTS) [36, 37], we train a supernet that
+simultaneously contains 7 candidate masks per layer, as
+shown in Fig. 1 (b), where the channels with relatively
+small sum of L2-magnitude are pruned in proportions of
+{0%, 25%, 50%, 75%, 87.5%, 90%, 92.5%} of the total chan-
+nels, respectively. Specifically, the masked weight matrix of the
+l-th layer ˆ
+Wl can be computed as follows:
+ˆ
+Wl =
+7
+X
+i=1
+λl
+i · M
+l
+i ⊙Wl,
+(1)
+where Wl is the weight matrix, M
+l
+i denotes the i-th candi-
+date mask and λl
+i is the parameter that measures its importance.
+Gumbel-softmax is obtained by Gumbel sampling the output of
+the Softmax function, which is given by:
+λl
+i =
+exp((log αl
+i + Gl
+i)/T)
+P7
+j=1 exp((log αl
+j + Gl
+j)/T)
+,
+(2)
+where αl
+i is an architecture-dependent parameter determin-
+ing their contribution during search. Gl
+i = −log(−log(U l
+i))
+is the Gumbel variable, T is a hyperparameter and U i
+l is a uni-
+form random variable. Let ∥·∥0 indicate the number of non-zero
+parameters, the training loss is designed as:
+L = Lctc + η
+X
+l
+7
+X
+i=1
+λl
+i · ∥M
+l
+i∥0,
+(3)
+where Lctc is the CTC loss of the pruned system with the over-
+all sparsity dynamically searched in real time and η is a constant
+coefficient that controls the overall sparsity.
+While NAS-based techniques ensure consistency between
+model pruning and parameter update, they introduce consider-
+able computational and parameter overhead. Furthermore, their
+effectiveness is highly dependent on the design of candidates.
+4. Sparsity-aware Self-pinching Gates
+The core concept of Sparsity-aware Self-pinching Gates is to
+leverage the weights already being learned to construct the mask
+using only one additional learnable threshold per layer. Our
+approach facilitates flexible allocation of layer-wise sparsity
+across different layers based on their sensitivities, ultimately en-
+abling the model to reach a specific size limit.
+For the l-th layer, Mi,j of the element-wise soft mask ma-
+trix Ml is expressed as:
+Ml
+i,j = Sigmoid
+  Wl
+i,j
+2 −
+ tl2
+τ
+!
+,
+(4)
+where tl is a learnable threshold shared across all parameters in
+the weight matrix Wl of the l-th layer. Here, i and j denote the
+indices of parameters, and τ is a positive hyperparameter. Let
+| · | denote the number of parameters, the sparsity sl of the l-th
+layer is defined as:
+sl = 1 −∥Ml∥0
+|Ml|
+.
+(5)
+The Straight-Through Estimator (STE) [38] is used dur-
+ing the one-pass fine-tuning stage: 1) During forward propa-
+gation or inference, Ml is rounded to a binary mask M
+l and
+the masked weight matrix is computed as W
+l = Wl ⊙M
+l.
+Specifically, the parameters in Wl with magnitude exceeding
+the threshold tl will be retained, while those below the thresh-
+old will be pruned, which can be expressed as:
+M
+l
+i,j =
+(
+1
+(Wl
+i,j)2 ≥(tl)2
+0
+(Wl
+i,j)2 < (tl)2 ,
+(6)
+1984
+
+Figure 1: Comparison between Uniform Magnitude-based Pruning (UMP), NAS-based Channel-wise Pruning (NAS-CP) and Sparsity-
+aware Self-pinching Gates (ours). For the l-th layer, (a) UMP directly prunes the same proportion of parameters by magnitude across
+all layers; (b) NAS-CP introduces architecture-dependent parameters proportional to architecture candidates, which are pre-selected
+before NAS search; (c) Ours utilizes the weights that are already being learned to construct the mask with only one additional threshold.
+2) During backward propagation, the gradient is accumulated
+using the actual values in Ml. The training loss is given by:
+L = Lctc + η
+X
+l
+∥M
+l∥0,
+(7)
+where η is a constant coefficient to control the overall sparsity.
+η is set to 0 if the desired sparsity is achieved; otherwise, it
+remains at its preset value.
+Our method shown in Fig. 1 (c) simultaneously optimizes
+the threshold tl and the weight matrix Wl, thus mitigating the
+mismatch between model pruning and parameter update. The
+above fine-grained neural level pruning is more powerful in mit-
+igating performance loss due to model compression than coarse-
+grained pruning methods, which are applied at the channel level
+and easier to implement.
+5. Experiments
+5.1. Experimental setup
+Uncompressed baselines and data. For wav2vec2.0-base, the
+wav2vec2-base-100h is downloaded from Huggingface3 as our
+baseline.
+For HuBERT-large, we fine-tuned HuBERT-large-
+ll60k4 for 20 epochs as our baseline, with other setups con-
+sistent with those in One-pass pruning and fine-tuning. All
+systems are trained on LibriSpeech’s [39] 100-hour clean set.
+One-pass pruning and fine-tuning. We utilized the AdamW
+optimizer with a learning rate of 2e-4 and a batch size of 32 for
+both wav2vec2.0 and HuBERT systems. A linear warmup is
+implemented for the first 10% of the training steps, followed
+by a linear decay to zero. All pruned wav2vec2.0-base and
+HuBERT-large systems are obtained by fine-tuning 30 and 10
+epochs from the baselines of wav2vec2.0-base and HuBERT-
+large, respectively. The threshold t in each layer is initialized
+to 1e-5. T and τ are cosine-annealed from 0.5 to 0.01. All
+experiments are conducted on a single NVIDIA A40 (48 GB).
+5.2. Main results
+To facilitate comparison, we implemented Uniform Magnitude-
+based Pruning (UMP), NAS-based Channel-wise Pruning
+(NAS-CP)5 and our method (Ours)6, as shown in Fig. 2.
+3Huggingface: facebook/wav2vec2-base-100h
+4Huggingface: facebook/HuBERT-large-ll60k
+5Empirically, in NAS-CP, η is set to 4e-5 and 3e-5 for wav2vec2.0-
+base and HuBERT-large, respectively, when the desired sparsity is less
+than 75%; otherwise, it is set to 2e-4 and 5e-5.
+6Empirically, in Ours, η is set to 2e-5 and 1e-6 for wav2vec2.0-base
+and HuBERT-large, respectively, when the desired sparsity is less than
+65%; otherwise, it is set to 3e-5 and 2e-6.
+Table 1: WER(%) of pruned wav2vec2.0-base and HuBERT-
+large with different sparsity, using fine-tuning epochs of 30 and
+10, respectively.
+Only selected key results are shown here.
+† means it has no statistically significant (MAPSSWE [31],
+α=0.05) WER increase with the corresponding baseline.
+Sys.
+Sparsity
+# Params
+(M)
+# Additional
+components
+dev
+test
+clean
+other
+clean
+other
+Baselines
+1
+wav2vec2.0-base
+95.04
+-
+6.10
+13.79
+6.06
+13.52
+2
+HuBERT-large
+316.60
+3.35
+8.13
+3.44
+8.34
+Pruned wav2vec2.0-base systems using Sparsity-aware Self-pinching Gates
+3
+50%
+51.93
+72
+5.97†
+16.09
+6.00†
+16.06
+4
+60%
+43.44
+6.06†
+16.52
+6.07†
+16.08
+5
+65%
+39.19
+6.03†
+16.97
+6.12†
+16.89
+6
+70%
+34.94
+6.21†
+17.17
+6.45
+17.46
+7
+75%
+30.70
+6.41
+17.82
+6.71
+18.08
+8
+80%
+26.45
+6.71
+18.63
+6.95
+19.27
+9
+85%
+22.20
+7.49
+20.47
+7.46
+20.74
+10
+90%
+17.96
+8.22
+23.36
+8.63
+24.30
+Pruned HuBERT-large systems using Sparsity-aware Self-pinching Gates
+11
+50%
+164.37
+144
+3.45†
+9.14
+3.51†
+8.99
+12
+60%
+134.14
+3.54
+9.44
+3.54†
+9.33
+13
+65%
+119.03
+3.62
+9.86
+3.65
+9.75
+14
+70%
+103.92
+3.76
+10.27
+3.76
+10.15
+15
+75%
+88.81
+3.88
+11.01
+3.98
+11.04
+16
+80%
+73.70
+4.19
+12.51
+4.36
+12.39
+17
+85%
+58.59
+4.83
+14.66
+4.82
+14.72
+18
+90%
+43.48
+6.11
+18.91
+6.37
+19.29
+Pruned HuBERT-large systems using Mixed-sparsity
+19
+10%
+285.25
+-
+3.35†
+8.29†
+3.49†
+8.48†
+20
+20%
+255.03
+3.43†
+8.32
+3.43†
+8.42†
+21
+30%
+224.81
+3.31†
+8.81
+3.45†
+8.47†
+22
+50%
+164.37
+3.46†
+8.89
+3.49†
+8.72
+Pruned HuBERT-large systems using NAS-based Channel-wise Pruning
+23
+50%
+164.37
+1008
+7.67
+20.99
+7.79
+21.34
+Pruned HuBERT-large systems using Uniform Magnitude-based Pruning
+24
+50%
+164.37
+-
+3.49
+8.85
+3.64
+8.83
+5.2.1. Comparison with Uniform Magnitude-based Pruning
+Pruned wav2vec2.0-base using both UMP and our method
+achieve lossless compression with all sparsity of below 50% on
+the clean subsets. Beyond 50%, pruned wav2vec2.0-base and
+HuBERT-large using ours consistently exceed those using UMP
+(Fig. 2 (1)-(4)) on all subsets, respectively. On the dev-clean
+subset, pruned wav2vec2.0-base and HuBERT-large using ours
+achieve lossless compression with maximum sparsity of 70%
+(Fig. 2 (1) and Sys. 6 in Tab.1) and 50% (Fig. 2 (2) and Sys. 11
+in Tab.1), respectively, versus UMP’s 60% and 30% (Fig. 2 (1)-
+(2)). On the test-clean subset, ours achieves 65% (Fig. 2 (3)
+and Sys. 5 in Tab.1) and 60% (Fig. 2 (4) and Sys. 12 in Tab.1),
+compared to UMP’s 50% and 40% (Fig. 2 (3)-(4)).
+We conjecture that the inferior performance of UMP is par-
+tially caused by the inconsistency that decouples pruning from
+parameter optimization. To verify this, we implement a decou-
+pled version of our method, which involves pruning the param-
+eters with relatively small magnitude from the uncompressed
+model to meet the layer-wise sparsity obtained from our one-
+1985
+
+Figure 2: The ASR performance of the pruned wav2vec2-base-100h on the (1) dev and (3) test subsets, as well as the pruned hubert-
+large on the (2) dev and (4) test subsets with different sparsity using different methods. Abbreviations are the same as those in Figure 1.
+Color-matched arrows point to the maximum sparsity preserving lossless compression of the methods in corresponding color.
+pass method, as shown in Fig. 2 under the label Mixed-sparsity.
+It outperforms UMP across most sparsity levels, suggesting that
+our one-pass method effectively accounts for the varying sensi-
+tivities of different layers. However, it performs worse than our
+one-pass method, highlighting that the inconsistency between
+pruning and parameter update negatively affects ASR perfor-
+mance. Notably, on the less-explored dev-other and test-other
+subsets, pruned HuBERT-large systems using Mixed-sparsity
+maintain lossless compression with maximum sparsity of 10%
+(Fig. 2 (2) and Sys. 19 in Tab.1) and 30% (Fig. 2 (4) and Sys. 21
+in Tab.1), respectively, while UMP only achieves 10% on the
+test-other subset (Fig. 2 (4)).
+Table 2: The ASR performance comparison of our method ver-
+sus previous compression methods on the test-clean subset. The
+values in brackets “(” and “)” represent the transformer spar-
+sity. Comp.ratio: the compression ratio relative to the uncom-
+pressed model. *: from leaderboard of SUPERB [40].
+Sys.
+System
+Train
+set
+# Params
+(M)
+Comp.
+ratio
+Training time & config WER%
+Hours Epochs Iterations
+Baselines
+1
+wav2vec2.0-base
+100h
+95.04
+-
+-
+-
+-
+6.06
+2
+HuBERT-base
+94.68
+6.42*
+3
+WavLM-base+
+94.70
+5.59*
+4
+HuBERT-large
+316.60
+3.44
+Prior Compression Methods
+5
+DistilHuBERT [15]
+960h
+23.49
+4.03
+55
+200
+-
+13.37*
+6
+FitHuBERT-100 [18]
+100h
+22.49
+4.21
+>12
+100
+-
+12.66*
+7
+FitW2V2-100 [18]
+4.23
+-
+-
+14.77*
+8
+FitHuBERT-960 [18]
+960h
+22.49
+4.21 >93.6
+80
+-
+12.09*
+9
+FitW2V2-960 [18]
+31.63
+3.00
+-
+-
+11.44*
+10
+12-Layer Half [17]
+960h
+26.87
+3.52
+-
+-
+200K
+10.96*
+11
+DPHuBERT [29]
+960h
+23.59
+4.01
+24
+-
+75K
+10.47*
+12
+DPWavLM [29]
+23.59
+4.01
+-
+10.19*
+13
+SKHuBERT [30]
+960h
+23.59
+4.01
+24
+-
+75K
+10.78*
+14
+SKWavLM [30]
+23.51
+4.03
+-
+10.03*
+15
+Wang et al. [22]
+960h
+26.57
+3.56
+36
+-
+200K
+10.29*
+16
+DKD LSTM HuBERT [41]
+960h
+18.80
+5.04
+-
+-
+200K
+10.64*
+17 SparseWAV2VEC2 (85%) [21]
+100h
+22.27
+4.27
+-
+>40
+-
+8.08
+18
+SparseWAVLM+ (85%) [21]
+22.98
+4.12
+-
+-
+7.12
+19 SparseWAV2VEC2 (75%) [21]
+-
+-
+-
+-
+7.11
+Ours
+20
+Pruned wav2vec2-base (85%) 100h
+22.20
+4.28
+11
+30
+27K
+7.46
+21
+Pruned wav2vec2-base (75%)
+30.70
+3.10
+6.71
+22
+Pruned WavLM-base+ (85%) 100h
+22.21
+4.26
+11
+30
+27K
+7.05
+23
+Pruned HuBERT-large (90%) 100h
+43.48
+7.28
+13
+10
+9K
+6.37
+5.2.2. Comparison with NAS-based Channel-wise Pruning
+Predictably, compared with NAS-CP that prunes multiple
+channels, our method applied to both wav2vec2.0-base and
+HuBERT-large achieves consistently lower WERs across all
+sparsity as demonstrated in Fig. 2 (1)-(4). Regarding the addi-
+tional components, NAS-CP requires 7 architecture-dependent
+parameters per layer (e.g., 1008 total for HuBERT-large of
+Sys. 23 in Tab. 1) in our configurations (Sec. 3.2). In contrast,
+our method maintains only one threshold per layer (e.g., 144
+total for HuBERT-large of Sys. 11 in Tab. 1).
+5.3. Comparison with other compression methods
+As illustrated in Tab. 2, our method (Sys. 20) achieves ≥2% ab-
+solute WER reduction over Sys. 5-16 under equivalent model-
+size limits. In order to compare training times, we consolidated
+different types (Hours/Epochs/Iterations) of training-time met-
+rics from previous works into standardized comparisons, where
+our method demonstrates consistent time-efficiency advantages.
+Notably, the WERs of Sys. 20 and Sys. 21 using our method
+surpass Sys. 17 and Sys. 19, respectively, while requiring at
+least 25% less fine-tuning epochs, highlighting the effective-
+ness and efficiency of our approach. We also pruned WavLM-
+base+ downloaded from Huggingface7 using the same setup as
+wav2vec2.0-base, yielding the lowest WER (Sys. 22 in Tab. 2)
+of 7.05% on the test-clean subset under the model-size con-
+straint of 23M parameters, compared to Sys. 5-19 in Tab. 2.
+6. Conclusion
+We introduced a cutting-edge one-pass compression method
+that simultaneously prunes and trains SSL speech foundation
+models using a threshold per layer. Our method shows superior
+performance under the same model-size constraint while reduc-
+ing the fine-tuning time compared to the previous works. We
+will further apply our methods to more datasets in future work.
+7Huggingface: patrickvonplaten/wavlm-libri-clean-100h-base-plus
+1986
+
+7. Acknowledgements
+This research is supported by Hong Kong RGC GRF grant No.
+14200220, 14200021, 14200324 and Innovation Technology
+Fund grant No. ITS/218/21.
+8. References
+[1] A. Baevski, Y. Zhou, A. Mohamed et al., “wav2vec 2.0: A frame-
+work for self-supervised learning of speech representations,” in
+NeurIPS, 2020.
+[2] W.-N. Hsu, B. Bolte, Y.-H. H. Tsai et al., “HuBERT: Self-
+supervised speech representation learning by masked prediction
+of hidden units,” IEEE/ACM T-ASLP, vol. 29, pp. 3451–3460,
+2021.
+[3] S. Chen, C. Wang, Z. Chen et al., “WavLM: Large-scale self-
+supervised pre-training for full stack speech processing,” IEEE
+J-STSP, vol. 16, no. 6, pp. 1505–1518, 2022.
+[4] O. Rybakov, P. Meadowlark, S. Ding et al., “2-bit conformer
+quantization for automatic speech recognition,” in Interspeech,
+2023.
+[5] S. Ding, P. Meadowlark, Y. He et al., “4-bit conformer with na-
+tive quantization aware training for speech recognition,” in Inter-
+speech, 2022.
+[6] S. Kim, A. Gholami, Z. Yao et al., “I-bert: Integer-only bert
+quantization,” in International conference on machine learning.
+PMLR, 2021, pp. 5506–5518.
+[7] H. Xu, Z. Li, Z. Jin et al., “Effective and efficient mixed preci-
+sion quantization of speech foundation models,” arXiv preprint
+arXiv:2501.03643, 2025.
+[8] E. Fish, U. Michieli, and M. Ozay, “A model for every user and
+budget: Label-free and personalized mixed-precision quantiza-
+tion,” in Interspeech, 2023.
+[9] S. Li, M. Xu, and X.-L. Zhang, “Efficient conformer-based speech
+recognition with linear attention,” in APSIPA ASC, 2021.
+[10] Z. Li, T. Wang, J. Deng et al., “Lossless 4-bit quantization of
+architecture compressed conformer asr systems on the 300-hr
+switchboard corpus,” in Interspeech, 2023.
+[11] H. Wang and W.-Q. Zhang, “Unstructured pruning and low rank
+factorisation of self-supervised pre-trained speech models,” IEEE
+Journal of Selected Topics in Signal Processing, 2024.
+[12] J. Rathod, N. Dawalatabad, S. Singh et al., “Multi-stage progres-
+sive compression of conformer transducer for on-device speech
+recognition,” in Interspeech, 2022.
+[13] J. Park, S. Jin, J. Park et al., “Conformer-based on-device stream-
+ing speech recognition with KD compression and two-pass archi-
+tecture,” in IEEE SLT, 2023.
+[14] Y. Fu, Y. Kang, S. Cao et al., “DistillW2V2:
+A small
+and streaming wav2vec 2.0 based asr model,” arXiv preprint
+arXiv:2303.09278, 2023.
+[15] H.-J. Chang, S.-w. Yang, and H.-y. Lee, “DistilHuBERT: Speech
+representation learning by layer-wise distillation of hidden-unit
+bert,” in ICASSP, 2022.
+[16] R. Wang, Q. Bai, J. Ao et al., “LightHuBERT: Lightweight
+and configurable speech representation learning with once-for-all
+hidden-unit bert,” in Interspeech, 2022.
+[17] T. Ashihara, T. Moriya, K. Matsuura et al., “Deep versus wide: An
+analysis of student architectures for task-agnostic knowledge dis-
+tillation of self-supervised speech models,” in Interspeech, 2022.
+[18] Y. Lee, K. Jang, J. Goo et al., “FitHuBERT: Going thinner and
+deeper for knowledge distillation of speech self-supervised learn-
+ing,” in Interspeech, 2022.
+[19] Z. Wu, D. Zhao, Q. Liang et al., “Dynamic sparsity neural net-
+works for automatic speech recognition,” in ICASSP, 2021.
+[20] J. Lee, J. Kang, and S. Watanabe, “Layer pruning on demand with
+intermediate ctc,” in Interspeech, 2021.
+[21] T. Gu, B. Liu, H. Shao et al., “Sparsewav: Fast and accurate one-
+shot unstructured pruning for large speech foundation models,” in
+Proc. Interspeech 2024, 2024, pp. 4498–4502.
+[22] H. Wang, S. Wang, W.-Q. Zhang et al., “Task-agnostic structured
+pruning of speech representation models,” in Interspeech 2023,
+2023, pp. 231–235.
+[23] H. Jiang, L. L. Zhang, Y. Li et al., “Accurate and structured prun-
+ing for efficient automatic speech recognition,” in Interspeech,
+2023.
+[24] V. S. Lodagala, S. Ghosh, and S. Umesh, “PADA: Pruning assisted
+domain adaptation for self-supervised speech representations,” in
+IEEE SLT, 2023.
+[25] Y. Peng, K. Kim, F. Wu et al., “Structured pruning of self-
+supervised pre-trained models for speech recognition and under-
+standing,” in ICASSP, 2023.
+[26] Z. Li, H. Xu, T. Wang et al., “One-pass multiple conformer and
+foundation speech systems compression and quantization using
+an all-in-one neural model,” in Interspeech 2024, 2024, pp. 4503–
+4507.
+[27] N. Wang, C.-C. C. Liu, S. Venkataramani et al., “Deep compres-
+sion of pre-trained transformer models,” Advances in Neural In-
+formation Processing Systems, vol. 35, pp. 14 140–14 154, 2022.
+[28] S. Ding, Q. David, D. Rim et al., “USM-Lite: Quantization and
+sparsity aware fine-tuning for speech recognition with universal
+speech models,” in ICASSP, 2024.
+[29] Y. Peng, Y. Sudo, S. Muhammad et al., “DPHuBERT: Joint dis-
+tillation and pruning of self-supervised speech models,” in Inter-
+speech, 2023.
+[30] L. Zampierin, G. B. Hacene, B. Nguyen et al., “Skill: Similarity-
+aware knowledge distillation for speech self-supervised learning,”
+in 2024 IEEE International Conference on Acoustics, Speech, and
+Signal Processing Workshops (ICASSPW), 2024, pp. 675–679.
+[31] L. Gillick and S. J. Cox, “Some statistical issues in the comparison
+of speech recognition algorithms,” in ICASSP, 1989.
+[32] C.-I. J. Lai, Y. Zhang, A. H. Liu et al., “Parp: Prune, adjust and re-
+prune for self-supervised speech recognition,” Advances in Neu-
+ral Information Processing Systems, vol. 34, pp. 21 256–21 272,
+2021.
+[33] M. Yang, A. Tjandra, C. Liu et al., “Learning asr pathways: A
+sparse multilingual asr model,” in ICASSP 2023-2023 IEEE Inter-
+national Conference on Acoustics, Speech and Signal Processing
+(ICASSP).
+IEEE, 2023, pp. 1–5.
+[34] S. Wang, H. Wang, J. Li et al., “Learnable sparsity structured
+pruning for acoustic pre-trained models,” in Proceedings of the
+2023 6th International Conference on Signal Processing and Ma-
+chine Learning, 2023, pp. 76–81.
+[35] Y. Fu, Y. Zhang, K. Qian et al., “Losses can be blessings: Routing
+self-supervised speech representations towards efficient multilin-
+gual and multitask speech processing,” Advances in Neural Infor-
+mation Processing Systems, vol. 35, pp. 20 902–20 920, 2022.
+[36] H. Liu, K. Simonyan, and Y. Yang, “Darts: Differentiable archi-
+tecture search,” in International Conference on Learning Repre-
+sentations, 2018.
+[37] C. J. Maddison, A. Mnih, and Y. W. Teh, “The concrete distri-
+bution: A continuous relaxation of discrete random variables,” in
+International Conference on Learning Representations, 2022.
+[38] Y. Bengio, N. L´eonard, and A. Courville, “Estimating or propa-
+gating gradients through stochastic neurons for conditional com-
+putation,” arXiv preprint arXiv:1308.3432, 2013.
+[39] V. Panayotov, G. Chen, D. Povey et al., “LibriSpeech: an asr cor-
+pus based on public domain audio books,” in ICASSP, 2015.
+[40] S. wen Yang, P.-H. Chi, Y.-S. Chuang et al., “Superb: Speech pro-
+cessing universal performance benchmark,” in Interspeech 2021,
+2021, pp. 1194–1198.
+[41] D. de Oliveira and T. Gerkmann, “Distilling HuBERT with
+LSTMs via decoupled knowledge distillation,” in ICASSP, 2024.
+1987

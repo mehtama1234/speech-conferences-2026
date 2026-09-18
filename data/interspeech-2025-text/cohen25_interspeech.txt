@@ -1,0 +1,420 @@
+Discovering Directions of Uncertainty in Speech Inpainting
+Kfir Cohen1, Lior Wolf 2, Bracha Laufer-Goldshtein1
+1The School of Electrical and Computer Engineering, Tel-Aviv University, Israel
+2The School of Computer Science and AI, Tel-Aviv University, Israel
+kfirc@mail.tau.ac.il,wolf@cs.tau.ac.il,blaufer@tauex.tau.ac.il
+Abstract
+Speech inpainting aims to restore missing segments in audio
+signals. While both classical signal processing and deep
+learning approaches have been developed for this task, they
+typically generate a single output, despite the existence of
+multiple plausible reconstructions. In this paper, we adapt
+Neural Posterior Principal Component (NPPC) to recover the
+principal directions of variation in the posterior distribution
+of the original signal given its masked version. Our empirical
+results demonstrate that these directions capture diverse and
+meaningful variations in both speech content and style, while
+more precisely capturing the predictive error compared to a
+more costly Bayesian deep learning approach.
+Index Terms: Speech Inpainting, Uncertainty Quantification
+https://github.com/kfirc1503/uq-inpaint
+1. Introduction
+Audio signals often contain corrupted segments where multiple
+samples are missing, noisy, or unreliable. These distortions can
+arise from various factors, including recording errors, packet
+loss during transmission, or the degradation of storage media
+over time. Audio inpainting aims to reconstruct these missing
+or corrupted portions, restoring the signal’s integrity.
+Early approaches to audio inpainting primarily relied
+on signal processing techniques and sparse representations.
+Adler et al. [1] introduced a foundational audio inpainting
+framework, leveraging dictionary learning methods in the
+time-frequency domain. Mokry et al. [2] proposed a proba-
+bilistic framework based on nonnegative matrix factorization.
+They treat the missing samples as latent variables, and derive
+expectation–maximization algorithms for estimating the model
+parameters in either the time or frequency domains. Another
+traditional approach is based on autoregression. The Janssen
+algorithm [3], widely regarded as the state-of-the-art method
+for time-domain audio inpainting, has been effective for
+reconstructing gaps up to 50 ms in length. Recent work by
+Mokry et al. [4] extends this approach to the time-frequency
+domain, potentially enhancing its applicability to longer gaps.
+The rise of deep learning has introduced new possibilities
+for audio inpainting. Ebner et al. [5] explored the use of
+generative adversarial networks (GANs) for audio inpainting,
+showing promise in generating longer segments of missing
+audio. Federico et al. [6] proposed using multi-resolution
+harmonic CNNs for audio inpainting. Recent works have
+introduced diffusion-based audio inpainting [7, 8], capable
+of handling gaps of various lengths. Another trend is to
+incorporate visual information, leveraging accompanying video
+data to guide the audio inpainting process [9, 10].
+In many cases, especially for speech gaps of several tens
+of milliseconds, a single definitive reconstruction may not ex-
+ist; instead, multiple plausible completions can be considered
+valid. However, previous studies have largely overlooked this
+uncertainty.
+Uncertainty quantification aims to assess model confidence.
+Techniques such as Monte Carlo (MC) Dropout [11], deep en-
+sembles [12], and test-time augmentations [13] estimate pre-
+diction variability. Recently, quantile regression and confor-
+mal prediction [14] gained attention for offering distribution-
+free uncertainty bounds. Predictive uncertainty in audio tasks
+remains relatively underexplored. Recent work has begun ad-
+dressing this gap in areas such as speech enhancement [15] and
+source localization [16, 17, 18, 19].
+In this paper, we introduce a framework to quantify and
+track uncertainty in speech inpainting. Building on [20], we
+leverage NPPC to recover the principal directions of variation
+in the posterior distribution of the clean signal given the
+distorted input. Our experimental results show that these
+directions capture diverse variations in both speech content and
+style, manifested in hearing, transcription, and pitch. Moreover,
+compared to a Bayesian deep learning approach, NPPC can
+better reconstruct predictive error with reduced computational
+cost. An illustration of our approach is provided in Fig. 1.
+2. Preliminaries
+Consider a clean speech signal represented by its short time
+Fourier transform (STFT) X∈ CF×T , where F denotes the
+number of frequency bins andT represents the number of time
+frames. We observe a masked version of the signal,Xm, where
+certain time frames are missing or severely corrupted. Let
+m∈ [0, 1]T be a binary masking vector, where ones indicate
+observed frames and zeros denote distorted ones. The masked
+signal is given by
+Xm = X⊙M, (1)
+where⊙ denotes element-wise product, M = 1F· mT , and
+1F is an all-ones vector of length F . Note that the location of
+the masked part is assumed to be known.
+Next, let x, xm∈ R2FT denote the vectorized STFT rep-
+resentation, comprising the real and imaginary parts of X and
+Xm, respectively, for all time frames and frequency bins. Given
+a datasetD ={(xm, x)}N , a modelf (x;θ) with parametersθ
+is trained to reconstruct the missing portions of xm. The recon-
+struction error is defined as
+e(xm, x;θ) =|x− ˆx|
+where ˆx =f (xm;θ) denotes the predicted reconstruction.
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+4208 10.21437/Interspeech.2025-835
+
+Figure 1: Illustration of our uncertainty quantification framework for speech inpainting using NPPC. A U-Net-based inpainting
+model generates a single reconstructed output for a given masked speech signal. To capture uncertainty, a second model learns the
+Principal Components (PCs) of the posterior probability distribution. By traversing along these directions, we generate diverse output
+possibilities with varied transcriptions, reflecting the inherent uncertainty in speech inpainting task.
+Table 1: Layerwise summary of U-Net networks for the inpainting model and PC model. The models are the same except for the first
+and last layers. Whenever there is a difference, we use inpainting/PC channels notation.k denotes the kernel size.
+Layer Composition In Chan. Out Chan. Hyperparameters
+1 Input Convolution (Double Conv) 1/2 64 k = 3,pad = 1
+2 Downsample Block 1 (MaxPool + Double Conv) 64 128 pool = 2,k = 3,pad = 1
+3 Downsample Block 2 (MaxPool + Double Conv) 128 256 pool = 2,k = 3,pad = 1
+4 Downsample Block 3 (MaxPool + Double Conv) 256 512 pool = 2,k = 3,pad = 1
+5 Downsample Block 4 (MaxPool + Double Conv) 512 512 pool = 2,k = 3,pad = 1
+6 Upsample Block 1 (Upsample + Double Conv) 1024 256 scale = 2,k = 3,pad = 1
+7 Upsample Block 2 (Upsample + Double Conv) 512 128 scale = 2,k = 3,pad = 1
+8 Upsample Block 3 (Upsample + Double Conv) 256 64 scale = 2,k = 3,pad = 1
+9 Upsample Block 4 (Upsample + Double Conv) 128 64 scale = 2,k = 3,pad = 1
+10 Output Convolution (1x1 Conv) 64 1/5 k = 1
+3. Method
+Our goal is to quantify the uncertainty in inpainting outcomes
+by generating a diverse set of plausible alternatives rather than a
+single estimate, ˆx. This uncertainty is encoded in the posterior
+distribution of x given xm. We aim to identify multiple
+directions of variation that capture the principal modes of this
+posterior distribution. However, a single estimate, ˆx, conveys
+only the posterior mean, neglecting higher-order moments.
+To solve this, we adopt the NPPC method [20]. Rather
+than explicitly modeling the entire posterior distribution, this
+approach directly learns the posterior PCs. To this end, we
+train a model d(xm, ˆx;ϕ), parameterized by ϕ, to output the
+K principle directions of variation{dk}K
+k=1. These are trans-
+formed to the set ofK PCs{wk}K
+k=1, by a Gram-Schmidt pro-
+cedure, making the directions satisfy the orthogonality and unit-
+norm constraints by construction. Specifically, given a dataset
+D′ ={(xm, x, ˆx)}N , the PCs are learned by maximizing their
+alignment with the reconstruction error e, which is equivalent
+to minimizing the following loss function:
+Lw =−
+X
+(x,xm,ˆx)∈D′
+KX
+k=1
+|wk(xm, ˆx;ϕ)T e(xm, x;θ)|2, (2)
+where{wk}K
+k=1 are computed by the following Gram-Schmidt
+procedure:
+w1 = d1
+||d1|| (3)
+wk = dk−Pk−1
+l=1 (dT
+k [wl]sg)[wl]sg
+||dk−Pk−1
+l=1 (dT
+k [wl]sg)[wl]sg||
+. (4)
+Here, [·]sg denotes the StopGrad operation. This is essential
+to solve the rotation ambiguity problem that arises when
+optimizing multiple principal directions simultaneously.
+The variances along each direction are learned in an explicit
+manner, by encoding them in the norms of the unnormalized
+directions. This leads to the following loss term:
+Lσ =
+X
+(x,xm,ˆx)∈D′
+KX
+k=1
+ dk−
+k−1X
+l=1
+(dT
+k wl)wl
+
+2
+−| [wk]T
+sge|2
+!
+. (5)
+Therefore, the overall loss function is given by:
+L =Lw +λLσ (6)
+whereλ is a weight factor.
+4. Experimental Setup
+Dataset. We conducted our experiments over the LibriSpeech
+dataset, using train-clean-360 for training and test-clean for
+validation at a sampling rate of 16 kHz. The inpainting task
+was designed to reconstruct masked audio segments with a
+pre-determined duration of 128 ms, while the total input audio
+duration was set to 2 s during training. To ensure meaningful
+masking, we applied voice activity detection (V AD) to locate
+speech regions and randomly positioned 128 ms masks within
+these regions. This approach ensures that the model learns
+to inpaint speech segments rather than silence or non-speech
+regions. We performed all experiments on the normalized log-
+magnitude spectrogram computed with a window size of 256
+and a hop length of128. Various methods exist for phase recon-
+struction based on the estimated magnitude [21, 22]. However,
+4209
+
+(a) Clean Spectrogram
+ (b) Predicted Spectrogram
+ (c) Masked Spectrogram
+(d) PC1 (α = −2.0)
+ (e) PC1 (α = −1.0)
+ (f) PC1 (α = 1.0)
+ (g) PC1 (α = 2.0)
+(h) PC2 (α = −2.0)
+ (i) PC2 (α = −1.0)
+ (j) PC2 (α = 1.0)
+ (k) PC2 (α = 2.0)
+Figure 2: Sample 3. Comparison of clean, masked, and PC projections for different α values. First row presents clean and masked
+spectrograms. Second and Third row correspond to variations along the first and second PCs, respectively.
+(a) PC1–PC3 Pitch Contours – Sample 3
+(b) PC1–PC3 Pitch Contours – Sample 7
+(c) PC1–PC3 Pitch Contours – Sample 47
+Figure 3: Pitch contour variations across PC1–PC3 for samples 3, 7, and 47. Shared legend is shown on the right in each row.
+since this is not the focus of this paper, we use the phase of the
+clean signal directly to convert the spectrogram back to the time
+domain. Using the clean signal phase may slightly overestimate
+perceptual quality compared to blind reconstruction.
+Model Architecture and Training Settings. Both the
+inpainting and PC models employ a U-Net with 8 blocks. The
+models have approximately 7.8M parameters, and their blocks
+and hyperparameters are summarized in Table 1. The NPPC
+model outputs K = 5 PCs. Although more advanced U-Net
+variants or alternative architectures could be employed, these
+enhancements are independent of the uncertainty quantification
+framework, which is the primary focus of this paper.
+Both the restoration model and the NPPC model are non-
+causal and were trained for16 epochs using the Adam optimizer
+with a learning rate of 2e− 4,β1 = 0.5 andβ2 = 0.999. The
+weighting factorλ gradually increases from 0 to 1 over the first
+4210
+
+Table 2: Transcriptions of the clean, masked, and output +α· PCs signals. Differences from the clean transcription are highlighted.
+Signal α Sample 3 Sample 47 Sample 7
+Clean We had meters in which there were two bottles of liquid The vanderpools were sure of this and the englishman The paris plant, like that of the crystal palace, was a temporary exhibit
+Masked We had meters in which there were two bottles of liquid The bandit pools were sure of this and the englishman The parrots plant, like that of the crystal palace, was a temporary exhibit
+PC1 -3.0 We had measures in which there were two bottles of liquid The venture pools were sure of this and the englishman The parrots plant, like that of the crystal palace, was a temporary exhibit
+PC1 -2.0 We had mehers in which there were two bottles of liquid The banter pools were sure of this and the englishman The parrots plant, like that of the crystal palace, was a temporary exhibit
+PC1 -1.0 We had mirrors in which there were two bottles of liquid The banter pools were sure of this and the englishman The parrots plant, like that of the crystal palace, was a temporary exhibit
+PC1 0.0 We had meters in which there were two bottles of liquid The banter pools were sure of this and the englishman The parents’ plant, like that of the crystal palace, was a temporary exhibit
+PC1 1.0 We had meters in which there were two bottles of liquid The ventry pools were sure of this and the englishman The parents’ plant, like that of the crystal palace, was a temporary exhibit
+PC1 2.0 We had meters in which there were two bottles of liquid The ventry pools were sure of this and the englishman The parent’s plant, like that of the crystal palace, was a temporary exhibit
+PC1 3.0 We had meters in which there were two bottles of liquid The vent repuls were sure of this and the englishman The parent’s plant, like that of the crystal palace, was a temporary exhibit
+PC2 -3.0 We had meekers in which there were two bottles of liquid The venture pools were sure of this and the englishman The parents’ plant, like that of the crystal palace, was a temporary exhibit
+PC2 -2.0 We had meekers in which there were two bottles of liquid The bentvipools were sure of this and the englishman The parents’ plant, like that of the crystal palace, was a temporary exhibit
+PC2 -1.0 We had meekers in which there were two bottles of liquid The bento pools were sure of this and the englishman The parrots plant, like that of the crystal palace, was a temporary exhibit
+PC2 0.0 We had meters in which there were two bottles of liquid The banter pools were sure of this and the englishman The parents’ plant, like that of the crystal palace, was a temporary exhibit
+PC2 1.0 We had mirrors in which there were two bottles of liquid The bandit pools were sure of this and the englishman The parent’s plant, like that of the crystal palace, was a temporary exhibit
+PC2 2.0 We had mirrors in which there were two bottles of liquid The band - repools were sure of this and the englishman The parent’s plant, like that of the crystal palace, was a temporary exhibit
+PC2 3.0 We had mirrors in which there were two bottles of liquid The band - repools were sure of this and the englishman The parent’s plant, like that of the crystal palace, was a temporary exhibit
+PC3 -3.0 We had meekers in which there were two bottles of liquid The banter pools were sure of this and the englishman The parrots plant, like that of the crystal palace, was a temporary exhibit
+PC3 -2.0 We had meters in which there were two bottles of liquid The banter pools were sure of this and the englishman The parrots plant, like that of the crystal palace, was a temporary exhibit
+PC3 -1.0 We had meters in which there were two bottles of liquid The bandit pools were sure of this and the englishman The parrots plant, like that of the crystal palace, was a temporary exhibit
+PC3 0.0 We had meters in which there were two bottles of liquid The banter pools were sure of this and the englishman The parents’ plant, like that of the crystal palace, was a temporary exhibit
+PC3 1.0 We had mirrors in which there were two bottles of liquid The ventric pools were sure of this and the englishman The parent’s plant, like that of the crystal palace, was a temporary exhibit
+PC3 2.0 We had mirrors in which there were two bottles of liquid The ventric pools were sure of this and the englishman The paris plant, like that of the crystal palace, was a temporary exhibit
+PC3 3.0 We had mirrors in which there were two bottles of liquid The vendor pools were sure of this and the englishman The paris plant, like that of the crystal palace, was a temporary exhibit
+Figure 4: Comparison to MC Dropout in terms of RMSE and
+residual error. Error bars indicate the standard deviation.
+500 training steps and remains fixed at 1 afterward.
+Evaluation. For the transcription task, we use the Whis-
+per model [23]. Pitch estimation is performed using proba-
+bilistic YIN (pYIN) [24], as implemented in the Librosa library.
+Additionally, we report the Root Mean Squared Error (RMSE)
+∥x− ˆx∥2, and the residual error magnitude∥e− WW⊤e∥2,
+both computed in the time-frequency domain using only the
+magnitude of the spectrogram.
+5. Results
+We examine the differences among the PCs in terms of the
+obtained spectrograms as well as the variations in transcription
+and pitch. Additionally, we compare NPPC to a Bayesian deep
+learning approach in terms of the output Root Mean Squared
+Error (RMSE) and the reconstruction of the error.
+Example Spectrograms. Fig. 2 displays the spectrograms
+of the original speech signal, the masked signal, and various
+transformations along the PCs. Given the small gap, we zoom
+in on the surrounding interval for clarity. The results indicate
+that different directions lead to distinct spectrogram variations,
+emphasizing different frequency regions. Our GitHub reposi-
+tory provides corresponding audio samples, enabling listeners
+to directly perceive the variations in speech content.
+Transcription. Table 2 presents transcription examples
+for different traversal directions. The results show a variety
+of possible transcripts depending on both the direction and
+the traversal distance. For instance, the word “meters” is
+sometimes transcribed as “measures,” “meekers,” or “mirrors”,
+while “Paris” appears as “parents” or “parrots”. Notably, in
+some cases, the initial output is incorrect, but moving along the
+PCs recovers the correct transcription.
+Pitch. Fig. 3 compares the estimated pitch when moving
+across different PCs directions. While variations in pitch
+are observed along different PCs, they are generally less
+pronounced than content variations. This may be because pitch
+is largely speaker-dependent and can often be inferred with
+high confidence from the unmasked regions of the input signal.
+RMSE and Residual Error . As a baseline for a quanti-
+tative comparison, we use MC Dropout [11]. MC Dropout is
+a technique used in Bayesian deep learning to estimate model
+uncertainty by enabling dropout at both training and inference
+time. During inference, the model performs multiple forward
+passes with different dropout masks, generating a distribution
+of predictions instead of a single deterministic output. We
+apply MC dropout to generate 50 output samples and perform
+principal component analysis (PCA) on this set, extracting the
+top 5 PCs.
+The RMSE and residual error are shown in Fig. 4, averaged
+across 50 test samples. We observe that both approaches
+obtain comparable RMSE, while NPPC achieves slightly better
+reconstruction error. This is while being 50× faster during
+inference than MC Dropout, since NPPC requires a single
+forward pass, while MC Dropout requires 50 passes.
+6. Conclusions
+In this paper, we emphasize the importance of modeling
+uncertainty in speech inpainting, moving beyond traditional
+approaches that generate a single deterministic output. We
+adopt the NPPC method, which learns to output the principal
+components of the posterior distribution. Our results demon-
+strate that NPPC better captures inpainting errors than the
+computationally intensive MC Dropout approach, while also
+producing perceptually diverse outputs, as illustrated in the
+accompanying audio samples. This can enable future systems
+to reflect ambiguity and adapt outputs to user intent.
+4211
+
+7. Acknowledgments
+B.L. was supported by the Israeli Ministry of Innovation, Sci-
+ence and Technology (Grant No.1001818518). L.W was sup-
+ported by a grant from the Tel Aviv University Center for AI
+and Data Science (TAD).
+8. References
+[1] A. Adler, V . Emiya, M. G. Jafari, M. Elad, R. Gribonval, and
+M. D. Plumbley, “Audio inpainting,” IEEE Transactions on Au-
+dio, Speech, and Language Processing , vol. 20, no. 3, pp. 922–
+932, 2011.
+[2] O. Mokr `y, P. Magron, T. Oberlin, and C. F´evotte, “Algorithms for
+audio inpainting based on probabilistic nonnegative matrix factor-
+ization,” Signal Processing, vol. 206, p. 108905, 2023.
+[3] A. Janssen, R. Veldhuis, and L. Vries, “Adaptive interpolation of
+discrete-time signals that can be modeled as autoregressive pro-
+cesses,” IEEE Transactions on Acoustics, Speech, and Signal Pro-
+cessing, vol. 34, no. 2, pp. 317–330, 1986.
+[4] O. Mokr `y, P. Balu ˇs´ık, and P. Rajmic, “Janssen 2.0: Au-
+dio inpainting in the time-frequency domain,” arXiv preprint
+arXiv:2409.06392, 2024.
+[5] P. P. Ebner and A. Eltelt, “Audio inpainting with generative adver-
+sarial network,” arXiv preprint arXiv:2003.07704, 2020.
+[6] F. Miotello, M. Pezzoli, L. Comanducci, F. Antonacci, and
+A. Sarti, “Deep prior-based audio inpainting using multi-
+resolution harmonic convolutional neural networks,” IEEE/ACM
+Transactions on Audio, Speech, and Language Processing, 2023.
+[7] E. Moliner and V . V ¨alim¨aki, “Diffusion-based audio inpainting,”
+Journal of the Audio Engineering Society, vol. 72, no. 3, pp. 100–
+113, 2024.
+[8] K. Liu, W. Gan, and C. Yuan, “Maid: A conditional diffu-
+sion model for long music audio inpainting,” in IEEE Interna-
+tional Conference on Acoustics, Speech and Signal Processing
+(ICASSP), 2023, pp. 1–5.
+[9] H. Zhou, Z. Liu, X. Xu, P. Luo, and X. Wang, “Vision-infused
+deep audio inpainting,” in Proceedings of the IEEE/CVF Interna-
+tional Conference on Computer Vision, 2019, pp. 283–292.
+[10] J. F. Montesinos, D. Michelsanti, G. Haro, Z.-H. Tan, and
+J. Jensen, “Speech inpainting: Context-based speech synthesis
+guided by video,” arXiv preprint arXiv:2306.00489, 2023.
+[11] Y . Gal and Z. Ghahramani, “Dropout as a bayesian approxima-
+tion: Representing model uncertainty in deep learning,” in in-
+ternational conference on machine learning. PMLR, 2016, pp.
+1050–1059.
+[12] B. Lakshminarayanan, A. Pritzel, and C. Blundell, “Simple and
+scalable predictive uncertainty estimation using deep ensembles,”
+in Advances in Neural Information Processing Systems , vol. 30,
+2017.
+[13] M. S. Ayhan and P. Berens, “Test-time data augmentation for es-
+timation of heteroscedastic aleatoric uncertainty in deep neural
+networks,” in Medical Imaging with Deep Learning, 2018.
+[14] A. N. Angelopoulos and S. Bates, “A gentle introduction to
+conformal prediction and distribution-free uncertainty quantifica-
+tion,” arXiv preprint arXiv:2107.07511, 2021.
+[15] H. Fang, D. Becker, S. Wermter, and T. Gerkmann, “Integrat-
+ing uncertainty into neural network-based speech enhancement,”
+IEEE/ACM Transactions on Audio, Speech, and Language Pro-
+cessing, vol. 31, pp. 1587–1600, 2023.
+[16] I. D. Khurjekar and P. Gerstoft, “Uncertainty quantification for
+direction-of-arrival estimation with conformal prediction,” The
+Journal of the Acoustical Society of America, vol. 154, no. 2, pp.
+979–990, 2023.
+[17] V . Letzelter, M. Fontaine, M. Chen, P. P ´erez, S. Essid, and
+G. Richard, “Resilient multiple choice learning: A learned scor-
+ing scheme with application to audio scene analysis,”Advances in
+neural information processing systems , vol. 36, pp. 6001–6013,
+2023.
+[18] I. D. Khurjekar and P. Gerstoft, “Multi-source doa estimation with
+statistical coverage guarantees,” in IEEE International Confer-
+ence on Acoustics, Speech and Signal Processing (ICASSP), 2024,
+pp. 5310–5314.
+[19] V . Rozenfeld and B. L. Goldshtein, “Conformal prediction for
+manifold-based source localization with gaussian processes,” in
+IEEE international conference on acoustics, speech and signal
+processing (ICASSP), 2025.
+[20] E. Nehme, O. Yair, and T. Michaeli, “Uncertainty quantification
+via neural posterior principal components,” Advances in Neu-
+ral Information Processing Systems , vol. 36, pp. 37 128–37 141,
+2023.
+[21] D. Griffin and J. Lim, “Signal estimation from modified short-
+time fourier transform,” IEEE Transactions on acoustics, speech,
+and signal processing, vol. 32, no. 2, pp. 236–243, 1984.
+[22] Y . Masuyama, K. Yatabe, Y . Koizumi, Y . Oikawa, and N. Harada,
+“Deep griffin–lim iteration: Trainable iterative phase reconstruc-
+tion using neural network,” IEEE Journal of Selected Topics in
+Signal Processing, vol. 15, no. 1, pp. 37–50, 2020.
+[23] A. Radford, J. W. Kim, T. Xu, G. Brockman, C. McLeavey, and
+I. Sutskever, “Robust speech recognition via large-scale weak
+supervision,” in International conference on machine learning .
+PMLR, 2023, pp. 28 492–28 518.
+[24] M. Mauch and S. Dixon, “pyin: A fundamental frequency esti-
+mator using probabilistic threshold distributions,” in IEEE inter-
+national conference on acoustics, speech and signal processing
+(ICASSP), 2014, pp. 659–663.
+4212

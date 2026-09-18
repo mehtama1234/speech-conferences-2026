@@ -1,0 +1,587 @@
+PruneSLU: Efficient On-device Spoken Language Understanding through
+Vocabulary and Structural Pruning
+Dinh-Truong Do, Minh-Phuong Nguyen, Le-Minh Nguyen
+Japan Advanced Institute of Science and Technology, Japan
+{truongdo, phuongnm, nguyenml }@jaist.ac.jp
+Abstract
+Recent advancements in Spoken Language Understanding
+(SLU) have been driven by pre-trained speech processing mod-
+els. However, deploying these models on resource-constrained
+devices remains challenging due to their large parameter sizes.
+This paper presents PruneSLU, a new method for compressing
+pre-trained SLU models while maintaining performance. Our
+approach combines vocabulary pruning and structural layer-
+wise pruning to reduce model size while preserving essential
+knowledge. After pruning, the model undergoes knowledge
+refinement using integration distillation and contrastive learn-
+ing. Experiments on the STOP and SLURP datasets demon-
+strate that PruneSLU compresses a 39M model to 15M while
+retaining 98% of its original performance, outperforming previ-
+ous compression techniques.
+Index Terms: Spoken Language Understanding, Model Prun-
+ing, On-device Processing
+1. Introduction
+Spoken Language Understanding (SLU) plays a crucial role in
+conversational AI, which is fundamental to applications such as
+virtual assistants [1, 2]. Despite advancements, deploying SLU
+models on devices like smartphones remains challenging due
+to constraints in computational resources, memory, and power.
+Therefore, creating SLU models that are efficient enough to run
+directly on such devices is essential.
+Research in on-device SLU has primarily focused on ad-
+dressing these constraints through two main approaches. The
+first approach involves designing a compact SLU model from
+scratch [3, 4]. The second strategy builds on existing pre-trained
+models, reducing their size through model compression tech-
+niques [5]. This latter approach, known as model compression
+or distillation, has shown significant promise. It uses a smaller
+student model to mimic the behavior of a larger, pre-trained
+teacher model, thereby preserving the critical knowledge em-
+bedded within the teacher model.
+In this paper, we introduce a new method to compress pre-
+trained models for on-device SLU tasks (Fig. 1). Unlike previ-
+ous methods that often require creating a new student model
+[5], our approach involves pruning the teacher model by re-
+moving less effective weights. Our pruning strategy is based
+on two key methods: vocabulary pruning and structural prun-
+ing. V ocabulary pruning reduces the model’s tokens to the most
+task-based tokens, cutting down memory usage and computa-
+tional demands. Structural pruning involves selectively remov-
+ing less critical layers, thus simplifying the architecture. We
+explore five strategies for layer pruning: top-layer, alternative-
+layer, bottom-layer, magnitude-based, and loss-based. By ap-
+plying these techniques, we aim to create lightweight yet high-
+Vocabulary
+Pruning
+Layer-wise
+Structural Pruning
+Step 1:
+Model
+Pruning
+Step 2:
+Pruned
+Model
+Training
+I need to wake up at 6
+am | [IN:CREATE_ALARM
+[SL:DATE_TIME at 6 am ] ]
+audio.wav
+Pruned
+Model
+Large
+pretrained
+Model
+Pruned
+Model
+Knowledge Distillation
+Constrastive Learning
+Figure 1: An overview of our framework.
+performing SLU systems. To mitigate the loss of knowledge
+due to pruning, we employ a model retraining process, transfer-
+ring knowledge from the teacher to the pruned student model
+using entropy loss, distillation loss, and contrastive loss tech-
+niques. Our proposed framework, PruneSLU, surpasses ex-
+isting methods, achieving Exact Match (EM) scores exceed-
+ing the state-of-the-art (SOTA) under the constraints of 15M
+and 30M parameters on the STOP dataset [6]. It also demon-
+strates significant model compression—up to 260%—with only
+a 5% reduction in performance on the SLURP dataset [7]. In
+summary, our contributions are threefold: (I) Proposing a new
+pruning method tailored for on-device SLU applications, inte-
+grating vocabulary pruning and structural pruning, along with
+a knowledge refinement approach using distillation and con-
+trastive learning; (II) Demonstrating the effectiveness of the
+proposed method with extensive experiments applications;(III)
+Making our code and models publicly available at https:
+//github.com/truongdo619/PruneSLU.
+2. Methodology
+End-to-end (E2E) models based on pre-trained speech process-
+ing architectures like Whisper [8] have demonstrated strong
+performance in spoken language understanding (SLU) [9, 10].
+These models typically comprise n encoder layers, m decoder
+layers, a hidden size of dim, and a vocabulary V . However,
+their large size presents challenges for on-device deployment.
+To address this issue, we propose a new pruning method
+that effectively reduces model parameters while maintaining
+performance, making it suitable for on-device deployment (typ-
+ically under 30M parameters) [5]. Given a pre-trained model
+withP parameters, partitioned into non-vocabulary (Pnv) and
+vocabulary (Pv) components, we apply two pruning techniques:
+(1) vocabulary pruning, which retains only essential tokens to
+reducePv, and (2)layer-wise structural pruning, which reduces
+Pnv by removing encoder and decoder layers. The resulting
+pruned model, withPe parameters, consists ofne encoder lay-
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+1738 10.21437/Interspeech.2025-1893
+
+Vother: Tokens for other tasks and languages. E.g. Ġrebicir, ... 
+Ve: Expected vocabulary after pruning
+Vtask: Tokens specific for the SLU task
+Vbase: Base tokens
+Possible Pruning Area
+Figure 2: Illustration of vocabulary division: General base to-
+kens (Vbase), SLU task-specific tokens ( Vtask), and tokens for
+other tasks or languages (Vother):Ve =Vbase∪Vtask.
+ers, me decoder layers, and a compact vocabulary Ve, where
+ne≤n,me≤m, andVe⊂V .
+2.1. Vocabulary Pruning
+Multilingual pre-trained speech processing models, such as
+Whisper [8], can be extremely large, with some models contain-
+ing over a billion (B) parameters (e.g., Whisper-large contains
+1.5B parameters). A significant portion of these parameters is
+typically concentrated in the embedding matrix, which scales
+with the vocabulary size. For instance, the Whisper-tiny model
+has 39 million (M) parameters, with 51% of its size attributed
+to the vocabulary (Pv =dim×|V| = 384×51, 865≈ 20M).
+However, many tokens may be irrelevant to specific down-
+stream tasks like SLU. Pruning these non-essential tokens can
+significantly reduce model size while maintaining performance
+in the task.
+In this paper, we propose a method for pruning a given vo-
+cabularyV to a more compact vocabulary Ve. Our approach
+begins with establishing a base vocabularyVbase, consisting of
+the most frequent tokens from the original tokenizer, such as the
+top 2,000 most frequent tokens. These base tokens ensure the
+model retains its basic functionality by being able to tokenize
+any input sequence effectively [11]. If |Vbase| is still smaller
+than|Ve|, we then incorporate additional tokens from V , fo-
+cusing on those most relevant to the SLU task (Fig. 2). This
+additional set, Vtask, includes tokens that are crucial for the
+downstream SLU task. The process involves: (i) tokenizing the
+SLU training data; (ii) ranking the tokens by frequency; (iii)
+excluding tokens already present in Vbase; and (iv) iteratively
+adding tokens and their associated sub-tokens to Ve until the
+desired vocabulary size is reached. This method ensures a tai-
+lored vocabulary balancing compactness with the capability to
+handle task-specific language nuances.
+2.2. Layer-wise Structural Pruning
+In addition to vocabulary pruning, we apply layer-wise struc-
+tural pruning to further reduce the model’s size. Prior research
+shows that pruning the encoder can significantly compromise
+accuracy, as the encoder is crucial for transforming input audio
+into a rich, contextual representation [12], which is essential
+for accurate comprehension and processing. Therefore, our ap-
+proach prioritizes pruning the decoder layers before considering
+any modifications to the encoder. Specifically, we aim to reduce
+the number of decoder layers to a minimum (one layer) before
+pruning the encoder, as the decoder can often perform effec-
+tively with fewer layers in domain-specific adaptation [13].
+For the decoder, we define the layer-wise pruning task as
+follows: Consider a pre-trained speech processing model’s de-
+coder (L) with d layers, where L0 is the input layer and Ld−1
+is the last layer. Our objective is to develop an algorithm that
+identifies a subset Rk ⊂ L with|Rk| = k, ensuring that the
+performance of the pruned model with Rk is only marginally
+reduced compared to the full model. To achieve this, we pro-
+pose five strategies for selectingRk.
+(I) Top-layer pruning: This strategy assumes lower layers,
+capturing general features, are critical for overall performance,
+while specialized top layers, which focus on specific objectives,
+can be pruned with minimal accuracy impact [14]. Thus, we
+remove the topd−k layers from the model.
+(II) Alternative-layer pruning: Based on the assumption that
+neighboring layers may contain redundant or overlapping infor-
+mation [15], this approach prunes every alternate layer. The
+pruned model retains layersL0,L2, ...,L2k−2.
+(III) Bottom-layer pruning : Although lower layers are cru-
+cial for basic feature extraction and understanding, we explore
+this strategy for the completeness of our experiments. Here, we
+remove the lowestd−k layers, starting from layerL0.
+(IV) Magnitude-based pruning : Building on successful un-
+structured pruning techniques, which suggest that smaller mag-
+nitude weights hold less information [16, 17], we extend this
+to layer-wise pruning. We sum the absolute magnitudes of all
+weights in a layer: Si = Pni
+j=1|wij|, where wij is the j-th
+weight in layer Li, and ni is the total number of weights in
+layerLi. The d−k layers with the smallest total magnitudes
+Si are considered least important and are pruned.
+(V) Loss-based pruning : Unlike data-independent methods,
+loss-based pruning uses a validation dataset to guide pruning.
+We iteratively omit one layer at a time, computing the evalu-
+ation loss. The d−k layers that least impact the evaluation
+loss are pruned, offering a more nuanced understanding of each
+layer’s importance to the SLU task.
+2.3. Pruning Constraint
+To extend the pruning technique across various model parame-
+ter sizes, we define the expected parameters asPe. The model’s
+parameters can fall into two categories: vocabulary-related, in
+the embedding matrix, and non-vocabulary, primarily in the en-
+coder/decoder layers. We treat the encoder and decoder layers
+collectively, as our pruning strategy first focuses on the decoder,
+then the encoder. Thus, the total number of expected parameters
+can be expressed as:
+Pe≈ dim×|Ve| +Player×de (1)
+Here, dim represents the model’s hidden dimension, Player de-
+notes the number of parameters per layer, de is the number
+of pruned layers, and |Ve| indicates the pruned vocabulary
+size. The pruning process involves determining |Ve| and de
+given Pe (expected parameter size), with dim and Player de-
+fined by the model’s configuration. Since vocabulary and layer
+pruning are interdependent, each affecting performance differ-
+ently, equation (1) can be addressed by proposing a pruning se-
+quence—vocabulary first, then layers, or the reverse. For ex-
+ample, if vocabulary pruning is done first, followed by layer
+pruning,de can be calculated as:
+de =
+(
+d if dim×|Vbase| +Player×d≤Pe
+⌈Pe−dim×|Vbase|
+Player
+⌉ otherwise
+(2)
+Alternatively, if the sequence involves pruning the layers
+first, followed by vocabulary pruning,de can be calculated as:
+de =
+(
+1 if dim×|V| +Player≥Pe
+⌈Pe−dim×|V|
+Player
+⌉ otherwise (3)
+1739
+
+Once de is determined, the value of |Ve| can then be calcu-
+lated as:|Ve| =⌊(Pe−Player×de)/ dim⌋. In the experiments
+(Section 3.2), we will analyze different pruning sequences and
+methodologies, comparing their effectiveness. This analysis
+will identify the optimal strategy for balancing model size re-
+duction with performance retention, guiding pruning choices in
+practical applications.
+2.4. Pruned Model Retraining
+To restore the performance of pruned models on the SLU task,
+we implement a retraining strategy that includes both standard
+training with gold label data and knowledge distillation. In dis-
+tillation, a smaller, student model learns to replicate the behav-
+ior of a larger, more complex teacher model by imitating its
+output distributions [18] and hidden states across intermediate
+layers via contrastive loss [19, 20]. However, distillation can be
+challenging when there is a significant size gap between mod-
+els or when they utilize different vocabularies [5]. To address
+these challenges, rather than using the base pre-trained speech
+processing model as the teacher, we fine-tune the vocabulary-
+pruned model to serve as the teacher, with the fully pruned
+model acting as the student.
+Our approach to retraining begins with the standard cross-
+entropy (CE) loss applied to the ground truth labels:
+LCLM =−
+NX
+i=1
+yi log(ˆyi) (4)
+whereN is the number of samples, yi and ˆyi are the true label
+and the predicted probability for thei-th sample, respectively.
+Previous research has demonstrated that combining knowl-
+edge distillation loss with cross-entropy loss can enhance model
+performance [18]. The distillation objective is typically defined
+as the cross-entropy loss between the output distributions of the
+teacher (pt) and student (ps) models:
+Ldistill =DKL(ps||pt) (5)
+Moreover, recent studies suggest that incorporating knowl-
+edge from the intermediate layers of the teacher model can
+further boost the student’s performance [21, 22]. While pre-
+vious methods often align intermediate representations using
+mean squared error loss, we hypothesize that the student model
+should not only closely mirror the teacher’s hidden states but
+also generate representations that distinctly differentiate each
+sample from others. To achieve this, we introduce contrastive
+learning [19, 20] into our training process. The aim is to align
+the representations of positive pairs in latent space while in-
+creasing the distance between negative pairs. The contrastive
+loss function measures the similarity between the hidden states
+hteacher andhstudent:
+hteacher =H(q)
+t
+hstudent =H(k)
+s
+(6)
+where H(q)
+t and H(k)
+s represent the outputs of the teacher
+and student layers q and k after LayerNorm. Here, the q-
+th layer of the student model mirrors the k-th layer of the
+teacher model post-pruning. This information is used to up-
+date the model’s parameters, thereby enabling the pruned model
+to produce more consistent representations with the full model.
+Given a training batchB, the positive pair at theith position is
+(h(i)
+teacher,h (i)
+student), while the negative pairs consist of other
+samples in the batch. The training objective for contrastive
+learning is given by:
+Lcontras =− log
+exp(sim(h(i)
+teacher,h (i)
+student)/τ )
+P
+j∈B exp(sim(h(i)
+teacher,h (j)
+student)/τ )
+(7)
+where sim is the cosine similarity function, and τ is a tempera-
+ture hyperparameter [19].B represents the samples in the mini-
+batch. Finally, to optimize the model’s learning process, we
+combine all loss functions into a final objective function:
+Lfinal =LCLM +α∗Ldistill +β∗Lcontras (8)
+whereα andβ are hyperparameters that balance the contribu-
+tions of the loss components.
+3. Experiment
+Dataset and Evaluation Metric. To evaluate our proposed
+method, we conducted experiments on the well-known STOP
+dataset [6], which encompasses a diverse range of 82 intents
+and 84 slots. We utilized the full-resource version, compris-
+ing 120k, 33k, and 75k training, development, and testing sam-
+ples, respectively. Following [6], our primary evaluation metric
+was the Exact Match (EM) score. Additionally, we employed
+the EM-Tree metric, which measures the accuracy of generating
+correct parsed trees ignoring the accuracy of the span texts. To
+further demonstrate our method’s generalizability, we analyzed
+its performance on the SLURP dataset [7]. SLURP consists of
+50,628 audio files, with 8,690 samples allocated for develop-
+ment and 13,078 for testing. The evaluation metrics for SLURP
+included intent accuracy (IC) and SLU F1 (SF) score, as out-
+lined in the original paper [7].
+Experimental Settings. For our experiments, we used the
+pre-trained Whisper model [8] as the backbone, specifically
+Whisper-tiny with 39M parameters and Whisper-base with 74M
+parameters. We fine-tuned the models on the validation set to
+select the best hyperparameters, followed by test set evaluation
+for final results. Specifically, we fine-tuned on the STOP dataset
+for{1, 3, 5, 10} epochs1, using learning rates {1e-05, 2e-05,
+3e-05, 4e-05, 5e-05}, 5000 bootstrap steps, and a batch size of
+16. For hyperparameters, we setτ to 1.0 and selectedα,β from
+{0.1, 0.2, 0.5, 1.0}. We chose the optimal base tokens vocabu-
+lary size|Vbase| from{500, 1000, 2000, 3000, 4000, 5000}.
+Training time for the 15M model with an A100 GPU is ap-
+proximately 1 hour. For the SLURP dataset, we used the same
+settings as the STOP dataset. For both the STOP and SLURP
+datasets, each configuration was run with five different random
+seeds, and we report the average performance across these runs.
+Baselines. For the baselines, we used the tensor decomposition
+method [5] and the deliberation-based approach [4] from previ-
+ous works. We compared our method against these baselines in
+two settings: 15M and 30M parameters.
+3.1. Main Results
+STOP.Table 1 compares our method with baselines at 30M and
+15M parameters. In both cases, our method outperforms the
+best previous approach [5], with gains of 1.69 EM in the 30M
+and 1.41 EM in the 15M setting. We compress the 39M model
+to 15M while retaining 98% of its performance. Compared to
+the SOTA WhiSLU-large method [9] of the STOP dataset, our
+15M model achieves comparable results with 100 times fewer
+parameters, underscoring the effectiveness of our approach.
+1The bold values indicate best performance on the validation set.
+1740
+
+Method Pre-trained
+Model
+Num.
+Param
+STOP
+EM EM-Tree
+WhiSLU-large [9] Whisper-large 1550 M 76.68 86.37
+Tensor decomposition [5] Hubert-base 30.0 M 71.40
+Tensor decomposition [5] Hubert-base 15.0 M 70.90
+Deliberation SLU [4] None 15.0 M 67.90
+PruneSLU-full (ours) whisper-tiny 39.0 M 73.15 84.08
+PruneSLU-30M (ours) whisper-tiny 30.0 M 73.09 83.99
+PruneSLU-15M (ours) whisper-tiny 15.0 M 72.31 83.55
+Table 1: Main results of our method on STOP test set.
+Furthermore, we performed one-sample t-tests [23] with the
+null hypothesis that our method (PruneSLU) and the baseline
+(Tensor Decomposition [5]) have identical expected values. The
+resulting p-values (below 0.05 for both the 15M and 30M set-
+tings) confirm that our improvements over baseline methods are
+statistically significant.
+Method Pre-trained
+Model
+Num.
+Param
+SLURP
+IC SF
+SpeechBrain Direct [24] HuBERT-base 95 M 85.34 74.62
+PruneSLU-full (ours) whisper-tiny 39.0 M 76.53 73.23
+PruneSLU-30M (ours) whisper-tiny 30.0 M 76.26 72.85
+PruneSLU-15M (ours) whisper-tiny 15.0 M 76.22 71.42
+Table 2: Main results of our method on SLURP test set.
+SLURP. Table 2 presents our method’s results on the SLURP
+dataset. The 15M model achieves 95% of the full model’s per-
+formance using the SLU-F1 metric, showcasing our method’s
+strong generalization across datasets.
+3.2. Method Analysis
+To further assess our method, we conducted a series of in-depth
+analyses using the STOP dataset.
+10 15.0 20 25 30
+20
+40
+60 61.08 72.31 72.63 72.92 73.09
+#params (M)
+EM
+vocab first (tiny) layer first (tiny) vocab first (base)
+Figure 3: Performance across different compression ratios with
+various pruning sequences and base models.
+Impact of Pruning Sequence. As shown in Fig. 3, we com-
+pared two pruning strategies on the Whisper-tiny base model:
+pruning vocabulary first versus pruning layers first. The results
+indicate that pruning vocabulary first is more effective, as it re-
+moves redundant tokens while preserving performance.
+Effect of Target Sizes and Base Models. Here, we compare
+the performance of models compressed using the vocabulary-
+first pruning method across different parameter sizes (Fig. 3).
+We observe that the performance remains stable between 15M
+and 30M parameters but experiences a noticeable decline when
+further reduced to 10M. This drop is likely due to the necessity
+of pruning encoder layers at this scale, which aligns with previ-
+ous research showing that pruning the encoder can significantly
+impair model performance [12]. Additionally, our findings in-
+dicate that compressing from Whisper-tiny (39M parameters) is
+more effective than from Whisper-base (74M parameters), sug-
+gesting that a base model closer in size to the target model fa-
+cilitates better results.
+Full-vocab 
+(51865)
+5000 4000 3000 2000 1000 500
+Number of Base T okens
+67.5
+70.0
+72.5EM
+73.15
+71.67 71.23 70.82 70.2
+67.71
+65.83
+Figure 4: Impact of number base tokens.
+Impact of Base Tokens. We also analyzed the effect of varying
+the number of base tokens from 500 to 5000 using Whisper-
+tiny. As depicted in Fig. 4, there is a noticeable performance
+drop when reducing from 2000 to 1000 base tokens, with only
+minimal parameter reduction. Thus, we adopt 2000 base tokens
+as the standard setting for our method.
+Layer Pruning Method Analysis. We explored different layer-
+wise pruning methods using the Whisper-base model, with re-
+sults shown in Table 3. Our analysis reveals that loss-based
+pruning performs best, likely because it leverages domain-
+specific evaluation data to guide the pruning process, thereby
+selecting the most appropriate layers for removal.
+Pruning Method EM
+Top-layer Pruning 66.72
+Bottom-layer Pruning 70.46
+Alternate-layer Pruning 71.46
+Magnitude-based Pruning 44.46
+Loss-based Pruning 71.93
+Table 3: Impact of layer-wise pruning strategies (|Rk| = 2).
+Ablation Study on Loss Components. Finally, we conducted
+an ablation study on the loss components used in our method,
+as summarized in Table 4. Each component significantly con-
+tributes to the overall performance, and removing any one of
+them leads to noticeable degradation, highlighting the impor-
+tance of each element in our final loss function.
+Method EM ∆
+PruneSLU 72.18
+- withoutLCLM 71.28 -0.90
+- withoutLKL 66.87 -5.31
+- withoutLcontras 71.44 -0.74
+Table 4: Impact of each component in the final loss.
+4. Conclusion
+We introduced PruneSLU, a framework that optimizes pre-
+trained models for on-device SLU through vocabulary and
+layer-wise structural pruning. PruneSLU reduced model size
+while maintaining high performance, surpassing SOTA meth-
+ods on the STOP dataset with 1.69 EM in 30M setting and 1.41
+EM in 15M setting. It preserved 95% of the full model’s per-
+formance on SLURP, demonstrating generalizability. Extensive
+experiments validated the effectiveness of our pruning strate-
+gies and the benefit of combining knowledge distillation with
+contrastive learning to minimize performance loss.
+1741
+
+5. References
+[1] J. R. Bellegarda, “Spoken language understanding for natural in-
+teraction: The siri experience,” Natural Interaction with Robots,
+Knowbots and Smartphones: Putting Spoken Dialog Systems into
+Practice, pp. 3–14, 2013.
+[2] S. Rongali, B. Liu, L. Cai, K. Arkoudas, C. Su, and W. Hamza,
+“Exploring transfer learning for end-to-end spoken language un-
+derstanding,” in Proceedings of the AAAI Conference on Artificial
+Intelligence, vol. 35, no. 15, 2021, pp. 13 754–13 761.
+[3] M. Radfar, A. Mouchtaris, S. Kunzmann, and A. Rastrow, “FANS:
+Fusing ASR and NLU for On-Device SLU,” in Proc. Interspeech
+2021, 2021, pp. 1224–1228.
+[4] D. Le, A. Shrivastava, P. D. Tomasello, S. Kim, A. Livshits,
+O. Kalinli, and M. Seltzer, “Deliberation Model for On-Device
+Spoken Language Understanding,” in Proc. Interspeech 2022 ,
+2022, pp. 3468–3472.
+[5] Y . Kashiwagi, S. Arora, H. Futami, J. Huynh et al. , “Tensor
+decomposition for minimization of E2E SLU model toward on-
+device processing,” in Proc. INTERSPEECH 2023 , 2023, pp.
+710–714.
+[6] P. Tomasello, A. Shrivastava, D. Lazar, P.-C. Hsu, D. Le et al.,
+“Stop: A dataset for spoken task oriented semantic parsing,”
+in 2022 IEEE Spoken Language Technology Workshop (SLT) .
+IEEE, 2023, pp. 991–998.
+[7] E. Bastianelli, A. Vanzo, P. Swietojanski, and V . Rieser, “SLURP:
+A spoken language understanding resource package,” inProceed-
+ings of EMNLP 2020, Online, 2020, pp. 7252–7262.
+[8] A. Radford, J. W. Kim, T. Xu et al., “Robust speech recognition
+via large-scale weak supervision,” in International conference on
+machine learning. PMLR, 2023, pp. 28 492–28 518.
+[9] M. Wang, Y . Li, J. Guo, X. Qiao et al., “Whislu: End-to-end spo-
+ken language understanding with whisper,” in Proc. Interspeech,
+vol. 2023, 2023, pp. 770–774.
+[10] H. Yang, M. Zhang, and D. Wei, “Irag: Iterative retrieval aug-
+mented generation for slu,” in 2024 20th IEEE International Col-
+loquium on Signal Processing & Its Applications (CSPA). IEEE,
+2024, pp. 30–34.
+[11] J. O. Alabi, D. I. Adelani, M. Mosbach, and D. Klakow,
+“Adapting pre-trained language models to african languages
+via multilingual adaptive fine-tuning,” in Proceedings of the
+29th International Conference on Computational Linguistics ,
+Gyeongju, Republic of Korea, 2022, pp. 4336–4349. [Online].
+Available: https://aclanthology.org/2022.coling-1.382
+[12] S. Gandhi, P. von Platen, and A. M. Rush, “Distil-whisper: Robust
+knowledge distillation via large-scale pseudo labelling,” arXiv
+preprint arXiv:2311.00430, 2023.
+[13] S. Shleifer and A. M. Rush, “Pre-trained summarization distilla-
+tion,” arXiv preprint arXiv:2010.13002, 2020.
+[14] E. V oita, R. Sennrich, and I. Titov, “The bottom-up evolution
+of representations in the transformer: A study with machine
+translation and language modeling objectives,” in Proc. EMNLP-
+IJCNLP 2019, Hong Kong, China, 2019, pp. 4396–4406.
+[15] H. Sajjad, F. Dalvi, N. Durrani, and P. Nakov, “Poor
+man’s bert: Smaller and faster transformer models,” preprint
+arXiv:2004.03844, vol. 2, no. 2, 2020.
+[16] M. Zullich, E. Medvet, F. A. Pellegrino, and A. Ansuini,
+“Speeding-up pruning for artificial neural networks: introducing
+accelerated iterative magnitude pruning,” in 2020 25th Interna-
+tional Conference on Pattern Recognition . IEEE, 2021, pp.
+3868–3875.
+[17] A. Bragagnolo, E. Tartaglione, A. Fiandrotti, and M. Grangetto,
+“On the role of structured pruning for neural network compres-
+sion,” in 2021 IEEE International Conference on Image Process-
+ing (ICIP). IEEE, 2021, pp. 3527–3531.
+[18] V . Sanh, L. Debut, J. Chaumond, and T. Wolf, “Distilbert, a dis-
+tilled version of bert: smaller, faster, cheaper and lighter,” arXiv
+preprint arXiv:1910.01108, 2019.
+[19] T. Gao, X. Yao, and D. Chen, “SimCSE: Simple contrastive learn-
+ing of sentence embeddings,” in Proceedings of the 2021 Con-
+ference on Empirical Methods in Natural Language Processing .
+Dominican Republic: Association for Computational Linguistics,
+Nov. 2021, pp. 6894–6910.
+[20] T. Do, P. Nguyen, and M. Nguyen, “StructSP: Efficient fine-tuning
+of task-oriented dialog system by using structure-aware boosting
+and grammar constraints,” inFindings of the Association for Com-
+putational Linguistics: ACL 2023 , Toronto, Canada, 2023, pp.
+10 206–10 220.
+[21] S. Sun, Y . Cheng, Z. Gan, and J. Liu, “Patient knowledge distil-
+lation for BERT model compression,” in EMNLP-IJCNLP 2019,
+Hong Kong, China, 2019, pp. 4323–4332.
+[22] X. Jiao, Y . Yin, L. Shang, X. Jiang, X. Chen, L. Li, F. Wang, and
+Q. Liu, “TinyBERT: Distilling BERT for natural language under-
+standing,” in Findings of the Association for Computational Lin-
+guistics: EMNLP 2020, T. Cohn, Y . He, and Y . Liu, Eds. Online:
+Association for Computational Linguistics, Nov. 2020, pp. 4163–
+4174.
+[23] E. L. Lehmann and J. P. Romano, Testing statistical hypotheses.
+Springer, 1986, vol. 3.
+[24] M. Ravanelli, T. Parcollet, P. Plantinga, A. Rouhe et al. ,
+“Speechbrain: A general-purpose speech toolkit,” preprint
+arXiv:2106.04624, 2021.
+1742

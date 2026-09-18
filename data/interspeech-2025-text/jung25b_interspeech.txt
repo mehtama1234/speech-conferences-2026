@@ -1,0 +1,880 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+Adversarial Deep Metric Learning for Cross-Modal Audio-Text Alignment in
+Open-Vocabulary Keyword Spotting
+Youngmoon Jung, Yong-Hyeok Lee, Myunghun Jung, Jaeyoung Roh, Chang Woo Han,
+Hoon-Young Cho
+Samsung Research, Seoul, South Korea
+{youngm.jung, yong h.lee, mh95.jung, jyo.roh, cw1105.han, h.y.cho}@samsung.com
+Abstract
+For text enrollment-based open-vocabulary keyword spotting
+(KWS), acoustic and text embeddings are typically compared
+at either the phoneme or utterance level. To facilitate this, we
+optimize acoustic and text encoders using deep metric learning
+(DML), enabling direct comparison of multi-modal embeddings
+in a shared embedding space. However, the inherent hetero-
+geneity between audio and text modalities presents a significant
+challenge. To address this, we propose Modality Adversarial
+Learning (MAL), which reduces the domain gap in heteroge-
+neous modality representations. Specifically, we train a modal-
+ity classifier adversarially to encourage both encoders to gen-
+erate modality-invariant embeddings. Additionally, we apply
+DML to achieve phoneme-level alignment between audio and
+text, and conduct extensive comparisons across various DML
+objectives. Experiments on the Wall Street Journal (WSJ) and
+LibriPhrase datasets demonstrate the effectiveness of the pro-
+posed approach.
+Index Terms: open-vocabulary keyword spotting, deep metric
+learning, adversarial learning, domain mismatch
+1. Introduction
+Keyword spotting (KWS) is the task of detecting specific key-
+words within audio streams and has garnered significant atten-
+tion with the growing popularity of voice assistants activated
+by keywords such as “Alexa,” “Hi Bixby,” or “Okay Google.”
+KWS systems are generally classified into fixed KWS [1–3],
+which restricts users to a predefined set of keywords, and open-
+vocabulary KWS [4–14], also referred to as flexible or user-
+defined KWS, which allows users to enroll custom keywords.
+Open-vocabulary KWS can be performed via either speech-
+based [4–7] or text-based keyword enrollment [8–14].
+Text-based keyword enrollment has gained popularity due
+to its convenience, as users can enroll keywords via text in-
+put without requiring multiple spoken examples. These sys-
+tems typically employ a text encoder for enrollment and an
+acoustic encoder for inference, both of which are optimized us-
+ing deep metric learning (DML) [15]. Commonly used DML
+objectives include triplet loss [8], Asymmetric-Proxy (AsyP)
+loss [9], and Relational Proxy (RP) loss [13]. This training
+process encourages acoustic embeddings (AEs) and text em-
+beddings (TEs) of the same keyword to be closely aligned in
+a shared space, while embeddings of different keywords are
+pushed apart. These approaches primarily focus on utterance-
+level embeddings (utterance-level matching), whereas another
+research direction explores phoneme-level audio-text align-
+ment (phoneme-level matching).
+For example, prior studies
+have leveraged attention mechanisms [10, 12, 16, 17], dynamic
+programming-based algorithms [11,18], and CTC-based align-
+ment [14] for phoneme-level matching. Despite these advance-
+ments, limited research has investigated the integration of DML
+with phoneme-level matching.
+Unlike traditional unimodal approaches, which rely solely
+on speech-based enrollment, multi-modal KWS that uses text-
+based enrollment faces challenges due to the inherent cross-
+modal heterogeneity between audio and text representations
+[18]. To address this issue, we propose Adversarial Deep Met-
+ric Learning (ADML), which incorporates Modality Adversar-
+ial Learning (MAL) into the DML framework, inspired by ad-
+versarial learning [19]. Specifically, we train the acoustic and
+text encoders to confuse a modality classifier, thereby encour-
+aging them to generate modality-invariant embeddings at both
+the phoneme and utterance levels, while the classifier simulta-
+neously attempts to distinguish between audio and text modali-
+ties. This adversarial process improves cross-modal alignment,
+resulting in more effective representation learning.
+Our key contributions are as follows: 1) For phoneme-level
+matching, we apply the AsyP loss with Adaptive Margins and
+Scaling (AdaMS) [20] and compare its performance with vari-
+ous DML objectives. 2) We introduce MAL to mitigate cross-
+modal heterogeneity in open-vocabulary KWS. To the best of
+our knowledge, this is the first work to apply adversarial learn-
+ing for reducing audio-text modality mismatches in KWS. Ad-
+ditionally, we demonstrate that MAL enhances not only our
+method but also existing approaches, highlighting its broad ap-
+plicability. 3) We incorporate a SphereFace2-based keyword
+classification loss [21], which enhances intra-modal discrimi-
+nation within the acoustic encoder.
+2. Related Work
+For phoneme-level matching, the Dynamic Sequence Partition-
+ing (DSP) algorithm [11, 18] aligns the acoustic sequence to
+match the length of the corresponding text sequence.
+After
+alignment, contrastive loss is applied by computing the aver-
+age pairwise L2 distance between aligned sequences. Instead
+of using DSP, we adopt a cross-attention mechanism [10,17] for
+alignment. To define the phoneme-level matching loss, we use
+AsyP loss with AdaMS [20], a more advanced DML approach
+that was originally developed for utterance-level matching.
+To address cross-modal heterogeneity, Nishu et al. [18]
+proposed an audio-compliant text encoder. Their method em-
+ploys a non-trainable text encoder, where the audio encoder is
+pretrained using Connectionist Temporal Classification (CTC)
+loss. Phoneme-level text embeddings are then generated by av-
+eraging the embeddings of audio frames across the entire train-
+ing set, mapped to their corresponding phonemes. While ef-
+fective, this approach requires a highly robust audio encoder
+trained on large-scale speech datasets and involves a complex
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+2645
+10.21437/Interspeech.2025-378
+
+Input
+Audio 
+𝒂
+Input
+Text 
+𝒕
+Acoustic 
+Encoder
+Text
+Encoder
+Cross
+Attention
+Pooling
+Pooling
+Affinity matrix 𝑨
+𝑇𝑡
+𝑇𝑎
+Modality
+Classifier
+Audio/
+Text
+Phoneme-level 
+DML loss (ℒphn) 
+Utterance-level 
+DML loss (ℒutt)
+𝑑
+𝑇𝑡
+𝑆(∙,∙)
+𝑆(∙,∙)
+Monotonic 
+Matching loss 
+(ℒMM)
+𝑑
+𝑑
+𝑑
+𝑇𝑎
+𝑬𝑎
+phn
+𝑇𝑡
+𝑑
+𝑬𝑡
+phn
+𝑬𝑡
+utt
+𝑬𝑎utt
+෩𝑬𝑎
+phn
+Inter-modal 
+Adversarial loss 
+(ℒadv)
+Keyword
+Classifier
+Keyword
+Classification 
+Loss (ℒkey)
+GRL
+Phoneme-level matching
+Utterance-level matching
+Modality adversarial learning
+𝑆(∙,∙)
+Cosine similarity
+GRL
+Gradient reversal layer
+Flatten
+෡𝑬𝑎
+phn
+෡𝑬𝑡
+phn
+× 𝑁
+× 𝑁
+× 𝑁
+𝑑
+× 𝑁∗
+𝑑
+× 𝑁∗
+× 𝑁
+× 𝑁
+෡𝑬𝑡
+phn
+෡𝑬𝑎
+phn
+𝑑
+× 𝑁∗
+𝑑
+× 𝑁∗
+× 𝑁
+𝑬𝑡
+utt
+𝑬𝑎utt
+𝑑
+× 𝑁
+𝑑
+× 𝑁
+Figure 1: Overall architecture of Adversarial Deep Metric Learning (ADML).
+process for text embedding extraction. Additionally, it focuses
+exclusively on phoneme-level embeddings. In contrast, our ap-
+proach addresses cross-modal heterogeneity via MAL, which
+leverages adversarial training of a modality classifier that is
+used only during training. This method simplifies the learning
+process, enhances flexibility, and enables seamless integration
+with various KWS methods. Moreover, it enables the encoders
+to learn modality-invariant representations at both the phoneme
+and utterance levels, leading to improved performance.
+3. Proposed Method
+Let {(ai, ti, yi) | i = 1, . . . , N} represent a batch of N data
+samples, where ai and ti denote the audio and text input se-
+quences, respectively, and yi represents the corresponding word
+class. The text input ti is a phoneme index sequence generated
+by a pre-trained grapheme-to-phoneme (G2P) system [22]. As
+illustrated in Fig. 1, the audio and text inputs are processed
+through their respective encoders, yielding phoneme-level em-
+beddings, Ephn
+a
+∈RTa×d and Ephn
+t
+∈RTt×d (for clarity, we
+omit the data index i in the notation). Here, Ta and Tt represent
+the sequence lengths of Ephn
+a
+and Ephn
+t , respectively, and d, the
+embedding dimension, is set to 256 in this work. Since neither
+encoder contains a subsampling layer, Ta and Tt are equal to
+the lengths of their respective inputs, a and t.
+3.1. Phoneme-Level Matching
+To address the sequence length disparity between Ephn
+a
+and
+Ephn
+t , where Ta > Tt in most cases, we employ a cross-
+attention mechanism [10, 17]. In this setup, Ephn
+t
+serves as the
+query (Q), while Ephn
+a
+acts as both the key (K) and the value
+(V ). This process computes an affinity matrix A ∈RTt×Ta,
+which aligns Ephn
+a
+with Ephn
+t . The aggregated phoneme-level
+acoustic embeddings e
+Ephn
+a
+are then calculated as:
+e
+Ephn
+a
+= Softmax(QKT
+√dk
+) × V = A × V ∈RTt×d.
+(1)
+To ensure that A exhibits monotonic and diagonal alignment
+when a and t correspond to the same keyword (i.e., the full
+matching case), we apply the monotonic matching loss (LMM)
+proposed in [10]. Unlike [10], we do not use a target matrix
+with a random noise pattern for non-matching cases.
+Using
+e
+Ephn
+a
+and Ephn
+t ,
+which now share the same
+sequence length,
+we define a phoneme-level DML loss
+(Lphn).
+To facilitate this, both e
+Ephn
+a
+and Ephn
+t
+are flattened
+along their batch and sequence length dimensions using the
+tf.ragged.boolean mask function in TensorFlow. This
+converts their original 3D shapes (N × T max
+t
+× d) into 2D
+ragged tensors of size N ∗× d, where T max
+t
+is the maximum
+sequence length in a batch and N ∗= PN
+i=1 Tt,i ≤N × T max
+t
+.
+The resulting flattened embeddings, denoted as ˆ
+Ephn
+a
+and ˆ
+Ephn
+t ,
+correspond to individual phoneme labels. Similarly, t is flat-
+tened, producing N ∗phoneme labels, denoted as ˆt. Thus, the
+mini-batch is reformulated as N ∗data tuples, represented as
+{( ˆ
+Ephn
+a,i, ˆ
+Ephn
+t,i , ˆti) | i = 1, . . . , N ∗}. The phoneme-level DML
+loss Lphn is defined using the AsyP loss, formulated as the sum
+of anchor-positive and anchor-negative terms:
+Lphn =
+1
+N ∗
+N∗
+X
+i=1
+ 1
+αELSE
+j∈Pi α(λ −S( ˆ
+Ephn
+t,i , ˆ
+Ephn
+a,j))
++MSP
+k∈Ni β(S( ˆ
+Ephn
+a,i, ˆ
+Ephn
+t,k) −λ)
+
+,
+(2)
+where Pi = {j | ˆtj = ˆti} and Ni = {k | ˆtk̸ = ˆti} represent
+the sets of positive and negative indices, respectively, and S(·, ·)
+denotes the cosine similarity. The terms ELSE and MSP refer to
+the Extended-LogSumExp function [15] and the Mean-Softplus
+function [23], respectively. The first term in Lphn draws the
+anchor ˆ
+Ephn
+t,i closer to positive samples ˆ
+Ephn
+a,j, while the second
+term pushes the anchor ˆ
+Ephn
+a,i away from negative samples ˆ
+Ephn
+t,k.
+The hyperparameters α, β, and λ control the embedding
+space boundaries and penalty levels for violations, which re-
+quire manual tuning. To automate this, we adopt the AdaMS
+[20] framework. Unlike [20], where hyperparameters are de-
+fined at the word level, we define them as learnable parameters
+specific to each phoneme class.
+3.2. Utterance-Level Matching
+For utterance-level matching, highlighted in the blue area in
+Fig. 1, we apply pooling operations to Ephn
+a
+and Ephn
+t
+to gen-
+erate utterance-level embeddings, Eutt
+a
+∈Rd and Eutt
+t
+∈Rd.
+Specifically, channel- and context-dependent statistics pooling
+(CCSP) [24] is used for Ephn
+a , while global average pooling is
+2646
+
+applied to Ephn
+t . The utterance-level DML loss (Lutt) is de-
+fined using RP loss. The primary objective of RP Loss is to
+transfer structural information from TEs to AEs by preserving
+distance- and angle-wise relationships among TEs. Building on
+our previous work [13], we employ all three variants of RP loss:
+distance-wise RP (LRPL-D), angle-wise RP (LRPL-A), and proto-
+typical RP (LRPL-P) losses.
+In [13], we demonstrated that incorporating a keyword clas-
+sification loss (Lkey) as an auxiliary objective for the acoustic
+encoder significantly enhances open-vocabulary KWS perfor-
+mance. In this work, we adopt the SphereFace2 framework,
+originally proposed for face recognition [21] and later adapted
+for speaker verification [25].
+Unlike conventional softmax
+normalization, which operates under a closed-set assumption,
+SphereFace2 loss utilizes multiple binary classifiers to train the
+model in a pair-wise manner, rather than performing multi-
+class classification. Building on prior studies demonstrating that
+SphereFace2 outperforms multi-classification-based loss func-
+tions, we extend this framework to open-vocabulary KWS and
+show that SphereFace2 is also effective for this task. To imple-
+ment this, we convert the PyTorch-based official code provided
+by [25]1 into TensorFlow.
+The total loss function for embedding learning (Lemb) is de-
+fined as follows (with λphn = 0.1):
+Lemb = Lutt + Lkey + LMM + λphnLphn.
+(3)
+3.3. Modality Adversarial Learning
+The modality classifier M, with parameters θM, consists of
+two fully connected layers with 256 hidden nodes. The clas-
+sifier takes a batch of AEs ( ˆ
+Ephn
+a , Eutt
+a ) and TEs ( ˆ
+Ephn
+t , Eutt
+t )
+as inputs and then predicts their modality labels (audio or text).
+To encourage the encoders to generate modality-invariant repre-
+sentations, we define inter-modal adversarial losses at both the
+phoneme (phn) and utterance (utt) levels as follows:
+Lphn
+adv = −1
+N ∗
+X
+m∈a,t
+N∗
+X
+i=1
+(ophn
+m,i log(M( ˆEphn
+m,i; θM)),
+Lutt
+adv = −1
+N
+X
+m∈a,t
+N
+X
+i=1
+(outt
+m,i log(M(Eutt
+m,i; θM)),
+(4)
+where ok
+m,i is the ground-truth modality label of the input em-
+bedding vector for k ∈{phn, utt}, expressed as a one-hot vec-
+tor. Here, M(·; θM) denotes the predicted modality probability
+of the input, and θM is shared for both Lphn
+adv and Lutt
+adv. The total
+adversarial loss Ladv is the summation of Lphn
+adv and Lutt
+adv.
+The core of the proposed framework lies in the interac-
+tion between two key components: the multi-modal encoders
+(acoustic and text encoders) and the modality classifier, struc-
+tured as a minimax game. The encoders aim to confuse the
+modality classifier by generating modality-invariant embed-
+dings. In contrast, the modality classifier attempts to distinguish
+embeddings based on their modality, thereby indirectly guiding
+the encoders to improve modality invariance. This adversarial
+optimization improves cross-modal alignment, leading to more
+effective modality-invariant representation learning.
+The training process jointly minimizes Lemb and Ladv. Fol-
+lowing [26], minimax optimization is implemented using a gra-
+dient reversal layer (GRL), which keeps the input unchanged
+1https://github.com/Hunterhuan/sphereface2_
+speaker_verification
+during forward propagation and multiplies the gradient by -1
+during back propagation. By inserting a GRL before the modal-
+ity classifier, the following two concurrent sub-processes are
+performed to obtain the updated parameters ˆθemb and ˆθM:
+ˆθemb = arg min
+θemb
+(Lemb(θemb) −λadvLadv(ˆθM)),
+ˆθM = arg max
+θM
+(Lemb(ˆθemb) −λadvLadv(θM)),
+(5)
+where θemb denotes all trainable parameters for embedding
+learning except θM (i.e., encoders, cross-attention layer, CCSP
+layer, and keyword classifier). We set λadv = 0.1.
+4. Experiments
+4.1. Experimental Setup
+For training, we used the King-ASR-066 dataset [27], follow-
+ing the configuration in [13], including data augmentation. This
+resulted in 4.6k hours of word-level speech segments, compris-
+ing 210k unique word classes. For evaluation, we employed
+two benchmark datasets: Wall Street Journal (WSJ) [28] and
+LibriPhrase [10]. The evaluation setups followed [13] for WSJ
+and [10] for LibriPhrase. The WSJ dataset contains 3.2k unique
+words with 18k word-level segments, augmented with synthetic
+Room Impulse Responses (RIRs) [29] and MUSAN noises [30]
+to simulate real-world conditions. For the WSJ test set, we used
+18k positive pairs and randomly selected 50 times more neg-
+ative pairs, creating a highly imbalanced trial to better reflect
+real-world conditions. To handle this imbalance, we evaluated
+model performance using Average Precision (AP) [8,9,31,32],
+which is particularly well-suited for imbalanced datasets. For
+LibriPhrase, we followed the official trial setup and evaluation
+metrices, i.e., Equal-Error Rate (EER) and Area Under the ROC
+Curve (AUC). For input acoustic features, we extracted 40-
+dimensional log Mel-filterbank coefficients with a frame length
+of 25 ms and a frame shift of 10 ms, applying mean normaliza-
+tion across each utterance.
+All experiments were implemented using TensorFlow.
+Training was performed with the AdamW optimizer, starting
+with a 10−4 learning rate, which was halved every 20 epochs,
+and a weight decay of 10−5. The model was trained for 100
+epochs, taking approximately one day on two A100 GPUs.
+Each mini-batch contained 500 utterances from 250 keywords,
+with two utterances per keyword. For the AsyP loss in Eq. (2),
+we set α = 0.01, β = 1.5, and λ = 0.01. These values were
+later dynamically adjusted within the AdaMS framework.
+For the acoustic encoder, we adopted ECAPA-TDNN [24],
+widely used in prior studies [13, 33, 34], with 256 filters and
+1.8M parameters. The text encoder consisted of a two-layer
+bi-LSTM with 256 hidden units. Input text was tokenized into
+G2P units [22], then mapped to 256-dimensional embeddings
+via a trainable lookup table. The bi-LSTM processed these se-
+quences, followed by global average pooling and a fully con-
+nected layer, producing a 256-dimensional TE. The architec-
+tural design was optimized for the computational constraints of
+the target deployment environment. During inference, only the
+two encoders and pooling layers were used, and the cosine sim-
+ilarity between Eutt
+a and Eutt
+t was computed for final matching.
+4.2. Comparison of Phoneme-Level Matching Methods
+Table 1 compares our proposed phoneme-level matching
+method with existing methods on the WSJ dataset, including
+Proxy-BD loss [23], Proxy-MS loss [15], and clat loss [35].
+2647
+
+Table 1: Comparison of phoneme-level matching losses. phn-
+level func. denotes the type of phoneme-level matching function.
+Method
+phn-level func.
+AP (%)
+utt-level
+phn-level
+RP loss
+-
+-
+75.10
+RP loss
+Proxy-BD loss [23]
+MSP
+83.72
+RP loss
+Proxy-MS loss [15]
+ELSE
+84.32
+RP loss
+clat loss [35]
+InfoNCE
+83.59
+RP loss
+AsyP loss
+ELSE+MSP
+84.42
+RP loss
+AsyP loss with AdaMS
+ELSE+MSP
+85.54
+Table 2: Performance of modality adversarial learning. DML
+indicates deep metric learning for utterance- or phoneme-level
+matching. MAL denotes modality adversarial learning.
+Method
+utt-level
+phn-level
+AP (%)
+DML
+MAL
+DML
+MAL
+RP loss [13]
+✓
+-
+-
+-
+75.10
+Proposed
+✓
+✓
+-
+-
+81.41
+✓
+-
+✓
+-
+85.54
+✓
+-
+✓
+✓
+86.12
+✓
+✓
+✓
+✓
+86.23
+CMCD [10]
+-
+-
+-
+-
+46.17
+-
+-
+-
+✓
+49.60
+PhonMatchNet [12]
+-
+-
+-
+-
+69.97
+-
+-
+-
+✓
+72.45
+Proxy-BD and Proxy-MS losses are reformulated from the orig-
+inal BD and MS losses, as presented in [9]. For a fair compari-
+son, all methods utilize the same experimental setup, including
+datasets and model architectures, differing only in the choice of
+phoneme-level matching loss (Lphn). To isolate the impact of
+Lphn, we exclude both Lkey and Ladv from Eq. 3 and Eq. 4.
+As a baseline, we evaluate RP loss [13], which applies only the
+utterance-level matching loss (Lutt) without Lphn.
+The results indicate that all phoneme-level matching losses
+outperform the RP loss baseline, demonstrating the effective-
+ness of our cross-attention-based phoneme-level alignment. In
+particular, our AsyP loss achieves the best performance among
+phoneme-level matching methods, with an 84.42% AP. This
+highlights the importance of selecting an appropriate function
+for Lphn, where using the ELSE function for the anchor-positive
+term and the MSP function for the anchor-negative term yields
+the best results, consistent with the trend observed in utterance-
+level DML loss [9]. Furthermore, incorporating the AdaMS ap-
+proach improves performance to 85.54% AP, achieving a rela-
+tive improvement of 8.40% compared to the RP loss baseline.
+4.3. Performance of Modality Adversarial Learning
+Table 2 evaluates the impact of Modality Adversarial Learn-
+ing (MAL) on phoneme- and utterance-level matching using the
+WSJ dataset. Comparing the first two rows, we observe that ap-
+plying MAL only at the utterance level (without phoneme-level
+matching loss) boosts performance from 75.10% AP to 81.41%
+AP. This configuration applies only Lutt
+adv from Eq. (4). Here,
+the first row corresponds to the RP loss baseline from Table
+1. Next, the third row represents the best-performing model
+from Table 1 (AsyP+AdaMS), which includes both utterance-
+and phoneme-level DML losses. By further adding phoneme-
+level MAL, performance improves from 85.54% to 86.12% AP.
+Finally, when MAL is applied at both utterance and phoneme
+levels, we achieve 86.23% AP, marking a 14.82% relative im-
+provement over the RP loss baseline.
+Beyond our proposed method, we also apply MAL to two
+baseline approaches, CMCD [10] and PhonMatchNet [12], both
+of which use binary cross-entropy loss.
+We reimplemented
+these baselines using the official code from [12]2. To ensure
+2https://github.com/ncsoft/PhonMatchNet
+Table 3: Comparison of keyword classification losses.
+Method
+Lkey
+AP (%)
+ADML (ours)
+-
+86.23
+Triplet loss [13]
+86.25
+AAM-Softmax loss [36]
+87.44
+SphereFace2 (SF2)
+90.24
+Table 4: Performance comparison on LibriPhrase.
+Method
+EER (%)
+AUC (%)
+LPE
+LPH
+LPE
+LPH
+CMCD [10]
+4.20
+25.94
+99.12
+81.14
+PhonMatchNet [12]
+2.33
+24.11
+99.70
+83.39
+RP loss [13]
+1.54
+22.45
+99.84
+85.31
+ADML+SF2 (ours)
+1.33
+20.09
+99.86
+88.71
+a fair comparison, all methods share the same experimental
+setup, including datasets and model architectures. Since both
+CMCD and PhonMatchNet extract only phoneme-level embed-
+dings without utterance-level embeddings, we apply only Lphn
+adv.
+Notably, we observe that MAL enhances performance not only
+for our model but also for these baseline methods, further vali-
+dating its effectiveness in reducing cross-modal discrepancies.
+4.4. Performance of Keyword Classification Loss
+Table 3 compares different keyword classification loss functions
+(Lkey) on the WSJ dataset. “ADML (ours)” refers to the best-
+performing model from Table 2, incorporating DML and MAL
+at both the phoneme and utterance levels. Applying triplet loss,
+previously used in [13], yields only a marginal improvement,
+with the AP increasing slightly from 86.23% to 86.25%, which
+differs from the findings in [13].
+AAM-Softmax loss [36],
+widely used in classification tasks, performs significantly better,
+achieving 87.44% AP. Finally, SphereFace2 delivers the best
+performance, reaching 90.24% AP, marking a 20.16% relative
+improvement over the RP loss baseline. This trend is consis-
+tent with previous findings in face recognition [21] and speaker
+verification [25] tasks.
+4.5. Performance Comparison on LibriPhrase
+We evaluate the performance on the LibriPhrase dataset, which
+consists of a hard set LPH and an easy set LPE. To evaluate gen-
+eralization, all models are trained on King-ASR-066 and tested
+on LibriPhrase without access to its training set. As in previous
+subsections, to ensure a fair comparison, all methods share the
+same experimental setup, including datasets and model archi-
+tectures. The proposed method corresponds to the best model
+from Table 3, referred to as “ADML+SF2.” We observe that
+our approach achieves the best performance on the LibriPhrase
+dataset, consistent with the results on the WSJ dataset.
+5. Conclusion
+In this work, we proposed Adversarial Deep Metric Learn-
+ing (ADML), which integrates Modality Adversarial Learning
+(MAL) into the deep metric learning (DML) framework for
+open-vocabulary KWS. To improve phoneme-level alignment,
+we introduced cross-attention-based phoneme-level matching
+with the Asymmetric-Proxy (AsyP) loss, enhanced by Adap-
+tive Margins and Scaling (AdaMS). To address cross-modal
+heterogeneity between audio and text embeddings, we intro-
+duced MAL. Additionally, we applied SphereFace2-based key-
+word classification loss, further improving intra-modal discrim-
+ination. Our experimental results on the WSJ and LibriPhrase
+datasets demonstrate that the proposed ADML outperforms ex-
+isting methods. Future work will explore more advanced adver-
+sarial learning techniques to further improve MAL.
+2648
+
+6. References
+[1] G. Chen, C. Parada, and G. Heigold, “Small-footprint keyword
+spotting using deep neural networks,” in Proc. IEEE Interna-
+tional Conference on Acoustics, Speech and Signal Processing
+(ICASSP), 2014, pp. 4087–4091.
+[2] T. N. Sainath and C. Parada, “Convolutional neural networks for
+small-footprint keyword spotting,” in Proc. Interspeech, 2015, pp.
+1478–1482.
+[3] R. Tang and J. J. Lin, “Deep residual learning for small-footprint
+keyword spotting,” in Proc. IEEE International Conference on
+Acoustics, Speech and Signal Processing (ICASSP), 2017, pp.
+5484–5488.
+[4] G. Chen, C. Parada, and T. N. Sainath, “Query-by-example key-
+word spotting using long short-term memory networks,” in Proc.
+IEEE International Conference on Acoustics, Speech and Signal
+Processing (ICASSP), 2015, pp. 5236–5240.
+[5] J. Huang, W. Gharbieh, H. S. Shim, and E. Kim, “Query-
+by-example keyword spotting system using multi-head attention
+and soft-triple loss,” in Proc. IEEE International Conference on
+Acoustics, Speech and Signal Processing (ICASSP), 2021, pp.
+6858–6862.
+[6] K. R, V. K. Kurmi, V. Namboodiri, and C. V. Jawahar, “Gener-
+alized keyword spotting using ASR embeddings,” in Proc. Inter-
+speech, 2022, pp. 126–130.
+[7] H. Lim, Y. Kim, Y. Jung, M. Jung, and H. Kim, “Learning acoustic
+word embeddings with phonetically associated triplet network,”
+arXiv:1811.02736, 2018.
+[8] W. He, W. Wang, and K. Livescu, “Multi-view recurrent neural
+acoustic word embeddings,” in Proc. International Conference on
+Learning Representations (ICLR), 2017.
+[9] M. Jung and H. Kim, “Asymmetric proxy loss for multi-view
+acoustic word embeddings,” in Proc. Interspeech, 2022, pp. 5170–
+5174.
+[10] H.-K. Shin, H. Han, D. Kim, S.-W. Chung, and H.-G. Kang,
+“Learning audio-text agreement for open-vocabulary keyword
+spotting,” in Proc. Interspeech, 2022, pp. 1871–1875.
+[11] K. Nishu, M. Cho, and D. Naik, “Matching latent encoding for
+audio-text based keyword spotting,” in Proc. Interspeech, 2023,
+pp. 1613–1617.
+[12] Y.-H. Lee and N. Cho, “PhonMatchNet: Phoneme-guided zero-
+shot keyword spotting for user-defined keywords,” in Proc. Inter-
+speech, 2023, pp. 3964–3968.
+[13] Y. Jung, S. Lee, J.-Y. Yang, J. Roh, C. W. Han, and H.-Y. Cho,
+“Relational proxy loss for audio-text based keyword spotting,” in
+Proc. Interspeech, 2024, pp. 327–331.
+[14] S. Jin, Y. Jung, S. Lee, J. Roh, C. Han, and H. Cho, “CTC-
+aligned audio-text embedding for streaming open-vocabulary key-
+word spotting,” in Proc. Interspeech, 2024, pp. 332–336.
+[15] X. Wang, X. Han, W. Huang, D. Dong, and M. R. Scott, “Multi-
+similarity loss with general pair weighting for deep metric learn-
+ing,” in Proc. the IEEE/CVF Conference on Computer Vision and
+Pattern Recognition (CVPR), 2019, pp. 5022–5030.
+[16] Z. Ai, Z. Chen, and S. Xu, “MM-KWS: Multi-modal prompts for
+multilingual user-defined keyword spotting,” in Proc. Interspeech,
+2024, pp. 2415–2419.
+[17] Y. Kim, J. Jung, J. Park, B.-Y. Kim, and J. S. Chung, “Bridg-
+ing the gap between audio and text using parallel-attention for
+user-defined keyword spotting,” IEEE Signal Processing Letters,
+vol. 31, pp. 2100–2104, 2024.
+[18] K. Nishu, M. Cho, P. Dixon, and D. Naik, “Flexible keyword spot-
+ting based on homogeneous audio-text embedding,” in Proc. IEEE
+International Conference on Acoustics, Speech and Signal Pro-
+cessing (ICASSP), 2024, pp. 5050–5054.
+[19] I. Goodfellow, J. Pouget-Abadie, M. Mirza, B. Xu, D. Warde-
+Farley, S. Ozair, A. Courville, and Y. Bengio, “Generative adver-
+sarial nets,” in Proc. Advances in Neural Information Processing
+Systems (NeurIPS), 2014.
+[20] M. Jung and H. Kim, “AdaMS: Deep metric learning with adap-
+tive margin and adaptive scale for acoustic word discrimination,”
+in Proc. Interspeech, 2023, pp. 3924–3928.
+[21] Y. Wen, W. Liu, A. Weller, B. Raj, and R. Singh, “SphereFace2:
+Binary classification is all you need for deep face recognition,”
+in Proc. International Conference on Learning Representations
+(ICLR), 2022.
+[22] K. Park and J. Kim,
+“g2pe,”
+2019. [Online]. Available:
+https://github.com/Kyubyong/g2p
+[23] D. Yi, Z. Lei, S. Liao, and S. Z. Li, “Deep metric learning for per-
+son re-identification,” in Proc. International Conference on Pat-
+tern Recognition, 2014, pp. 34–39.
+[24] B. Desplanques, J. Thienpondt, and K. Demuynck, “ECAPA-
+TDNN: Emphasized channel attention, propagation and aggre-
+gation in TDNN based speaker verification,” arXiv:2005.07143,
+2020.
+[25] B. Han, Z. Chen, and Y. Qian, “Exploring binary classification
+loss for speaker verification,” in Proc. IEEE International Confer-
+ence on Acoustics, Speech and Signal Processing (ICASSP), 2023,
+pp. 1–5.
+[26] Y. Ganin and V. Lempitsky, “Unsupervised domain adaptation by
+backpropagation,” in Proc. the International Conference on Ma-
+chine Learning (ICML), 2015, pp. 1180–1189.
+[27] DataOceanAI, “King-ASR-066,”
+2015. [Online]. Available:
+https://en.speechocean.com/datacenter/details/1446.html
+[28] D. B. Paul and J. M. Baker, “The design for the wall street journal-
+based CSR corpus,” in Proc. the Workshop on Speech and Natural
+Language, 1992, pp. 357–362.
+[29] T. Ko, V. Peddinti, D. Povey, M. L. Seltzer, and S. Khudanpur,
+“A study on data augmentation of reverberant speech for robust
+speech recognition,” in Proc. IEEE International Conference on
+Acoustics, Speech and Signal Processing (ICASSP), 2017, pp.
+5220–5224.
+[30] D. Snyder, G. Chen, and D. Povey, “Musan: A music, speech, and
+noise corpus,” arXiv:1510.08484v1, 2015.
+[31] Y. Hu, S. Settle, and K. Livescu, “Multilingual jointly trained
+acoustic and written word embeddings,” in Proc. Interspeech,
+2020, pp. 1052–1056.
+[32] M. Jung, H. Lim, J. Goo, Y. Jung, and H. Kim, “Additional shared
+decoder on siamese multi-view encoders for learning acoustic
+word embeddings,” in Proc. IEEE Workshop on Automatic Speech
+Recognition and Understanding (ASRU), 2019, pp. 629–636.
+[33] H. Li, B. Yang, Y. Xi, L. Yu, T. Tan, H. Li, and K. Yu, “Text-aware
+speech separation for multi-talker keyword spotting,” in Proc. In-
+terspeech, 2024, pp. 337–341.
+[34] Y. Jung, J. Lee, S. Lee, M. Jung, Y.-H. Lee, and H.-Y. Cho, “Text-
+aware adapter for few-shot keyword spotting,” in Proc. IEEE In-
+ternational Conference on Acoustics, Speech and Signal Process-
+ing (ICASSP), 2025.
+[35] L. Kewei, Z. Hengshun, S. Kai, D. Yusheng, and D. Jun,
+“Phoneme-level contrastive learning for user-defined keyword
+spotting with flexible enrollment,” arXiv:2412.20805, 2024.
+[36] W. Liu, Y. Wen, Z. Yu, M. Li, B. Raj, and L. Song, “SphereFace:
+Deep hypersphere embedding for face recognition,” in Proc. the
+IEEE/CVF Conference on Computer Vision and Pattern Recogni-
+tion (CVPR), 2017, pp. 3967–3976.
+2649
+

@@ -1,0 +1,622 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+Neural Spectral Band Generation for Audio Coding
+Woongjib Choi1, Byeong Hyeon Kim1, Hyungseob Lim1, Inseon Jang2, Hong-Goo Kang1
+1Department of Electrical and Electronic Engineering, Yonsei University, Seoul, South Korea
+2Electronics and Telecommunications Research Institute, Daejeon, South Korea
+{woongzip1, bhkim98, hyungseob.lim}@dsp.yonsei.ac.kr,
+jinsn@etri.re.kr, hgkang@yonsei.ac.kr
+Abstract
+Spectral band replication (SBR) enables bit-efficient coding
+by generating high-frequency bands from the low-frequency
+ones. However, it only utilizes coarse spectral features upon a
+subband-wise signal replication, limiting adaptability to diverse
+acoustic signals. In this paper, we explore the efficacy of a deep
+neural network (DNN)-based generative approach for coding
+the high-frequency bands, which we call neural spectral band
+generation (n-SBG). Specifically, we propose a DNN-based
+encoder-decoder structure to extract and quantize the side infor-
+mation related to the high-frequency components and generate
+the components given both the side information and the decoded
+core-band signals. The whole coding pipeline is optimized with
+generative adversarial criteria to enable the generation of per-
+ceptually plausible sound. From experiments using AAC as the
+core codec, we show that the proposed method achieves a better
+perceptual quality than HE-AAC-v1 with much less side infor-
+mation.
+Index Terms: audio coding, spectral band replication, genera-
+tive adversarial training
+1. Introduction
+The primary objective of audio coding (or audio compression)
+is to reduce the amount of data needed to represent audio signals
+while preserving the quality of the decoded output [1, 2]. Au-
+dio coding schemes can be classified as either lossless or lossy.
+Lossless coding preserves the original signal exactly, whereas
+lossy coding achieves higher compression by permitting some
+quality loss.
+In particular, perceptual audio coding [2, 3], a
+form of lossy compression, aims to maximize the data efficiency
+while maintaining perceived audio quality as much as possi-
+ble. These methods exploit psychoacoustics [4]—studies on
+the relationship between acoustic stimuli and human auditory
+perception—to determine the optimal bit allocation over fre-
+quency bins under a bit-budget restriction. By employing psy-
+choacoustic models (PAMs) to assess the perceptual saliency of
+audio components, perceptual audio codecs assign fewer bits to
+less perceptually significant components, thereby achieving a
+higher compression ratio without noticeably degrading quality.
+At low bit-rates, many perceptual audio codecs [5,6] opt to
+totally discard some spectral components above a certain fre-
+quency, prioritizing the encoding of lower-frequency content.
+While this strategy efficiently reduces bit-rate requirements, the
+resulting bandwidth limitation can lead to muffled sound qual-
+ity [7, Chapter 5]. To address these issues, many perceptual
+This work was supported by Electronics and Telecommunications
+Research Institute (ETRI) grant funded by the Korean government.
+[25ZC1100, The research of the basic media·contents technologies]
+Figure 1: An overview of neural Spectral Band Generation (n-
+SBG). The SBG encoder extracts quantized parameters from the
+input audio, while the SBG decoder generates high-frequency
+subbands based on the transmitted parameters and coded low-
+frequency bands. The core decoder and embedding extractor
+modules are shared across the encoder and decoder sides, while
+the core encoder and core decoder remain fixed and not trained.
+codecs such as HE-AAC [8], MP3Pro [9] and Opus [10] in-
+corporate spectral band replication (SBR) [11] (or a similar
+method), a technique designed to perceptually encode the high-
+frequency components using the existing core-band signals in
+an efficient manner. In the encoding stage, the input audio sig-
+nal is analyzed by a filterbank and the key encoding parameters
+such as spectral envelope information and noise level estimates
+are extracted by a SBR encoder to be used for reconstructing
+the high-frequency components from the low-frequency ones.
+These parameters are then quantized and transmitted to the de-
+coder. In the decoding stage, the core codec output is separated
+into subband signals, and a SBR decoder reconstructs high-
+frequency components by replicating low-frequency subband
+signals into the high-frequency range. The replicated subband
+signals are then adjusted based on the transmitted parameters
+and further enhanced with sinusoids or noise if needed.
+The SBR is a well-established parametric approach to audio
+bandwidth extension (BWE), a task of reconstructing missing
+high-frequency components from band-limited signals. Specifi-
+cally in the case of SBR, low-frequency band information along
+with encoded side information is utilized to generate high-
+frequency spectral content. In parallel, numerous DNN-based
+BWE [12–15] approaches have emerged, with the aim of gen-
+erating missing high-frequency spectra from low-band inputs
+(i.e., blind BWE). Building upon these approaches, one may
+expect to replace the SBR with a DNN-based BWE model in
+the audio coding pipeline. However, this straightforward in-
+tegration may be unsuitable for general audio signals, as the
+correlation between the low-band and the high-band character-
+istics varies depending on the content [16]. Unlike these blind
+approaches, where the missing high-frequency content must be
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+624
+10.21437/Interspeech.2025-1370
+
+inferred without prior information, audio coding has access to
+the full-band signal at the encoder [7, Chapter 5]. This funda-
+mental difference allows for the extraction of extra information
+that guides high-frequency reconstruction more accurately.
+Inspired by SBR, we propose neural Spectral Band Gen-
+eration (n-SBG) as a new framework to integrate DNN-based
+BWE models into traditional audio coding pipelines for more
+efficient high-frequency restoration.
+Figure 1 provides an
+overview of the proposed n-SBG framework. During encoding,
+a feature map is extracted and quantized from the original full-
+band audio, then transmitted as SBG parameters. The decoder
+utilizes these parameters together with the core codec’s band-
+limited output to generate the desired high-frequency bands.
+The key contributions of this research can be summarized as
+follows:
+• We propose a novel framework for parametric coding of high-
+frequency bands at low bit-rate conditions, replacing the rule-
+based SBR with a DNN-based encoder-decoder architecture.
+• Our work lays the foundation for a new paradigm in high-
+frequency coding by leveraging information from core codec
+outputs for more efficient feature extraction and accurate re-
+construction.
+2. Related Works
+2.1. Bandwidth Extension
+DNN-based blind BWE approaches typically use generative
+models such as diffusion models [12,13] or generative adversar-
+ial networks (GAN) [14,15] to estimate high-frequency content
+from low-frequency inputs, based on distributions learned from
+full-band audio data. These methods have been found to be
+particularly effective for speech signals [15], as high-frequency
+patterns in speech are more predictable than those in music and
+general audio, but their performance for general audio has not
+yet been fully validated.
+2.2. Neural Audio Codecs
+Neural audio codecs (NACs) compress signals through an
+encoder-quantizer-decoder pipeline, often incorporating resid-
+ual vector quantization (RVQ) to discretize latent embeddings
+from the encoder.
+Representative examples such as Sound-
+Stream [17], EnCodec [18], and DAC [19] employ convolu-
+tional autoencoders to process time-domain audio signals. To
+further improve perceptual quality, these methods often incor-
+porate adversarial training with frequency-domain discrimina-
+tors. Recently, a blind BWE module was integrated into a NAC
+to reduce bit-rate [20], primarily focusing on speech signals. To
+generalize across diverse audio signals, our approach transmits
+additional parameters for high-frequency generation through a
+dedicated encoder module.
+2.3. Post-Processing with Auxiliary Information
+While many works aim to enhance degraded codec outputs
+solely based on the decoded signal itself [21–23], some post-
+processing modules incorporate features obtained from the in-
+put signal before encoding to improve the performance of the
+enhancement. For instance, [24] and [25] extract quantized fea-
+tures from the frequency-domain representation of the input sig-
+nal using convolutional networks, which are then provided for
+the enhancement. However, these methods primarily focus on
+speech signals with low sampling rates.
+3. Proposed Method
+The proposed method consists of two main components—SBG
+encoder and decoder—as shown in Figure 2.
+The SBG en-
+coder extracts SBG parameters (lying in an embedding space)
+from the STFT coefficients of the input audio, while the SBG
+decoder generates high-frequency subband signals for Pseudo-
+Quadrature Mirror Filters (PQMF) [26] based on the transmit-
+ted SBG parameters and the decoded low-frequency subband
+signals from the core-codec. Additionally, the output embed-
+dings from the bottleneck of the SBG decoder are provided to
+the SBG encoder as a conditional input, making the extraction
+of side information dependent on the coded core bands. Com-
+pared to SBR, our method replaces the rule-based parameter
+extraction and synthesis pipeline with a fully neural-network-
+based approach, optimized in an end-to-end manner. The de-
+tails of each processing module are explained in the following
+subsections.
+3.1. SBG encoder
+The SBG encoder is designed with an architecture similar to
+ResNet-18 [27]. The input audio signal x ∈RT ′ is transformed
+into a log-power spectrogram xstft ∈R1×F ×T , where T ′, T,
+and F indicates the length of the input audio signal, the number
+of frames, and the number of frequency bins, respectively. Only
+the frequency bins corresponding to the range generated by the
+SBG decoder are provided to the feature encoder. The selected
+spectral coefficients, represented as ˆxstft ∈R1×F ′×T , are then
+processed by the feature encoder.
+The feature encoder (shown in Figure 2.a) consists of an
+initial 2D-convolution with a kernel size of (7, 7), stride fac-
+tor of (2, 1) and an output channel size of D/8, followed by
+max pooling layer with a kernel size of (3, 3) and stride factor
+of (2, 1), and four Residual Stages. Each Residual Stage con-
+tains 3 × 3 convolutions and ReLU activations. The last three
+stages progressively double the input channel size and halve
+the frequency resolution. The feature encoder then produces
+an output embedding z ∈RD×(F ′/Sf )×T , where Sf = 32.
+All convolutional layers in the feature encoder are causal. The
+extracted feature embedding z is linearly projected into an Sf-
+dimensional space, and then reshaped into z′ ∈RF ′×T .
+Following the quantization scheme of DAC [19], we use
+RVQ to quantize z′ into SBG parameter ˆz.
+The RVQ con-
+sists of Nq layers of vector quantization (VQ), each with an
+N-dimensional codebook containing M learnable code vectors,
+where N < F ′. The bit-rate of the SBG parameter is calculated
+as fs
+H · Nq · ⌈log2 M⌉(bps), where fs denotes the sampling rate
+and H is the hop length of the STFT.
+3.2. SBG decoder
+As shown in Figure 2.b, the SBG decoder receives two in-
+puts:
+(1) the coded core-band signal xcore, which is de-
+composed into critically-sampled subbands (b(core)
+1
+, . . . , b(core)
+Ncore )
+and (2) the SBG parameters ˆz from the SBG encoder.
+Us-
+ing these, the SBG decoder generates high-frequency bands
+(b(gen)
+Ncore+1, . . . , b(gen)
+Ncore+NHF), which are subsequently combined
+with the subbands of the coded core-bands and synthesized into
+the bandwidth-extended output ˆx. We use 32-channel PQMF
+filterbanks for the subband analysis and synthesis.
+We adopt SEANet [14, 28], a time-domain speech BWE
+model, as the backbone for the SBG decoder and extend its ar-
+chitecture to process multi-channel input and output. Specif-
+ically, the SBG decoder begins with an initial 1D-convolution
+625
+
+Figure 2: Detailed descriptions of the encoder and the decoder architecture: (a) SBG encoder architecture with details of the feature
+encoder and the projection layer, (b) SBG decoder architecture.
+layer that expand the channel size from Ncore to C. Next, the
+feature maps pass through four Encoder Blocks (i.e., Embed-
+ding Extractor), which downsample along the temporal axis
+and double the channel size. Following the Encoder Blocks,
+the signal reaches the bottleneck stage, which consists of two
+1D-convolution layers. The first layer reduces the channel size
+from 16C into 4C, and the second layer expands it back to
+16C. Then, four Decoder Blocks (i.e., Band Generator) suc-
+cessively invert the process of the Encoder Block. An addition-
+based skip connection links each corresponding encoder and de-
+coder block. Finally, the last 1D-convolution outputs NHF chan-
+nels corresponding to the high-frequency subbands to be recon-
+structed. We set the stride factors of the downsampling layers
+to (1, 2, 2, 2). Given that the PQMF analysis process already
+downsamples the input signal by a factor of 32, the downsam-
+pling layers further reduces the time resolution by an additional
+factor of 23 = 8, resulting in an overall reduction up to 256. All
+convolution layers within the SBG decoder are causal, ensur-
+ing real-time processing that remains consistent with the causal
+structure of the SBG encoder.
+3.3. Conditioning scheme
+The n-SBG leverages two complementary forms of condition-
+ing. First, the SBG decoder extracts latent embeddings h ∈
+R4C×(T ′/256) from its bottleneck and feeds it to the four Resid-
+ual Stages of the SBG encoder. This makes the extraction of
+SBG parameters dependent on the coded core band, resulting in
+more efficient usage of the bit-rate. Second, the SBG parameter
+ˆz ∈RSf ×(T ′/H) is provided to the last bottleneck layer and
+the four Decoder Blocks of the SBG decoder, facilitating more
+accurate reconstruction of high-frequency bands.
+We utilize Temporal Feature-wise Linear Modulation
+(TFiLM) [29] to modulate the activation of a specific layer at
+each timestep, conditioning it based on a conditional input. Let
+a ∈RCa×...×Ta be the activation to be modulated, where Ca
+is the channel size and Ta is the number of timesteps. We ex-
+tract two parameters β, γ ∈RCa×Ta from a conditional input
+b ∈RCb×Tb. If Tb > Ta, we use a strided convolution; oth-
+erwise, we replicate each timestep of b to align the temporal
+resolution with a. The resampled tensor bre ∈RCb×Ta is then
+mapped to the shape (Ca, Ta) through a point-wise linear pro-
+jection. Finally, each timestep of the activation a is modulated
+as follows:
+a(mod)
+t
+= γ′
+t · at + β′
+t,
+for 0 ≤t < Ta,
+(1)
+where at, a(mod)
+t
+∈RCa×···×1, and βt, γt ∈RCa×1 are re-
+shaped into β′
+t ∈RCa×···×1 and γ′
+t ∈RCa.
+4. Experiments
+4.1. Training Objectives
+We apply a GAN framework [17–19] to train the n-SBG, treat-
+ing the entire framework as a generator. The training objective
+of the generator (Ltotal
+G
+) is composed of a weighted sum of var-
+ious loss functions:
+Ltotal
+G
+= λmelLmel + λadvLadv
+G
++ λfmLfm
++ λcbLcb + λcmLcm,
+(2)
+where the weighting coefficients are set as λmel = 15, λadv
+G
+=
+3, λfm = 6, λcb = 1, and λcm = 0.5. The multi-scale mel-
+reconstruction loss, Lmel, is computed across seven different
+frequency resolutions [19] and is defined as follows:
+Lmel =
+7
+X
+i=1
+∥log10 Mi(x) −log10 Mi(ˆx) ∥1,
+(3)
+where Mi(·) represents the mel-spectrogram at scale i, com-
+puted using a window length of 24+i, a hop size of 22+i, and
+5 × 2i mel bins. For adversarial training, we use the hinge loss
+(Ladv
+G ) [30] and the feature matching loss (Lfm). Additionally,
+we use two auxiliary losses to train the RVQ: the codebook loss
+(Lcb) and the commitment loss (Lcm) [31]. We employ multi-
+band STFT-based discriminators [19] and multi-period discrim-
+inators [32] to enable high-fidelity reconstruction. These dis-
+criminators are trained using a hinge loss (Ladv
+D ) with a weight-
+ing factor of λadv
+D
+= 1.
+All training objective functions are calculated between the
+output signal ˆx and the target signal xtgt, where xtgt is synthe-
+sized from (b(core)
+1
+, . . . , b(core)
+Ncore , b(input)
+Ncore+1, . . . , b(input)
+Ncore+NHF) via a
+PQMF synthesis filterbank.
+4.2. Dataset and Experimental Setup
+For training,
+we utilize three datasets:
+FSD-50K [33],
+MUSDB18-HQ [34], and VCTK [35]. These datasets provide
+approximately 70 hours of diverse sound events, 30 hours of
+music, and 30 hours of speech content, respectively. For eval-
+uation, we used 43 candidate test items for USAC standardiza-
+tion [36], consisting of 11 for speech, 18 for music, and 14 for
+mixed signals, respectively. All datasets have a sampling rate of
+48 kHz.
+In the experiment, we compare n-SBG with Fraunhofer
+FDK HE-AAC v11, where both share the same core codec.
+We used HE-AAC v1 at 12 and 16 kbps bitrate settings. The
+1https://tsrac.ffmpeg.org/wiki/Encode/AAC
+626
+
+Figure 3: Rate-distortion curves comparing FDK HE-AAC v1 and the proposed model, both generated using the AAC core output at
+the same side information bitrate. Distortion measure: (a) NMR ↓(b) 2f-model MMS ↑(c) ViSQOL MOS ↑
+Figure 4: A/B preference test results comparing n-SBG with
+HE-AAC v1 under different core bit-rate conditions: (a) AAC-
+LC @9.4 kbps (b) AAC-LC @13.0 kbps. Values in the parenthe-
+ses indicate the bit-rate of side information.
+split of the subbands (Ncore, NHF) for the n-SBG follows the
+configuration of HE-AAC v1, using (5, 10) and (5, 11) at 12
+and 16 kbps respectively. The n-SBG encoder outputs a 512-
+dimensional vector per STFT frame, with both window length
+and hop length set to 2048, i.e., (D, H) = (512, 2048). RVQ
+of n-SBG encoder has a maximum bit-rate similar to that of the
+SBR in HE-AAC v1. Each codebook contains 1024 number of
+8-dimensional code vectors, where Nq = 11, 13 for 12 and 16
+kbps setups, respectively. For inference, the bit-rate of the SBG
+parameters can be adjusted by bypassing the last few VQ layers.
+The n-SBG decoder has a channel size of C = 64. We trained
+n-SBG using the Adam optimizer with an initial learning rate
+of 1.0 × 10−4, (β1, β2) = (0.5, 0.9), and exponential learning
+rate decay with γ = 0.999996 for both the generator and the
+discriminators.
+4.3. Experimental Results
+We evaluate the performance of the proposed method using
+NMR [37], 2f-model MMS [38], and ViSQOL MOS (audio
+mode) [39] as objective metrics.
+Figure 3 shows the rate-
+distortion curves based on the bit-rate of the side information.
+We compare n-SBG and HE-AAC v1 at various bit-rates for
+the side information, both utilizing AAC-LC at either 13.0 kbps
+or 9.4 kbps as a core codec. For reference signals, full-band
+signals were low-pass filtered to match the bandwidth specifi-
+cations of HE-AAC v1. When consuming similar bit-rates for
+the side information, the n-SBG consistently outperforms the
+HE-AAC v1 across all objective metrics. With respect to 2f-
+model MMS, n-SBG maintains comparable performance to the
+HE-AAC v1 while utilizing approximately half the bit-rate for
+the side information.
+Figure 4 illustrates the results of an A/B preference test con-
+ducted with 14 participants, using randomly selected 9 audio
+samples (3 speech, 3 music, and 3 mixed) from the test set. The
+listening test follows the same experimental setup as the objec-
+Table 1: Objective scores comparing Blind SBG and n-SBG
+NMR ↓
+2f-model ↑
+ViSQOL ↑
+Core: AAC-LC @ 9.4 kbps
+-1.74
+28.34
+2.52
++ Blind SBG
+3.78
+32.15
+3.38
++ n-SBG (+2.57 kbps)
+-2.80
+46.04
+4.38
+Core: AAC-LC @13.0 kbps
+-2.05
+33.00
+2.38
++ Blind SBG
+1.51
+37.47
+3.34
++ n-SBG (+3.04 kbps)
+-3.54
+55.83
+4.44
+tive evaluation. Results show that n-SBG achieves higher pref-
+erence scores compared to HE-AAC v1, even when the n-SBG
+allocates about half the bit-rates for the side information. Fur-
+thermore, the preference for n-SBG over SBR becomes more
+dominant as the bit-rate of the core codec decreases, indicating
+the effectiveness of n-SBG in low bit-rate conditions.
+4.4. Ablation Study and Discussion
+In Table 1, we compare the objective evaluation results of the
+core codec output, the n-SBG output, and the output from n-
+SBG without side information, referred to as Blind SBG. The
+Blind SBG significantly underperforms n-SBG and shows even
+worse NMR than the core codec output, indicating severe audi-
+ble noise is introduced. These results highlight the necessity of
+side information for generating high-frequency components of
+complex audio signals.
+Despite the overall performance of n-SBG surpassing SBR,
+its effectiveness varies depending on the characteristics of au-
+dio signals. n-SBG generates more realistic and vibrant tran-
+sient components than the SBR but often struggles with gen-
+erating tonal components with prominent harmonic structures.
+For future research, we will explore more effective conditioning
+strategies and high-frequency generation methods while also
+aiming to develop a system adaptive to various core codecs with
+different bit-rates.
+5. Conclusion
+In this work, we propose neural Spectral Band Generation
+(n-SBG), an alternative approach to rule-based Spectral Band
+Replication (SBR). The proposed method reconstructs high-
+frequency components by encoding and transmitting paramet-
+ric information, which the SBG decoder efficiently utilizes for
+generation. Experimental results demonstrate that the n-SBG
+significantly outperforms the SBR at comparable bit-rates, with
+particularly notable efficiency gains observed in low bit-rate
+scenarios. However, n-SBG struggles with generating complex
+tonal components and requires training separate models for dif-
+ferent bit-rates. Developing a unified system adaptive to various
+core codecs and bit-rates should be investigated in future works.
+627
+
+6. References
+[1] M. Bosi and R. E. Goldberg, Introduction to digital audio coding
+and standards.
+Springer Science & Business Media, 2002.
+[2] T. Painter and A. Spanias, “Perceptual coding of digital audio,”
+Proceedings of the IEEE, vol. 88, no. 4, pp. 451–515, 2000.
+[3] J. D. Johnston, “Estimation of perceptual entropy using noise
+masking criteria,” in IEEE International Conference on Acous-
+tics, Speech and Signal Processing (ICASSP).
+IEEE, 1988, pp.
+2524–2527.
+[4] H. Fastl and E. Zwicker, Psychoacoustics: facts and models.
+Springer Science & Business Media, 2006, vol. 22.
+[5] Information technology — Coding of moving pictures and asso-
+ciated audio for digital storage media at up to about 1,5 Mbit/s,
+Part 3: Audio, ISO/IEC 11172-3, 1993.
+[6] M. Bosi, K. Brandenburg, S. Quackenbush, L. Fielder, K. Aka-
+giri, H. Fuchs, and M. Dietz, “ISO/IEC MPEG-2 advanced audio
+coding,” Journal of the Audio engineering society, vol. 45, no. 10,
+pp. 789–814, 1997.
+[7] E. Larsen and R. M. Aarts, Audio bandwidth extension: appli-
+cation of psychoacoustics, signal processing and loudspeaker de-
+sign.
+John Wiley & Sons, 2005.
+[8] Information technology — Coding of Audio-Visual Objects — Part
+3: Audio, ISO/IEC 14496-3, 2005.
+[9] T. Ziegler, A. Ehret, P. Ekstrand, and M. Lutzky, “Enhancing mp3
+with SBR: Features and capabilities of the new mp3PRO algo-
+rithm,” in Audio Engineering Society Convention 112.
+Audio
+Engineering Society, 2002.
+[10] J.-M. Valin, G. Maxwell, T. B. Terriberry, and K. Vos, “High-
+quality, low-delay music coding in the opus codec,” in Audio En-
+gineering Society Convention 135.
+Audio Engineering Society,
+2013.
+[11] M. Dietz, L. Liljeryd, K. Kjorling, and O. Kunz, “Spectral band
+replication, a novel approach in audio coding,” in Audio Engineer-
+ing Society Convention 112.
+Audio Engineering Society, 2002.
+[12] S. Han and J. Lee, “Nu-wave 2: A general neural audio upsam-
+pling model for various sampling rates,” in Proc. Interspeech,
+2022, pp. 4401–4405.
+[13] H. Liu, K. Chen, Q. Tian, W. Wang, and M. D. Plumbley, “Au-
+dioSR: Versatile audio super-resolution at scale,” in IEEE Inter-
+national Conference on Acoustics, Speech and Signal Processing
+(ICASSP).
+IEEE, 2024, pp. 1076–1080.
+[14] Y. Li, M. Tagliasacchi, O. Rybakov, V. Ungureanu, and D. Rob-
+lek, “Real-time speech frequency bandwidth extension,” in IEEE
+International Conference on Acoustics, Speech and Signal Pro-
+cessing (ICASSP).
+IEEE, 2021, pp. 691–695.
+[15] Y.-X. Lu, Y. Ai, H.-P. Du, and Z.-H. Ling, “Towards high-quality
+and efficient speech bandwidth extension with parallel amplitude
+and phase prediction,” IEEE/ACM Transactions on Audio, Speech,
+and Language Processing, vol. 33, pp. 236–250, 2025.
+[16] P. Ekstrand et al., “Bandwidth extension of audio signals by spec-
+tral band replication,” in Proc. 1st IEEE Benelux Workshop on
+Model based Processing and Coding of Audio (MPCA-2002),
+vol. 6, 2002.
+[17] N.
+Zeghidour,
+A.
+Luebs,
+A.
+Omran,
+J.
+Skoglund,
+and
+M. Tagliasacchi, “Soundstream:
+An end-to-end neural audio
+codec,” IEEE/ACM Transactions on Audio, Speech, and Lan-
+guage Processing, vol. 30, pp. 495–507, 2021.
+[18] A. D´efossez, J. Copet, G. Synnaeve, and Y. Adi, “High fidelity
+neural audio compression,” Transactions on Machine Learning
+Research, 2023.
+[19] R. Kumar, P. Seetharaman, A. Luebs, I. Kumar, and K. Kumar,
+“High-fidelity audio compression with improved RVQGAN,” Ad-
+vances in Neural Information Processing Systems, vol. 36, 2024.
+[20] Y. Ai, Y.-X. Lu, X.-H. Jiang, Z.-Y. Sheng, R.-C. Zheng, and Z.-H.
+Ling, “A low-bitrate neural audio codec framework with band-
+width reduction and recovery for high-sampling-rate waveforms,”
+in Proc. Interspeech, 2024, pp. 1765–1769.
+[21] A. Biswas and D. Jia, “Audio codec enhancement with genera-
+tive adversarial networks,” in IEEE International Conference on
+Acoustics, Speech and Signal Processing (ICASSP), 2020, pp.
+356–360.
+[22] J. Deng, B. Schuller, F. Eyben, D. Schuller, Z. Zhang, H. Fran-
+cois, and E. Oh, “Exploiting time-frequency patterns with LSTM-
+RNNs for low-bitrate audio restoration,” Neural Computing and
+Applications, vol. 32, no. 4, pp. 1095–1107, 2020.
+[23] K. Gupta, S. Korse, B. Edler, and G. Fuchs, “A DNN based post-
+filter to enhance the quality of coded speech in MDCT domain,” in
+IEEE International Conference on Acoustics, Speech and Signal
+Processing (ICASSP).
+IEEE, 2022, pp. 836–840.
+[24] S. Hwang, Y. Cheon, S. Han, I. Jang, and J. W. Shin, “Enhance-
+ment of coded speech using neural network-based side informa-
+tion,” IEEE Access, vol. 9, pp. 121 532–121 540, 2021.
+[25] J. Lin, K. Kalgaonkar, Q. He, and X. Lei, “Speech enhancement
+for low bit rate speech codec,” in IEEE International Conference
+on Acoustics, Speech and Signal Processing (ICASSP).
+IEEE,
+2022, pp. 7777–7781.
+[26] H. J. Nussbaumer and M. Vetterli, “Pseudo quadrature mirror fil-
+ters,” in Proceedings International Conference on Digital Signal
+Processing, 1984.
+[27] K. He, X. Zhang, S. Ren, and J. Sun, “Deep residual learning
+for image recognition,” in Proceedings of the IEEE conference on
+computer vision and pattern recognition, 2016, pp. 770–778.
+[28] M. Tagliasacchi, Y. Li, K. Misiunas, and D. Roblek, “Seanet: A
+multi-modal speech enhancement network,” in Proc. Interspeech,
+2020, pp. 1126–1130.
+[29] S. Birnbaum, V. Kuleshov, Z. Enam, P. W. W. Koh, and S. Ermon,
+“Temporal FiLM: Capturing long-range sequence dependencies
+with feature-wise modulations.” Advances in Neural Information
+Processing Systems, vol. 32, 2019.
+[30] J. H. Lim and J. C. Ye, “Geometric gan,” arXiv preprint
+arXiv:1705.02894, 2017.
+[31] A. Van Den Oord, O. Vinyals et al., “Neural discrete representa-
+tion learning,” Advances in Neural Information Processing Sys-
+tems, vol. 30, 2017.
+[32] J. Kong, J. Kim, and J. Bae, “HiFi-GAN: Generative adversar-
+ial networks for efficient and high fidelity speech synthesis,” Ad-
+vances in Neural Information Processing Systems, vol. 33, pp.
+17 022–17 033, 2020.
+[33] E. Fonseca, X. Favory, J. Pons, F. Font, and X. Serra, “FSD50k: an
+open dataset of human-labeled sound events,” IEEE/ACM Trans-
+actions on Audio, Speech, and Language Processing, vol. 30, pp.
+829–852, 2021.
+[34] Z. Rafii, A. Liutkus, F.-R. St¨oter, S. I. Mimilakis, and R. Bittner,
+“The MUSDB18 corpus for music separation,” 2017.
+[35] C. Veaux, J. Yamagishi, K. MacDonald et al., “CSTR VCTK
+corpus: English multi-speaker corpus for CSTR voice cloning
+toolkit,” University of Edinburgh. The Centre for Speech Tech-
+nology Research (CSTR), vol. 6, p. 15, 2017.
+[36] M. Neuendorf, P. Gournay, M. Multrus, J. Lecomte, B. Bessette,
+R. Geiger, S. Bayer, G. Fuchs, J. Hilpert, N. Rettelbach et al.,
+“Unified speech and audio coding scheme for high quality at low
+bitrates,” in IEEE International Conference on Acoustics, Speech
+and Signal Processing (ICASSP).
+IEEE, 2009, pp. 1–4.
+[37] K. Brandenburg and T. Sporer, “‘NMR’ and ‘Masking Flag’:
+Evaluation of quality using perceptual criteria,” in Audio engi-
+neering society conference: 11th international conference: test
+& measurement.
+Audio Engineering Society, 1992.
+[38] T. Kastner and J. Herre, “An efficient model for estimating sub-
+jective quality of separated audio source signals,” in 2019 IEEE
+Workshop on Applications of Signal Processing to Audio and
+Acoustics (WASPAA).
+IEEE, 2019, pp. 95–99.
+[39] M. Chinen, F. S. Lim, J. Skoglund, N. Gureev, F. O’Gorman, and
+A. Hines, “ViSQOL v3: An open source production ready objec-
+tive speech and audio metric,” in 2020 twelfth international con-
+ference on quality of multimedia experience (QoMEX).
+IEEE,
+2020, pp. 1–6.
+628
+

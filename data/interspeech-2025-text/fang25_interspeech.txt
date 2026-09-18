@@ -1,0 +1,631 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+MMLoRA: Multitask Memory Parameter-Efficient Fine-Tuning for
+Multimodal SER
+Yuanbo Fang1, Xiaofen Xing1,∗, Xueru Li1, Weibin Zhang2, Xiangmin Xu1,3
+1South China University of Technology, China
+2VoiceAI Technologies, China
+3Pazhou Lab, China
+eeybfang@mail.scut.edu.cn, xfxing@scut.edu.cn
+Abstract
+The differences in emotional expression present significant
+challenges for the development of effective emotion recogni-
+tion systems. Although large language models (LLMs) have
+demonstrated strong performance, their generalization in emo-
+tion recognition tasks is often limited by variations in indi-
+vidual emotional expression, which remain inadequately ad-
+dressed even by parameter-efficient fine-tuning techniques such
+as LoRA. To address these challenges, we proposes a mul-
+titask memory parameter-efficient fine-tuning method (MM-
+LoRA) that enhances multimodal SER by incorporating gender
+as an auxiliary task. The method leverages shared LoRA experts
+to facilitate information exchange between tasks and employs a
+mixture of LoRA experts to process task-specific information.
+Additionally, a memory mechanism propagates task-specific in-
+formation across layers. Experimental results demonstrate that
+the proposed MMLoRA significantly improves emotion recog-
+nition performance compared to vanilla LoRA.
+Index Terms: large language model, LoRA, multimodal, mul-
+titask, speech emotion recognition.
+1. Introduction
+Speech emotion recognition (SER) is essential for improving
+the effectiveness of human-computer interaction and personal-
+ized services, and it plays a pivotal role in advancing emotional
+intelligence systems [1]. A key challenge in SER lies in the vari-
+ability of emotional expression across individuals, as the same
+emotion can be conveyed differently by different people [2, 3].
+To address this challenge and enhance cross-individual general-
+ization, researchers have employed multitask learning strategies
+that account for individual differences, including gender [4, 5],
+identity [6], and so on, thereby improving the accuracy of emo-
+tion recognition.
+In recent years, LLMs have achieved significant break-
+throughs across various domains [7]. Notable examples include
+models like LLaMA2 [8] and Qwen [9] in natural language pro-
+cessing (NLP), as well as Multimodal Large Language Mod-
+els (MLLMs) like Video-LLaMA[10], LLaVA [11] and GPT-4
+[12], which extend these advancements to tasks involving multi-
+modal information. These large-scale pre-trained models lever-
+age extensive pre-training to capture intricate patterns in data,
+demonstrating outstanding performance when fine-tuned on a
+wide range of downstream tasks. However, as the scale of these
+models continues to grow, the computational cost associated
+with comprehensive fine-tuning has become a significant chal-
+lenge. Low-Rank Adaptation (LoRA) [13] has emerged as an
+effective approach, freezing pre-trained model weights and in-
+*Corresponding author.
+troducing trainable low-rank matrices, making it a valuable fine-
+tuning strategy in resource-constrained settings. This approach
+has shown promise in enhancing the adaptability of LLMs to
+specific tasks, such as SER
+Despite the success of LoRA in alleviating GPU mem-
+ory limitations during fine-tuning, its application to multi-task
+learning scenarios exposes critical limitations [14]. Fundamen-
+tal challenges stem from the restricted trainable parameter bud-
+get and persistent catastrophic forgetting [15], jointly impairing
+the model’s cross-task generalization capabilities. Current ef-
+forts in multi-task fine-tuning predominantly focus on resolv-
+ing inter-task conflicts through architectural innovations. Chen
+et al.
+[16] developed a sparse mixture of LoRA experts to
+enhance the baseline architecture, effectively alleviating data
+conflicts during multimodal large language model (MLLM) in-
+struction tuning across heterogeneous domains. Similarly, Song
+et al. [17] devised language-specific LoRA modules for Whis-
+per models to reduce linguistic interference while preserving
+existing knowledge during new language integration.
+While
+these approaches demonstrate progress in task conflict mitiga-
+tion, they predominantly adopt a parameter-isolation paradigm
+that enforces single-task specialization during inference. This
+architectural constraint not only diminishes the synergistic ben-
+efits of multi-task learning but also fundamentally restricts
+downstream tasks from harnessing cross-task knowledge trans-
+fer, which is a critical advantage inherent to multi-task frame-
+works.
+Multitask learning strategies that incorporate personalized
+knowledge have proven effective in Speech Emotion Recogni-
+tion (SER) for addressing individual differences, thereby im-
+proving emotion recognition accuracy. To extend these bene-
+fits while overcoming the task-isolation limitations of existing
+parameter-efficient fine-tuning methods, this paper proposes a
+novel multitask parameter-efficient fine-tuning method for mul-
+timodal SER. In the proposed MMLoRA, we adopt gender
+recognition and emotion recognition as the multitask setting.
+Specifically, a universal LoRA expert is introduced to facilitate
+cross-task information sharing, while task-specific information
+is captured through a mixture of task-specific LoRA experts.
+Additionally, a memory mechanism is incorporated, allowing
+the model to retain and utilize task-specific information across
+layers, thus enabling simultaneous multitask inference. In our
+experiments, VideoLLAMA serves as the base multimodal pre-
+trained language model, though this approach is not limited to
+this model and can be applied to other open-source large models
+as well. The main contributions of this paper are summarized
+as follows:
+• We propose MMLoRA, a parameter-efficient multimodal
+Speech Emotion Recognition (SER) framework that over-
+comes conventional LoRA’s limitations in multitask inter-
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+4948
+10.21437/Interspeech.2025-560
+
+FFN
+MMLoRA
+Task-aux
+Memory 
+Task-main
+Memory 
+FFN
+(a) MMLoRA in the first 𝐿−1 layers
+(b) MMLoRA in the last layer
+Frozen module 
+Trainable module 
+Lora expert
+Router
+Task
+Memory
+Task
+Memory
+(n-1) layer
+n layer
+𝛴
+Memory
+LoRA
+Memory
+LoRA
+Figure 1: Overview of the MMLoRA Method. The MMLoRA module is integrated into the feed-forward network (FFN) of transformer-
+based blocks. (a) In the first L −1 layers, MMLoRA employs a task-specific memory mechanism to enable the model to retain and
+propagate the information of each task across layers. (b) In the last layer, the memory from each task (i.e., the main task and the
+auxiliary task) is added to the output to generate task-specific results.
+action. By integrating a universal LoRA expert with task-
+specific mixtures and a memory mechanism, MMLoRA ex-
+plicitly leverages auxiliary tasks (e.g., gender recognition) to
+mitigate gender bias and enhance emotion recognition accu-
+racy.
+• Experiments validate that MMLoRA surpasses baseline
+methods in SER performance through its multi-task learn-
+ing design, while maintaining parameter efficiency.
+This
+framework provides a generalizable paradigm for deploying
+lightweight multitask systems in resource-constrained sce-
+narios.
+2. Method
+In this paper, we focus on enhancing the performance of ef-
+ficient parameter fine-tuning methods in MLLMs for multi-
+modal SER through multitask learning. The multitask setting
+is considered as a gender-assisted emotion recognition task in
+this paper. We validate the effectiveness of the proposed MM-
+LoRA method within an open-source multimoda LLM, Video-
+LLaMA. Section 3.1 provides a detailed explanation of the
+proposed MMLoRA architecture, while Section 3.2 outlines
+the fine-tuning process for the gender-assisted multimodal SER
+task within Video-LLaMA model.
+2.1. Preliminaries
+LoRA was introduced as an effective technique for fine-tuning
+pre-trained LLMs with reduced computational cost. It works
+by freezing the original weights and introducing trainable low-
+rank decomposition matrices into specific layers. This approach
+significantly reduces the number of trainable parameters, mak-
+ing it more computationally efficient without sacrificing per-
+formance. Specifically, for a pre-trained weight matrix W0 ∈
+Rd×k, LoRA introduces two trainable matrices A ∈Rd×r and
+B ∈Rr×k, where r is the adaptation rank and being much
+smaller than both d and k. Instead of directly fine-tuning W0,
+the model learns the update ∆W as follows:
+W = W0 + ∆W = W0 + A × B
+(1)
+2.2. Multitask memory LoRA
+In prior methods for downstream task fine-tuning, a task-
+specific LoRA matrix is appended to each layer of a large lan-
+guage model. Although this method is effective for individ-
+ual downstream tasks, employing a shared LoRA matrix across
+all tasks can limit task interaction and exacerbate conflicts be-
+tween tasks during multitask inference. This limitation reduces
+the ability of model to leverage cross-task information and ad-
+dress task-specific conflicts, thereby impeding overall multi-
+task performance. To simultaneously handle multiple tasks and
+enhance the performance of subtasks, we propose a multitask
+memory parameter-efficient fine-tuning method for multimodal
+SER, which is designed to improve multitask fine-tuning capa-
+bilities. The proposed MMLoRA is illustrated in Figure 1.
+The MMLoRA framework introduces several pivotal com-
+ponents: a universal LoRA expert, routing networks, a task-
+specific mixture of LoRA experts, and task memory units, with
+the trainable elements being the routing networks and the LoRA
+experts. It should be noted that different tasks have their own
+task-specific memories, and multiple task objectives achieve
+cross-layer information transmission through their respective
+memory units. Consider the main task as an example: in this
+case, the memory LoRA of the current layer receives the hid-
+den state from the general output of the previous layer, which is
+then processed through the task-specific mixture of LoRA ex-
+perts. Finally, the main task memory unit in the current layer
+is updated by integrating the main task memory from the previ-
+ous layer, general task-related information, and the task-specific
+details of the current layer.
+Specifically, the input token xi is first processed by the rout-
+ing network R(·), which is a linear layer that computes the
+probability distribution PN of assigning the input token xi to
+4949
+
+each LoRA expert or task-specific memory:
+PN = softmax(R(xi))
+(2)
+where N represents the total number of LoRA experts and the
+task memory unit. The task-specific mixture of LoRA experts
+includes N −2 experts, from which the top-K experts are se-
+lected based on the probabilities computed by the routing net-
+work:
+P (k)
+N−2 = top-K(PN)
+(3)
+The task memory unit is a key component of MMLoRA. It is
+composed of three main elements: the universal LoRA expert
+Eu, the top-K experts Ek from the task-specific mixture of ex-
+perts, and the task memory Ml−1 from the previous layer. The
+universal LoRA expert captures shared task information, while
+the task-specific experts handle task-specific information. The
+routing network assigns a probability Pu to the universal LoRA
+expert, P (j)
+K
+to each of the top-K task-specific experts, and Pm
+to the task memory from the preceding layer. The task memory
+at the current layer l is then computed as follows:
+Ml = PuEu(xi) +
+K
+X
+j=1
+P (j)
+K Ek(xi) + PmMl−1
+(4)
+This task memory mechanism allows the model to retain and
+propagate task-specific information across layers, thereby facil-
+itating cross-task interaction during inference. As illustrated in
+Figure 1(b), the final layer differs from the previous layers as
+the task-specific memory for each task is directly added to the
+final output to generate task-specific head. Thus, the MMLoRA
+enhances simultaneous multitask inference by improving task
+interaction through parameter-efficient fine-tuning.
+2.3. Fine-tuning for gender-assisted multimodal SER
+The pipeline for gender-assisted multimodal SER based on
+VideoLLaMA is illustrated in Figure 2. During the fine-tuning
+phase, the LLM is carefully trained to simultaneously under-
+stand both emotion and gender, where gender recognition serves
+to enhance emotion recognition. The MMLoRA is added into
+the FFN layers of the LLM module within Video-LLaMA. Con-
+sequently, two task-specific outputs are generated in the last
+layer. The original LM head is replaced with two classifica-
+tion heads, and the training objective is to minimize the sum
+of the cross-entropy losses associated with both classification
+tasks. The loss function is defined as follows:
+L = −
+X
+i
+(y(e)
+i
+log ˆy(e)
+i
++ y(g)
+j
+log ˆy(g)
+j
+)
+(5)
+where y(e)
+i
+and ˆy(e)
+i
+represent the true and predicted labels for
+emotion, respectively, while y(g)
+j
+and ˆy(g)
+j
+correspond to the true
+and predicted labels for gender.
+To construct the instruction set for fine-tuning, assume a
+dataset containing N conversation instances.
+The i-th con-
+versation Ci comprises K multimodal utterances, represented
+as Ci = {(hk, Mk), Yk}, where hk denotes the historical
+dialogue text, Mk represents the k-th target utterance to be
+classified, and Yk is the corresponding emotion label, with
+i ∈[1, 2, . . . , N] and k ∈[1, 2, . . . , K].
+Each target ut-
+terance Mk consists of both text (T) and speech (V) modal-
+ities, i.e., Mk
+=
+(Tk, Ak), where the audio tokens Ak
+are projected into the embedding space of the LLM using
+Audio Adapter
+Audio encoder
+MLLM 
+MMLoRA
+Text prompt
+Tokenizer
+Embeding
+Emotion classifier
+Gender classifier
+out_emo
+out_gender
+Figure 2: The pipeline of gender-assisted multimodal SER
+based on VideoLLaMA. Only the MMLoRA module and the au-
+dio adapter, consisting of the Q-former and a linear layer, are
+trainable.
+the audio encoder and audio adapter from Video-LLaMA. In-
+structions are generated according to predefined task speci-
+fications.
+For instance, an prompt template may be as fol-
+lows: ”Context: [contextual history]. Audio tokens:
+[audio tokens].
+Utterance:
+[current utterance].
+Given the context, audio tokens, and utterance, determine both
+the emotion and gender of the current speaker simultaneously.”.
+Subsequently, the trainable parameters are updated by optimiz-
+ing the multitask loss.
+3. Experiments
+3.1. Dataset
+The dataset used for our experiments is the IEMOCAP [18],
+a widely recognized dataset for speech emotion recognition.
+We utilized a subset of IEMOCAP, comprising 5,531 utterances
+categorized into four emotion classes: angry, happy (with ex-
+cited relabeled as happy), sad, and neutral. The experiments
+were conducted using a leave-one-session-out cross-validation
+approach.
+3.2. Multimodal large language model
+Video-LLaMA is an open-source multi-modal framework that
+enables LLM to simultaneously process both the visual and au-
+ditory content and engage in conversation with humans. In this
+paper, we use a modified version of Video-LLaMA, with the
+visual branch removed and utilize the audio-language branch of
+Video-LLaMA, which includes a pre-trained ImageBind [19] as
+the audio encoder. The process begins by converting the audio
+clips into spectrograms using Mel-spectrogram bins. The audio
+encoder then maps each spectrogram into a dense vector. This
+branch also features a positional embedding layer to inject tem-
+poral information, an audio Q-former that fuses features from
+different audio segments, and a linear layer that maps the audio
+representations into the embedding space of LLMs. The version
+of Video-LLaMA used in our experiments is Video-LLaMA-2-
+13B-Pretrained.
+3.3. Experimental Setup
+During the training phase, the LLaMA2 component of VideoL-
+LaMA is kept frozen, and only the parameters of the MMLoRA-
+related modules and the audio adapter are optimized using
+4950
+
+AdamW [20] with a learning rate of 3e-4. The model is trained
+for 10 epochs. Regarding the hyperparameter settings of MM-
+LoRA, the task-specific mixture of LoRA experts includes 8 ex-
+perts, with the top-K routing value set to 2. Experiments were
+conducted on a system equipped with NVIDIA A800 80GB
+GPUs. For evaluation, we used the widely adopted weighted
+accuracy (WA) and unweighted accuracy (UA) metrics for the
+IEMOCAP dataset.
+3.4. Experiment Results and Analysis
+To verify the effects of the proposed MMLora method, we con-
+duct ablation experiments. First, we evaluated the multimodal
+emotion understanding capabilities of Video-LLaMA, and con-
+ducted experiments using both zero-shot and few-shot inference
+methods. In these experiments, we adopted more stringent in-
+struction settings to ensure that the model could produce the ex-
+pected results. For instance, when evaluating on the IEMOCAP
+dataset, we specified instructions such as: ”Given the context
+the context, audio tokens, and utterance, detect the emotion of
+the current speaker. The emotion must be one of the following:
+[’neutral’, ’happy’, ’anger’, ’sad’]. The output must be format-
+ted exactly as follows: [one emotion].”. For the few-shot exper-
+iment, we provided three examples to guide the model. These
+examples helped the model understand the output format and
+improve its emotional classification by showing how different
+emotions are expressed in various contexts. The results of the
+zero-shot and few-shot experiments are shown in Table 1. The
+few-shot performance on the IEMOCAP dataset improved by
+over 10% compared to the zero-shot setting, demonstrating the
+effectiveness of example guidance in improving emotion clas-
+sification accuracy.
+The proposed MMLoRA is a parameter-efficient method
+designed for multitask learning, specifically aimed at enhancing
+the performance of emotion recognition subtasks. To evaluate
+its effectiveness, we compared the downstream emotion recog-
+nition performance of vanilla LoRA under the same MLLM
+framework. To ensure a fair comparison, the rank parameters
+and training hyperparameters of LoRA were kept identical to
+those of MMLoRA, with both methods applied to the FFN lay-
+ers. As shown in Table 1, the proposed MMLoRA achieves
+81.11% WA and 82.13% UA on IEMOCAP, which indicate that
+MMLoRA produces a better results based on multitask memory
+design.
+To validate the effectiveness of the MMLoRA architecture
+under the same multi-task conditions, we conducted an abla-
+tion study using Multi-task LoRA. Unlike the multi-output of
+MMLoRA, this variant employs a single output supervised by
+the losses of both tasks simultaneously. This experiment aims to
+evaluate the advantages of structures such as memory units over
+the vanilla LoRA architecture in leveraging multi-task learning
+Table 1: The performances of different methods with VideoL-
+LaMA on IEMOCAP.
+Methods
+IEMOCAP
+WA(%)
+UA(%)
+Zeroshot
+45.77
+47.11
+Fewshot
+58.36
+57.73
+LoRA
+79.72
+80.75
+Multi-task LoRA (w/o memory)
+79.93
+80.22
+MOE-LoRA (w/o gender)
+80.02
+80.97
+MMLoRA
+81.11
+82.13
+to enhance downstream task performance. For a fair compari-
+son, both methods were configured with the same rank param-
+eters and training hyperparameters. As shown in Table 1, the
+results highlight the effectiveness of MMLoRA in improving
+performance through multi-task learning.
+To further validate the architectural design choices, we de-
+veloped MOE-LoRA by removing both the task memory unit
+and universal LoRA expert from MMLoRA, resulting in a pure
+mixture-of-experts variant. This ablation necessitates single-
+task training without gender information integration, leading
+to performance degradation.
+This experiment further under-
+scores the benefits of incorporating the task memory and uni-
+versal LoRA expert in MMLoRA, as their inclusion introduces
+gender information, thereby enhancing emotion recognition by
+better accommodating the influence of gender differences. The
+results of the ablation experiment highlight the importance of
+gender task assistance in MMLoRA.
+3.5. Comparison to previous methods
+Table 2 presents the performance comparison between the
+proposed MMLoRA method based on VideoLLama and sev-
+eral previously published emotion recognition systems on the
+IEMOCAP dataset. The selected methods include unimodal ap-
+proaches (audio-only) and multimodal approaches (audio and
+text), as well as a method utilizing large language models
+(LLMs) based solely on the text modality [21]. As shown in
+the table, the MMLoRA method achieves competitive results,
+particularly outperforming previous multimodal approaches.
+These findings highlight the effectiveness of incorporating
+gender-assisted multitask learning into large-model fine-tuning
+strategies. The MMLoRA enhances the ability of MLLM to
+generalize across diverse emotional expressions, resulting in
+improved performance of multimodal SER.
+Table 2: Results of the MMLoRA-VideoLLaMA and previously
+published models on the IEMOCAP dataset.
+Methods
+Modality
+WA(%)
+UA(%)
+Audio
+Text
+[Fang et al.,2023] [22]
+✓
+74.03
+74.95
+[Shen et al.,2024] [23]
+✓
+72.43
+73.88
+[Feng et al.,2024] [21]
+✓
+-
+60.19
+[Sun et al.,2023] [24]
+✓
+✓
+78.42
+79.71
+[Kyung et al.,2024] [25]
+✓
+✓
+76.11
+77.16
+[Wang et al.,2024] [26]
+✓
+✓
+77.88
+77.44
+MMLoRA (ours)
+✓
+✓
+81.11
+82.13
+4. Conclusion
+In this paper, we introduced a novel multitask memory
+parameter-efficient fine-tuning method designed to enhance
+multimodal speech emotion recognition by incorporating gen-
+der as an auxiliary task. MMLoRA leverages both shared and
+task-specific LoRA experts, as well as a memory mechanism,
+to enable efficient multitask learning and improve generaliza-
+tion across diverse emotional expressions. The experimental
+results on the IEMOCAP dataset demonstrated that MMLoRA
+outperforms existing methods, providing a robust and scalable
+solution for parameter-efficient fine-tuning in emotion recog-
+nition task. These findings underscore the value of the pro-
+posed framework and offer valuable insights that may extend to
+broader applications of multitask learning within large model
+fine-tuning contexts.
+4951
+
+5. Acknowledgement
+The work is supported in part by the Guangdong Basic
+and Applied Basic Research Foundation (2025A1515011203);
+Guangdong Provincial Key Laboratory of Human Digital Twin
+(2022B1212010004).
+6. References
+[1] R. W. Picard, Affective computing.
+MIT press, 2000.
+[2] B. Schuller, R. M¨uller, M. Lang, and G. Rigoll, “Speaker indepen-
+dent emotion recognition by early fusion of acoustic and linguistic
+features within ensembles,” in INTERSPEECH. ISCA, 2005, pp.
+805–808.
+[3] Y. Fang, X. Xing, Z. Chu, Y. Du, and X. Xu, “Individual-aware
+attention modulation for unseen speaker emotion recognition,”
+IEEE Transactions on Affective Computing, 2024.
+[4] L. Zhang, L. Wang, J. Dang, L. Guo, and Q. Yu, “Gender-aware
+cnn-blstm for speech emotion recognition,” in Artificial Neural
+Networks and Machine Learning–ICANN 2018: 27th Interna-
+tional Conference on Artificial Neural Networks, Rhodes, Greece,
+October 4-7, 2018, Proceedings, Part I 27.
+Springer, 2018, pp.
+782–790.
+[5] Y. Li, T. Zhao, T. Kawahara et al., “Improved end-to-end speech
+emotion recognition using self attention mechanism and multitask
+learning.” in Proc. INTERSPEECH 2019, 2019, pp. 2803–2807.
+[6] C. Le Moine, N. Obin, and A. Roebel, “Speaker attentive speech
+emotion recognition,” in Interspeech 2021.
+ISCA, 2021, pp.
+2866–2870.
+[7] W. X. Zhao, K. Zhou, J. Li, T. Tang, X. Wang, Y. Hou,
+Y. Min, B. Zhang, J. Zhang, Z. Dong, Y. Du, C. Yang, Y. Chen,
+Z. Chen, J. Jiang, R. Ren, Y. Li, X. Tang, Z. Liu, P. Liu,
+J.-Y. Nie, and J.-R. Wen, “A survey of large language models,”
+arXiv preprint arXiv:2303.18223, 2023. [Online]. Available:
+http://arxiv.org/abs/2303.18223
+[8] H. Touvron, L. Martin, K. Stone, P. Albert, A. Almahairi,
+Y. Babaei, N. Bashlykov, S. Batra, P. Bhargava, S. Bhosale et al.,
+“Llama 2: Open foundation and fine-tuned chat models,” arXiv
+preprint arXiv:2307.09288, 2023.
+[9] J. Bai, S. Bai, Y. Chu, Z. Cui, K. Dang, X. Deng, Y. Fan, W. Ge,
+Y. Han, F. Huang et al., “Qwen technical report,” arXiv preprint
+arXiv:2309.16609, 2023.
+[10] H. Zhang, X. Li, and L. Bing, “Video-llama: An instruction-tuned
+audio-visual language model for video understanding,” arXiv
+preprint arXiv:2306.02858, 2023.
+[11] H. Liu, C. Li, Q. Wu, and Y. J. Lee, “Visual instruction tuning,”
+Advances in neural information processing systems, vol. 36, 2024.
+[12] J. Achiam, S. Adler, S. Agarwal, L. Ahmad, I. Akkaya, F. L. Ale-
+man, D. Almeida, J. Altenschmidt, S. Altman, S. Anadkat et al.,
+“Gpt-4 technical report,” arXiv preprint arXiv:2303.08774, 2023.
+[13] E. J. Hu, Y. Shen, P. Wallis, Z. Allen-Zhu, Y. Li, S. Wang,
+L. Wang, and W. Chen, “LoRA: Low-rank adaptation of large lan-
+guage models,” in International Conference on Learning Repre-
+sentations, 2022.
+[14] Q. Liu, X. Wu, X. Zhao, Y. Zhu, D. Xu, F. Tian, and
+Y. Zheng, “Moelora: An moe-based parameter efficient fine-
+tuning method for multi-task medical applications,”
+arXiv
+preprint arXiv:2310.18339, 2023.
+[15] D. Li, Y. Ma, N. Wang, Z. Cheng, L. Duan, J. Zuo, C. Yang,
+and M. Tang, “Mixlora:
+Enhancing large language models
+fine-tuning with lora based mixture of experts,” arXiv preprint
+arXiv:2404.15159, 2024.
+[16] S. Chen, Z. Jie, and L. Ma, “Llava-mole: Sparse mixture of
+lora experts for mitigating data conflicts in instruction finetuning
+mllms,” arXiv preprint arXiv:2401.16160, 2024.
+[17] Z. Song, J. Zhuo, Y. Yang, Z. Ma, S. Zhang, and X. Chen, “Lora-
+whisper: Parameter-efficient and extensible multilingual asr,” in
+Interspeech 2024, 2024, pp. 3934–3938.
+[18] C. Busso, M. Bulut, C.-C. Lee, A. Kazemzadeh, E. Mower,
+S. Kim, J. N. Chang, S. Lee, and S. S. Narayanan, “Iemocap:
+Interactive emotional dyadic motion capture database,” Language
+resources and evaluation, vol. 42, pp. 335–359, 2008.
+[19] R. Girdhar, A. El-Nouby, Z. Liu, M. Singh, K. V. Alwala,
+A. Joulin, and I. Misra, “Imagebind: One embedding space to
+bind them all,” in Proceedings of the IEEE/CVF Conference on
+Computer Vision and Pattern Recognition, 2023, pp. 15 180–
+15 190.
+[20] I. Loshchilov, “Decoupled weight decay regularization,” arXiv
+preprint arXiv:1711.05101, 2017.
+[21] T. Feng and S. Narayanan, “Foundation model assisted automatic
+speech emotion recognition: Transcribing, annotating, and aug-
+menting,” in ICASSP 2024-2024 IEEE International Conference
+on Acoustics, Speech and Signal Processing (ICASSP).
+IEEE,
+2024, pp. 12 116–12 120.
+[22] Y. Fang, X. Xing, X. Xu, and W. Zhang, “Exploring downstream
+transfer of self-supervised features for speech emotion recogni-
+tion,” in Proc. INTERSPEECH, vol. 2023, 2023, pp. 3627–3631.
+[23] S. Shen, Y. Gao, F. Liu, H. Wang, and A. Zhou, “Emotion neu-
+ral transducer for fine-grained speech emotion recognition,” in
+ICASSP 2024-2024 IEEE International Conference on Acous-
+tics, Speech and Signal Processing (ICASSP).
+IEEE, 2024, pp.
+10 111–10 115.
+[24] D. Sun, Y. He, and J. Han, “Using auxiliary tasks in multimodal
+fusion of wav2vec 2.0 and bert for multimodal emotion recog-
+nition,” in ICASSP 2023-2023 IEEE International Conference on
+Acoustics, Speech and Signal Processing (ICASSP). IEEE, 2023,
+pp. 1–5.
+[25] J. Kyung, S. Heo, and J.-H. Chang, “Enhancing multimodal emo-
+tion recognition through asr error compensation and llm fine-
+tuning,” in Interspeech 2024, 2024, pp. 4683–4687.
+[26] Y. Wang, D. Li, and J. Shen, “Inter-modality and intra-sample
+alignment for multi-modal emotion recognition,” in ICASSP
+2024-2024 IEEE International Conference on Acoustics, Speech
+and Signal Processing (ICASSP).
+IEEE, 2024, pp. 8301–8305.
+4952
+

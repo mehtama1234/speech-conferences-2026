@@ -1,0 +1,612 @@
+Beyond Attacks: Advancing Fake Speech Detection with Attack-Agnostic
+Methods
+Shilpa Chandra1, Akansha Tyagi1, Shiven Patel1, Padmanabhan Rajan1
+1School of Computing and Electrical Engineering, Indian Institute of Technology, Mandi, India
+{s22004,d19030,b22176}@students.iitmandi.ac.in, padman@iitmandi.ac.in
+Abstract
+Detectors of fake speech are prone to poor performance
+when presented with data unseen during training. Unseen data
+can include not only new methods for generating fake speech
+and various transformations applied to fake speech, but also
+fake speech in new languages. This study investigates two
+methods for improving generalization capability of detectors
+that use a self supervised model as a front-end. The first method
+uses an encoder-decoder architecture to learn representations
+robust to different types of fake speech. The second method
+uses a subspace-based decomposition and learns common infor-
+mation present in various types of fake speech. The proposed
+methods are evaluated on the standard ASVspoof 2021 dataset,
+as well as on a multilingual speech dataset of Indic languages.
+Experiments reveal that state-of-the-art detectors struggle with
+speech in unseen languages, and the proposed generalization
+methods help in reducing the performance gap1.
+Index Terms : Fake speech detection, speech spoofing,
+ASVspoof, domain generalization
+1. Introduction
+Recent advancements in generating synthetic speech have re-
+sulted in the easy creation of speech deepfakes. Research into
+the detection of speech deepfakes has evolved from the use of
+hand-engineered features, to the use of representation learning-
+based techniques. Of late, many researchers apply the use of
+self-supervised learning (SSL) to provide effective representa-
+tions for various downstream tasks. SSL models employ large-
+scale datasets to learn meaningful representations without any
+manual annotations. The representations thus learned are typi-
+cally used as front-ends (also called feature extractors) and are
+used with supervised learning models. In speech, models such
+as wav2vec 2.0 and its variants, and Hidden-unit BERT (Hu-
+BERT) etc. are commonly used as SSL models [1, 2].
+As demonstrated by various studies [3, 4, 5], the use of SSL
+models to detect speech deepfakes has shown promise. Being
+trained on genuine speech, the SSL model provides a repre-
+sentation which sufficiently discriminates between genuine and
+fake speech. In addition, the use of powerful classifiers, specifi-
+cally designed to discriminate genuine and fake speech (such as
+AASIST [6]) help in providing commendable performance on
+standard datasets such as ASVspoof 2019 and 2021 [7, 8].
+A recurring challenge in the detection of fake speech is the
+ability to generalize well to unseen types of fake speech (com-
+monly termed as unseen attacks in speech anti-spoofing litera-
+ture.) Studies such as [9] have demonstrated that many detectors
+1Code is available at https://github.com/shilpac131/
+AttackAgnostic
+perform poorly in uncontrolled data scenarios. Data augmenta-
+tion is a commonly used technique to overcome this limitation.
+Some studies have proposed detectors that use large-scale neu-
+ral vocoding for data augmentation. Such techniques, though
+effective, require large amounts of computational power to cre-
+ate or fine-tune the detector. One aspect of fake speech that has
+been less studied is the ability of classifiers such as AASIST
+to work on multiple languages. Various research efforts such
+as Bhashini have resulted in text-to-speech (TTS) systems for
+closely related language families such as the Indic languages
+[10]. Thus, one of the objectives of this paper is to study the
+performance of fake speech detectors on speech generated in
+Indic languages.
+We also explore two methods to improve the generaliza-
+tion ability of fake speech detectors. The motivation is to use
+relevant information present in the training data and ignoring
+what is irrelevant. The first technique uses an encoder-decoder
+framework which learns attack-invariant representations. The
+second technique uses a subspace-based method to learn a
+classifier which retains attack-invariant information, and ig-
+nores attack-specific information. Hence, we term them attack-
+agnostic. Our belief is that the resulting representations are
+helpful to ignore aspects such as language, speaker and speech
+transformations, but retain aspects such as artifacts which result
+in the production of fake speech.
+2. Related Work
+Initially, detectors for fake speech relied on using hand-crafted
+features such as Linear Frequency Cepstral Coefficients, Mel-
+spectrograms, and similar features, which were then fed into
+neural networks. Subsequent works introduced more complex
+architectures, including conformers and graph neural networks
+[11, 12, 13, 6, 3]. A commonly used graph-based method is
+AASIST which focuses on identifying spoofing artifacts in the
+temporal and spectral domains [6].
+As models increasingly depended on large datasets, self-
+supervised learning (SSL) has become a key approach for vari-
+ous speech classification tasks. Recently, wav2vec 2.0 has been
+widely adopted for detecting fake speech [3]. Guo et al. uti-
+lized the more recent WavLM model, which reportedly is better
+suited for noisy environments [14].
+Some approaches also focus on generating additional fake
+speech to enhance the detection of fake speech. Several ap-
+proaches have proposed using additional vocoded data to en-
+hance the performance of fake speech detection tasks [15, 16,
+17]. These methods suggest that training on more diverse fake
+speech can improve detection performance.
+A few recent papers touch upon multilingual fake speech
+detection. In [18], the authors propose a dataset of synthetic
+speech in six languages. In [19], the authors study various
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+4563 10.21437/Interspeech.2025-1999
+
+fake speech detectors across multiple languages and conclude
+that generalization abilities across languages is limited. In [20],
+the authors create a dataset with synthetic speech from 38 lan-
+guages and demonstrate that when used for training, the dataset
+helps to generalize cross-dataset evaluations.
+Few works using SSL models rely on using information
+from all transformer layers [14, 21]. However, recent studies
+have shown that different layers of SSL models capture distinct
+properties of phonetic information. Pasad et al. [22] conducted
+a detailed analysis of which layers in wav2vec 2.0 learn specific
+acoustic properties. One study provided an in-depth analysis of
+how various layers perform in detecting fake speech, revealing
+that the fifth layer of the wav2vec 2.0 large model is effective
+for this task [4].
+In our work, we focus on utilizing the fifth layer of XLS-R
+which is a variant of the wav2vec 2.0 large model [23], as it
+captures the most relevant features for our task while minimiz-
+ing unnecessary complexity. This model is henceforth referred
+to as w2v2.
+3. Attack-Agnostic Methods
+In uncontrolled scenarios, the detection of fake speech is chal-
+lenging, mostly due to (unknown) factors accounting for vari-
+ability. For example, in synthesized speech, the use of vari-
+ous neural vocoders can provide signal-level deviations. Fur-
+ther, speech may be subject to various transformations, includ-
+ing compression and encoding. An additional unknown factor
+is the language of the speech. An attack-agnostic detector must
+be able to capture the characteristics of genuine speech and dis-
+tinguish them from those of artifacts.
+3.1. Attack Invariant Encoder-Decoder (AIED)
+Denoising autoencoders [24] have been used successfully in
+speech enhancement. These networks are trained with noisy-
+clean pairs with an appropriate loss function. Once trained, the
+network learns to infer the corresponding clean speech when
+presented with noisy speech. The bottleneck layer of such a
+network learns a representation that ignores the noisy compo-
+nent of speech.
+Similar to a denoising autoencoder, an attack-agnostic en-
+coder decoder can be trained to have a bottleneck layer that
+ignores characteristics of specific attacks. By training the
+encoder-decoder with pairs xi and xj wherei andj represent
+different types of attacks, the network forgets attack-specific de-
+tails. Here xi and xj are the embeddings which are extracted
+from the w2v2 embeddings passed through penultimate lay-
+ers of AASIST (denoted henceforth as w2v2-AASIST embed-
+dings.) These embeddings are from two speech utterances for
+which other attributes such as speaker information and linguis-
+tic content may or may not be the same. In our experiments, the
+AIED was trained with a subset of the ASVspoof 2019 training
+partition, with mean square error loss,
+L = 1
+N
+X
+D
+||˜xi− xj||2, (1)
+where, ˜xi represents the reconstructed output obtained from de-
+coder component of AIED and N represents the total number
+of training examples.
+3.2. Attack generalization using low-rank decomposition
+Various domain generalization methods have been proposed in
+the literature for reducing overfitting of a model to data seen
+AASIST
+spoof (0)
+bonafide (1)
+Raw audio
+wav2vec 2.0
+spoof (0)
+bonafide (1)
+wav2vec 2.0
+Raw audio
+AIED DNN + CSDAASIST
+Figure 1: Baseline system (top) and proposed system (bottom).
+AIED + FCNN
+spoof (0)
+bonafide (1)
+Raw audio
+wav2vec 2.0
+spoof (0)
+bonafide (1)
+wav2vec 2.0
+Raw audio
+AASIST DNN+CSD
+AASIST
+Figure 2: Ablation: with only DNN+CSD (top), with only AIED
+(bottom).
+only during training. The recently proposed Common Specific
+Decomposition (CSD) [25] technique successfully disentangles
+common and domain specific components, and demonstrates
+good generalization to new domains which are not seen dur-
+ing training. CSD works by assuming orthogonality between
+domain-specific classifiers Wj and a common classifier Wc,
+and by incorporating appropriate loss terms so as to train both
+Wj and Wc. Herej varies from 1 toDs, which is the number
+of training domains.
+In the context of detecting fake speech, the various attacks
+present in training data represent the various domains. CSD re-
+turns the common classifier Wc which is attack-agnostic. CSD
+works in conjunction with the deep neural network denoted by
+Dϕ as a replacement of the final classification layer. This makes
+the incorporation simple. Following [25], consider the case in
+which a speech embedding x is generated as per the following
+generative model
+x =y(xc +
+dX
+i=1
+αj,ixsi) +N (0, Σj)∈ Rm (2)
+Here the common component xc and the individual domain-
+specific components xs are assumed to be orthogonal to each
+other. The domain-specific components, lying in a latent space
+of dimensiond is correlated with the labely, given by the coeffi-
+cientsαj,i. Σj represents the attack-specific covariance matrix,
+capturing attack-specific characteristics.
+CSD assumes that the data following the structure outlined
+in equation 2 can be classified using attack-specific linear clas-
+sifiers Wj represented as:
+Wj = Wc +Wsγj (3)
+where Wj, Wc ∈ RC×n represent the attack-specific and
+common classifier respectively. The components of the attack
+subspace are denoted byWs∈ RC×n×d, where C represents
+4564
+
+the number of classes,n is the dimension of the output from the
+penultimate layer of the neural networkDϕ, andd is the latent
+dimension of the domain space.
+Algorithm 1 Common specific decomposition (CSD) [25]
+Input:
+• X∈ Rm×N (train data, N : total train examples and m :
+dimension of each example)
+• y∈ RN (true/fake labels, wherey∈ y, andy is either 0 or
+1)
+• j∈ RN (attack labels, where j∈ j, and j ranges from 1 to
+Ds)
+• d (attack-specific components: hyperparameter)
+Output: Wc (common classifier)
+1. Randomly initialize parameters ϕ of DNNDϕ (values drawn
+from normal distribution)
+2. Randomly initialize CSD parameters: Wc,Ws,γj (values
+drawn from normal distribution)
+3. ˆW = [Wc,Ws] (concatenation)
+4. Lcsd = 0 // CSD loss
+5. for (x,y,j )∈ (X, y, j) do //for all batches
+6. Wj = Wc +Wsγj
+7. Compute Lc = CrossEntropy (ˆy, y;ϕ, Wc)
+8. Compute Ls = CrossEntropy (ˆy, y;ϕ, Wj)
+9. Compute Lo = PC
+i=1 Id+1− ˆW[i]T ˆW[i]
+2
+F
+where Id+1 is the identity matrix with (d + 1) dimension.
+10. Lcsd =Lcsd +Lc +Ls +Lo //Minimize using
+SGD
+11. end for
+12. Return Wc
+Both common and attack-specific classifiers are trained us-
+ing cross-entropy loss, which uses the common and attack-
+specific parameters of the CSD layer, respectively. Attack-
+generalization is further enforced through an orthonormal loss,
+which promotes orthogonality between the common and attack-
+specific parameters. This is achieved by minimizing the Frobe-
+nius norm between an identity matrix and ˆW[i]T ˆW[i] which
+contains CSD layer parameters for ith class, where ˆW ∈
+RC×n×(d+1) is obtained by concatenating Wc withWs. The
+overall loss functionLcsd is the sum of the three loss functions
+namely: common loss ( Lc), attack-specific loss (Ls) and or-
+thonormal loss (Lo).
+For testing, the common classifier Wc learned using CSD,
+devoid of attack-specific components, is utilized for classifica-
+tion as follows:
+ˆy = arg max
+i
+(softmax(Wcz)) (4)
+where z is the representation from the penultimate layer of
+Dϕ, ˆy is the predicted speech utterance label andi represents the
+class index. This pipeline is henceforth denoted as DNN+CSD.
+4. Experiments and Results
+The proposed attack-agnostic methods using AIED and CSD
+are evaluated by enhancing the AASIST pipeline with AIED
+and CSD, as shown in Figure 1 (bottom panel). Ablation stud-
+ies, where each of the AIED and CSD modules are removed, are
+also performed (see Figure 2). The evaluation is done on two
+datasets: (a) the ASVspoof 2021 logical access (LA) dataset
+and deepfake (DF) datasets, and (b) a multilingual Indic syn-
+thetic speech dataset. All models studied in this paper use only
+English data for training, hence Indic language data is com-
+pletely unseen. This also makes it easier to also compare with
+other methods.
+4.1. Dataset Description
+For training, we use the ASVspoof 2019 LA database, which
+has six types of attacks in the training partition [7]. The first
+evaluation is on the ASVspoof 2021 LA and DF datasets, which
+has generated speech passed though various codecs and vari-
+ous compression techniques respectively [8]. The second eval-
+uation is on multilingual speech from five Indian languages,
+Tamil, Marathi, Gujarati, Hindi and Indian English. The fake
+speech is generated using the MahaTTS 2 text-to-speech sys-
+tem, which generates speech in various Indian languages. These
+constitute the fake speech. For bonafide speech, we use speech
+from Open-Speech-EkStep dataset [26], which consists of read
+speech from the same five languages.
+4.2. Implementation details
+For the baseline model referenced from [3], w2v2 was kept
+frozen, and AASIST was trained on ASVspoof 2019 LA. All
+w2v2-AASIST embeddings used in our experiments were ex-
+tracted from the fifth layer of the wav2vec 2.0 large (XLS-R)
+model, which incidentally, is trained on multilingual speech.
+The AIED was trained independently using the w2v2-AASIST
+embeddings. The AIED consists of an encoder and a decoder,
+with the encoder comprising two fully connected layers of di-
+mensions 160 and 128, while the decoder mirrors the encoder.
+Training was conducted for up to 100 epochs using the Adam
+optimizer with a learning rate of1e−6. Once trained, the AIED
+was frozen for use in the experiments presented in Table 1. The
+data pairs used to train AIED consist of 10000 speaker- and
+content-independent, attack mis-matched pairs which were ran-
+domly generated from metadata of ASVspoof 2019 [7].
+The CSD component was trained using a deep neural net-
+work (DNN) architecture. The DNN consists of three fully con-
+nected layers with dimensions 128, 64, and 32, respectively. A
+batch size of 64 and a learning rate of 0.0001 were used with
+the SGD optimizer.
+ASVspoof 2019 development data was used to validate all
+models presented in Table 1. This was also used to choose the
+optimal number of attack-specific componentsd in CSD, which
+is set to 4.
+4.3. Processing pipelines and results
+Our baseline system (Figure 1 top panel) is based on [3], and
+uses a frozen, pre-trained w2v2 front-end followed by the graph
+neural network based AASIST backend, using the implementa-
+tion available here3. Embeddings are extracted from the penul-
+timate layer of the AASIST. The proposed system supplements
+this pipeline using the attack-invariant autoencoder (AIED) and
+common subspace decomposition using a DNN. For all sys-
+tems, RawBoost [27] was used for data augmentation.
+As tabulated in Table 1, the proposed system gives a rel-
+ative improvement in EER by 4% for the ASVspoof LA data,
+2https://github.com/dubverse-ai/MahaTTS
+3https://huggingface.co/docs/transformers/en/
+model_doc/wav2vec2
+4565
+
+and by 12% for the ASVspoof DF data 4. The improvement is
+more pronounced for the Indic speech data, where the proposed
+method shows a 34% relative improvement. As can be seen, the
+results leave much to be desired for the Indic speech data.
+We also perform simple ablation studies which use only one
+of either AIED or DNN+CSD for processing w2v2-AASIST
+embeddings. The results, tabulated in Table 1 seem to indicate
+that in many situations, some form of explicit attack-invariance
+is useful. CSD seems to handle variations within the LA data,
+whereas AIED seems to be effective for DF data. Whereas for
+the Indic TTS data, the advantage offered by either AIED or
+CSD seems to be similar (there is negligible change in results
+due to the removal of either.)
+Table 1: Results in terms of EER (↓) and t-DCF (↓) on the pro-
+posed Attack-Agnoistic systems on ASVspoof 2021 LA & DF
+System 2021 LA 2021 DF IndicTTS
+EER(%) t-DCF EER(%) EER(%)
+Baseline 6.14 0.3326 12.33 59.82
+Ours 5.84 0.3345 10.9 39.51
+Ablation
+Ours w/o AIED 6.3 0.3558 10.98 39.51
+Ours w/o CSD 5.99 0.337 11.31 39.35
+Table 2: Results in terms of EER( ↓) on the proposed Attack-
+Agnoistic systems on IndicTTS dataset
+System IndicTTS
+Multilingual
+IndicTTS
+English
+EER
+Baseline 59.82 44.69
+Proposed 39.51 35.73
+4.4. Discussion
+We analyse the improvements brought about by AIED by exam-
+ining various plots of embeddings before and after AIED. The
+TSNe plots in Figure 3b suggest that embeddings after AIED
+are language invariant. The w2v2-AASIST embeddings from
+100 examples of fake speech from two languages form distinct
+clusters, whereas they overlap after AIED. In Figure 3a, TSNe
+plots indicate that AIED embeddings are invariant to speakers
+for both real and fake speech. Figure 3a also shows the his-
+tograms of distance between 200 pairs of embeddings gener-
+ated from fake speech using various types of codecs (blue his-
+togram). The figure also shows the same 200 embedding pairs
+after passing through the AIED network (orange histogram.)
+The spread of the distance has significantly reduced, indicating
+that the AIED effectively provides codec invariance.
+Similarly, the plots in Figure 3c show the embeddings from
+w2v2-AASIST and the same embeddings after CSD for two
+different types of attacks. Before CSD, the two attacks show
+considerable separation, indicating that w2v2-AASIST embed-
+dings capture attack information. After CSD on the same em-
+beddings, the attacks overlap.
+To check the impact of the language seen during training
+(English) on the models, we additionally evaluate performance
+4Admittedly, these results are not the state-of-the-art for the
+ASVspoof 2021 dataset, which may be obtained by fine-tuning the
+w2v2 model with ASVspoof 2019 data. Limitations in our computing
+resources prevent us from working with this approach.
+only on Indian English. The improved results shown in Table
+2 seem to indicate that language does play a role in the perfor-
+mance obtained. All models were trained on ASVspoof 2019
+data, which has only English. Additionally, language identifi-
+cation (LID) experiments on the embeddings after AIED across
+five Indian languages show significantly poorer LID perfor-
+mance compared to the w2v2-AASIST embeddings, supporting
+that the proposed embeddings are more language-agnostic than
+the baseline.
+0 1 0 2 0 3 0 4 0 5 0
+Dis ta n ce
+0 .0
+2 .5
+5 .0
+7 .5
+1 0 .0
+1 2 .5
+1 5 .0
+1 7 .5
+2 0 .0
+Cou n t
+with ou t AIED
+with AIED
+(a) (Left) Histograms of pairwise distance of various codecs before AIED
+(blue) and after AIED (orange). The use of AIED results in reduced codec
+spread. (Right) AIED embeddings from two speakers show speaker overlap
+for both fake and genuine speech.
+15
+ 10
+ 5
+ 0 5 10
+t-SNE Dimension 1
+5
+0
+5
+10t-SNE Dimension 2
+English Baseline
+Guj Baseline
+20
+ 10
+ 0 10 20
+t-SNE Dimension 1
+2
+1
+0
+1
+2
+3
+4
+t-SNE Dimension 2
+English AIED
+Guj AIED
+(b) Plots showing improved language invariance for AIED on two languages
+from the Indic dataset. (Left) Without AIED, (right) with AIED.
+60
+ 40
+ 20
+ 0 20 40
+t-SNE Dimension 1
+40
+20
+0
+20
+40
+t-SNE Dimension 2
+1.3 1.4 1.5 1.6 1.7 1.8
+Dimension 1
+0.75
+0.70
+0.65
+0.60
+0.55
+0.50
+0.45
+Dimension 2
+spoof-A7 spoof-A8
+(c) Before (left) and after (right) CSD embeddings.
+Figure 3: Visualization of AIED and CSD effects: (a) Codec
+spread reduction, and improved speaker invariance, (b) im-
+proved language invariance, (c) improved attack invariance for
+CSD embeddings.
+5. Conclusions
+In this paper, we explored two methods to obtain improved
+generalization to unseen conditions in the detection of fake
+speech. Unseen conditions included various transformations
+applied to speech, as available in the benchmark ASVspoof
+2021 dataset, and additionally, speech in unseen languages.
+The proposed methods show improvements when compared to
+the well-established w2v2-AASIST pipeline. Although we at-
+tempted to provide some insights, future studies will focus on
+determining the role of various factors which affect generaliza-
+tion to unseen conditions.
+4566
+
+6. References
+[1] A. Baevski, Y . Zhou, A. Mohamed, and M. Auli, “wav2vec
+2.0: A framework for self-supervised learning of speech repre-
+sentations,” Advances in neural information processing systems ,
+vol. 33, pp. 12 449–12 460, 2020.
+[2] W.-N. Hsu, B. Bolte, Y .-H. H. Tsai, K. Lakhotia, R. Salakhutdi-
+nov, and A. Mohamed, “Hubert: Self-supervised speech represen-
+tation learning by masked prediction of hidden units,”IEEE/ACM
+transactions on audio, speech, and language processing , vol. 29,
+pp. 3451–3460, 2021.
+[3] H. Tak, M. Todisco, X. Wang, J.-w. Jung, J. Yamagishi, and
+N. Evans, “Automatic speaker verification spoofing and deep-
+fake detection using wav2vec 2.0 and data augmentation,” in The
+Speaker and Language Recognition Workshop, 2022.
+[4] J. W. Lee, E. Kim, J. Koo, and K. Lee, “Representation selective
+self-distillation and wav2vec 2.0 feature exploration for spoof-
+aware speaker verification,” inInterspeech 2022, 2022, pp. 2898–
+2902.
+[5] H. Wu, J. Zhang, Z. Zhang, W. Zhao, B. Gu, and W. Guo, “Robust
+spoof speech detection based on multi-scale feature aggregation
+and dynamic convolution,” in ICASSP 2024 - 2024 IEEE Inter-
+national Conference on Acoustics, Speech and Signal Processing
+(ICASSP), 2024, pp. 10 156–10 160.
+[6] J.-w. Jung, H.-S. Heo, H. Tak, H.-j. Shim, J. S. Chung, B.-J. Lee,
+H.-J. Yu, and N. Evans, “AASIST: Audio anti-spoofing using in-
+tegrated spectro-temporal graph attention networks,” in ICASSP
+2022-2022 IEEE international conference on acoustics, speech
+and signal processing (ICASSP). IEEE, 2022, pp. 6367–6371.
+[7] M. Todisco, X. Wang, V . Vestman, M. Sahidullah, H. Delgado,
+A. Nautsch, J. Yamagishi, N. Evans, T. H. Kinnunen, and K. A.
+Lee, “ASVspoof 2019: Future horizons in spoofed and fake audio
+detection,” in Interspeech 2019, 2019, pp. 1008–1012.
+[8] X. Liu, X. Wang, M. Sahidullah, J. Patino, H. Delgado, T. Kin-
+nunen, M. Todisco, J. Yamagishi, N. Evans, A. Nautsch, and K. A.
+Lee, “ASVspoof 2021: Towards spoofed and deepfake speech de-
+tection in the wild,” IEEE/ACM Transactions on Audio, Speech,
+and Language Processing, vol. 31, pp. 2507–2522, 2023.
+[9] N. M ¨uller, P. Czempin, F. Diekmann, A. Froghyar, and
+K. B¨ottinger, “Does audio deepfake detection generalize?” in In-
+terspeech 2022, 2022, pp. 2783–2787.
+[10] Bhashini, “Bhashini: National language translation mission,”
+2022. [Online]. Available: https://bhashini.gov.in/
+[11] H.-s. Shin, J. Heo, J.-h. Kim, C.-y. Lim, W. Kim, and H.-J. Yu,
+“HM-conformer: A conformer-based audio deepfake detection
+system with hierarchical pooling and multi-level classification to-
+ken aggregation methods,” in ICASSP 2024 - 2024 IEEE Inter-
+national Conference on Acoustics, Speech and Signal Processing
+(ICASSP), 2024, pp. 10 581–10 585.
+[12] J. Gong and N. Chen, “Synthetic voice spoofing detection based
+on feature pyramid conformer,” in Interspeech 2023 , 2023, pp.
+2803–2807.
+[13] H. Tak, J. weon Jung, J. Patino, M. Todisco, and N. Evans, “Graph
+attention networks for anti-spoofing,” in Interspeech 2021, 2021,
+pp. 2356–2360.
+[14] Y . Guo, H. Huang, X. Chen, H. Zhao, and Y . Wang, “Au-
+dio deepfake detection with Self-Supervised WavLM and Multi-
+Fusion Attentive Classifier,” in ICASSP 2024-2024 IEEE Inter-
+national Conference on Acoustics, Speech and Signal Processing
+(ICASSP). IEEE, 2024, pp. 12 702–12 706.
+[15] X. Wang and J. Yamagishi, “Can large-scale vocoded spoofed data
+improve speech spoofing countermeasure with a self-supervised
+front end?” in ICASSP 2024 - 2024 IEEE International Confer-
+ence on Acoustics, Speech and Signal Processing (ICASSP), 2024,
+pp. 10 311–10 315.
+[16] W. Ge, X. Wang, J. Yamagishi, M. Todisco, and N. Evans, “Spoof-
+ing attack augmentation: Can differently-trained attack models
+improve generalisation?” in ICASSP 2024 - 2024 IEEE Inter-
+national Conference on Acoustics, Speech and Signal Processing
+(ICASSP), 2024, pp. 12 531–12 535.
+[17] L. Zhang, K. A. Lee, L. Zhang, L. Wang, and B. Niu, “CPAUG:
+Refining copy-paste augmentation for speech anti-spoofing,” in
+ICASSP 2024 - 2024 IEEE International Conference on Acous-
+tics, Speech and Signal Processing (ICASSP) , 2024, pp. 10 996–
+11 000.
+[18] X. Qi, H. Gu, J. Yi, J. Tao, Y . Ren, J. He, and S. Zeng, “MADD:
+A multi-lingual multi-speaker audio deepfake detection dataset,”
+in 2024 IEEE 14th International Symposium on Chinese Spoken
+Language Processing (ISCSLP), 2024, pp. 466–470.
+[19] R. Ranjan, B. Dutta, M. Vatsa, and R. Singh, “Faking Fluent: Un-
+veiling the Achilles’ Heel of Multilingual Deepfake Detection,” in
+2024 IEEE International Joint Conference on Biometrics (IJCB) ,
+2024, pp. 1–10.
+[20] N. M. M ¨uller, P. Kawa, W. H. Choong, E. Casanova, E. G ¨olge,
+T. M ¨uller, P. Syga, P. Sperl, and K. B ¨ottinger, “MLAAD: The
+multi-language audio anti-spoofing dataset,” in 2024 Interna-
+tional Joint Conference on Neural Networks (IJCNN) , 2024, pp.
+1–7.
+[21] L. Pepino, P. Riera, and L. Ferrer, “Emotion recognition from
+speech using wav2vec 2.0 embeddings,” in Interspeech 2021 ,
+2021, pp. 3400–3404.
+[22] A. Pasad, J.-C. Chou, and K. Livescu, “Layer-wise analysis of a
+self-supervised speech representation model,” in2021 IEEE Auto-
+matic Speech Recognition and Understanding Workshop (ASRU) .
+IEEE, 2021, pp. 914–921.
+[23] A. Babu, C. Wang, A. Tjandra, K. Lakhotia, Q. Xu, N. Goyal,
+K. Singh, P. von Platen, Y . Saraf, J. Pino, A. Baevski, A. Con-
+neau, and M. Auli, “XLS-R: Self-supervised cross-lingual speech
+representation learning at scale,” in Interspeech 2022, 2022, pp.
+2278–2282.
+[24] X. Lu, S. Matsuda, C. Hori, and H. Kashioka, “Speech restoration
+based on deep learning autoencoder with layer-wised pretraining,”
+in Interspeech 2012, 2012, pp. 1504–1507.
+[25] V . Piratla, P. Netrapalli, and S. Sarawagi, “Efficient domain gener-
+alization via common-specific low-rank decomposition,” Interna-
+tional Conference on Machine Learning (ICML) , pp. 7728–7738,
+2020.
+[26] Open-Speech-EkStep, “Open-Speech-EkStep Dataset,” 2022,
+(Accessed: 23 Nov 2022). [Online]. Available: https://github.
+com/Open-Speech-EkStep
+[27] H. Tak, M. Kamble, J. Patino, M. Todisco, and N. Evans, “Raw-
+boost: A raw data boosting and augmentation method applied to
+automatic speaker verification anti-spoofing,” in ICASSP 2022 -
+2022 IEEE International Conference on Acoustics, Speech and
+Signal Processing (ICASSP), 2022, pp. 6382–6386.
+4567

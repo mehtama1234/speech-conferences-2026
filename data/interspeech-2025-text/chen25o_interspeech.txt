@@ -1,0 +1,558 @@
+Predicting Adolescent Suicidal Risk from Multi-task-based Speech:  
+An Ensemble Learning Approach 
+Xi Chen1, Renzhe Yu1, Yansen Tan1, Yiyi Li1, Quan Qian2️, Ying Lin1 
+1Department of Psychology, Sun Yat-sen University, China 
+2️Guangzhou Zhengxin Psychological Counseling Co. Ltd., China 
+linying23@mail.sysu.edu.cn 
+ 
+ 
+Abstract 
+Adolescent suicide is a pressing global public health issue. 
+Timely identification of suicide risk is crucial. Traditional 
+methods of assessing suicide risk are often limited by their 
+reliance on subjective input and resource requirements. This 
+paper aims to address these limitations by detecting suicide risk 
+from multi-task-based speech, utilizing a dataset of 600 Chinese 
+adolescents (age: 10-18 yr) provided by the 1st SpeechWellness 
+Challenge. Our approach involved both acoustic and semantic 
+features extracted by OpenSmile, Emotion2Vec, and a fine-
+tuned BERT-Chinese model. The base models were trained 
+using XGBoost and SVM, etc., with hyperparameters tuned by 
+Bayesian optimization. Then we implemented a multi-model 
+and multi-task nested voting ensemble framework to integrate 
+the base models, achieving a final test set accuracy of 0.63 
+(recall=0.74, F1≈0.67). This work highlights the potential of 
+voice-based biomarkers in mental health assessment. 
+Index Terms: adolescent suicide, speech-based predictive 
+modeling, ensemble learning 
+1. Introduction 
+Research on adolescent suicide prediction is of importance due 
+to its potential to inform prevention strategies and mitigate the 
+risk of premature mortality among this vulnerable population. 
+Identifying reliable predictors of suicide can facilitate early 
+intervention, reducing the likelihood of suicide completion. 
+The existing methods for assessing suicidal risk, including 
+self-report, clinical assessment, are effective in some cases. 
+However, they also have a number of limitations. First, self-
+report methods are susceptible to factors such as adolescents' 
+emotional fluctuations and social expectations, resulting in 
+more subjective data. Second, traditional clinical assessments 
+rely on diagnosis by professionals and are limited by time, 
+resources, and regional availability. In addition, the factors 
+influencing suicidal ideation are complex and multidimensional, 
+involving individual and enviromental aspects. It is often 
+difficult for traditional methods to comprehensively capture 
+such diverse features, leading to inaccurate or one-sided 
+assessment results. It is thus difficult for traditional single 
+assessment methods to fully capture risk factors [1]. 
+To address the above limitations, speech-based prediction 
+becomes a promising solution. The 1st SpeechWellness 
+Challenge (SW1) in InterSpeech 2025 offers a speech dataset 
+of 600 participants and reveal each participant’s responses to 
+three different speech tasks designed to capture a range of 
+linguistic, cognitive, and emotional markers relevant to suicidal 
+risk detection [1]. In particular, Task 0 (ER) assesses 
+spontaneous speech, providing insights into emotional 
+expression, coping strategies, and linguistic patterns associated 
+with distress. Task 1 (PR) offers a controlled linguistic task, 
+enabling the analysis of prosody, articulation, and speech 
+rhythm. Task 2 (ED) evaluates emotional perception and 
+cognitive processing by requiring participants to describe a 
+facial expression. Deficits in emotion recognition and 
+verbalization are commonly linked to suicidal risk, making this 
+task valuable for assessing affective and social cognition. As 
+such, the SW1 dataset facilitates a comprehensive analysis of 
+semantic, prosodic, and cognitive-linguistic features, enhancing 
+the reliability of speech-based suicidal risk assessment. 
+By combining different models derived by different 
+methods, features and data, ensemble learning can compensate 
+for the shortcomings of a single model and integrate the 
+advantages of different models to reduce overfitting and 
+improve generalizability. Considering the multi-task nature of 
+the SW1 dataset and the high complexity of speech data, 
+ensemble learning offers a straightforward and promising way 
+to build a competitive suicide risk prediction model. In 
+particular, ensemble learning allows us to involve richer input 
+information by combining models based on acoustic features 
+(e.g., emotional tone, speech rate, etc.) and semantic features 
+(e.g., textual utterance analysis).  It also enhances the model's 
+ability to capture complex affective and psychological states 
+through joint learning of multiple tasks. 
+2. Methods 
+In this section, we elaborated on the proposed method for 
+predicting the adolescent suicide risk based on the multi-task 
+speech data offered by SW1. For details of the dataset and the 
+third-party tools used in the method, refer to Section 1.1, 1.2 
+and 1.3 in Supplementary Materials. 
+2.1. Feature engineering 
+2.1.1. Independent speech features 
+In this study, we conducted a statistical analysis of audio 
+features across three different tasks (TASK0, TASK1 and 
+TASK2) to identify significant features in suicidal risk 
+detection. We utilized the openSMILE [2, 3] toolkit to extract a 
+total of 88 eGeMAPS[1] features from the training set of each 
+task. To assess the differences in features between the two 
+categories (Label as 1 and 0), we performed independent two-
+sample t-tests on each feature. In each task, features with a p-
+value less than 0.05 were considered statistically significant. 
+The results indicated that there were 10, 12, and 11 significant 
+features for TASK 0, 1, and 2, respectively.  
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+409
+10.21437/Interspeech.2025-2419
+
+In addition, we extracted frequency band energy features 
+from the audio signals to capture audio characteristics related 
+to suicidal risk. First, we loaded the audio data using the librosa 
+[5] and represented the frequency characteristics of the audio 
+signal using a Mel Spectrogram. The Mel Spectrogram is 
+obtained by initially applying the Short-Time Fourier 
+Transform (STFT) to the audio signal as follows: : 
+𝑆[𝑚, 𝑘] = |∑𝑦[𝑛]𝑤[𝑛−𝑚𝐻]𝑒−𝑗2𝜋𝑘𝑛
+𝑁
+𝑁−1
+𝑛=0
+|
+2
+(1) 
+where S[m, k] is the spectrum of the m-th time frame and the k-
+th linear frequency, y[n] is the audio signal, w[n] is the window 
+function, H is the hop length, and N is the window length. 
+Then converting the frequency axis to the Mel scale and 
+taking the logarithm of the Mel spectrogram, we obtained the 
+Mel logarithmic spectrum Mdb[m,i], where i is the index of the 
+frequency band. We then averaged the energy of each 
+frequency band in the Mdb[m,i] along the time dimension to 
+generate frequency band energy features: 
+𝑓𝑟𝑒𝑞[𝑖] = 1
+𝑇∑𝑀𝑑𝑏[𝑚, 𝑖]
+𝑇
+𝑚=1
+(2) 
+where freq[i] is the average energy of the i-th frequency band 
+in Mdb[m, i], and T is the amount of time frames. 
+To analyze features across different frequency ranges, we 
+divided the extracted frequency band energy into low frequency 
+(0-40 Hz), mid frequency (40-80 Hz), and high frequency (80-
+128 Hz) bands, and calculated statistical features for each band, 
+including mean, standard deviation, maximum, and minimum. 
+Additionally, we calculated the overall energy's mean, standard 
+deviation, range, skewness, and kurtosis to comprehensively 
+describe the distribution of frequency band energy features. 
+Taken together, we extracted 145 features, including 128 
+individual frequency band energies, 12 statistical features from 
+the three frequency bands, and 5 overall statistical measures.  
+Based on the training set, we selected the features with 
+significant inter-group difference (p < 0.05, effect size > 0.15). 
+Then we performed cross-validation using XGBoost to further 
+select key features. Ultimately, the three tasks identified 5, 4, 
+and 8 key features for TASK 0, 1, and 2, respectively, which 
+are of great significance for building suicide recognition models. 
+Furthermore, we enriched the acoustic feature set by 
+incorporating a broader range of features extracted using 
+openSMILE, including spectral, cepstral, and voice quality 
+parameters, along with emotion embeddings derived from 
+Emotion2Vec and a novel silence ratio feature. This process 
+resulted in a high-dimensional feature space with 725,931 
+features, which were then standardized and subjected to an 
+independent-sample t-test to identify significant features (p < 
+0.05). Principal Component Analysis (PCA) was employed to 
+reduce the dimensionality while preserving 99% of the variance. 
+This approach ensured that the most salient acoustic features 
+were retained for subsequent analyses. 
+2.1.2. Integrated speech features 
+We proposed a framework for feature fusion and optimization. 
+We merged the aforementioned independent speech features 
+according to the tasks. The initial feature dimensions were 15, 
+16, and 19, respectively. To extract more effective feature 
+representations, we applied Incremental Principal Component 
+Analysis (Incremental PCA) for dimension reduction of the 
+features for each task. Considering the inter-task correlations, 
+we utilized a feature interaction method based on Partial Least 
+Squares Regression (PLSR) to handle task pairs (TASK0-
+TASK1, TASK0-TASK2, and TASK1-TASK2) separately. 
+Specifically, for each pair of tasks, we first used PLSR to 
+learn the mapping relationship between the feature spaces of the 
+two tasks, extracting 4-dimensional interaction components. 
+We then concatenated these interaction components with the 
+first 4 original features of the target task to form 8-dimensional 
+mixed interaction features. This design retains the direct 
+information of the original features while capturing the latent 
+associative patterns between tasks. 
+Finally, we combined all the base features and interaction 
+features to obtain a 48-dimensional vector and performed 
+recursive feature elimination with cross-validation(RFECV)  
+based on Random Forest . Ultimately, we selected 40 of the 
+most discriminative features, significantly reducing the 
+dimensionality of the feature space while preserving the ability 
+of the features to discriminate. In addition, by including gender 
+and age, we had a total of 42 features. 
+2.1.3. Semantic features 
+We conducted feature engineering for the text classification 
+task to optimize model performance and enhance generalization 
+ability. Since the original data was provided in audio format, 
+we first used the Paraformer speech recognition model to 
+convert the audio into text, forming the input features for 
+subsequent natural language processing (NLP) tasks. This 
+conversion process not only preserved the semantic information 
+but also enabled the BERT pre-trained model [6] to effectively 
+extract features from the text data. 
+In the text processing stage, we utilized the BERT-Base-
+Chinese pre-trained model to encode the text. BERT constructs 
+contextual relationships through a bidirectional Transformer 
+mechanism and generates high-dimensional semantic features. 
+Specifically, we used the hidden state vector at the [CLS] 
+position as the sentence-level representation, which has a 
+dimensionality of 768 and represents the semantic information 
+of the entire sentence. 
+To further enhance the model robustness, we introduced the 
+nlpcda data augmentation strategy. This strategy includes 
+methods such as synonym replacement, character swapping, 
+and random deletion to expand the training data and improve 
+the model's generalization ability. Through this augmentation 
+strategy, we can generate more variants of the training samples, 
+increasing the model's adaptability to different inputs. 
+2.2. Model training and ensemble 
+2.2.1. XGBoost Training with Independent Features 
+We trained an XGBoost classifier in a 5-fold cross-validation 
+(CV) on each set of speech features (please refer to section 
+2.1.1). The Bayesian optimization method was employed for 
+tuning the model's hyperparameters (500 iterations with 50 
+random initialization), with the optimization objective of 
+maximizing the CV accuracy. 
+2.2.2. Ensemble training with integrated features 
+As for integrated speech features(in section 2.1.2), we proposed 
+an 
+ensemble 
+learning-based 
+classification 
+framework 
+combining random forests and support vector machines (with 
+both linear and RBF kernels). In the preprocessing stage, we 
+standardized features and enhanced model robustness through 
+410
+
+data augmentation, specifically by adding Gaussian noise (σ = 
+0.01) and applying scale perturbation (0.95-1.05). 
+The model training followed a two-phase strategy: first 
+optimized the base classifiers' hyperparameters by Bayesian 
+optimization (100 iterations with 10 random initializations), 
+then determined the ensemble weights (50 iterations with 10 
+random initializations) to maximize 5-fold CV accuracy. 
+2.2.3. MLP training with semantic features 
+The semantic features(in section 2.1.3) were fed into a multi-
+layer perceptron (MLP) classifier, which comprises two fully 
+connected layers with ReLU activation functions. To mitigate 
+the overfitting risk, dropout regularization was employed. The 
+output layer utilized a sigmoid activation function to perform 
+binary classification. 
+For the loss function, we employed Focal Loss to address 
+class imbalance issues. Additionally, AdamW was used as the 
+optimizer, with a learning rate set to 2e-5. A cosine annealing 
+learning rate scheduler was incorporated to enable dynamic 
+adjustment of the learning rate throughout the training process. 
+During training, we utilized batch-wise optimization 
+strategy with the batch size of 16. To enhance the training 
+stability, mixed precision training was applied, facilitating a 
+faster training process while reducing memory consumption. 
+We splited the dataset into 80% for training and 20% for 
+validation, performing evaluations on the validation set at the 
+end of each epoch to assess the model's generalization ability. 
+2.2.4. Model ensemble 
+The above three types of models were ensembled through a 
+hierarchical approach. First, we conducted hard voting on the 
+XGBoost models for each set of independent speech features, 
+and then combined their results with those from the semantic 
+feature model and the integrated feature model using additional 
+hard voting. All models were trained and validated using 5-fold 
+cross-validation on the training set. The final performance was 
+evaluated on the given test set of 100 samples using accuracy, 
+recall, precision, and F1-score as evaluation metrics. 
+2.3. Model Explanation 
+To understand the contributions of different acoustic features 
+and their interactions, we conducted a comprehensive feature 
+importance analysis based on our ensemble model. The 
+importance scores were calculated from three perspectives and 
+then combined using the optimized weights obtained from 
+ensemble training. Specifically, for the random forest classifier, 
+we computed the mean decrease in Gini impurity across all trees. 
+For the linear SVM, we used the absolute values of the feature 
+coefficients. For the RBF SVM, we employed permutation 
+importance, 
+which 
+measures 
+the 
+decrease 
+in 
+model 
+performance when a feature is randomly shuffled. The final 
+importance score for each feature was obtained by summing up 
+these individual importance scores using their corresponding 
+model weights determined in the ensemble optimization phase. 
+3. Results 
+3.1. Prediction performance 
+3.1.1. Performance of individual models 
+This section presents the classification performance of the 
+XGBoost model, SVM and RF ensemble, and MLP model. As 
+shown in Table 1, the XGBoost model trained with Task 2 
+openSMILE features achieved an accuracy of 0.63. By 
+incorporating multiple feature sets, XGBoost further improved 
+its performance through a hard voting strategy, achieving an 
+accuracy of 0.67 and an F1-score of 0.71, which was the best 
+among all models in comparison. The SVM and RF ensemble 
+approach, which capitalized on integrated speech features, also 
+delivered stable results. The BERT+MLP model, leveraging 
+semantic representations, achieved promising performance. 
+These results highlight the usefulness of different feature sets 
+and modeling strategies, with the XGBoost voting approach 
+being the most effective in enhancing classification accuracy. 
+Table 1: Prediction performance of individual models* 
+Model / Features 
+Acc 
+Rec 
+F1 
+XGBoost / Task 0-openSMILE 
+0.61 
+0.58 
+0.6 
+XGBoost / Task 0-frequency band 
+0.62 
+0.56 
+0.6 
+XGBoost / Task 1-openSMILE 
+0.59 
+0.58 
+0.58 
+XGBoost / Task 1-frequency band 
+0.62 
+0.62 
+0.62 
+XGBoost / Task 2-openSMILE 
+0.63 
+0.62 
+0.63 
+XGBoost / Task 2-frequency band 
+0.58 
+0.58 
+0.58 
+XGBoost voting model / All 
+above 
+0.67 
+0.78 
+0.71 
+SVM+RF / Integrated speech 
+features 
+0.58 
+0.62 
+0.6 
+BERT+MLP / Semantic features 
+0.60 
+0.48 
+0.55 
+* Acc: accuracy; Rec: recall. The first six models listed in the 
+table are trained on independent features in section 2.1.1 and 
+are used as components of XGBoost voting model. The last two 
+models are trained on features from section 2.1.2 and section 
+2.1.3 respectively. 
+3.1.2. Performance of ensemble models 
+We evaluated our ensemble model that ensembled “XGBoost 
+voting”, “SVM+RF”, and “BERT+MLP” on both the validation 
+and test sets. As shown in Table 2, the model achieved an 
+accuracy of 0.63 on both datasets, with balanced performance 
+on the validation set and higher recall on the test set, showing 
+its effectiveness in capturing relevant patterns. 
+Table 2: Prediction performance of the final models* 
+Dataset 
+Acc 
+Pre 
+Rec 
+F1-score 
+Validation 
+0.63 
+0.63 
+0.62 
+0.63 
+Test 
+0.63 
+0.61 
+0.74 
+0.67 
+* Acc: accuracy; Pre: precision; Rec: recall. 
+3.2. Feature importance 
+In this study, the feature importance analysis was performed 
+exclusively for TASK 2 (comprising features from openSMILE, 
+emotion2vec, and silence ratio) for the following reasons. First, 
+Task 2 offers a comprehensive set of features from multiple 
+dimensions of speech, including time-domain, frequency-
+domain, and Mel-Frequency Cepstral Coefficients (MFCCs), 
+which provide a rich array of data for evaluating the relationship 
+between speech characteristics and suicidal risk. Unlike the 
+other tasks that are more focused on specific aspects of speech 
+(e.g., emotional regulation or facial expression recognition), 
+Task 2 encompasses a broader spectrum of features that may be 
+more indicative of an individual's emotional and cognitive 
+states, thus offering greater potential for detecting subtle 
+patterns of distress. Second, Task 2 has the potential to provide 
+more nuanced insights into speech as a risk indicator. By 
+411
+
+incorporating features from both emotion2vec (a speech 
+emotion representation model) and traditional acoustic features, 
+Task 2 captures not only raw speech characteristics but also 
+higher-level emotional content. Given the complexity of 
+suicidal tendencies, it is crucial to explore speech patterns from 
+a multifaceted perspective. As Task 2 was the most 
+comprehensive and potentially the most relevant to suicidal risk, 
+it made sense to prioritize the analysis of features from this task. 
+In Task 2, the extracted features included time-domain 
+features, frequency-domain features, and MFCCs, each 
+contributing uniquely to the model’s performance. For example, 
+time-domain features like RMS energy capture variations in 
+speech intensity, reflecting the emotional energy of the speaker. 
+These features are important because fluctuations in speech 
+intensity often correspond to changes in emotional states, such 
+as distress. Similarly, frequency-domain features, such as 
+Spectral Kurtosis and Spectral Slope, provide insight into the 
+speech signal's frequency distribution. Spectral Kurtosis 
+measures the sharpness of spectral peaks, which can indicate 
+emotional intensity or distress, while Spectral Slope reveals the 
+distribution of frequency components across the speech signal. 
+Together, these features help the model understand both the 
+energy and clarity of the speaker's emotional expression. Table 
+3 presents these ten most important features along with their 
+corresponding importance values. 
+Table 3: Top 10 most important features 
+Feature  
+IMP 
+pcm_RMSenergy_sma_risetime 
+0.002444 
+audSpec_Rfilt_sma_de[3]_quartile2 
+0.002306 
+pcm_fftMag_spectralKurtosis_sma_risetime 
+0.002069 
+mfcc_sma[12]_quartile2 
+0.002067 
+pcm_fftMag_fband250-650_sma_de_risetime 
+0.002052 
+pcm_fftMag_spectralSlope_sma_minRangeRel 
+0.002015 
+mfcc_sma[1]_iqr1-3 
+0.001893 
+pcm_fftMag_spectralCentroid_sma_de_peakRang
+eAbs 
+0.001879 
+logHNR_sma_linregerrQ 
+0.001843 
+mfcc_sma[5]_iqr2-3 
+0.001823 
+ 
+ 
+Figure 1: Feature importance in the ensemble model 
+Then, we conducted a further analysis of all features across 
+the entire model. Figure 1 presents the feature importance 
+analysis results from the weighted ensemble model. The results 
+indicate that Task 2's PC4 contributes the most (importance 
+score 0.059), highlighting its key role in suicide risk 
+classification. Additionally, Task 2's interaction feature Inter6 
+(0.049) and Task 1's PC7 (0.049) also show high importance, 
+suggesting that speech features and cross-task interaction 
+features are crucial for risk prediction. Overall, Task 2's PC 
+features and Task 0-Task 2 interaction features are the most 
+discriminative, 
+emphasizing 
+the 
+critical 
+role 
+of 
+multidimensional speech features in suicide risk detection. 
+4. Discussion and conclusion 
+4.1.  Model performance 
+Our ensemble learning approach for predicting adolescent 
+suicidal risk from multi-task speech data demonstrates 
+promising performance in detecting psychological distress 
+through speech patterns. BERT's semantic feature extraction 
+effectively identifies language patterns associated with suicidal 
+tendencies, including negative self-references, cognitive 
+rigidity, and social isolation - traits previously documented in 
+at-risk individuals [7, 8]. 
+The multi-task approach, capturing different emotional, 
+cognitive, and prosodic features, provides a comprehensive 
+assessment of adolescents' mental states. Our ensemble method 
+integrating diverse feature models outperforms individual 
+classifiers, particularly in recall - crucial for identifying high-
+risk individuals. The model achieved 67% accuracy and 71% 
+F1-score, indicating potential for practical applications, though 
+further optimization is needed to improve detection of subtle 
+risk indicators. 
+4.2. Feature importance 
+Feature importance analysis reveals that combinations of time-
+domain, frequency-domain, and MFCC features are critical for 
+identifying suicidal risk. Time-domain features like RMS 
+energy reflect speech intensity disruptions common in 
+psychological distress. Spectral features, particularly spectral 
+kurtosis and slope, indicate that speech clarity and emotional 
+intensity serve as key risk indicators, with spectral kurtosis 
+specifically linked to emotional distress markers. 
+MFCC features effectively capture speech timbre and 
+prosody, which reflect emotional states like sadness and anxiety 
+- common in at-risk adolescents. The interaction features 
+between different speech tasks, especially between emotion 
+regulation (Task 0) and facial expression description (Task 2), 
+demonstrate strong discriminative ability. This suggests that 
+relationships between emotional expression and social 
+cognition provide crucial supplementary information for risk 
+prediction. 
+4.3. Conclusion and future directions 
+This study demonstrates speech-based analysis's potential for 
+predicting adolescent suicidal risk. By capturing subtle 
+linguistic, prosodic, and emotional signals through multi-task 
+learning and ensemble methods, our model offers a promising 
+alternative to traditional assessment approaches. Early 
+detection of distress markers through speech could become a 
+valuable tool for timely intervention. 
+Future research may incorporate longitudinal data to track 
+how speech characteristics evolve over time relative to stressors 
+and mental health changes. This could provide deeper insights 
+into 
+individual 
+vulnerability-environment 
+interactions, 
+potentially enabling more personalized intervention strategies. 
+Using deep learning techniques may further optimize risk 
+prediction, enhancing accuracy and real-world applicability. 
+412
+
+5. References 
+[1] Wen Wu, Ziyun Cui, Chang Lei, Yinan Duan, Diyang Qu, Ji Wu, 
+Bowen Zhou, Runsen Chen, and Chao Zhang. “ The 1st 
+SpeechWellness Challenge: Detecting Suicide Risk Among 
+Adolescents.” arXiv preprint arXiv:2501.06474, 2025. 
+[2] F. Eyben, M. Wöllmer, and B. Schuller, “Opensmile: the munich 
+versatile and fast open-source audio feature extractor,” in 
+Proceedings of the 18th ACM international conference on 
+Multimedia, 2010, pp. 1459–1462. 
+[3] B. Schuller, S. Steidl, A. Batliner, et al., “The interspeech 2️016 
+computational paralinguistics challenge: Deception, sincerity & 
+native language,” in Interspeech 2016, 2016, pp. 2001–2005.  
+[4] Eyben, F., Scherer, K.R., Schuller, B., Sundberg, J., André, E., 
+Busso, C., Devillers, L., Epps, J., Laukka, P., Narayanan, S.S., & 
+Truong, K.P., “The Geneva Minimalistic Acoustic Parameter 
+Set (GeMAPS) for Voice Research and Affective Computing,” 
+IEEE Transactions on Affective Computing, vol. 7, no. 2, pp. 190–
+202, Apr. 2016. 
+[5] B. McFee, C. Raffel, D. Liang, M. McVicar, E. Battenberg, and 
+O. Nieto,“librosa: Audio and music signal analysis in python,” in 
+Proceedings of The 14th Python in Science Conference, 2015.  
+[6] Devlin, J., Chang, M. W., Lee, K., & Toutanova, K. “BERT: Pre-
+training of Deep Bidirectional Transformers for Language 
+Understanding,” In Proceedings of NAACL-HLT, 2019, pp. 4171–
+4186. 
+[7] S. Rude, E.-M. Gortner, and J. Pennebaker, “Language use of 
+depressed and depression-vulnerable college students, ” 
+Cognition & Emotion, vol. 18, no. 8, pp. 1121–1133, Dec. 2004. 
+[8] T. J. Ellis and B. E. Rutherford, “Cognition and Suicide: Two 
+Decades of Progress, ” International Journal of Cognitive 
+Therapy, vol. 1, no. 1, pp. 47–68, Feb. 2008. 
+ 
+413

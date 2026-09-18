@@ -1,0 +1,671 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+LIST: Language-Independent Speech Token for Multilingual Speech Synthesis
+with Language Models
+Chang Liu1, Zhen-Hua Ling1∗, Yu Gu2
+1National Engineering Research Center of Speech and Language Information Processing, University
+of Science and Technology of China, China
+2Tencent AI Lab, China
+lcaily@mail.ustc.edu.cn, zhling@ustc.edu.cn, colinygu@tencent.com
+Abstract
+Recently, language model (LM)-based speech synthesis
+models have shown remarkable naturalness and powerful zero-
+shot capabilities. In this paradigm, discrete speech tokens play
+a critical role. Prior work has proposed using automatic speech
+recognition (ASR) tasks to enhance the semantic information
+and alignment with text in tokens. However, the commonly
+used byte-pair encoding (BPE) tokenizer in ASR task leads to
+significant differences in the text token sets of different lan-
+guages, making it difficult to exploit language-shared informa-
+tion. This paper proposes to use the International Phonetic Al-
+phabet (IPA) as the training target for ASR to learn language-
+independent speech tokens. In addition, we propose to use a
+timbre converter for speaker disentanglement in the speech syn-
+thesis model. Our proposed approach effectively improves the
+speaker similarity and expressiveness in both multilingual and
+cross-lingual zero-shot speech synthesis.
+Index Terms: speech synthesis, multilingual, speech token,
+language model
+1. Introduction
+In recent years, neural text-to-speech (TTS) models have seen
+significant advancements [1, 2, 3, 4]. These models are capable
+of generating high-fidelity voices that are nearly indistinguish-
+able from human speech for specific speakers. Alongside the
+progress in audio representation learning techniques, such as
+self-supervised learning (SSL) models [5, 6] and speech codec
+models [7, 8], several studies have incorporated continuous or
+discrete speech representations into speech synthesis models as
+intermediate representations [9, 10, 11, 12].
+Recent works have demonstrated that zero-shot TTS mod-
+els have the ability to synthesize speech for any given text by
+imitating the timbre, prosody, and style from just a few seconds
+of prompt audio. These models, trained on large-scale data, ex-
+hibit strong in-context learning capabilities and can be classified
+into two main categories. One is based on the language model
+(LM), which uses a speech tokenizer to extract discrete speech
+tokens and an autoregressive language model to predict these
+tokens [13, 14, 15]. Due to autoregressive sampling, LM-based
+models can generate diverse and prosody-consistent speech.
+The second category consists of non-autoregressive TTS mod-
+els based on diffusion models, where flow matching is widely
+used and has achieved high levels of naturalness [16, 17]. Addi-
+tionally, some studies have combined these two generative mod-
+els to achieve even better performance [18, 19].
+This work was supported in part by the National Natural Science
+Foundation of China under Grant U23B2053.
+∗Corresponding author.
+Obviously, speech tokens are crucial in LM-based TTS
+models, as they directly determine the performance of the mod-
+els. While previous studies have applied discrete speech tokens
+to LM-based multilingual TTS models [15], they typically used
+unsupervised speech tokens [7, 8]. CosyVoice [19] proposed
+inserting a quantization layer into a multilingual ASR model to
+obtain discrete supervised semantic tokens, which complements
+lacking semantic information and alignment with text, resulting
+in better performance.
+However, in the ASR tasks used by CosyVoice, the byte-
+pair encoding (BPE) tokenizer was employed to obtain text to-
+kens as training targets. Since the BPE token sets vary signif-
+icantly across different languages, it becomes challenging for
+the ASR model to learn shared language knowledge. As a re-
+sult, the extracted speech tokens lack language-independent in-
+formation, limiting the performance of multilingual LM-based
+TTS models that rely on these tokens, especially in cross-
+lingual scenarios.
+To address this problem, this paper proposes using the Inter-
+national Phonetic Alphabet (IPA) [20] as the training target for
+the ASR model. IPA is a unified phonetic symbol system used
+to represent the pronunciations of all languages. This enables
+the ASR model to fully leverage the consistency of pronunci-
+ation across languages and learn language-independent seman-
+tic information. To obtain a language-independent speech to-
+kenizer, we insert a vector quantization layer into the encoder
+of ASR model with IPA as training targets. Then, we extract
+language-independent speech tokens from the proposed speech
+tokenizer and integrate them into an LM-based multilingual
+TTS model, which autoregressively predicts the speech tokens
+using a language model and employs a flow matching model to
+generate mel spectrogram from these tokens, conditioning on
+speaker embedding and mel spectrogram.
+Furthermore, we propose an approach to achieve speaker
+disentanglement during the training of the flow matching
+model. This method uses a timbre converter to modify the tim-
+bre attribute of the speech before extracting speech tokens and
+then predicts the mel spectrogram extracted from the original
+speech. In this way, the flow matching model is forced to rely
+on speaker information from the provided speaker embedding
+rather than the speech tokens, resulting in higher speaker simi-
+larity and improved naturalness.
+Our proposed TTS model is trained on a multilingual
+dataset consisting of six languages.
+Experimental results
+demonstrate that the proposed method effectively improves the
+speaker similarity and expressiveness of the synthesized speech
+in both multilingual and cross-lingual zero-shot speech syn-
+thesis tasks. Audio demos, codes and models are available at
+https://ryuclc.github.io/LIST.
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+1623
+10.21437/Interspeech.2025-1752
+
+2. Proposed Method
+2.1. Language-Independent Speech Tokenizer
+The Automatic Speech Recognition (ASR) task involves tran-
+scribing speech into text. Previous studies have explored lever-
+aging ASR tasks to enrich the semantic information within
+speech representations and improve their alignment with text.
+For instance, Liu et al. [21] utilized the continuous hidden rep-
+resentations of the ASR model as intermediate representations
+for TTS models. In contrast, CosyVoice [19] introduced the
+idea of inserting a quantization layer into the ASR encoder to
+obtain discrete speech tokens.
+As shown in Figure 1, our proposed language-independent
+(LI) speech tokenizer is trained using an ASR task. It first down-
+samples the waveform to 50 Hz representations using the same
+CNN encoder as HuBERT [6]. The Token encoder then ex-
+tracts contextual features from these representations, consisting
+of the first six Transformer layers of the ASR encoder. Fol-
+lowing this, a vector quantizer is inserted after the Token en-
+coder to obtain discrete speech tokens, following the approach
+of CosyVoice. We employ a vector quantizer with a Euclidean
+codebook, updated using exponential moving average (EMA).
+After quantization, discrete speech tokens are obtained. Before
+feeding them into the subsequent networks, additional position
+embeddings are added. The Aggregation encoder consists of
+the remaining layers of the ASR encoder, and its output is fed
+to the ASR decoder to predict targets in a teacher-forcing mode
+during training with cross entropy (CE) loss.
+In CosyVoice, the Byte-Pair Encoding (BPE) tokenizer was
+used to generate text tokens as training targets for multilin-
+gual ASR. However, the set of these text tokens varies signif-
+icantly across different languages, which makes it challenging
+for the ASR model to learn language-shared semantic infor-
+mation. This variation negatively impacts the performance of
+speech tokens and, consequently, the synthesis quality when ap-
+plied to the downstream multilingual TTS task.
+This paper proposes converting all text transcriptions into
+the International Phonetic Alphabet (IPA) and using these IPA
+transcriptions as the training targets for the multilingual ASR
+model. IPA is a unified phonetic symbol system that represents
+the pronunciations of all languages. In this way, we can ef-
+fectively leverage the consistent pronunciation features across
+different languages, enabling the model to learn a language-
+independent speech token.
+Note that the encoder of our ASR model is initialized us-
+ing a pretrained multilingual HuBERT model to enhance per-
+formance, given the limited computational and data resources.
+Additionally, the original HuBERT models operate at a frame
+rate of 50 Hz. Following previous work [22], we reduce this
+to 25 Hz without introducing extra parameters. Since HuBERT
+uses convolutional position embeddings, we modify the stride
+of the position convolution before the first encoder layer to 2
+and apply average pooling on the 50 Hz representations, result-
+ing in a 25 Hz speech token.
+2.2. Language Model-Based TTS Model with Language-
+Independent Speech Token
+As shown in Figure 2, our TTS model architecture follows the
+design of CosyVoice [19]. A language model is used to predict
+speech tokens from text. These tokens are then processed by
+a flow matching model to predict the mel-spectrogram, condi-
+tioned on both the speaker embedding and the reference mel-
+spectrogram. Finally, a vocoder is employed to reconstruct the
+Figure 1:
+Proposed language-independent speech tokenizer
+trained by a ASR task with IPA targets.
+The gray module
+is frozen during training. The dashed-line box represents the
+speech tokenizer.
+Figure 2: The LM-based TTS model used in this paper. S⃝, E⃝
+and T⃝denote the “start of sequence”, “start of sequence” and
+“turn of speech” tokens respectively.
+waveform.
+In CosyVoice, a speaker embedding is fed into the language
+model. However, during our preliminary experiments, we found
+that this approach leads to a serious information leakage prob-
+lem, particularly in cross-lingual scenarios, as also noted in
+CosyVoice2 [23]. As a result, we remove the speaker embed-
+ding from the language model, as shown in Figure 2. Addi-
+tionally, to improve language control, we randomly prepend a
+language prefix to the text during language model training with
+a probability of 0.5.
+Furthermore, to improve speaker similarity and the natu-
+ralness of synthetic speech, we propose a speaker disentangle-
+ment method during the flow matching training process. As
+shown in Figure 3, we use a timbre converter to modify the
+timbre attributes of the speech before extracting speech tokens,
+and then predict the mel-spectrogram based on the unaltered
+speech. This approach forces the flow-matching model to rely
+on speaker information from the provided speaker embedding
+and reference mel-spectrogram, rather than from the speech to-
+kens, to achieve speaker disentanglement.
+1624
+
+Figure 3: Flow matching with timbre converter.
+3. Experiments
+3.1. Datasets
+3.1.1. ASR data
+To train the ASR model described above, we used data from
+40 languages in the Common Voice dataset [24], including Ara-
+bic (ar), Belarusian (be), Bashkir (ba), Bulgarian (bg), Cata-
+lan (ca), Chinese (zh), Czech (cs), Welsh (cy), Dutch (nl), En-
+glish (en), Estonian (et), Basque (eu), Persian (fa), Finnish (fi),
+French (fr), Georgian (ka), German (de), Hungarian (hu), In-
+donesian (id), Italian (it), Latvian (lv), Lithuanian (lt), Marathi
+(mr), Polish (pl), Portuguese (pt), Romanian (ro), Russian (ru),
+Slovak (sk), Slovenian (sl), Spanish (es), Swahili (sw), Swedish
+(sv), Tamil (ta), Turkish (tr), Ukrainian (uk), Urdu (ur), Uzbek
+(uz), Uyghur (ug), Chuvash (cv), Tatar (tt). The duration of
+each language ranged from 50 to 200 hours, for a total of 4879
+hours. Each utterance had a corresponding text transcription.
+3.1.2. TTS data
+To evaluate the performance of the LM-based TTS model using
+our proposed LI speech tokens, we used a multilingual dataset
+consisting of six languages. The Chinese data was obtained
+from Wenetspeech4TTS [25], with a duration of 945 hours,
+while the English data came from LibriTTS [26], with a du-
+ration of 585 hours. For the other languages, we used German,
+French, Japanese, and Korean data from the Emilia dataset [27],
+with durations of 1,590, 1,381, 1,715, and 217 hours, respec-
+tively.
+To demonstrate the language independence of the speech
+tokens, Japanese and Korean in the TTS data were considered
+unseen languages in the ASR task.
+3.2. Experimental setup
+3.2.1. ASR
+To generate the IPA training targets, we employed the Phone-
+mizer tool [28] to convert the transcriptions of the ASR data
+into IPA sequences. However, this method was not applicable
+to Chinese due to its low accuracy. Instead, we first utilized
+pypinyin1 to convert Chinese characters into pinyin, and then
+employed a pinyin-to-ipa tool2 to convert these pinyin into IPA
+with tones. As a result, the size of the IPA set was 417.
+As previously mentioned, the encoder of our ASR model
+was initialized with a pretrained multilingual HuBERT model
+named mHuBERT-147 [29]. We implemented an approach to
+1https://github.com/mozillazg/python-pinyin
+2https://github.com/stefantaubert/
+pinyin-to-ipa
+compress it to a token rate of 25 Hz without adding any extra
+parameters. Upon completion of the training process, the Char-
+acter Error Rate (CER) of the ASR model on the validation sets
+of 40 languages was measured at 3.57%.
+To verify the effectiveness of our proposed language-
+independent speech tokens, we also trained another ASR model
+with the same architecture and data, but using the BPE tokens
+from CosyVoice instead of IPA. The size of BPE token set was
+43,319, resulting in a CER of 10.24% on the validation sets of
+40 languages.
+3.2.2. TTS
+We adopted the identical model configurations as those of the
+original CosyVoice model.
+Besides, to prevent information
+leakage, we eliminated the speaker embedding from the Lan-
+guage Model (LM). For the timbre converter, we used Open-
+Voice [30]. Regarding the speaker embedding, we utilized the
+campplus [31] model to extract it from speech waveforms.
+In our experiments, we compared the following three mod-
+els:
+• Token: The TTS model trained using the speech tokens ex-
+tracted from our ASR model, with BPE tokens as the targets.
+• LIST: Our proposed model, which uses the speech tokens
+extracted from our ASR model with IPA as the targets.
+• LIST-tc: Our proposed model, enhanced with a timbre con-
+verter for speaker disentanglement.
+3.3. Experimental results
+3.3.1. Evaluation sets
+To evaluate the performance of the multilingual TTS models,
+we prepared both an objective set and a subjective set for each
+language. The objective set is used to assess various objective
+metrics of the model. For Chinese and English, we directly
+used the open-source benchmarks from SEED [18], which con-
+tain 2,000 and 1,000 samples, respectively. For the other four
+languages, we extracted 1,000 samples each from the test sets of
+the Common Voice dataset. The subjective set is used for listen-
+ing tests, as it includes high expressiveness and diverse styles.
+Each language contains approximately 100 samples. Addition-
+ally, to evaluate the model’s performance in cross-lingual sce-
+narios, we constructed cross-lingual test sets by using the test
+sets from different languages.
+3.3.2. Objective evaluation
+We used two objective metrics: 1) character error rate (CER),
+which is used to evaluate intelligibility. For languages other
+than Chinese, we used whisper-large-v3 [32] to transcribe the
+generated speech. For Chinese, we used Paraformer-zh [33].
+The CER is then calculated based on the transcriptions.
+2)
+speaker similarity (SIM), which is obtained by calculating the
+cosine similarity between the speaker embeddings of the gen-
+erated speech and the reference speech.
+These embeddings
+are extracted using a speaker verification model fine-tuned on
+WavLM3.
+The objective evaluation results of zero-shot and cross-
+lingual zero-shot TTS are shown in Table 1 and Table 2, re-
+spectively. Firstly, in terms of the CER metric, both LIST and
+LIST-tc are generally superior to Token. This indicates that
+3https://github.com/microsoft/UniSpeech/tree/
+main/downstreams/speaker_verification
+1625
+
+Table 1: Objective evaluation results of zero-shot TTS with different models on six languages, including character error rates (CER)
+(%) and speaker similarity (SIM). Avg denotes the average values of six languages.
+Model
+zh
+en
+ja
+ko
+de
+fr
+Avg
+CER↓SIM↑CER
+SIM
+CER
+SIM
+CER
+SIM
+CER
+SIM
+CER
+SIM
+CER
+SIM
+Human
+1.14
+0.755
+1.21
+0.737
+8.57
+0.708
+7.41
+0.716
+2.45
+0.762
+5.13
+0.740
+4.32
+0.736
+Token
+5.06
+0.596
+3.79
+0.551 12.03 0.582 12.53 0.609
+6.60
+0.576
+8.34
+0.579
+8.06
+0.582
+LIST
+3.89
+0.615
+4.06
+0.563
+9.73
+0.588 10.52 0.621
+3.75
+0.600
+8.26
+0.584
+6.70
+0.595
+LIST-tc
+4.27
+0.622
+4.12
+0.567
+9.95
+0.593 10.57 0.626
+3.76
+0.603
+8.36
+0.587
+6.84
+0.600
+Table 2: Objective evaluation results of cross-lingual zero-shot TTS with different models on six languages, including character error
+rates (CER) (%) and speaker similarity (SIM). Avg denotes the average values of six languages.
+Model
+zh
+en
+ja
+ko
+de
+fr
+Avg
+CER↓SIM↑CER
+SIM
+CER
+SIM
+CER
+SIM
+CER
+SIM
+CER
+SIM
+CER
+SIM
+Token
+3.49
+0.468
+3.35
+0.372 15.63 0.441
+9.59
+0.449
+3.36
+0.412
+7.84
+0.399
+7.21
+0.424
+LIST
+3.52
+0.465
+3.00
+0.388 16.47 0.455
+8.26
+0.462
+2.74
+0.421
+7.47
+0.412
+6.91
+0.434
+LIST-tc
+3.76
+0.474
+3.10
+0.394 16.44 0.464
+8.89
+0.466
+2.87
+0.428
+7.81
+0.415
+7.15
+0.440
+Table 3: MOS results of zero-shot TTS with different models on six languages with 95% confidence intervals. Avg denotes the average
+MOS of six languages.
+Model
+zh
+en
+ja
+ko
+de
+fr
+Avg
+Token
+4.27 ± 0.07 3.91 ± 0.10 4.09 ± 0.09 3.99 ± 0.10 4.08 ± 0.09 4.03 ± 0.08
+4.06 ± 0.09
+LIST
+4.39 ± 0.06 4.06 ± 0.08 4.28 ± 0.09 4.15 ± 0.08 4.25 ± 0.09 4.19 ± 0.08
+4.22 ± 0.08
+LIST-tc 4.33 ± 0.07 4.13 ± 0.07 4.31 ± 0.08 4.21 ± 0.08 4.35 ± 0.08 4.23 ± 0.08
+4.26 ± 0.08
+Table 4: MOS results of cross-lingual zero-shot TTS with different models on six languages with 95% confidence intervals. Avg denotes
+the average MOS of six languages.
+Model
+zh
+en
+ja
+ko
+de
+fr
+Avg
+Token
+4.20 ± 0.07 4.13 ± 0.07 4.10 ± 0.07 4.12 ± 0.09 4.07 ± 0.08 4.11 ± 0.08
+4.12 ± 0.08
+LIST
+4.31 ± 0.06 4.28 ± 0.07 4.28 ± 0.08 4.24 ± 0.09 4.19 ± 0.09 4.22 ± 0.09
+4.25 ± 0.08
+LIST-tc 4.36 ± 0.07 4.42 ± 0.06 4.35 ± 0.06 4.34 ± 0.08 4.32 ± 0.08 4.27 ± 0.07
+4.34 ± 0.07
+the speech tokens extracted from the ASR model with IPA as
+the targets capture more semantic information. However, the
+CER of LIST-tc is slightly higher than that of LIST, which may
+be due to the timbre converter affecting the content informa-
+tion. Regarding the SIM metric, LIST shows a significant im-
+provement over Token. Meanwhile, LIST-tc further enhances
+speaker similarity compared to LIST. These experimental re-
+sults demonstrate the superiority of the language-independent
+speech tokens we proposed.
+3.3.3. Subjective evaluation
+Subjective listening tests were conducted to evaluate the mean
+opinion score (MOS) of the synthetic speech. For each lan-
+guage, we randomly selected 20 samples from the subjective
+evaluation set for zero-shot synthesis. Then, we conducted sub-
+jective listening tests on the crowdsourcing platform Amazon
+Mechanical Turk4. Approximately 15 native speakers partici-
+pated in each language group. These native speakers first lis-
+tened to a prompt reference audio, and then rated the synthe-
+sized speech in terms of speech quality, expressiveness, and
+speaker similarity to the prompt audio, on a scale from 1 to 5,
+with intervals of 0.5.
+The MOS results of zero-shot and cross-lingual zero-shot
+4https://www.mturk.com/
+TTS are shown in Table 3 and Table 4, respectively. The p-value
+of paired t-test was employed to measure the significance of the
+difference between two models. It is evident that LIST signifi-
+cantly outperforms Token in all cases (p < 0.05). This indicates
+that our proposed method leverages the unified pronunciation
+characteristics of different languages through IPA, facilitating
+speech tokens to contain more language-independent semantic
+information, thereby improving the performance. Meanwhile,
+LIST-tc also generally outperforms Token significantly (p <
+0.05), except in zero-shot TTS for Chinese (zh) (p > 0.05).
+Compared to LIST, LIST-tc generally shows a slight but not
+significant improvement (p > 0.05).
+4. Conclusion
+In this paper, we proposed a novel approach to obtain language-
+independent speech tokens for multilingual TTS. We built an
+ASR model using IPA as training targets and inserted a vec-
+tor quantizer into the encoder to generate discrete speech to-
+kens. The use of IPA enables the ASR model to learn useful
+language-independent semantic information. Besides, we intro-
+duced a speaker decoupling method during the training process
+of the TTS model. This approach employs a timbre converter
+to modify the speech before extracting speech tokens for flow
+matching, resulting in improved speaker similarity and voice
+quality.
+1626
+
+5. References
+[1] N. Li, S. Liu, Y. Liu, S. Zhao, and M. Liu, “Neural speech synthe-
+sis with transformer network,” in Proceedings of the AAAI con-
+ference on artificial intelligence, vol. 33, no. 01, 2019, pp. 6706–
+6713.
+[2] Y. Ren, C. Hu, X. Tan, T. Qin, S. Zhao, Z. Zhao, and T.-Y. Liu,
+“Fastspeech 2: Fast and high-quality end-to-end text to speech,”
+in International Conference on Learning Representations, 2021.
+[3] J. Kim, S. Kim, J. Kong, and S. Yoon, “Glow-tts: A generative
+flow for text-to-speech via monotonic alignment search,” in Ad-
+vances in Neural Information Processing Systems, H. Larochelle,
+M. Ranzato, R. Hadsell, M. Balcan, and H. Lin, Eds., vol. 33,
+2020, pp. 8067–8077.
+[4] J. Kim, J. Kong, and J. Son, “Conditional variational autoencoder
+with adversarial learning for end-to-end text-to-speech,” in Inter-
+national Conference on Machine Learning.
+PMLR, 2021, pp.
+5530–5540.
+[5] A. Baevski, Y. Zhou, A. Mohamed, and M. Auli, “wav2vec 2.0:
+A framework for self-supervised learning of speech representa-
+tions,” in Advances in Neural Information Processing Systems,
+H. Larochelle, M. Ranzato, R. Hadsell, M. Balcan, and H. Lin,
+Eds., vol. 33, 2020, pp. 12 449–12 460.
+[6] W.-N. Hsu, B. Bolte, Y.-H. H. Tsai, K. Lakhotia, R. Salakhut-
+dinov, and A. Mohamed, “Hubert: Self-supervised speech rep-
+resentation learning by masked prediction of hidden units,”
+IEEE/ACM Transactions on Audio, Speech, and Language Pro-
+cessing, vol. 29, pp. 3451–3460, 2021.
+[7] N.
+Zeghidour,
+A.
+Luebs,
+A.
+Omran,
+J.
+Skoglund,
+and
+M. Tagliasacchi, “Soundstream:
+An end-to-end neural audio
+codec,” IEEE/ACM Transactions on Audio, Speech, and Lan-
+guage Processing, vol. 30, pp. 495–507, 2021.
+[8] A. D´efossez, J. Copet, G. Synnaeve, and Y. Adi, “High fidelity
+neural audio compression,” arXiv preprint arXiv:2210.13438,
+2022.
+[9] H. Siuzdak, P. Dura, P. van Rijn, and N. Jacoby, “Wavthruvec:
+Latent speech representation as intermediate features for neural
+speech synthesis,” in Interspeech 2022, 2022, pp. 833–837.
+[10] C. Du, Y. Guo, X. Chen, and K. Yu, “Vqtts: High-fidelity text-
+to-speech synthesis with self-supervised vq acoustic feature,” in
+Interspeech 2022, 2022, pp. 1596–1600.
+[11] F. Kreuk, G. Synnaeve, A. Polyak, U. Singer, A. D´efossez,
+J. Copet, D. Parikh, Y. Taigman, and Y. Adi, “Audiogen: Textually
+guided audio generation,” in The Eleventh International Confer-
+ence on Learning Representations, 2023.
+[12] Z. Borsos, R. Marinier, D. Vincent, E. Kharitonov, O. Pietquin,
+M. Sharifi, D. Roblek, O. Teboul, D. Grangier, M. Tagliasac-
+chi, and N. Zeghidour, “Audiolm: A language modeling approach
+to audio generation,” IEEE/ACM Transactions on Audio, Speech,
+and Language Processing, vol. 31, pp. 2523–2533, 2023.
+[13] E. Kharitonov, D. Vincent, Z. Borsos, R. Marinier, S. Girgin,
+O. Pietquin, M. Sharifi, M. Tagliasacchi, and N. Zeghidour,
+“Speak, read and prompt: High-fidelity text-to-speech with min-
+imal supervision,” Transactions of the Association for Computa-
+tional Linguistics, vol. 11, pp. 1703–1718, 2023.
+[14] C. Wang, S. Chen, Y. Wu, Z. Zhang, L. Zhou, S. Liu, Z. Chen,
+Y. Liu, H. Wang, J. Li et al., “Neural codec language mod-
+els are zero-shot text to speech synthesizers,” arXiv preprint
+arXiv:2301.02111, 2023.
+[15] Z. Zhang, L. Zhou, C. Wang, S. Chen, Y. Wu, S. Liu, Z. Chen,
+Y. Liu, H. Wang, J. Li et al., “Speak foreign languages with your
+own voice: Cross-lingual neural codec language modeling,” arXiv
+preprint arXiv:2303.03926, 2023.
+[16] M. Le, A. Vyas, B. Shi, B. Karrer, L. Sari, R. Moritz,
+M. Williamson, V. Manohar, Y. Adi, J. Mahadeokar, and W.-N.
+Hsu, “Voicebox: Text-guided multilingual universal speech gen-
+eration at scale,” in Advances in Neural Information Processing
+Systems, A. Oh, T. Naumann, A. Globerson, K. Saenko, M. Hardt,
+and S. Levine, Eds., vol. 36, 2023, pp. 14 005–14 034.
+[17] Y. Chen, Z. Niu, Z. Ma, K. Deng, C. Wang, J. Zhao, K. Yu, and
+X. Chen, “F5-tts: A fairytaler that fakes fluent and faithful speech
+with flow matching,” arXiv preprint arXiv:2410.06885, 2024.
+[18] P. Anastassiou, J. Chen, J. Chen, Y. Chen, Z. Chen, Z. Chen,
+J. Cong, L. Deng, C. Ding, L. Gao et al., “Seed-tts: A family of
+high-quality versatile speech generation models,” arXiv preprint
+arXiv:2406.02430, 2024.
+[19] Z. Du, Q. Chen, S. Zhang, K. Hu, H. Lu, Y. Yang, H. Hu,
+S. Zheng, Y. Gu, Z. Ma et al., “Cosyvoice: A scalable multi-
+lingual zero-shot text-to-speech synthesizer based on supervised
+semantic tokens,” arXiv preprint arXiv:2407.05407, 2024.
+[20] I. P. Association, Handbook of the International Phonetic Associ-
+ation: A guide to the use of the International Phonetic Alphabet.
+Cambridge University Press, 1999.
+[21] C. Liu, Z.-H. Ling, and L.-H. Chen, “Pronunciation dictionary-
+free multilingual speech synthesis using learned phonetic repre-
+sentations,” IEEE/ACM Transactions on Audio, Speech, and Lan-
+guage Processing, vol. 31, pp. 3706–3716, 2023.
+[22] F. Wu, K. Kim, J. Pan, K. J. Han, K. Q. Weinberger, and Y. Artzi,
+“Performance-efficiency trade-offs in unsupervised pre-training
+for speech recognition,” in ICASSP 2022 - 2022 IEEE Interna-
+tional Conference on Acoustics, Speech and Signal Processing
+(ICASSP), 2022, pp. 7667–7671.
+[23] Z. Du, Y. Wang, Q. Chen, X. Shi, X. Lv, T. Zhao, Z. Gao,
+Y. Yang, C. Gao, H. Wang et al., “Cosyvoice 2: Scalable stream-
+ing speech synthesis with large language models,” arXiv preprint
+arXiv:2412.10117, 2024.
+[24] R. Ardila, M. Branson, K. Davis, M. Henretty, M. Kohler,
+J. Meyer, R. Morais, L. Saunders, F. M. Tyers, and G. Weber,
+“Common voice: A massively-multilingual speech corpus,” in
+Proceedings of the 12th Conference on Language Resources and
+Evaluation (LREC 2020), 2020, pp. 4211–4215.
+[25] L. Ma, D. Guo, K. Song, Y. Jiang, S. Wang, L. Xue, W. Xu,
+H. Zhao, B. Zhang, and L. Xie, “Wenetspeech4tts: A 12,800-hour
+mandarin tts corpus for large speech generation model bench-
+mark,” arXiv preprint arXiv:2406.05763, 2024.
+[26] H. Zen, V. Dang, R. Clark, Y. Zhang, R. J. Weiss, Y. Jia, Z. Chen,
+and Y. Wu, “Libritts: A corpus derived from librispeech for text-
+to-speech,” in Interspeech 2019, 2019, pp. 1526–1530.
+[27] H. He, Z. Shang, C. Wang, X. Li, Y. Gu, H. Hua, L. Liu, C. Yang,
+J. Li, P. Shi, Y. Wang, K. Chen, P. Zhang, and Z. Wu, “Emilia: An
+extensive, multilingual, and diverse speech dataset for large-scale
+speech generation,” in 2024 IEEE Spoken Language Technology
+Workshop (SLT), 2024, pp. 885–890.
+[28] M. Bernard and H. Titeux, “Phonemizer: Text to phones transcrip-
+tion for multiple languages in python,” Journal of Open Source
+Software, vol. 6, no. 68, p. 3958, 2021.
+[29] M. Z. Boito, V. Iyer, N. Lagos, L. Besacier, and I. Calapode-
+scu, “mhubert-147: A compact multilingual hubert model,” arXiv
+preprint arXiv:2406.06371, 2024.
+[30] Z. Qin, W. Zhao, X. Yu, and X. Sun, “Openvoice: Versatile instant
+voice cloning,” arXiv preprint arXiv:2312.01479, 2023.
+[31] H. Wang, S. Zheng, Y. Chen, L. Cheng, and Q. Chen, “Cam++: A
+fast and efficient network for speaker verification using context-
+aware masking,” arXiv preprint arXiv:2303.00332, 2023.
+[32] A. Radford, J. W. Kim, T. Xu, G. Brockman, C. McLeavey, and
+I. Sutskever, “Robust speech recognition via large-scale weak
+supervision,” in International conference on machine learning.
+PMLR, 2023, pp. 28 492–28 518.
+[33] Z. Gao, Z. Li, J. Wang, H. Luo, X. Shi, M. Chen, Y. Li, L. Zuo,
+Z. Du, Z. Xiao et al., “Funasr: A fundamental end-to-end speech
+recognition toolkit,” arXiv preprint arXiv:2305.11013, 2023.
+1627
+

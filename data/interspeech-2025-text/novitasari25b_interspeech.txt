@@ -1,0 +1,760 @@
+Improving End-to-end Mixed-case ASR with
+Knowledge Distillation and Integration of Voice Activity Cues
+Sashi Novitasari, Takashi Fukuda, Gakuto Kurata
+IBM Tokyo Research Lab, Tokyo, Japan
+sashi.novitasari1@ibm.com,fukuda1@jp.ibm.com, gakuto@jp.ibm.com
+Abstract
+E2E mixed-case (MC) ASR is a more challenging task than
+unicase (UC) ASR because of the necessity of capitalizing and
+punctuating the decoded outputs simultaneously. MC models
+that are simply trained on formatted transcriptions often suffer
+from various negative impacts, notably a degradation in case-
+and-punctuation-insensitive performance due to the increased
+learning complexity.
+In this paper, we describe novel tech-
+niques for training E2E MC ASR models and use them to im-
+prove casing-and-punctuation sensitive and insensitive perfor-
+mance. Our approach incorporates knowledge distillation from
+UC teacher to MC student models not only to improve capital-
+ization and punctuation accuracy but also to maximize phone
+classification capability in MC ASR. Furthermore, we attempt
+to integrate voice activity cues into MC ASR to support text
+formatting tasks. Our method significantly reduces errors by
+up to 9.2% relative to baseline models that operate at a similar
+decoding cost.
+Index Terms:
+End-to-end mixed-case ASR, capitalization,
+punctuation, knowledge distillation, voice activity detection
+1. Introduction
+End-to-end (E2E) automatic speech recognition (ASR) frame-
+works such as connectionist temporal classification (CTC) [1],
+recurrent neural network transducer (RNN-T) [2, 3], and Con-
+former [4, 5] have recently been used for directly transform-
+ing speech audio into transcription text through a single model.
+Those systems require transcribed speech data in order to train
+the single all-neural models. Thus, given that data collection
+covering multiple domains can be expensive, the limitation of
+having paired speech-text data becomes profound when build-
+ing systems that cover larger and more diverse acoustic and lan-
+guage spaces. Since the majority of speech corpora for E2E
+ASR model training are paired only with non-punctuated uni-
+case (UC) text because of high annotation costs, one compro-
+mise is to construct E2E ASR model as-is to output only unicase
+text without punctuation marks at the sacrifice of readability.
+Unfortunately, E2E ASR frameworks are often not as customiz-
+able as hybrid systems [6,7] that can be modularly customized
+for the output formats related to casing and punctuation marks.
+To solve this problem, reformation of unicase decoded outputs
+by using an external text processor has been investigated in the
+literature [8–12]. While, in this case, the problems of capitaliza-
+tion/punctuation and phone classification can be split, the two-
+stage processing will increase the overall system complexity be-
+cause more modules are involved in the system, which is often
+not preferable.
+On the other hand, E2E mixed-case (MC) ASR directly de-
+codes input speech into capitalized text with punctuation marks
+by training the model using speech data paired with truecased-
+punctuated transcriptions. Recently, studies that explicitly ad-
+dress the capitalization and punctuation tasks for E2E ASR
+[13–18] have been gaining attention for demands for practical
+systems. For instance, several studies have showcased frame-
+works that directly produce unicase and mixed-case texts by
+training a model using both formatted and unformatted speech
+transcription data [15,16,19]. They demonstrated the possibil-
+ity of improving MC ASR performance with a limited amount
+of training data. In another approach, a UC ASR model was
+extended with additional output layers for the casing and punc-
+tuation label classifications, in which the unicase text output is
+reformatted on the basis of those labels [14,17,18]. Large-scale
+ASR models, such as Whisper [20], have also been receiving
+attention for their text formatting capability, although they may
+incur accuracy-cost trade-offs.
+Despite the MC ASR framework’s advantage in simplifying
+the system, it might have lower phone classification accuracy
+in comparison with UC ASR [13, 21] because of the increased
+complexity of the model training, a phenomenon that was also
+observed in our study. Unlike a UC ASR model that models
+only a single written form of a word, an MC ASR model needs
+to not only identify words acoustically but also model several
+graphical forms of an utterance with different casing and punc-
+tuation marks; implying a larger search space than that of UC
+ASR. Capitalization and punctuation tasks are difficult in vari-
+ous aspects because there are no explicit sounds uttered by hu-
+mans that correspond to them, which causes the learning com-
+plexity in the ASR models to increase. In particular, these prob-
+lems appear in systems designed with the greedy decoding and
+situations where no external language model is available.
+In this paper, we propose training techniques for E2E MC
+ASR to enhance both casing-and-punctuation sensitive and in-
+sensitive word accuracy, of which the latter has been rarely an-
+alyzed through a comparison with UC ASR [14, 15, 18] de-
+spite the aforementioned necessity.
+By using the case-and-
+punctuation-insensitive metric, we examined details of the per-
+formance of word classification itself that might be less notice-
+able in case-and-punctuation-sensitive metrics, such as missing
+words, because casing or punctuation-related errors often pre-
+dominate all others. In this paper, we only dealt with construct-
+ing MC models with a similar structure as UC models or with
+minor changes for decoding to maintain the overall system com-
+plexity.
+We propose two approaches to achieve our goal.
+First,
+we construct an E2E MC system with a knowledge distillation
+(KD) training procedure [22] to transfer discriminative acous-
+tic knowledge represented in a UC model (as a teacher) into an
+MC model (as a student) and improve the case-and-punctuation
+insensitive performance in MC ASR. Since the UC model has
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+3334
+10.21437/Interspeech.2025-330
+
+FNN
+FNN
+Conformer layers
+FNN
+𝑋
+𝑋
+𝑃(#𝑌!"
+# |𝑋)
+𝑃(#𝑌!"
+# |𝑋)
+𝑃(#𝑌$"
+# |𝑋)
+𝑌$"
+𝐿%&.!"
+𝐿$"
+Unicase ASR
+Conformer layers
+KD
+VAD
+Speech features
+Speech features
+XVAD
+FNN
+MCKD
+MCKD-VAD
+FNN
+(Teacher)
+(Student)
+FNN
+UC task
+MC task
+Figure 1: The proposed MCKD ASR (brown box) and MCKD-
+VAD ASR (green box).
+abundant knowledge specific to the unicase transcription task,
+which is much simpler than the mixed-case task, we hypoth-
+esize that it can capture meaningful representations for recog-
+nizing words correctly; thus, it could be useful for MC ASR to
+produce more accurate transcriptions. To the best of our knowl-
+edge, there is little prior research that has utilized KD particu-
+larly for E2E MC ASR task.
+To enhance the capitalization and punctuation accuracy, the
+second approach extends our method for embedding the E2E
+MC ASR framework with voice activity cues obtained from
+a voice activity detection (VAD) system [23–27]. ASR sys-
+tems are commonly paired with a VAD system that removes the
+non-speech parts to reduce computational costs while decod-
+ing. Since the VAD can distinguish the voiced and non-voiced
+audio frames by estimating their likelihoods, we hypothesize
+that feeding this likelihood information into the MC model will
+also be useful for predicting the punctuation marks and casing.
+In practice, if the ASR has been paired with a standalone VAD
+system, the overall proposed system complexity will be similar
+to that of the standard systems without the VAD embedding. In
+summary, our contributions are as follows.
+1. We utilize KD to construct an MC model from a UC model to
+improve the case-and-punctuation insensitive performance.
+2. We integrate VAD-based information into the MC model to
+leverage acoustic clues for accurate punctuation and casing.
+3. We demonstrate E2E MC ASR that leverages both KD and
+VAD information in training and show that it performs ro-
+bustly in inference with or without VAD information.
+2. Proposed Modeling Technique
+2.1. Baseline fully-supervised multitask MC ASR (MCS)
+In prior studies [15, 16], E2E MC ASR systems were designed
+to directly produce mixed-case text as their main task along with
+unicase text as an auxiliary task through a fully-supervised mul-
+titask training approach. For convenience, we will refer to this
+framework as the fully-supervised multitask mixed-case (MCS)
+ASR. Given an acoustic feature sequence X ∈RI×A, an MCS
+ASR model decodes it into an mixed-case text YMC ∈RJmc that
+has punctuation marks and a unicase text YUC ∈RJuc through
+separated output layers, where I is the length of the acoustic-
+features sequence, A is the acoustic feature’s dimension, and
+Jmc and Juc are the lengths of the corresponding texts. YUC vo-
+cabulary consists only of lowercase (or uppercase) characters,
+while YMC vocabulary contains lowercase characters, uppercase
+characters, and punctuation marks. The MCS model is opti-
+mized through a combined loss LMCS based on the reference
+transcriptions in the corresponding formats:
+LMCS = λLMC + αLUC.
+(1)
+In our experiments, we used the non-autoregressive Conformer
+ASR framework [4] with a CTC objective [1] as our base
+framework.
+Thus, LMC = −logPCTC(YMC|X) and LUC =
+−logPCTC(YUC|X) are, respectively, the MC output supervised
+loss and the UC output supervised loss based on a CTC loss for-
+mulation, while λ and α are coefficients for the respective loss
+terms. On the basis of our preliminary experiments, we decided
+to attach the auxiliary output layer for the UC task to the top
+of the main output for MC task, which it also the basis for the
+proposed frameworks. In inference phase, the auxiliary layer
+is removed, therefore, MCS ASR computational complexity is
+similar to that of UC ASR model.
+2.2. MC ASR with knowledge distillation (MCKD)
+We propose a training framework for an MC ASR system with
+knowledge distillation (MCKD) from a teacher UC model. In
+this paper, the UC and MC models are each based on a non-
+autoregressive Conformer-CTC model. The architecture is the
+same for both models except the output layer. During training,
+the proposed MCKD (Fig. 1) employs a multitask structure that
+is optimized on two tasks simultaneously: 1) punctuated and
+capitalized MC speech recognition as the main task, and 2) UC
+speech recognition as the auxiliary task. MCKD ASR’s output
+layer is extended with an auxiliary output branch, where the
+KD loss is calculated between this auxiliary UC output and the
+teacher UC model output and it back-propagates through the
+entire MCKD network. After the training, the auxiliary layer is
+removed for inference; therefore, the complexity of the MCKD
+ASR model remains unchanged from the UC ASR model.
+The proposed model training process involves the KD loss
+and supervised loss. The KD loss (LKD.UC) is calculated be-
+tween the unicase soft outputs from the UC ASR model ( ˆY T
+UC)
+and the MCKD auxiliary unicase output ( ˆY S
+UC):
+LKD.UC = KD Loss(PCTC( ˆY T
+UC|X), PCTC( ˆY S
+UC|X)).
+(2)
+In our preliminary experiments, we explored a mean-square er-
+ror (MSE) function and the Kullback–Leibler divergence for-
+mulation for our KD loss function. We update the model by
+using the KD loss combined with the supervised ASR loss for
+MC text (LMC):
+LMCKD = λLMC + βLKD.UC,
+(3)
+where λ and β are coefficients for the corresponding loss terms.
+LMC is calculated in a supervised manner based on the CTC
+formulation, similarly to the baseline MCS.
+2.3. MCKD with voice activity cues (MCKD-VAD)
+We further extend the proposed MCKD training framework
+with the VAD information integration mechanism (MCKD-
+VAD), as shown in Fig. 1. VAD module is commonly used
+to classify each signal frame in an audio stream as to its voice
+activity type (e.g. speech, silence), which it separately works
+as an external module to ASR system. The VAD output is then
+utilized to determine the start and end points of audio segments
+with speech, where the detected segments along with some ad-
+ditional onset and offset frames are to be passed to ASR. Even
+in a speech segment determined by the VAD model, the likeli-
+hoods of the speech frames are much different from each other
+because of consonants, vowels, lip noise, and so on. Thus, we
+assume that this information is useful as an auxiliary compo-
+nent for phone classification, casing, and the punctuation task
+in MC ASR.
+3335
+
+The proposed method incorporates a standalone neural
+VAD model [25] into the ASR model training framework and/or
+for inference of ASR decoding. VAD integration begins with
+a voice activity prediction by the VAD model associated with
+input speech feature sequence X. The output from the VAD
+model before the softmax is then projected to the same dimen-
+sion as that of the ASR Conformer layer’s, which can be formu-
+lated as:
+XVAD = FNN(VAD(X)),
+(4)
+where XVAD ∈RI×D is the projected VAD output and D is the
+dimension of the Conformer layer. XVAD is then integrated into
+the intermediate Conformer layer inside the ASR model. Inte-
+grating additional low-level acoustic features into the interme-
+diate layer is intended to make the model effectively take new
+information without hindering the original internal log-Mel fea-
+tures and leverage them together in the deeper layers. A similar
+idea can be also applied to other types of neural network frame-
+work, i.e., it is not limited to the Conformer. Suppose that the
+Conformer network consists of l layers, we add the VAD infor-
+mation XVAD to the l/2-th Conformer layer output (Xl/2):
+Xl/2.final = Xl/2 + γXVAD,
+(5)
+where Xl/2.final is the final output of the intermediate Conformer
+layer that will be passed to the next Conformer layer, and γ is
+the coefficient for XVAD. The proposed MCKD-VAD model is
+optimized with the same objective as the MCKD model (Eq.
+3). We freeze the VAD model during the MCKD-VAD training
+and update only the projection layer for VAD and the model
+components for ASR.
+We examine a MCKD-VAD model that performs robustly
+with or without integrating the VAD information XVAD into the
+Conformer during inference. This enables the proposed system
+to be also used in the same inference setting as the UC ASR sys-
+tem. In our setting, we use γ=1 for half of the training batches,
+denoting that VAD information is applied, and γ=0 for the other
+half, denoting that the VAD information is not applied, in turns.
+3. Experiment Settings
+3.1. Data
+In our experiments, we consider realistic ASR conditions such
+as the telephony and meeting conversations, where MC tasks
+might be more challenging. Our ASR models were trained us-
+ing in-house English speech-text data that mainly consisted of
+call-center conversations between multiple speakers, including
+males and females, recorded under multi-acoustic conditions.
+The teacher UC model was trained with more than 10K hours
+of those data, while the student MC model was trained on more
+than 5K hours of speech data, which was a subset of the UC
+model training data, with the capitalized and punctuated tran-
+scriptions. The VAD model was trained using 2K hours of in-
+house audio data consisting of spontaneous speech, read speech,
+and non-speech (noise) audio. All of the audio data were sam-
+pled at 8 kHz, from which we extracted log-Mel speech features
+with a window size of 10 ms and augmented them with delta and
+double delta coefficients. Every two consecutive frames were
+stacked followed by alternate frame skipping, which resulted in
+a 240-dimensional feature vector every 20 ms. The output vo-
+cabulary of the UC model was composed of 42 characters that
+included lowercase characters, digits, apostrophe mark, whites-
+pace mark, and blank mark for CTC. The output vocabulary
+from the MC model consisted of 97 characters after adding the
+uppercased characters and the punctuation marks into the UC
+model vocabulary.
+We tested our model on in-house and also publicly avail-
+able datasets. The in-house test data consisted of 1 hour of
+real call-center conversations between multiple English speak-
+ers, including males and females, recorded under clean con-
+ditions (CC-clean). Additionally, we tested our model on 1.5
+hours of call-center and meeting recordings that contained the
+environmental noises (CCM-noisy) and recorded from mixed-
+accent English speakers, including males and females. We also
+evaluated our model on Fisher LDC2004S13 [28], which is
+composed of telephony conversation audio and the correspond-
+ing truecased-punctuated transcription. We focused on utter-
+ances longer than 60 secs, for which capitalizations and punctu-
+ations would be practically more meaningful in the correspond-
+ing transcriptions.
+3.2. Model configuration
+The UC and MC models in our experiments had similar
+Conformer-CTC architecture. The encoder was composed of an
+FNN with 768 cells and ten Conformer blocks. Each block had
+two FNN modules in which the multi-head self-attention mod-
+ule and the convolution module were sandwiched. The multi-
+head self-attention module had dhead=8 and datt=96 for the num-
+ber of heads and the dimensions of the attention module, and
+the convolution kernel size was 31. The last Conformer block
+was followed by an FNN output layer. The output layer size was
+42 for the UC model and 97 for the MC model. In the baseline
+MCS and proposed model, the MC output layer was followed
+by an auxiliary output layer for the UC task. All the models had
+roughly 155M trainable parameters. We used a learning rate of
+5e-5 and a batch size of 32 for the ASR training. The base-
+line MC ASR and the proposed MCKD ASR model parameters
+were initialized from an UC ASR model, which it was also used
+as the teacher for the proposed MCKD and MCKD-VAD ASR.
+The proposed MCKD-VAD model parameters were initialized
+from the MCKD model parameters. Additionally, we applied
+several regularization techniques such as sequence noise injec-
+tion [29] and SpecAugment [30] while training both the base-
+line and proposed models. In MCKD-VAD training, SpecAug-
+ment was applied to the teacher only for the use case in noisy
+situations. The baseline MCS model used α=0.2, while MCKD
+ASR used β=0.2 and MCKD-VAD used β=0.4, our best set-
+ting. All the models were fixed to λ=1. For the MCKD-VAD
+model, we used a speech frame-level VAD [25] that had four
+CNN layers and classified the input frames into “speech,” “non-
+speech,” and “music” classes. The VAD output was processed
+through three FNN layers before it was integrated into the ASR.
+No external language model was used in any ASR inference.
+3.3. Evaluation metric
+Our models were evaluated on the basis of the word error rate
+(WER) in several text formats [31].
+We denote WERcp as
+the case-and-punctuation-sensitive WER, where the ASR out-
+put was evaluated against the truecased-punctuated reference
+text. Here, the same word in the reference and ASR output but
+with different casing or punctuation was regarded as a substitu-
+tion error. WERuncp denotes a case-and-punctuation-insensitive
+WER, where the reference and ASR output text were all lower-
+cased and the punctuation marks were removed. We also calcu-
+lated the case-sensitive WER (WERc) by removing the punctu-
+ation marks from the reference and ASR output while keeping
+the casings. To evaluate the punctuation, we use a WER based
+on punctuation (WERp) that was calculated by replacing all of
+the alphanumeric words in the reference and ASR text with a
+uniform token while keeping the punctuation unchanged. For
+3336
+
+Table 1: Performance (%) of the baselines and the proposed
+MCKD on CC-clean set. (“LUC”: supervised loss on UC task,
+“LMC”: supervised loss on MC task, “LKD.UC”: KD loss on UC
+task).
+Model (training loss)
+WERcp WERuncp WERp WERc
+Baseline ASR
+UC (LUC)
+45.8
+11.8
+27.4
+28.1
+Single-task MC (LMC)
+29.0
+13.1
+17.7
+18.8
+Multitask MC (MCS) (LMC+LUC)
+28.7
+13.1
+17.2
+18.7
+Proposed ASR
+MCKD+MCS (LMC+LKD.UC+LUC)
+28.0
+12.5
+17.0
+18.2
+MCKD (LMC+LKD.UC)
+27.7
+12.0
+17.2
+18.0
+Table 2: Performance (%) of the proposed MCKD-VAD on CC-
+clean set. Inference with the VAD feature integration was per-
+formed by fusing the VAD features into Conformer.
+Model
+Inference with
+VAD feature
+integration
+WERcp WERuncp WERp WERc
+Baseline ASR
+UC
+No
+45.8
+11.8
+27.4
+28.1
+MCS
+No
+28.7
+13.1
+17.2
+18.7
+Proposed ASR (Training loss: LMC+LKD.UC)
+MCKD-VAD
+No
+27.8
+12.3
+16.6
+17.9
+MCKD-VAD
+Yes
+27.1
+11.9
+16.6
+17.4
+example, a text ‘Hi, how are you?’ was converted into ‘W, W
+W W?’ for the WERp computation.
+4. Results and Discussion
+4.1. Baseline ASR
+Our baselines were the UC ASR model teacher that taught
+the proposed models, the single-task MC ASR model that op-
+timized only based on MC texts supervisedly, and the fully-
+supervised multitask MC (MCS) ASR model optimized based
+on Eq. 1. As seen in Table 1, the single-task MC and MCS
+had better WERcp, WERc and WERp than those of UC ASR,
+but their WERuncp were degraded, which implies they produced
+more incorrect words regardless the format. Our observations
+indicated that the deteriorated WERuncp was mainly caused by
+the increased number of substitution and deletion errors, affect-
+ing both the originally plain words and the cased or punctu-
+ated words. Since the learning complexity of MC-based ASR
+increased when learning multiple variants of text form associ-
+ated with phones, the MC-based models were more difficult to
+converge in terms of the case-and-punctuation-insensitive as-
+pect compared with the UC ASR model. For the experiments
+reported in the next subsection, we focus on MCS as our best
+MC ASR baseline.
+4.2. Proposed MCKD ASR
+Table 1 shows the performance of the proposed MCKD model
+on the clean call center (CC-clean) audio. Initially, we experi-
+mented on an “MCKD+MCS” model that applied both the su-
+pervised and KD losses on the auxiliary UC task optimization.
+Although we observed an improvement over the baseline MCS
+model, better results were produced when using only the KD
+loss for the UC task, as the learning objective was simpler.
+Our best MCKD model reduced WERcp from the 28.7% of
+MCS model to 27.7% while it also improved WERuncp by 8.4%
+relative to that of the baseline MCS model and achieved a com-
+parable WERuncp to that of the UC model. These results show
+that the auxiliary UC task optimization with KD was effective,
+because it allowed the student network to learn the word clas-
+sification knowledge that had been correlated with the acous-
+tic information through the teacher network, which it might be
+more beneficial for the convergence of the MC model.
+Table 3: Performance (%) of the proposed ASR on CCM-noisy
+set.
+Model
+Inference with
+VAD feature
+integration
+WERcp WERuncp WERp WERc
+Baseline ASR
+UC
+No
+48.4
+25.0
+21.7
+36.9
+MCS
+No
+36.8
+26.0
+16.0
+30.0
+Proposed ASR
+MCKD
+No
+36.5
+25.7
+16.0
+29.7
+MCKD-VAD
+No
+35.9
+25.4
+15.9
+29.4
+MCKD-VAD
+Yes
+35.5
+24.5
+15.5
+28.9
+Table 4: Performance (%) of the proposed ASR on Fisher set.
+Model
+Inference with
+VAD feature
+integration
+WERcp WERuncp WERp WERc
+Baseline ASR
+UC
+No
+31.8
+10.8
+18.0
+19.3
+MCS
+No
+23.2
+8.9
+15.4
+11.4
+Proposed ASR
+MCKD
+No
+22.9
+8.9
+15.1
+11.3
+MCKD-VAD
+No
+22.6
+8.7
+14.8
+11.2
+MCKD-VAD
+Yes
+22.5
+8.7
+14.8
+11.2
+4.3. Proposed MCKD-VAD ASR
+We carried out the MCKD-VAD ASR inference with and with-
+out VAD information integration. The inference with VAD in-
+formation integration followed the mechanism described in Sec-
+tion 2.3, while the inference without VAD integration had the
+same mechanism as those of UC, MCS, and MCKD ASR.
+As shown in Table 2, on CC-clean, the proposed MCKD-
+VAD model performed robustly in terms of inferences with and
+without the VAD integration; it outperformed the baseline MCS
+and had a similar WERcp and WERuncp to the MCKD ASR when
+VAD information was not used for inference. Higher gain was
+observed when VAD features were used during ASR inference,
+where a relative reduction in WERcp and WERuncp of 5.6% and
+9.2 % over the baseline MCS model, respectively, was achieved.
+Compared with the MCKD ASR model, MCKD-VAD ASR
+model’s gain was more noticeable in terms of WERp. We found
+that punctuation marks such as commas and periods could be
+associated with voice activity, such as short pauses, in the spo-
+ken utterances and that this led to a better punctuation recog-
+nition and in turn better casings. With the proposed regulated
+MCKD-VAD model training mechanism, our model maintained
+that capability even in the VAD information-less inference.
+We additionally experimented on the CCM-noisy (Table 3)
+and the Fisher test sets (Table 4). The MCKD ASR and MCKD-
+VAD ASR models outperformed the baselines. Moreover, the
+MCKD-VAD ASR model, which used the VAD features for in-
+ference, outperformed the UC ASR WERuncp on CCM-noisy.
+This indicates that VAD information was particularly helpful in
+acoustically more challenging situations, as the likelihood for
+voiced/non-voiced speech parts might prompt the ASR system’s
+attention to process those parts more carefully in noises.
+5. Conclusion
+We proposed a model training algorithm for E2E MC ASR
+with KD and a VAD cues integration mechanism to improve
+ASR’s case-and-punctuation sensitive and insensitive perfor-
+mance.
+Our experimental results showed that the proposed
+KD from a UC model to a MC model improved the model’s
+case-and-punctuation insensitive performance, while the VAD
+information resulted in a case-and-punctuation sensitive perfor-
+mance gain. As for future work, we are interested in exploring
+other teacher structures for KD and different additional infor-
+mation for the MC network.
+3337
+
+6. References
+[1] A. Graves, S. Fern´andez, F. Gomez, and J. Schmidhuber,
+“Connectionist temporal classification: Labelling unsegmented
+sequence data with recurrent neural networks,” in Proc. of
+ICML.
+New York, NY, USA: Association for Computing
+Machinery,
+2006,
+p. 369–376. [Online]. Available:
+https:
+//doi.org/10.1145/1143844.1143891
+[2] A.
+Graves,
+“Sequence
+transduction
+with
+recurrent
+neural
+networks,” ArXiv, vol. abs/1211.3711, 2012. [Online]. Available:
+https://api.semanticscholar.org/CorpusID:17194112
+[3] G. Saon, Z. T¨uske, D. Bolanos, and B. Kingsbury, “Advancing
+RNN transducer technology for speech recognition,” in Proc. of
+ICASSP, 2021, pp. 5654–5658.
+[4] A. Gulati, J. Qin, C.-C. Chiu, N. Parmar, Y. Zhang, J. Yu,
+W. Han, S. Wang, Z. Zhang, Y. Wu, and R. Pang, “Conformer:
+Convolution-augmented Transformer for speech recognition,” in
+Proc. of Interspeech, 2020, pp. 5036–5040.
+[5] P. Guo, F. Boyer, X. Chang, T. Hayashi, Y. Higuchi, H. Inaguma,
+N. Kamo, C. Li, D. Garcia-Romero, J. Shi, J. Shi, S. Watanabe,
+K. Wei, W. Zhang, and Y. Zhang, “Recent developments on Esp-
+net toolkit boosted by Conformer,” in Proc. of ICASSP, 2021, pp.
+5874–5878.
+[6] D. Povey, A. Ghoshal, G. Boulianne, L. Burget, O. Glembek,
+N. K. Goel, M. Hannemann, P. Motl´ıcek, Y. Qian, P. Schwarz,
+J. Silovsk´y, G. Stemmer, and K. Vesel´y, “The Kaldi speech
+recognition toolkit,” in Proceedings of the IEEE 2011 Workshop
+on Automatic Speech Recognition and Understanding, 2011.
+[Online]. Available:
+https://api.semanticscholar.org/CorpusID:
+1774023
+[7] G. Hinton, L. Deng, D. Yu, G. E. Dahl, A.-r. Mohamed, N. Jaitly,
+A. Senior, V. Vanhoucke, P. Nguyen, T. N. Sainath, and B. Kings-
+bury, “Deep neural networks for acoustic modeling in speech
+recognition: The shared views of four research groups,” IEEE Sig-
+nal Processing Magazine, vol. 29, no. 6, pp. 82–97, 2012.
+[8] F. Batista, D. Caseiro, N. Mamede, and I. Trancoso, “Recov-
+ering capitalization and punctuation marks for automatic speech
+recognition: Case study for Portuguese broadcast news,” Speech
+Communication, vol. 50, no. 10, pp. 847–862, 2008. [On-
+line]. Available:
+https://www.sciencedirect.com/science/article/
+pii/S0167639308000812
+[9] B. P. Nguyen, V. B. H. Nguyen, H. Nguyen, P. N. Phuong, T.-
+L. Nguyen, Q. T. Do, and L. C. Mai, “Fast and accurate capi-
+talization and punctuation for automatic speech recognition using
+Transformer and chunk merging,” in Proc. of O-COCOSDA, 2019,
+pp. 1–5.
+[10] M. Sunkara, S. Ronanki, K. Dixit, S. Bodapati, and K. Kirchhoff,
+“Robust prediction of punctuation and truecasing for medical
+ASR,” in Proceedings of the First Workshop on Natural Language
+Processing for Medical Conversations.
+Online:
+Association
+for Computational Linguistics, Jul. 2020, pp. 53–62. [Online].
+Available: https://aclanthology.org/2020.nlpmc-1.8/
+[11] S. Tan, P. Behre, N. Kibre, I. Alphonso, and S. Chang, “Four-
+in-One: A joint approach to inverse text normalization, punctu-
+ation, capitalization, and disfluency for automatic speech recog-
+nition,” in 2022 IEEE Spoken Language Technology Workshop
+(SLT), 2023, pp. 677–684.
+[12] M. Pol´aˇcek, P. ˇCerva, J. ˇZˇd´ansk´y, and L. Weingartov´a, “On-
+line punctuation restoration using ELECTRA model for streaming
+ASR systems,” in Proc. of Interspeech, 2023, pp. 446–450.
+[13] D. Caseiro, P. Rondon, Q.-N. L. The, and P. Aleksic, “Mixed
+case contextual ASR using capitalization masks,” in Proc. of In-
+terspeech, 2020, pp. 686–690.
+[14] S. Bijwadia, S.-Y. Chang, W. Wang, Z. Meng, H. Zhang, and T. N.
+Sainath, “Text injection for capitalization and turn-taking predic-
+tion in speech models,” in Proc. of Interspeech, 2023, pp. 1409–
+1413.
+[15] C. Cui, I. A. Sheikh, M. Sadeghi, and E. Vincent, “End-
+to-end joint punctuated and normalized asr with a limited
+amount of punctuated training data,” 2024. [Online]. Available:
+https://arxiv.org/abs/2311.17741
+[16] J. Nozaki, T. Kawahara, K. Ishizuka, and T. Hashimoto, “End-
+to-end speech-to-punctuated-text recognition,” in Proc. of Inter-
+speech, 2022, pp. 1811–1815.
+[17] Z. Zhou, T. Tan, and Y. Qian, “Punctuation prediction for stream-
+ing on-device speech recognition,” in Proc. of ICASSP, 2022, pp.
+7277–7281.
+[18] W. Wang, D. Zhao, S. Ding, H. Zhang, S.-Y. Chang, D. Rybach,
+T. N. Sainath, Y. He, I. McGraw, and S. Kumar, “Multi-output
+RNN-T joint networks for multi-task learning of ASR and auxil-
+iary tasks,” in Proc. of ICASSP, 2023, pp. 1–5.
+[19] M. Ihori, H. Sato, T. Tanaka, R. Masumura, S. Mizuno, and
+N. Hojo, “Transcribing speech as spoken and written dual text
+using an autoregressive model,” in Interspeech 2023, 2023, pp.
+461–465.
+[20] A. Radford, J. W. Kim, T. Xu, G. Brockman, C. McLeavey, and
+I. Sutskever, “Robust speech recognition via large-scale weak su-
+pervision,” in Proc. of ICML.
+JMLR.org, 2023.
+[21] W. Kang, X. Yang, Z. Yao, F. Kuang, Y. Yang, L. Guo, L. Lin,
+and D. Povey, “Libriheavy: A 50,000 hours ASR corpus with
+punctuation casing and context,” in Proc. of ICASSP, 2024, pp.
+10 991–10 995.
+[22] G. E. Hinton, O. Vinyals, and J. Dean, “Distilling the knowledge
+in a neural network,” ArXiv, vol. abs/1503.02531, 2015. [Online].
+Available: https://doi.org/10.48550/arXiv.1503.02531
+[23] E. Zenteno and M. Sotomayor, “Robust voice activity detection
+algorithm using spectrum estimation and dynamic thresholding,”
+in 2009 IEEE Latin-American Conference on Communications,
+2009, pp. 1–5.
+[24] J. Dines, J. Vepa, and T. Hain, “The segmentation of multi-
+channel meeting recordings for automatic speech recognition,” in
+Proc. of Interspeech, 2006, pp. 1213–1216.
+[25] S. Thomas, S. Ganapathy, G. Saon, and H. Soltau, “Analyzing
+convolutional neural networks for speech activity detection in
+mismatched acoustic conditions,” in Proc. of ICASSP, 2014, pp.
+2519–2523.
+[26] S. Braun and I. J. Tashev, “On training targets for noise-robust
+voice activity detection,” in Proc. of EUSIPCO, 2021, pp.
+421–425. [Online]. Available:
+https://api.semanticscholar.org/
+CorpusID:231925098
+[27] M. Shi, Y. Shu, L. Zuo, Q. Chen, S. Zhang, J. Zhang, and L.-
+R. Dai, “Semantic VAD: Low-latency voice activity detection for
+speech interaction,” in Proc. of Interspeech, 2023, pp. 5047–5051.
+[28] C. Cieri, D. Graff, O. Kimball, D. Miller, and K. Walker, “Fisher
+English training speech part 1 speech LDC2004S13,” Philadel-
+phia: Linguistic Data Consortium, 2004.
+[29] G. Saon, Z. T¨uske, K. Audhkhasi, and B. Kingsbury, “Sequence
+noise injected training for end-to-end speech recognition,” in
+Proc. of ICASSP, 2019, pp. 6261–6265.
+[30] D. S. Park, W. Chan, Y. Zhang, C.-C. Chiu, B. Zoph, E. D.
+Cubuk, and Q. V. Le, “SpecAugment: A simple data augmen-
+tation method for automatic speech recognition,” in Proc. of In-
+terspeech, 2019, pp. 2613–2617.
+[31] A. Meister, M. Novikov, N. Karpov, E. Bakhturina, V. Lavrukhin,
+and B. Ginsburg, “Librispeech-PC: Benchmark for evaluation of
+punctuation and capitalization capabilities of end-to-end ASR
+models,” 2023. [Online]. Available: https://arxiv.org/abs/2310.
+02943
+3338

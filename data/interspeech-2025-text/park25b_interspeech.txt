@@ -1,0 +1,672 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+RapFlow-TTS: Rapid and High-Fidelity Text-to-Speech with
+Improved Consistency Flow Matching
+Hyun Joon Park1,2,∗, Jeongmin Liu1, Jin Sob Kim2, Jeong Yeol Yang2, Sung Won Han2, Eunwoo
+Song1,3
+1NAVER Cloud, Republic of Korea
+2School of Industrial and Management Engineering, Korea University, Republic of Korea
+3Artificial Intelligence Institute, Seoul National University, Republic of Korea
+winddori2002@korea.ac.kr
+Abstract
+We introduce RapFlow-TTS, a rapid and high-fidelity TTS
+acoustic model that leverages velocity consistency constraints
+in flow matching (FM) training. Although ordinary differential
+equation (ODE)-based TTS generation achieves natural-quality
+speech, it typically requires a large number of generation steps,
+resulting in a trade-off between quality and inference speed.
+To address this challenge, RapFlow-TTS enforces consistency
+in the velocity field along the FM-straightened ODE trajec-
+tory, enabling consistent synthetic quality with fewer genera-
+tion steps. Additionally, we introduce techniques such as time
+interval scheduling and adversarial learning to further enhance
+the quality of the few-step synthesis. Experimental results show
+that RapFlow-TTS achieves high-fidelity speech synthesis with
+a 5- and 10-fold reduction in synthesis steps than the conven-
+tional FM- and score-based approaches, respectively.
+Index Terms: rapid, text-to-speech, consistency model, flow
+matching, adversarial learning
+1. Introduction
+Text-to-speech (TTS), also known as speech synthesis, aims to
+synthesize high-fidelity speech, given an input text [1, 2, 3].
+Among the various generative modeling approaches [4, 5, 6, 7,
+8], ordinary differential equations (ODE)-based models [9, 10]
+have become strong solutions for outstanding TTS. One rep-
+resentative method involves diffusion models using stochastic
+differential equations (SDE) [11, 12], e.g., Grad-TTS [9]. It
+trains a score network with an SDE-based diffusion process and
+solves the probability flow ODE for speech synthesis. How-
+ever, ODE trajectories obtained by diffusion models are com-
+plicated [13, 14], requiring numerous steps to generate high-
+quality speech [15]. Since TTS functions as a user interaction
+channel, the slow inference speed caused by numerous diffusion
+steps is a major drawback of diffusion-based TTS.
+To resolve this limitation, researchers investigated im-
+proved ODE-based models [13, 14, 16, 17] for TTS. For ex-
+ample, Comospeech [18] applied consistency distillation [17]
+to transfer the knowledge of a diffusion teacher model to a con-
+sistent student model. As the consistency constraint maps any
+point on the ODE trajectory to the endpoint, i.e., the target data,
+the student model can consistently produce high-quality speech
+regardless of the number of diffusion steps. However, the com-
+plexity of diffusion-based ODE trajectories limited the effective
+construction of consistency models along those trajectories.
+Meanwhile, flow matching (FM), which learns the vector
+field for the ODE and probability path, is another approach
+for improving ODE-based models. Using an optimal transport
+* Work performed as an intern in the Voice team, NAVER Cloud.
+plan that makes the probability path linear in time [13, 14], the
+ODE trajectory tends to be straight, making the few-step perfor-
+mance of FM superior to that of the diffusion models. In TTS
+frameworks, Matcha-TTS [19] and VoiceFlow [15] adopted the
+FM-based straight ODE trajectory, demonstrating high-quality
+speech synthesis with even fewer generation steps than conven-
+tional diffusion-based models. However, completely generaliz-
+ing the real distribution to a straight ODE trajectory is difficult;
+thus, the quality of the few-step synthesized speech has not yet
+reached that of the ground truth. In summary, previous ODE-
+based TTS approaches failed to simultaneously satisfy both as-
+pects, i.e., inference speed and speech synthesis quality.
+In this study, we present RapFlow-TTS, a rapid and high-
+fidelity TTS acoustic model that effectively addresses the lim-
+itations above. Inspired by advancements in image generation,
+we adopt consistency FM [20], a novel FM method that explic-
+itly enforces self-consistency in the velocity field. By imposing
+consistency constraints on the velocity values, consistency FM
+directly defines straight flows from different time points to a
+common endpoint. This allows RapFlow-TTS to learn how to
+produce consistent outputs along the straight trajectory more ef-
+fectively, unlike diffusion-based methods with complicated tra-
+jectories, yielding a more effective consistency model. Conse-
+quently, high-quality speech synthesis is achievable with only a
+few generation steps. To the best of our knowledge, RapFlow-
+TTS is the first TTS framework based on consistency FM.
+Furthermore, we propose several improved training tech-
+niques to enhance the performance, including shared dropout,
+Huber loss, time-interval scheduling, and adversarial learning,
+none of which have been explored in the context of consistency
+FM. Experimental results show that the proposed RapFlow-TTS
+can synthesize more natural speech in just 2 steps, reducing gen-
+eration steps by 5 to 10 times compared to previous ODE-based
+methods. Our code and demos are available here.1
+2. Consistency Flow Matching
+Here, we review the consistency FM [20] method for training
+the RapFlow-TTS. Given a time index t ∈[0, 1], sampled from
+a uniform distribution, FM learns a ground truth vector field
+ut to build the probability path pt(xt) from the random noise
+x0 ∼p0 to target data x1 ∼p1. The vector field is defined as
+an ODE for a flow ϕt, where ϕt is a function that transforms
+data over time, as follows:
+d
+dtϕt(x) = ut(ϕt(x)); ϕ0(x) = x,
+(1)
+The solution of Eq. (1), i.e., flow, represents the sampling path.
+For training FM models, a simple regression with the ground-
+1https://tts-demo.github.io/rap.github.io/
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+2440
+10.21437/Interspeech.2025-554
+
+Figure 1: Overview of RapFlow-TTS with multi-segment consistency flow matching.
+truth vector field is applied as follows:
+LF M = ||vθ(t, xt) −u(t, xt)||2
+2,
+(2)
+where vθ(t, xt) denotes the learnable vector field network.
+In contrast to the FM, consistency FM trains the vector field
+by ensuring that any point on the trajectory reaches the same
+endpoint with the same velocity. Let the linearly interpolated
+noise sample at time t be xt = tx1 + (1 −t)x0. Its objective
+function is composed of a straight flow loss Lsf and a velocity
+consistency loss Lvc as follows:
+Lcfm = Lsf + αLvc,
+Lsf = ||fθ(t, xt) −fθ−(t + ∆t, xt+∆t)||2
+2,
+Lvc = ||vθ(t, xt) −vθ−(t + ∆t, xt+∆t)||2
+2,
+fθ(t, xt) = xt + (1 −t) × vθ(t, xt),
+(3)
+where θ−denotes model parameters with a stop gradient; α de-
+notes a loss weight; and ∆t denotes a time interval. Since fθ
+guides xt to the estimated endpoint of the trajectory, the straight
+flow loss constrains consistency from the trajectory viewpoint,
+ensuring straight flow. In contrast, the velocity consistency loss
+directly enforces the consistency of the vector field. This allows
+the consistency FM to learn how to produce consistent outputs
+along the straightened trajectory, accurately estimating the tar-
+get distribution even with a few-step generation.
+3. RapFlow-TTS
+3.1. TTS with Consistency Flow Matching
+For RapFlow-TTS, we follow the network design of Matcha-
+TTS [19] thanks to its fast and lightweight properties. As shown
+in Figure 1, RapFlow-TTS consists of a text encoder, an aligner,
+and a flow matching decoder. The text encoder extracts the con-
+text representations from the input text, and the aligner maps
+these representations to prior mel-spectrograms µ. The text en-
+coder and aligner are trained using duration loss Ldur and prior
+loss Lprior based on the MAS algorithm as in [3, 9].
+Consistency FM trains the FM decoder to construct a prob-
+ability path pt that transports the random noise x0 ∼p0 to tar-
+get mel-spectrogram’s distribution x1 ∼p1. We condition the
+consistency FM objective with the prior µ to synthesize speech
+corresponding to the given input text. We also adopt a multi-
+segment objective for flexible transportation between complex
+distributions [20]. In detail, the time range t ∈[0, 1] is di-
+vided into S segments of equal size, where each segment corre-
+sponds to the time range [i/S, (i+1)/S] for i = 0, 1, ..., S −1.
+Then, the objective function of segmented consistency FM is
+expressed as follows:
+Lcfm = Lsf + αLvc,
+Lsf = ||f i
+θ(t, xt, µ) −f i
+θ−(t + ∆t, xt+∆t, µ)||2
+2,
+Lvc = ||vi
+θ(t, xt, µ) −vi
+θ−(t + ∆t, xt+∆t, µ)||2
+2,
+f i
+θ(t, xt, µ) = xt + ((i + 1)/S −t) × vi
+θ(t, xt, µ),
+(4)
+Consequently, RapFlow-TTS learns straight flow with a consis-
+tent vector field in each segment, effectively representing the
+data distribution by a piecewise linear trajectory.
+In practice, we apply a two-stage training strategy to effec-
+tively optimize the RapFlow-TTS model. In the first stage (the
+first N epochs), we aim to train RapFlow-TTS to have a straight
+flow by focusing on the trajectory viewpoint. To achieve it, we
+optimize RapFlow-TTS using only the straight flow loss Lsf in
+Eq. (4), slightly modifying the loss term as ||f i
+θ(t, xt, µ)−xi||2
+2,
+where xi is the ground-truth endpoint at each segment, defined
+as xi = (i+1)/S×x1+(1−(i+1)/S)×x0. Because this loss
+guides the ground-truth endpoint on the trajectory, RapFlow-
+TTS can learn the vector field with a straight flow that repre-
+sents the real data distribution.
+In the second stage (the following N epochs), we train
+RapFlow-TTS to have a straight flow with a consistent vector
+field using the entire Lcfm in Eq. (4). By training consistency
+FM on a straight ODE trajectory, RapFlow-TTS can learn con-
+sistency more easily than diffusion-based methods, constructing
+a more effective consistency model. As a result, RapFlow-TTS
+has the properties of consistency and straight flow, thus synthe-
+sizing high-quality speech in fewer synthesis steps.
+3.2. Improved techniques for RapFlow-TTS
+We introduce several techniques to improve the consistency FM
+model for RapFlow-TTS. All of these methods enhance few-
+step synthesis performance, and their effectiveness will be fur-
+ther analyzed in Section 4.3.
+2441
+
+Encoder Freeze We freeze the encoder and optimize only
+Lcfm for training efficiency in the second stage. It also sta-
+bilizes consistency training by keeping the condition µ frozen.
+Shared Dropout Although diffusion-based consistency mod-
+els and rectified flow [21, 22] proved that applying dropout im-
+proves the sample quality, the effect of dropout in consistency
+FM has not been investigated. Based on [21], while training the
+consistency FM model in the second stage, we apply dropout
+using the same random state for vθ and vθ−. Empirically, we
+use a dropout ratio of 0.05.
+Pseudo-Huber Loss Our loss in Eq. (4) is composed of the
+ℓ2 metric. However, the ℓ2 metric imposes a large penalty on
+outliers, which can lead to an imbalanced loss with respect to
+time t, potentially increasing the gradient variance [23]. To mit-
+igate this issue, we adopt the pseudo-Huber metric, which is
+less sensitive to outliers. We follow the implemented metric
+from [21], defined as d(x, y) =
+p
+||x −y||2
+2 + c2 −c, where
+c = 0.00054
+√
+d and d is the data dimension size.
+Delta Scheduling The term ∆t in Eq. (4) is a parameter repre-
+senting the time interval between two points on the trajectory,
+similar to the discretization size parameter in diffusion-based
+consistency models [17]. This implies that a small ∆t reduces
+the bias but increases the variance of the model, and vice versa
+for a large ∆t. Since a small bias and large variance are desir-
+able near the end of the training, inspired by [17], we employ
+scheduling that progressively reduces ∆t during the training.
+To train the model uniformly across diverse ∆t, we utilize lin-
+ear step scheduling. In practice, ∆t decreases from 0.1 to 0.001
+over K intervals, and each ∆t is used during N/K epochs.
+Adversarial Learning To enhance synthesis quality, we uti-
+lize adversarial learning after the second stage. We adopt MSE-
+based adversarial loss Ladv [24] and feature matching loss Lfm
+[25] on the mel-spectrogram levels using a Conv2d discrimina-
+tor [26]. Furthermore, we extend it to multi-segment adversarial
+learning for consistency FM. Let xi and ˆxi be the ground-truth
+and estimated endpoint at each segment, where each is obtained
+by (i + 1)/S × x1 + (1 −(i + 1)/S) × x0 and f i
+θ(t, xt, µ),
+respectively. Then, the objective function is defined as follows:
+Ladv = ||D(ˆxi)||2
+2 + ||1 −D(xi)||2
+2,
+Lfm =
+XL
+l=1 ||Dl(ˆxi) −Dl(xi)||1,
+(5)
+where D indicates the discriminator; Dl denotes the lth feature
+map of D. By applying multi-segment adversarial learning, we
+improve the endpoint quality of each segment, yielding better
+few-step performance. Finally, in this stage, we optimize Lcfm,
+Ladv, and Lfm with the ratio of 3, 1, and 2.
+4. Experiments
+4.1. Experiment Setup
+Dataset To verify RapFlow-TTS, we conducted experiments on
+the LJSpeech [27] and VCTK [28] datasets. The LJSpeech is
+a single-speaker English dataset containing about 24 hours of
+audio clips. For the dataset split, we followed the settings of
+previous work in [2]. The VCTK is a multi-speaker English
+dataset composed of about 44 hours of speech recorded by 110
+speakers. We randomly split the train, valid, and test sets in the
+ratios of 80%, 10%, and 10%, respectively. To make the models
+compatible with the HiFiGAN vocoder used in the experiments,
+we followed the acoustic settings of HiFiGAN-V1 [29].
+Baselines For comparison, we set the following systems as
+baselines: 1) GT, ground truth; 2) VOC, ground truth recon-
+structed by the vocoder; 3) FastSpeech2 [7], Transformer-based
+TTS; 4) Grad-TTS [9], diffusion-based TTS; 5) Comospeech
+[18], consistency model with diffusion-based TTS; 6) Voice-
+Flow [15], rectified flow for TTS; and 7) Matcha-TTS [19], flow
+matching for TTS. We recorded the performance of the base-
+lines after training with their official codes. Since there is no
+official code for FastSpeech2, we used Meta’s checkpoint.2
+Implementation Details For training, we set the number of
+epochs N to 1400 and 1000 for the LJSpeech and VCTK
+datasets, respectively. We additionally used 150 and 50 epochs
+for adversarial learning, respectively. We used Adam optimizer
+with a learning rate of 1 × 10−4 and batch size of 16. Regard-
+ing the hyperparameters of consistency FM, we set the multi-
+segment size S to 2, the bin size K for delta scheduling to 8,
+and the loss weight α in Eq. (4) to 1 × 10−5. The encoder
+freeze and shared dropout were applied as defaults, and the re-
+sults with other techniques were shown through † notation in
+the experiments. In addition, we followed the network hyper-
+parameters of Matcha-TTS. Finally, we applied an Euler solver
+to the ODE-based TTS models to synthesize speech. To inves-
+tigate the few-step performance of ODE-based models, we set
+the number of function evaluations (NFE) to 2. To ensure rea-
+sonable performance for models that do not build a consistency
+model, such as Matcha-TTS and Grad-TTS, we also recorded
+their performances using NFE of 10 and 25, respectively.
+Evaluation Metrics We assessed the results in terms of speech
+intelligibility, naturalness, and real-time factor (RTF). For in-
+telligibility, we measured word error rate (WER) by apply-
+ing the Whisper-M-based ASR model [30] to the synthesized
+speech. Regarding naturalness, we conducted a mean opinion
+score (MOS) test. Twenty participants were asked to assess the
+naturalness of the synthesized speech by scoring it from 1 to 5
+ranges. Twenty utterances were randomly selected from each
+system. In addition, we used NISQA [31], a model-based nat-
+uralness assessment method, for ablation studies. We provided
+evaluation results with a 95% confidence interval. Finally, we
+recorded the RTF, the ratio between the model synthesis time
+and duration of the synthesized speech, using a single Tesla
+V100 GPU to compare the inference speeds.
+4.2. Experimental Results
+Table 1 shows the evaluation results of which findings can
+be analyzed as follows: Firstly, the conventional score-based
+(Grad-TTS) and FM-based (VoiceFlow and Matcha-TTS) mod-
+els exhibited significant degradation in naturalness (MOS) with
+the 2-step synthesis compared to the many-step synthesis.
+By training with the consistency FM objective, the proposed
+RapFlow-TTS achieved superior performance with a 5- to 10-
+fold reduction in NFE than previous methods. In addition, it
+outperformed Comospeech in both speech intelligibility (WER)
+and naturalness. These results indicate that training consistency
+on a straightened ODE path leads to an effective consistency
+model, thereby improving few-step performance.
+However,
+the limited performance of the 2-step synthesis of the previous
+methods is attributed to the construction of consistency models
+on complex ODE paths (Comospeech) or the absence of consis-
+tency in FM-based methods (Matha-TTS and VoiceFlow). Sec-
+ondly, the improved techniques in RapFlow-TTS† contributed
+to significant enhancements in both the intelligibility and natu-
+ralness aspects. This is an encouraging result considering that
+the 2-step speed of RapFlow-TTS is comparable to the speed
+2https://github.com/facebookresearch/fairseq
+† indicates the improved techniques are applied.
+2442
+
+Table 1: Evaluation results on the LJSpeech test set.
+Model
+Params
+NFE
+RTF
+WER
+MOS
+GT
+-
+-
+-
+3.31 ± 0.88
+4.42 ± 0.08
+VOC
+-
+-
+0.022
+3.43 ± 0.95
+4.30 ± 0.08
+Grad-TTS
+14.8M
+25
+0.133
+4.32 ± 0.82
+3.78 ± 0.09
+VoiceFlow
+14.8M
+10
+0.069
+4.04 ± 0.81
+3.42 ± 0.09
+Matcha-TTS
+18.2M
+10
+0.056
+3.28 ± 0.78
+3.83 ± 0.09
+FastSpeech2
+41.2M
+1
+0.029
+5.58 ± 1.04
+3.35 ± 0.10
+Comospeech
+14.8M
+2
+0.034
+5.41 ± 0.93
+3.19 ± 0.10
+Grad-TTS
+14.8M
+2
+0.034
+4.06 ± 0.79
+1.92 ± 0.07
+VoiceFlow
+14.8M
+2
+0.034
+4.00 ± 0.79
+3.05 ± 0.09
+Matcha-TTS
+18.2M
+2
+0.031
+3.15 ± 0.76
+3.32 ± 0.10
+RapFlow-TTS
+18.2M
+2
+0.031
+3.33 ± 0.80
+3.89 ± 0.09
+RapFlow-TTS†
+18.2M
+2
+0.031
+3.11 ± 0.76
+4.01 ± 0.09
+Table 2: Ablation study results on the LJSpeech test set: All the
+samples in (A)-(H) models were synthesized with 2 NFE steps.
+Model
+WER
+NISQA
+(A): Straight flow (Stage 1)
+3.19 ± 0.79
+3.46 ± 0.04
+(B): (A) + Consistency FM
+3.51 ± 0.80
+3.71 ± 0.05
+(C): (B) + Encoder freeze
+3.48 ± 0.80
+3.73 ± 0.05
+(D): (C) + Shared dropout (RapFlow-TTS)
+3.33 ± 0.80
+3.78 ± 0.05
+(E): (D) + Huber loss
+3.42 ± 0.78
+3.87 ± 0.04
+(F): (D) + Delta scheduling
+3.28 ± 0.78
+3.90 ± 0.05
+linear →exp schedule
+3.34 ± 0.79
+3.78 ± 0.05
+(G): (D) + Adversarial learning
+3.24 ± 0.78
+4.19 ± 0.04
+(H): Putting it together (RapFlow-TTS†)
+3.11 ± 0.76
+4.25 ± 0.04
+w/ NFE = 10
+3.41 ± 0.74
+4.28 ± 0.04
+w/ NFE = 25
+3.47 ± 0.80
+4.29 ± 0.04
+of FastSpeech2, which is generally adopted as a benchmark for
+fast TTS models. In summary, RapFlow-TTS synthesizes high-
+quality speech with fewer steps, achieved through consistency
+FM and improved training strategies, mitigating the inference
+speed limitations of previous ODE-based TTS.
+4.3. Further Experiments
+Ablation Studies In the first block of Table 2, we analyzed the
+results of consistency FM and default techniques such as en-
+coder freeze and shared dropout. Experiment (A) represents
+the results from stage 1, described in Section 3.1, where only
+a straight flow was trained without consistency. Experiment (B)
+presents the results of stage 2, in which the consistency FM
+was additionally trained at the stage-1 model. Despite some de-
+crease in speech intelligibility, we observed a notable improve-
+ment in naturalness. It demonstrates that building a consistency
+model on a straight ODE trajectory is effective in enhancing
+the quality of the few-step synthesis. Meanwhile, experiment
+(C) and (D) show the results obtained using encoder freeze and
+shared dropout, respectively. Although the impact of the en-
+coder freeze on the performance was not substantial, we em-
+pirically observed that it increased training speed by 1.3 times.
+Shared dropout improved the robustness of the consistency FM
+model, leading to enhanced performance across all metrics.
+In the second block of Table 2, we investigated the effec-
+tiveness of other improved techniques for RapFlow-TTS as fol-
+lows: Firstly, in experiment (E), replacing the ℓ2 metric with
+the Huber metric improved the speech naturalness by reducing
+the gradient variance. Although we observed a slight decrease
+in WER performance, we adopted this strategy since we pri-
+Table 3: Evaluation results on the VCTK test set.
+Model
+NFE
+WER
+MOS
+GT
+-
+1.79 ± 0.21
+4.42 ± 0.07
+VOC
+-
+2.10 ± 0.23
+4.06 ± 0.09
+Straight flow (Stage 1)
+2
+2.01 ± 0.24
+3.53 ± 0.09
+Straight flow (Stage 1)
+10
+2.52 ± 0.28
+3.83 ± 0.09
+RapFlow-TTS
+2
+3.25 ± 0.31
+3.83 ± 0.10
+RapFlow-TTS†
+2
+2.01 ± 0.23
+4.28 ± 0.08
+oritized naturalness enhancement. Secondly, delta scheduling
+(experiment (F)) improved both WER and NISQA. It indicates
+that the strategy, progressively reducing ∆t during training, is
+effective for performance improvement by minimizing the bias
+at the end of training. In addition, the performance degrada-
+tion observed when using exponential scheduling suggests that
+linear scheduling, which uniformly trains various ∆t during
+training, is appropriate.
+Lastly, in experiment (G), we vali-
+dated the effects of adversarial learning. This strategy yielded
+the most significant improvements compared to previous tech-
+niques. By learning the ground-truth characteristics at the end-
+points of each segment, Rapflow-TTS with adversarial learning
+can synthesize high-quality speech even in 2-step.
+Finally, in experiment (H), where we combined all im-
+proved techniques, RapFlow-TTS achieved the best WER and
+NISQA. It suggests that each technique contributes to perfor-
+mance improvement as its unique method without redundancy.
+Furthermore, we utilized NFE of 10 and 25 for experiment
+(H) to analyze the performance of RapFlow-TTS depending on
+NFE. We observed that naturalness slightly improved as NFE
+increased, while speech intelligibility deteriorated.
+This can
+be attributed to the characteristics of consistency models [18],
+where performance improvements are minimal or even degrade
+in many-step synthesis. In future work, we further analyze this
+issue and explore potential improvements.
+Results on the multi-speaker dataset To verify RapFlow-TTS
+on the multi-speaker dataset, we conducted experiments on the
+VCTK dataset. Considering the increase in dataset size and
+number of speakers, we raised the shared dropout to 0.1 for
+model robustness. As depicted in Table 3, RapFlow-TTS with-
+out improved techniques demonstrated lower speech intelligi-
+bility compared to the stage-1 model. However, in terms of nat-
+uralness, it significantly outperformed the stage-1 model in 2-
+step synthesis, even achieving a quality comparable to the stage-
+1 model’s 10-step performance. In addition, the improved tech-
+niques substantially enhanced both speech intelligibility and
+naturalness, enabling the synthesis of high-quality and intelligi-
+ble speech in only 2 steps. These experimental results indicate
+that RapFlow-TTS can achieve an outstanding few-step synthe-
+sis performance even on multi-speaker datasets.
+5. Conclusion
+In this study, we proposed RapFlow-TTS, the ODE-based TTS
+model capable of fast and high-fidelity speech synthesis. Based
+on consistency FM, RapFlow-TTS constructs a consistency
+model on a straight flow. By leveraging both the straight trajec-
+tory and the velocity-consistency property, high-quality speech
+synthesis was achievable in significantly fewer steps. In addi-
+tion, training techniques such as time interval scheduling and
+adversarial learning further enhanced performance. As a result,
+RapFlow-TTS outperformed existing ODE-based models and
+effectively overcame the trade-off between quality and speed.
+2443
+
+6. Acknowledgements
+This research was supported by Voice team, NAVER Cloud,
+Republic of Korea. This research was supported by the BK21
+FOUR funded by the Ministry of Education of Korea and Na-
+tional Research Foundation of Korea. This research was also
+results of a study on the “Leaders in INdustry-university Co-
+operation 3.0” Project, supported by the Ministry of Education
+and National Research Foundation of Korea.
+7. References
+[1] Y. Wang, R. Skerry-Ryan, D. Stanton, Y. Wu, R. J. Weiss,
+N. Jaitly, Z. Yang, Y. Xiao, Z. Chen, S. Bengio, Q. V. Le,
+Y. Agiomyrgiannakis, R. Clark, and R. A. Saurous, “Tacotron:
+Towards end-to-end speech synthesis,” in Proc. Interspeech, 2017,
+pp. 4006–4010.
+[2] J. Shen, R. Pang, R. J. Weiss, M. Schuster, N. Jaitly, Z. Yang,
+Z. Chen, Y. Zhang, Y. Wang, R. Skerrv-Ryan et al., “Natural TTS
+synthesis by conditioning Wavenet on mel spectrogram predic-
+tions,” in Proc. ICASSP, 2018, pp. 4779–4783.
+[3] J. Kim, S. Kim, J. Kong, and S. Yoon, “Glow-TTS: A generative
+flow for text-to-speech via monotonic alignment search,” in Proc.
+NeurIPS, vol. 33, 2020, pp. 8067–8077.
+[4] Y. Ren, Y. Ruan, X. Tan, T. Qin, S. Zhao, Z. Zhao, and T.-Y.
+Liu, “FastSpeech: Fast, robust and controllable text to speech,” in
+Proc. NeurIPS, vol. 32, 2019.
+[5] C. Miao, S. Liang, M. Chen, J. Ma, S. Wang, and J. Xiao, “Flow-
+TTS: A non-autoregressive network for text to speech based on
+flow,” in Proc. ICASSP, 2020, pp. 7209–7213.
+[6] N. Li, S. Liu, Y. Liu, S. Zhao, M. Liu, and M. Zhou, “Neural
+speech synthesis with Transformer network,” in Proc. AAAI, 2019,
+pp. 6706–6713.
+[7] Y. Ren, C. Hu, X. Tan, T. Qin, S. Zhao, Z. Zhao, and T.-Y. Liu,
+“FastSpeech 2: Fast and high-quality end-to-end text to speech,”
+in Proc. ICLR, 2021.
+[8] M. Jeong, J. Kim, J. Kong, and J. Son, “Diff-TTS: A denoising
+diffusion model for text-to-speech,” in Proc. Interspeech, 2021,
+pp. 3605–3609.
+[9] V. Popov, I. Vovk, V. Gogoryan, T. Sadekova, and M. Kudinov,
+“Grad-TTS: A diffusion probabilistic model for text-to-speech,”
+in Proc. ICML, 2021, pp. 8599–8608.
+[10] H. J. Park, J. S. Kim, W. Shin, and S. W. Han, “DEX-TTS:
+Diffusion-based EXpressive Text-to-Speech with style modeling
+on time variability,” arXiv preprint arXiv:2406.19135, 2024.
+[11] Y. Song, J. Sohl-Dickstein, D. P. Kingma, A. Kumar, S. Ermon,
+and B. Poole, “Score-based generative modeling through stochas-
+tic differential equations,” in Proc. ICLR, 2021.
+[12] T. Karras, M. Aittala, T. Aila, and S. Laine, “Elucidating the
+design space of diffusion-based generative models,” in Proc.
+NeurIPS, vol. 35, 2022, pp. 26 565–26 577.
+[13] Y. Lipman, R. T. Q. Chen, H. Ben-Hamu, M. Nickel, and M. Le,
+“Flow matching for generative modeling,” in Proc. ICLR, 2023.
+[14] A. Tong, K. FATRAS, N. Malkin, G. Huguet, Y. Zhang, J. Rector-
+Brooks, G. Wolf, and Y. Bengio, “Improving and generalizing
+flow-based generative models with minibatch optimal transport,”
+Transactions on Machine Learning Research, 2024.
+[15] Y. Guo, C. Du, Z. Ma, X. Chen, and K. Yu, “Voiceflow: Efficient
+text-to-speech with rectified flow matching,” in Proc. ICASSP,
+2024, pp. 11 121–11 125.
+[16] X. Liu, C. Gong, and qiang liu, “Flow straight and fast: Learning
+to generate and transfer data with rectified flow,” in Proc. ICLR,
+2023.
+[17] Y. Song, P. Dhariwal, M. Chen, and I. Sutskever, “Consistency
+models,” in Proc. ICML, 2023, pp. 32 211–32 252.
+[18] Z. Ye, W. Xue, X. Tan, J. Chen, Q. Liu, and Y. Guo, “Como-
+speech: One-step speech and singing voice synthesis via consis-
+tency model,” in Proc. ACM Multimedia, 2023, pp. 1831–1839.
+[19] S. Mehta, R. Tu, J. Beskow, ´E. Sz´ekely, and G. E. Henter,
+“Matcha-TTS: A fast tts architecture with conditional flow match-
+ing,” in Proc. ICASSP, 2024, pp. 11 341–11 345.
+[20] L. Yang, Z. Zhang, Z. Zhang, X. Liu, M. Xu, W. Zhang,
+C. Meng, S. Ermon, and B. Cui, “Consistency flow matching:
+Defining straight flows with velocity consistency,” arXiv preprint
+arXiv:2407.02398, 2024.
+[21] Y. Song and P. Dhariwal, “Improved techniques for training con-
+sistency models,” in Proc. ICLR, 2024.
+[22] B. Kim, Y.-G. Hsieh, M. Klein, marco cuturi, J. C. Ye, B. Kawar,
+and J. Thornton, “Simple reflow: Improved techniques for fast
+flow models,” in Proc. ICLR, 2025.
+[23] S. Lee, Z. Lin, and G. Fanti, “Improving the training of rectified
+flows,” in Proc. NeurIPS, 2024.
+[24] X. Mao, Q. Li, H. Xie, R. Y. Lau, Z. Wang, and S. Paul Smolley,
+“Least squares generative adversarial networks,” in Proc. ICCV,
+2017, pp. 2794–2802.
+[25] T. Salimans, I. Goodfellow, W. Zaremba, V. Cheung, A. Radford,
+and X. Chen, “Improved techniques for training gans,” in Proc.
+NeurIPS, vol. 29, 2016.
+[26] Y. A. Li, C. Han, and N. Mesgarani, “StyleTTS: A style-based
+generative model for natural and diverse text-to-speech synthesis,”
+arXiv preprint arXiv:2205.15439, 2022.
+[27] K. Ito and L. Johnson, “The LJ speech dataset,” https://keithito.
+com/LJ-Speech-Dataset/, 2017.
+[28] J. Yamagishi, C. Veaux, and K. MacDonald, “CSTR VCTK cor-
+pus: English multi-speaker corpus for CSTR voice cloning toolkit
+(version 0.92),” 2019.
+[29] J. Kong, J. Kim, and J. Bae, “HiFi-GAN: Generative adversarial
+networks for efficient and high fidelity speech synthesis,” in Proc.
+NeurIPS, vol. 33, 2020, pp. 17 022–17 033.
+[30] A. Radford, J. W. Kim, T. Xu, G. Brockman, C. McLeavey, and
+I. Sutskever, “Robust speech recognition via large-scale weak su-
+pervision,” in Proc. ICML, 2023, pp. 28 492–28 518.
+[31] G. Mittag, B. Naderi, A. Chehadi, and S. M¨oller, “NISQA:
+A deep CNN-self-attention model for multidimensional speech
+quality prediction with crowdsourced datasets,” in Proc. Inter-
+speech, 2021, pp. 2127–2131.
+2444
+

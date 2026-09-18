@@ -1,0 +1,703 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+Decoding Speaker-Normalized Pitch from EEG for Mandarin Perception
+Jiaxin Chen1,2, Yiming Wang1,2, Ziyu Zhang2, Jiayang Han2, Yin-Long Liu1,2, Rui Feng1,2, Xiuyuan
+Liang2, Zhen-Hua Ling1,2, Jiahong Yuan1,2∗
+1National Engineering Research Center of Speech and Language Information Processing, University
+of Science and Technology of China, Hefei, P. R. China
+2Interdisciplinary Research Center for Linguistic Sciences, University of Science and Technology of
+China, Hefei, P. R. China
+jxchen4759@mail.ustc.edu.cn, {zhling, jiahongyuan}@ustc.edu.cn
+Abstract
+The same speech content produced by different speakers
+exhibits significant differences in pitch contour, yet listeners’
+semantic perception remains unaffected.
+This phenomenon
+may stem from the brain’s perception of pitch contours be-
+ing independent of individual speakers’ pitch ranges. In this
+work, we recorded electroencephalogram (EEG) while partici-
+pants listened to Mandarin monosyllables with varying tones,
+phonemes, and speakers.
+The CE-ViViT model is proposed
+to decode raw or speaker-normalized pitch contours directly
+from EEG. Experimental results demonstrate that the proposed
+model can decode pitch contours with modest errors, achiev-
+ing performance comparable to state-of-the-art EEG regression
+methods. Moreover, speaker-normalized pitch contours were
+decoded more accurately, supporting the neural encoding of rel-
+ative pitch.
+Index Terms: Neural mechanisms of pitch perception, speaker-
+normalized relative pitch, auditory EEG
+1. Introduction
+The fundamental frequency (F0), often referred to as pitch, is
+an essential and critical acoustic feature in speech signals, rep-
+resenting the lowest frequency component of a sound. Humans
+precisely control the pitch of their voices to encode linguistic
+meaning [1]. In non-tonal languages like English, pitch varia-
+tions convey intonational information, including emotions, at-
+titudes, questions and so on. In contrast, tonal languages such
+as Mandarin, pitch changes create distinct tones that carry dif-
+ferent semantic meanings [2]. Thus, pitch as a critical acous-
+tic correlate for Mandarin tones, as the systematic variations in
+pitch contours enable the perceptual distinction among different
+tonal categories [3]. For different speakers, the range and vari-
+ation of pitch contours may differ significantly, leading to con-
+siderable variability in the pronunciation of the same syllable
+[1, 4]. However, the mechanisms underlying the auditory per-
+ception of pitch remain poorly undared. Investigating how the
+brain interprets semantic meaning from speech can help guide
+precise preservation of language functions in neurosurgery [5].
+Over the past decade, invasive brain-computer interface
+(BCI) technologies have begun to be utilized for precise map-
+ping of brain circuits, enabling the study of speech production
+[6, 7, 8] and perception mechanisms [9, 10], such as through
+electrocorticography (ECoG). For instance, a study [6] revealed
+categorical neural responses to lexical tones within a distributed
+network, encompassing not only auditory regions in the tempo-
+* corresponding author. This work was partially supported by the
+Anhui Province Major Science and Technology Research Project (Grant
+No. S2023Z20004) and USTC Grant KJRW-202302.
+ral cortex but also motor areas in the frontal cortex. Liu et al. [9]
+designed a multistream neural network that independently de-
+codes lexical tones and base syllables from intracranial record-
+ings to synthesize tonal language speech, using parallel streams
+inspired by neuroscience findings.
+However, invasive methods require complex brain surg-
+eries, which are costly and difficult to replicate or scale. As a
+result, some teams have focused on decoding speech from non-
+invasive recordings of brain activity like electroencephalogra-
+phy (EEG) [11, 12, 13, 14]. Wang et al. [15] utilized an end-
+to-end convolutional neural network (CNN) model to perform
+classification tasks for Mandarin speech directly from raw EEG
+signals, reporting average classification accuracies of 63.1%
+for four vowels and 51.7% for four tones. Furthermore, sev-
+eral studies have dedicated efforts to regression tasks, specifi-
+cally targeting the direct decoding of speech stimulus envelopes
+[16, 17] or mel-spectrograms [18] from EEG data. Despite ex-
+isting challenges associated with these non-invasive methods
+[19, 20], the simplicity and cost-effectiveness of EEG have fos-
+tered its widespread adoption and steady progress in the field.
+Recent study [7] have investigated how the auditory cor-
+tex processes intonational pitch in speech, designing and syn-
+thesizing controlled spoken sentences with independent varia-
+tions in intonation contour, phonetic content, and speaker iden-
+tity, while using ECoG to directly record neural activity on the
+brain surface during auditory perception. Research indicates
+that the neural encoding of pitch contours prioritizes speaker-
+normalized relative pitch over absolute pitch, highlighting the
+brain’s focus on relative pitch changes rather than specific val-
+ues. However, it remains unclear whether speaker normaliza-
+tion for pitch occurs within the context of sentences or origi-
+nates from the phonemes themselves. Additionally, ECoG is
+limited to capturing data from only a small subset of brain re-
+gions, with relatively sparse data availability.
+In this work, we aim to validate this theory by recording a
+more extensive auditory EEG dataset of monosyllabic speech,
+encompassing a wider variety of phonetic and tonal variations.
+To this end, we developed a nonlinear model, termed CE-ViViT,
+which processes electroencephalogram (EEG) signal segments
+as input. The model employs a multi-scale convolutional mod-
+ule for feature extraction, integrates features using ScConv [21]
+and DANE [22], decodes auditory attention through ViViT [23],
+and ultimately maps pitch contours.
+We reconstructed both
+raw and speaker-normalized pitch contours from monosyllabic
+Mandarin speech produced by a single speaker and multiple
+speakers, respectively. The proposed model achieves perfor-
+mance on par with existing state-of-the-art auditory EEG de-
+coding systems. Experimental results indicate that all models
+more effectively decode speaker-normalized pitch from EEG
+when multiple speakers are involved, while no significant dif-
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+1043
+10.21437/Interspeech.2025-700
+
+Convolutional
+Embedding
+channel
+position
+encoding
+C
+[cls]
+token
+id token
+Pitch
+Head
+Channel
+Transformer
+Encoder
+temporal
+position
+encoding
+C
+[cls]
+token
+Temporal
+Transformer
+Encoder
+Input EEG Data
+Temporal 
+ConvBlock
+Dilation 
+ConvBlock
+Channel 
+ConvBlock
+DANE
+Temporal Branch(TB)
+Channel 
+Branch(CB)
+Output Pitch
+Convlayer
+Convlayer
+Convlayer
+Concat
+(b)Temporal/Dilation/Channel ConvBlock
+TB input
+GlobalAvgPooling
+Linear
+CB input
+Linear
+Sigmoid
+ScConv
+(a)Convolutional Embedding
+(c)DANE
+(d)Pitch Head
+Ground Truth Pitch
+MSE Loss
+Conv1D+ReLU
+LN+Dropout
+Conv1D+ReLU
+LN+Dropout
+Linear
+Figure 1: The overall architecture for CE-ViViT model: (a) The dual parallel design of the temporal and channel domains in Convolu-
+tional Embedding (CE). (b) The details of the Temporal, Dilation, and Channel ConvBlocks. (c) The feature fusion method of DANE.
+(d) Illustration of the Pitch Head.
+ference is observed between speaker-normalized and raw pitch
+for a single speaker. This is consistent with the findings reported
+in [7].
+2. Proposed Method
+2.1. Overview
+The overall structure of the proposed CE-ViViT is illustrated in
+Figure 1, which consists of three main blocks: Convolutional
+Embedding, Feature Encoder, and Pitch Head. Raw EEG seg-
+ments X ∈RC×T serve directly as input, where C represents
+the number of EEG channels and T denotes the number of sam-
+pling points in the signal.
+The Convolutional Embedding module, positioned at the
+beginning of CE-ViViT, consists of parallel multi-scale convo-
+lutional layers stacked together, designed to extract local spa-
+tiotemporal features. It transforms the input X into an embed-
+ding V ∈RC′×T ′×D, where D represents the dimensionality
+of the extracted spatiotemporal representations, and T ′ and C′
+denote the reduced temporal and channel dimensions, respec-
+tively. It is followed by the Feature Encoder, which comprises
+a series of Transformer blocks designed to learn global con-
+text information. Here, temporal and channel domain informa-
+tion are fused, ultimately producing the feature representation
+O ∈RT ′×D.
+Finally, the output latent vector O is aggregated by the Pitch
+Head into the pitch contour ˆ
+F0 ∈Rt, where t represents the
+number of time points in the pitch contour. As illustrated in Fig-
+ure 1(d), the Pitch Head consists of a 2-layer 1D convolutional
+network with ReLU activation, followed by a layer normaliza-
+tion and dropout layer after each network, as well as an addi-
+tional linear layer that projects the hidden states into the output
+sequence. The system’s loss function is the mean squared error
+(MSE) loss between the reconstructed pitch contours ˆF0 and
+the ground-truth pitch contours F0, as shown in the following
+formula:
+Lpitch = 1
+N
+N
+X
+i=1
+( ˆF0 −F0)2
+(1)
+where N is the total number of samples in the batch.
+2.2. Convolutional Embedding
+As showed in Figure 1(a), the Convolutional Embedding archi-
+tecture comprises two parallel 2D convolutions designed to ex-
+tract temporal and channel domain features, respectively, which
+are subsequently fused to produce the embedding V . The tem-
+poral branch adopts a two-level cascaded structure, integrating a
+Temporal ConvBlock followed by a Dilation ConvBlock. Both
+blocks share an identical design, featuring multiple layers of
+parallel 2D convolutions with varying kernel sizes or dilation
+factors, and a single ScConv layer is employed to refine the re-
+sulting feature maps. In contrast, due to the relatively low reso-
+lution of the EEG channel domain, the channel branch consists
+solely of a Channel ConvBlock. This block utilizes multiple
+parallel convolutional filters with varying kernel sizes to extract
+parameters, followed by an ScConv layer to refine the channel
+domain feature maps. Finally, this work incorporates DANE
+[22] from the Doubly Fused ViT (DFvT), applying separate at-
+tention mechanisms to both temporal and channel outputs to
+generate the embedding V . The detailed architecture of DANE
+is illustrated in Figure 1(c).
+The Temporal ConvBlock, Dilation ConvBlock, and Chan-
+nel ConvBlock share the same structure, each using parallel
+convolutional filters with variations in temporal kernel sizes,
+channel dimensions, or dilation factors, respectively. The de-
+tailed architecture is shown in Figure 1(b). ScConv [21], an
+efficient module for visual tasks, reduces spatial and channel
+redundancies in CNNs. It includes an SRU for spatial reduction
+and a CRU for channel reduction.
+2.3. Feature Encoder
+The embedding vector V , with both temporal and channel
+dimensions, is encoded using the Video Vision Transformer
+(ViViT) [23], as shown in Figure 1.
+Specifically, this work
+adopts ViViT Model 2, a two-stage encoder comprising two
+distinct Transformer Encoders. In the first stage, the channel
+encoder models features from the same temporal index, with
+the output on the [cls] token representing the optimal channel
+1044
+
+combination derived through multi-layer attention. The tempo-
+ral encoder, which receives input containing only the temporal
+and representation dimensions, learns global temporal domain
+information. The final output integrates representations from
+both temporal and spatial domains.
+Each encoder layer includes layer normalization, multi-
+head self-attention, feed-forward layers, and residual connec-
+tions, following the standard Transformer architecture [24]. Be-
+fore inputting data into ViViT’s channel and temporal encoders,
+channel and temporal positional encodings are added, using a
+sinusoidal and cosine scheme. Additionally, the identity vector
+s is concatenated along the channel dimension before feeding
+into the channel encoder.
+3. Experiments
+3.1. Dataset and preprocessing
+The stimuli comprised two monosyllabic sessions, each con-
+taining 480 Mandarin monosyllabic words selected from the
+Tone Perfect corpus1 [25]. The sessions are described as fol-
+lows:
+• Session 1: Included 480 unique monosyllabic tokens pro-
+duced by a single native Mandarin male speaker, covering all
+four lexical tones (120 tokens per tone).
+• Session 2: Consisted of 480 monosyllabic sounds produced
+by six native Mandarin speakers (three female and three
+male), with each speaker producing 20 monosyllabic sounds
+across all four tones (80 tokens per speaker).
+The selected words included pseudowords (combinations of
+vowels, consonants, and tones that do not exist in Mandarin).
+All monosyllabic sounds were shorter than 1 second. Here, we
+extracted the pitch contour using the PyWorld Vocoder 2 and
+applied z-score normalization to all samples for each speaker.
+The participants in the experiment were 29 healthy college
+students, including 19 males and 10 females. The participants’
+ages ranged from 19 to 29 years, and all of them had no auditory
+or neurological disorders, normal hearing, and used Mandarin
+in daily communication.
+Participants sat in a comfortable sofa in an electrically
+shielded soundproof room, during whole-head EEG record-
+ing. The stimuli were binaurally presented through headphones
+(Sennheiser HD 25) at an intensity of 70 dB sound pressure
+level. Each monosyllabic stimulus was presented once with a
+fixed inter-stimulus interval of 1.2 seconds, and the sequence of
+stimuli was kept identical for all participants to maintain con-
+sistency across the study.
+Whole-head EEG signals were recorded using a SynAmps
+RT amplifier (NeuroScan, Charlotte, NC, USA) with a cap car-
+rying 64 Ag/AgCl electrodes placed on the scalp at specific lo-
+cations according to the extended international 10-20 system.
+Data were recorded at a sampling rate of 500 Hz. The refer-
+ence electrode was attached to the tip of the nose, and electrode
+AFz was used as the ground electrode during recording. To
+control for eye-movement artifacts, horizontal and vertical eye
+movements were recorded using two bipolar electrooculogra-
+phy (EOG) electrodes. All electrode impedances were main-
+tained below 5 kΩ.
+All EEG data were preprocessed via EEGLAB [26], in-
+cluding global average re-referencing and FIR bandpass filter-
+1https://tone.lib.msu.edu
+2https://github.com/JeremyCCHsu/Python-Wrapper-for-World-
+Vocoder
+ing (0.5–40 Hz). Artifacts (e.g., ECG, EOG, EMG) were re-
+moved using independent component analysis (ICA), following
+established EEG protocols [27]. For temporal alignment with
+monosyllabic stimuli, EEG segments exceeding speech dura-
+tion were zero-padded and trimmed to 1s to cover core pronun-
+ciation phases. Data were standardized into matrices of dimen-
+sions (500, 60) and normalized for model input consistency.
+3.2. Experimental Setup
+Given our objective to investigate the brain’s perception of
+speaker-normalized pitch contours, the main experiments were
+conducted on session 2, which involved six speakers, to com-
+pare the model’s decoding performance on raw and speaker-
+normalized pitch contours. Session 1, which included data from
+only one speaker, was primarily utilized for assessing model
+performance and conducting ablation experiments.
+The EEG data from 2 male and 1 female participants were
+designated as the target subjects, while the data from the re-
+maining 26 participants were used in the training process. The
+dataset was partitioned into a training set and a validation set,
+with 80% of the data allocated for training and the remain-
+ing 20% for validation. During training, the Adam optimizer
+was employed with a learning rate of 5e-4, combined with
+a CosineAnnealingLR scheduler set to a cycle of 20 and an
+eta min of 5e-6. To mitigate overfitting, a dropout rate of 0.2
+was applied to each layer.
+The model was trained for 150
+epochs with a batch size of 32, and the best-performing model
+on the validation set was selected.
+3.3. Evaluation Metrics
+This paper employs three evaluation metrics: Mean Absolute
+Error (MAE), Relative Mean Absolute Error (RMAE), and
+Gross Pitch Error (GPE) [28].
+The MAE measures the average of absolute differences be-
+tween predicted and true values:
+MAE = 1
+N
+N
+X
+t=1
+| ˆF0 −F0|
+(2)
+where N is the total number of voiced frames, ˆF0 is the pre-
+dicted pitch contours, and F0 is the ground-truth pitch contours.
+The RMAE calculates the average of relative errors be-
+tween predicted and true values:
+RMAE = 1
+N
+N
+X
+t=1
+| ˆF0 −F0|
+F0
+(3)
+The Gross Pitch Error (GPE) is defined as the percentage
+of voiced frames where the relative error in the estimated pitch
+surpasses 20% of the reference true value. The formula is as
+follows:
+GPE0.2 = NGP E
+Nv
+× 100%
+(4)
+where NGP E is the number of voiced frames with an es-
+timated pitch relative error exceeding 20% of the ground truth,
+and Nv is the total number of voiced frames.
+In subsequent experiments, we observe that these three met-
+rics generally yield consistent results. The discussions will pri-
+marily focus on the MAE metric.
+1045
+
+4. Results and Analysis
+4.1. Main Results
+As shown in Figure 2, these are several examples of the Man-
+darin pitch contours decoded from EEG by our proposed model
+on session 1. For performance comparison, we consider VLAAI
+[16], WaveNet [29], and HappyQuokka [17] as contrastive sys-
+tems, which are representative SOTA EEG-based speech regres-
+sion models.
+To address the significant scale differences between
+speaker-normalized pitch contours and raw pitch contours,
+which complicate direct comparisons of evaluation metrics,
+speaker-normalized pitch contours are rescaled to the original
+raw pitch contours’ scale using the speaker’s mean and vari-
+ance during metric calculation. However, the training objective
+remains focused on speaker-normalized pitch contours.
+Figure 2: Some examples of EEG-guided pitch reconstruction
+on session 1.
+First, Table 1 reveals no significant performance differ-
+ence between speaker-normalized and raw pitch contours in
+the single-speaker dataset, ruling out the possibility that per-
+formance gains stem solely from reduced dynamic range due
+to normalization.
+Second, as demonstrated in Table 2, all
+models achieved superior regression performance in decoding
+speaker-normalized pitch contours compared to raw pitch con-
+tours across the 6-speaker dataset, with the MAE metric show-
+ing an average improvement of 32.7%.
+These findings col-
+lectively suggest that Mandarin perception relies on speaker-
+normalized relative pitch rather than absolute pitch, and crit-
+ically, the normalization process occurs at the phoneme level
+during tonal perception.
+Table 1: Results of different systems on session 1.
+Systems
+pitch
+mae
+rmae
+gpe
+VLAAI
+raw
+22.6
+16.5
+31.1
+VLAAI
+norm
+22.5
+16.1
+29.7
+HappyQuokka
+raw
+22.3
+16.3
+30.6
+HappyQuokka
+norm
+20.8
+14.8
+24.1
+Wavenet
+raw
+18.6
+13.2
+21.9
+Wavenet
+norm
+18.5
+13.0
+21.4
+Proposed
+raw
+18.4
+13.2
+21.4
+Proposed
+norm
+18.4
+13.1
+22.0
+Table 2: Results of different systems on session 2.
+Systems
+pitch
+mae
+rmae
+gpe
+VLAAI
+raw
+51.8
+31.6
+56.9
+VLAAI
+norm
+36.3
+22.1
+46.2
+HappyQuokka
+raw
+49.9
+32.1
+55.0
+HappyQuokka
+norm
+34.6
+21.3
+42.1
+Wavenet
+raw
+46.7
+29.0
+49.8
+Wavenet
+norm
+31.3
+19.2
+35.2
+Proposed
+raw
+48.9
+31.1
+53.1
+Proposed
+norm
+30.5
+19.5
+34.7
+4.2. Ablation Study
+In this section, we conducted several ablation studies to analyze
+the impact of each module on the performance of the proposed
+model. The two main modules: the Convolutional Embedding
+and the Feature Encoder, which were either fully or partially
+removed to observe their individual effects. The resulting per-
+formance metrics on session 1 are presented in Table 3.
+Compared with the proposed method, removing any mod-
+ule will bring an obvious performance degradation, implying
+the necessity of both module. Removing Convolutional Embed-
+ding (w/o TCE/CCE/CE) results in a greater performance drop
+compared to removing Feature Encoder (w/o TFE/CFE/FE), in-
+dicating that Convolutional Embedding contributes more signif-
+icantly to performance. However, it should be noted that Fea-
+ture Encoder can further enhance the complementarity of the
+learned representations. For the Convolutional Embedding, a
+system without the Channel Branch (w/o CCE) achieves better
+results than one without the Temporal Branch (w/o TCE). This
+suggests that rich temporal local information is crucial for the
+outcome.
+Table 3: Ablation results of the proposed model with raw pitch
+contours on session 1. Here, CE, TCE, and CCE denote Convo-
+lutional Embedding, its Temporal Branch, and Channel Branch,
+respectively. FE, TFE, and CFE represent Feature Encoder,
+Channel Transformer Encoder, and Temporal Transformer En-
+coder, respectively.
+Systems
+mae
+rmae
+gpe
+Proposed
+18.4
+13.2
+21.4
+w/o TCE
+20.7
+14.5
+23.9
+w/o CCE
+19.0
+13.8
+22.2
+w/o CE
+21.2
+15.4
+26.1
+w/o TFE
+19.0
+13.6
+22.3
+w/o CFE
+18.6
+13.4
+21.6
+w/o FE
+19.9
+14.1
+22.7
+5. Conclusion
+In this paper, we demonstrate that the brain’s perception of
+Mandarin pitch contours is independent of individual speakers’
+pitch ranges. We recorded a Mandarin auditory EEG dataset
+and proposed a novel auditory EEG decoding model, CE-ViViT.
+Results on session 1 and session 2 show that the proposed model
+achieves performance comparable to state-of-the-art methods.
+In the future, we will explore whether sentence-level context
+affects speaker-normalized pitch perception.
+1046
+
+6. References
+[1] D. N. Honorof and D. H. Whalen, “Perception of pitch location
+within a speaker’s f0 range,” The Journal of the Acoustical Society
+of America, vol. 117, no. 4, pp. 2193–2200, 2005.
+[2] Y.-R. Chao, “A system of tone letters,” Le maˆıtre phon´etique,
+1930.
+[3] J. Yuan, X. Cai, and K. Church, “Improved contextualized speech
+representations for tonal analysis,” in Proceedings of Interspeech,
+2023, pp. 4513–4517.
+[4] C. Henton, “Pitch dynamism in female and male speech,” Lan-
+guage & Communication, vol. 15, no. 1, pp. 43–61, 1995.
+[5] M. Chung, T. Kim, E. Jeong, C. K. Chung, J. S. Kim, O.-S. Kwon,
+and S.-P. Kim, “Decoding imagined musical pitch from human
+scalp electroencephalograms,” IEEE Transactions on Neural Sys-
+tems and Rehabilitation Engineering, vol. 31, pp. 2154–2163,
+2023.
+[6] X. Si, W. Zhou, and B. Hong, “Cooperative cortical network for
+categorical processing of chinese lexical tone,” Proceedings of
+the National Academy of Sciences, vol. 114, no. 46, pp. 12 303–
+12 308, 2017.
+[7] C. Tang, L. Hamilton, and E. Chang, “Intonational speech
+prosody encoding in the human auditory cortex,” Science, vol.
+357, no. 6353, pp. 797–801, 2017.
+[8] Y. Li, C. Tang, J. Lu, J. Wu, and E. F. Chang, “Human cortical
+encoding of pitch in tonal and non-tonal languages,” Nature com-
+munications, vol. 12, no. 1, p. 1161, 2021.
+[9] Y. Liu, Z. Zhao, M. Xu, H. Yu, Y. Zhu, J. Zhang, L. Bu, X. Zhang,
+J. Lu, Y. Li et al., “Decoding and synthesizing tonal language
+speech from brain activity,” Science Advances, vol. 9, no. 23, p.
+eadh0478, 2023.
+[10] K. Shigemi, S. Komeiji, T. Mitsuhashi, Y. Iimura, H. Suzuki,
+H. Sugano, K. Shinoda, K. Yatabe, and T. Tanaka, “Synthesiz-
+ing speech from ecog with a combination of transformer-based
+encoder and neural vocoder,” in ICASSP 2023-2023 IEEE Inter-
+national Conference on Acoustics, Speech and Signal Processing
+(ICASSP).
+IEEE, 2023, pp. 1–5.
+[11] A. D´efossez, C. Caucheteux, J. Rapin, O. Kabeli, and J.-R. King,
+“Decoding speech perception from non-invasive brain record-
+ings,” Nature Machine Intelligence, vol. 5, no. 10, pp. 1097–1107,
+2023.
+[12] Q. Ni, H. Zhang, C. Fan, S. Pei, C. Zhou, and Z. Lv, “Dbpnet:
+Dual-branch parallel network with temporal-frequency fusion for
+auditory attention detection,” in Proceedings of the International
+Joint Conference on Artificial Intelligence (IJCAI 2024), 2024.
+[13] B. Accou, M. J. Monesi, J. Montoya, T. Francart et al., “Modeling
+the relationship between acoustic stimulus and eeg with a dilated
+convolutional neural network,” in 2020 28th European Signal Pro-
+cessing Conference (EUSIPCO).
+IEEE, 2021, pp. 1175–1179.
+[14] E. Postolache, N. Polouliakh, H. Kitano, A. Connelly, E. Rodol`a,
+L. Cosmo,
+and T. Akama,
+“Naturalistic music decoding
+from eeg data via latent diffusion models,” arXiv preprint
+arXiv:2405.09062, 2024.
+[15] X. Wang, M. Li, H. Li, S. H. Pun, and F. Chen, “Cross-subject
+classification of spoken mandarin vowels and tones with eeg sig-
+nals: A study of end-to-end cnn with fine-tuning,” in 2023 Asia
+Pacific Signal and Information Processing Association Annual
+Summit and Conference (APSIPA ASC).
+IEEE, 2023, pp. 535–
+539.
+[16] B. Accou, J. Vanthornhout, H. V. hamme, and T. Francart, “De-
+coding of the speech envelope from eeg using the vlaai deep neu-
+ral network,” Scientific Reports, vol. 13, no. 1, p. 812, 2023.
+[17] Z. Piao, M. Kim, H. Yoon, and H.-G. Kang, “Happyquokka sys-
+tem for icassp 2023 auditory eeg challenge,” in ICASSP 2023-
+2023 IEEE International Conference on Acoustics, Speech and
+Signal Processing (ICASSP).
+IEEE, 2023, pp. 1–2.
+[18] X. Xu, B. Wang, Y. Yan, H. Zhu, Z. Zhang, X. Wu, and
+J. Chen, “Convconcatnet: a deep convolutional neural network
+to reconstruct mel spectrogram from the eeg,” arXiv preprint
+arXiv:2401.04965, 2024.
+[19] M. H¨am¨al¨ainen, R. Hari, R. J. Ilmoniemi, J. Knuutila, and
+O. V. Lounasmaa, “Magnetoencephalography—theory, instru-
+mentation, and applications to noninvasive studies of the working
+human brain,” Reviews of modern Physics, vol. 65, no. 2, p. 413,
+1993.
+[20] J.-R. King, A. Gramfort et al., “Encoding and decoding neuronal
+dynamics: Methodological framework to uncover the algorithms
+of cognition,” 2018.
+[21] J. Li, Y. Wen, and L. He, “Scconv: Spatial and channel reconstruc-
+tion convolution for feature redundancy,” in Proceedings of the
+IEEE/CVF Conference on Computer Vision and Pattern Recogni-
+tion, 2023, pp. 6153–6162.
+[22] L. Gao, D. Nie, B. Li, and X. Ren, “Doubly-fused vit: Fuse infor-
+mation from vision transformer doubly with local representation,”
+in European Conference on Computer Vision.
+Springer, 2022,
+pp. 744–761.
+[23] A. Arnab, M. Dehghani, G. Heigold, C. Sun, M. Luˇci´c, and
+C. Schmid, “Vivit: A video vision transformer,” in Proceedings of
+the IEEE/CVF international conference on computer vision, 2021,
+pp. 6836–6846.
+[24] A. Vaswani, “Attention is all you need,” Advances in Neural In-
+formation Processing Systems, 2017.
+[25] C. Ryu, the Mandarin Tone Perception & Production Team,
+and M. S. U. Libraries, “Tone perfect: Multimodal database
+for mandarin chinese,” Michigan State University Libraries,
+2022, accessed:
+1 January 2022. [Online]. Available:
+https:
+//tone.lib.msu.edu/
+[26] A. Delorme and S. Makeig, “Eeglab: an open source toolbox
+for analysis of single-trial eeg dynamics including independent
+component analysis,” Journal of neuroscience methods, vol. 134,
+no. 1, pp. 9–21, 2004.
+[27] G. Krishna, C. Tran, Y. Han, M. Carnahan, and A. H. Tewfik,
+“Speech synthesis using eeg,” in ICASSP 2020-2020 IEEE Inter-
+national Conference on Acoustics, Speech and Signal Processing
+(ICASSP).
+IEEE, 2020, pp. 1235–1238.
+[28] M. J. Cheng, L. Rabiner, A. Rosenberg, and C. McGonegal,
+“Comparative performance study of several pitch detection algo-
+rithms,” The Journal of the Acoustical Society of America, vol. 58,
+no. S1, pp. S61–S62, 1975.
+[29] B. Van Dyck, L. Yang, and M. M. Van Hulle, “Decoding auditory
+eeg responses using an adapted wavenet,” in ICASSP 2023-2023
+IEEE International Conference on Acoustics, Speech and Signal
+Processing (ICASSP).
+IEEE, 2023, pp. 1–2.
+1047
+

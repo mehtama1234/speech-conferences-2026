@@ -1,0 +1,622 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+A Data-Driven Diffusion-based Approach for Audio Deepfake Explanations
+Petr Grinberg1,2, Ankur Kumar2, Surya Koppisetti2, Gaurav Bharaj2
+1EPFL, Switzerland
+2Reality Defender Inc., USA
+petr.grinberg@epfl.ch, {ankur, surya, gaurav}@realitydefender.ai
+Abstract
+Evaluating explainability techniques, such as SHAP and
+LRP, in the context of audio deepfake detection is challenging
+due to lack of clear ground truth annotations. In the cases when
+we are able to obtain the ground truth, we find that these meth-
+ods struggle to provide accurate explanations. In this work*, we
+propose a novel data-driven approach to identify artifact regions
+in deepfake audio. We consider paired real and vocoded audio,
+and use the difference in time-frequency representation as the
+ground-truth explanation. The difference signal then serves as
+a supervision to train a diffusion model to expose the deepfake
+artifacts in a given vocoded audio. Experimental results on the
+VocV4 and LibriSeVoc datasets demonstrate that our method
+outperforms traditional explainability techniques, both qualita-
+tively and quantitatively.
+Index Terms: Deepfake Detection, Audio Processing, Explain-
+able AI
+1. Introduction
+Explainable AI (XAI) methods such as GradCAM [1],
+SHAP [2, 3] and LRP [4] have been used in the past to attribute
+model decisions in a variety of audio tasks. For some tasks,
+such as sound classification, we can listen to audio segments
+corresponding to the highlighted regions to check if the sound
+matches the label [5]. However, for the audio deepfake detec-
+tion (ADD) task, it is often unclear what portions of an utter-
+ance correspond to manipulation, making it difficult for humans
+to interpret and evaluate the attributions [6]. Recent work [7]
+shows that existing post-hoc XAI tools do not provide consis-
+tent explanations in the time domain, which further necessitates
+careful evaluation of these methods.
+Vocoders are integral component in many text-to-speech
+and voice conversion systems [8].
+Several vocoded datasets
+exist, such as VocV4 [8] and LibriSeVoc [9], which contain
+parallel real and fake audios with the same speaker and time-
+synchronized spoken content. The fake audio is synthesized by
+applying a vocoder on an intermediate representation, such as
+spectrogram, derived from the corresponding real audio. There-
+fore, the only difference between a real audio and its vocoded
+version is the introduction of artifacts from the vocoder. We
+can utilize this difference to create ground truth explanations,
+which enables the evaluation of above explainability methods.
+Also, as we show later in Section 4, the classical XAI tools
+struggle to provide accurate explanations, which indicates the
+need for methods that better align with the ground truth.
+In the field of vision deepfakes, Zhang et al. [6] proposed a
+trainable visual question answering framework to provide tex-
+*This work was done during an internship at Reality Defender Inc.
+tual explanations for unnatural deepfake features, like blurry
+hairline, that align with commonsense reasoning.
+Trainable
+XAI methods have also been used to provide faithful interpre-
+tations for the audio event classification task [5, 10]. Inspired
+by these works, we propose a data-driven XAI method that can
+be trained using the difference between real and vocoded utter-
+ances as the supervisory signal to account for the specificity of
+the deepfake detection task. Our main contributions are:
+1. We propose a methodology to generate annotations for ADD
+XAI using parallel samples in a vocoded dataset, i.e., pairs
+of fake and real utterances with the same speaker and time-
+synchronized content.
+2. We show that a classifier-agnostic diffusion model can be
+trained on spoof spectrogram and the corresponding differ-
+ence signal as the input-output pair to predict heatmaps high-
+lighting the most suspicious regions in the time-frequence do-
+main. Also, we show that post-hoc classifier-specific attribu-
+tions can be obtained by conditioning the diffusion model on
+intermediate features from the same classifier.
+3. We extend the classical XAI tools to output time-frequency
+attribution and show that the proposed diffusion model pro-
+duces attributions that are more faithful to the model and are
+better aligned with the ground-truth annotations.
+2. Related Work
+While several works investigated the explainability of ADD
+systems [2, 3, 11, 12], only few [13, 14, 7] have considered
+state-of-the-art models, which directly operate on raw wave-
+forms [12]. These works are further limited to time-domain
+explanations only, which allow for a partial understanding of
+the model behavior, as artifacts can be found in specific fre-
+quency sub-bands [15]. In the paper, we provide explanations
+in the joint time-frequency domain for a state-of-the-art deep-
+fake classifier [16], which operates on raw waveforms.
+Previous works [17, 8, 9, 18] have either used vocoded data
+as a training source for the ADD systems themselves [8, 9, 18]
+or have resorted to exploratory studies on the statistical differ-
+ences between real and fake samples, such as average pitch or
+energy across frequency bins [17]. In contrast, we consider the
+difference signal in parallel pairs as the ground-truth explana-
+tion and use it as a supervisory signal to train a diffusion model
+for predicting the spoof artifact regions.
+Neural network-based XAI was explored in [5, 10] us-
+ing self-supervised losses, whereas we train a diffusion model
+in a supervised manner using the ground-truth explanations.
+Diffusion-based models have been used previously for synthetic
+image detection [19, 20] and speaker verification [21, 22]. How-
+ever, these works focus on improving detection capabilities,
+whereas we consider diffusion for a trainable XAI technique.
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+5348
+10.21437/Interspeech.2025-2105
+
+3. Methodology
+3.1. Classical explainability methods
+State-of-the-art ADD models today operate on raw waveform
+inputs [12]. To enable explanations in the time-frequency do-
+main with classical XAI methods, we propose the RawWrapper
+technique, which prepends Inverse Short-Time Fourier Trans-
+form (ISTFT) as a convolutional layer at the start of the ADD
+model. For an ADD model f operating on raw waveform x, we
+have:
+f(x) = f(ISTFT(STFT(x))) = f(ISTFT(M, P))
+(1)
+where M and P are the magnitude and phase spectro-
+grams obtained from x after applying STFT. By defining
+RawWrapperf(M, P) = f(ISTFT(M, P)), we get a wrapped
+model that matches behavior of the ADD system but operates
+on input in the time-frequency domain. Simultaneously, we are
+able to apply the classical XAI techniques, such as SHAP and
+LRP, directly in the time-frequency domain as M becomes the
+part of the computational graph, which allows propagating rel-
+evancy from the output to the input. However, other methods
+like Grad-CAM [1] and transformer relevancy [7] still cannot
+be applied due to their dependency on spatial relationship be-
+tween intermediate features and the input M, which is not clear.
+Therefore, we do not consider such methods in this work. We
+note that the RawWrapper relies on the exact replication of the
+f decision-making process, which can be achieved by properly
+choosing STFT parameters to facilitate perfect reconstruction of
+a signal via ISTFT. In practice, we operate on the log-magnitude
+spectrogram for better visualization and value range and take its
+exponential before ISTFT.
+3.2. Dataset for supervised XAI
+If genuine and spoofed speech are perfectly aligned in speaker
+and content attributes, as in parallel data pairs, the only dis-
+tinction between the audio frames is the spoofing artifact. By
+subtracting bona fide spectrogram Mb from a parallel spoof
+spectrogram Ms, we obtain a heatmap that showcases the most
+manipulated regions. However, this heatmap tends to be noisy,
+whereas we are interested in identifying dense regions only
+since they are more likely to be recognized by humans. There-
+fore, before computing the difference, we apply smoothing with
+a 2-D Gaussian kernel G of size (3, 11) and variance of (3, 5)
+for the time and frequency dimensions, respectively. We also
+normalize the smoothed difference since the low frequency bins
+contain more energy (larger magnitude) than the high frequency
+bins. The final heatmap is obtained by binarizing the normal-
+ized values as follows
+Mask =
+|G(Ms) −G(Mb)|
+|G(Mb)|
+
+> τ
+(2)
+where τ is the threshold corresponding to the 95% quantile of
+the normalized values. Figure 1 shows the mask obtained us-
+ing a parallel real and fake sample in the VocV4 [8] dataset.
+The top right mask is obtained without applying any smooth-
+ing, whereas the mask on the bottom right is acquired when G
+is applied. We note that the regions in the latter case are more
+dense and meaningful compared to the case when smoothing is
+not applied. We believe that the above procedure is able to re-
+tain most of the significant regions where vocoder artifacts may
+be present, as well as highlight them faithfully. Therefore, we
+also call the computed mask as ground truth explanations.
+Figure 1:
+Original (top) and smoothed (bottom) versions
+of bona fide and spoof spectrograms for a parallel pair in
+VocV4 [8], with corresponding segmentation masks (right).
+Rectangles show manipulated regions: (1) missed harmonics,
+(2) energy loss.
+3.3. Diffusion-based XAI
+We train a diffusion model to predict spoof artifact regions using
+ground truth explanations from Section 3.2 as the target. This
+task is similar to the standard segmentation task in computer vi-
+sion. Therefore, we use the SegDiff [23] diffusion model1 as it
+has shown high segmentation quality, surpassing non-diffusion
+approaches on a variety of datasets [24, 25, 26], including those
+with sparse masks as in our annotated datasets. Figure 2 shows
+the overall framework. The input to the diffusion model is ran-
+dom noise, which is iteratively denoised to generate the output
+heatmap based on some conditioning. The diffusion model fol-
+lows the standard UNet-like encoder-decoder architecture with
+2 residual blocks per level. We refer the readers to [23] for more
+details. We experiment with two different ways to condition the
+generation. First, we use the spectrogram Ms from spoof au-
+dio that is agnostic to the ADD model. We call this setup as
+SpecSegDiff. This case resembles the scenario when we man-
+ually try to identify the artifact regions, regardless of how the
+ADD model makes its decision. Different from SpecSegDiff,
+we also try to condition using the intermediate features from
+the ADD model instead of the spectrogram. If we get similar
+outputs compared to SpecSegDiff and ground-truth annotations,
+then we can comment that the features from the ADD model
+actually utilize the annotated artifacts to make the real vs fake
+decision. We call this variation as ADDSegDiff. SpecSegDiff
+and ADDSegDiff use 12 and 1 RRDB [27] blocks to preprocess
+the conditioning, respectively.
+3.4. Evaluation criteria
+We use qualitative and quantitative measures to evaluate the
+proposed method.
+The former involves manually inspecting
+the generated heatmap from different methods and comparing
+them against the binary ground truth obtained in Section 3.2.
+The quantitative measures assess the alignment between pre-
+dicted heatmaps and the ground truth annotations using stan-
+dard metrics from the image segmentation task [23, 28]: Gen-
+eralized Dice (GDice), F1-score, IoU, Boundary F1 (FBound),
+and Structural Similarity Index Measure (SSIM). Since the dif-
+fusion generates attributions only for the spoof class, the evalu-
+ation is conducted on the fake subset of the data.
+We also compute classic model faithfulness metrics from
+1we base our code on the official implementation https://
+github.com/tomeramit/SegDiff
+5349
+
+Figure 2: Proposed diffusion model framework to predict arti-
+fact regions in spoof audio. For conditioning, we use the spec-
+trogram in SpecSegDiff, whereas, in ADDSegDiff, the interme-
+diate features from a pretrained frozen ADD model are used.
+[5], i.e., Average Increase (AI ↑), Average Drop (AD ↓), Aver-
+age Gain (AG ↑), and Input Fidelity (Fid-In ↑) to evaluate the
+change in model’s confidence when the input is masked with a
+heatmap H. However, since H is sparse, the resulting masked
+audio, ISTFT(H · Ms, Ps), suffers severe distortion that im-
+pacts the decision of the ADD model. To circumvent this issue,
+we replace the masked regions in magnitude and phase spec-
+trograms with their real counterparts. Therefore, the magnitude
+and phase inputs to ISTFT becomes H · Ms + (1 −H) · Mb
+and H · Ps + (1 −H) · Pb respectively. If a particular region
+is not important for the model decision, its replacement with a
+bona fide counterpart should not significantly affect the predic-
+tion and vice versa. This means that the drop in the model score
+should happen only if H is indeed faithful and highlights the
+spoof artifact regions.
+4. Experiments
+4.1. Experimental setup
+We use VocV4 vocoded dataset to generate the supervised
+XAI dataset, which is then used to train SpecSegDiff and
+ADDSegDiff models, as well as compare them against clas-
+sical XAI methods. Each real utterance in the dataset is re-
+synthesized using four different vocoders applied on the gen-
+uine mel spectrograms. To verify that our methodology can
+be applied on different datasets, we also use LibriSeVoc [9],
+downsampled to 16 kHz, as the second data source. In con-
+trast to VocV4 that uses generative adversarial network (GAN),
+flow-based, and signal processing-based vocoders, this dataset
+consists of six different vocoders created using GAN, diffusion,
+and autoregressive approaches. In LibriSeVoc, fake audio are
+created using resynthesis technique but with trimmed silences
+at the edges, which creates misalignment between real and fake
+audio pair. We resolve this by applying dynamic time warping
+to find border points and shift spoof and real utterances in the
+time domain to get aligned audios.
+We train SpecSegDiff until convergence using Adam opti-
+mizer with constant learning rate of 10−4 and weight decay of
+10−4 for around 100K steps. We use global batch size of 24
+in all these experiments. For ADDSegDiff experiments, we use
+Wav2Vec2-AASIST [16], a popular ADD model with state-of-
+the-art performance [12], to extract the conditioning features.
+The training of the ADD model follows the original work except
+for the difference in the training dataset, which is VocV4 in this
+work. The ADD model has an equal error rate (EER) of 1.17%,
+1.40%, 2.75%, and 5.04% on VocV4 (development set), Libri-
+SeVoc [9], ASVspoof 2019 [29], and In-The-Wild [30] datasets,
+respectively.
+We take the outputs of {0, 4, 9, 14, 19, 23}-th
+transformer layers from the frozen ADD model as the con-
+ditioning features for ADDSegDiff.
+We project the features
+from 1024 to 320 dimensions using 2-layer multilayer percep-
+tron (MLP) before passing them to ADDSegDiff.
+We train
+ADDSegDiff for around 100K steps with a global batch size of
+48. For all the experiments, we apply RawBoost [31] data aug-
+mentation with 50% chance to improve the diffusion model’s
+robustness to clean and noisy utterances. To ensure that aug-
+mented audio still differs only because of vocoder artifacts, fake
+and its parallel real audio are augmented with the same random
+noise-vector and hyperparameters. During inference, each dif-
+fusion model predicts 32 masks using different random noise
+samples and returns the average as a heatmap.
+We evaluate the following classical XAI techniques:
+DeepSHAP, GradientSHAP [2, 3], and AttnLRP [4]. We ap-
+ply RawWrapper, as described in Section 3.1, to obtain attribu-
+tions in the time-frequency domain for the ADD model trained
+with raw waveform as input. For DeepSHAP, we follow [2, 7]
+and use 20 random bona fide utterances for the reference value.
+The setup for GradientSHAP is identical to [3, 7] and gener-
+ates 20 examples per utterances using zero-vector baselines.
+AttnLRP requires defining γ hyperparameter for convolutional
+and linear layers outside of transformer. We do hyperparameter
+search with γ ∈{0, 0.1, 10} and choose the one that is more
+aligned with the dataset annotations (see Section 3.4): 10 for
+1d-convolution and 0.1 for other layers.
+4.2. Results and discussion
+Figure 3 shows predictions from all the XAI methods on two
+vocoded audio from the VocV4 dataset.
+The utterances are
+re-synthesized from the same real audio but with different
+vocoders, Hn-NSF [32] in the top row and WaveGlow [33] in
+the bottom row. The ground truth column shows that the ar-
+tifacts introduced by these vocoders appear very distinct from
+each other. The first vocoder introduces artifacts in the low fre-
+quency bands across most of the timesteps as well as specific
+mid-frequency bands at particular timesteps corresponding to
+speech. However, the artifacts from the second vocoder appear
+to be independent of frequency bands and occur in non-speech
+regions at the start of audio. If we look at the predictions from
+classical XAI methods, we find that all the three methods fail
+to capture any detail in the ground truth for both utterances.
+Furthermore, their predictions for both audio are similar. Since
+both utterances are derived from the same real audio, we be-
+lieve that these methods are simply highlighting characteristics
+of audio that, for example, may be related to content and not re-
+lated to deepfake artifacts. On the other hand, both SpecSegDiff
+and ADDSegDiff have different outputs for the two utterances.
+They also seem to be better aligned with the ground truth, which
+is not surprising, since the diffusion models were trained for this
+purpose. In addition, SpecSegDiff predictions are the most ac-
+curate as it correctly highlights the lower frequency band and
+has a lot of points in approximately the same frequency bands
+for the middle part of the first audio. For the second audio,
+its predictions exactly match the ground truth. We note that
+since the frequency bands are arranged contiguously and mul-
+tiple frequencies are grouped in a single band, it should not be
+a problem if predictions match approximately with the ground
+truth. For ADDSegDiff, we find a similar pattern. The predic-
+tions are much better than the classical XAI methods and match
+5350
+
+Figure 3: Comparison of the attributions from classic XAI tools and our diffusion model. We show binarized (B) and heatmap (H)
+versions. The binarization uses 95% quantile threshold.
+Table 1: Metric for different XAI methods computed on the development set of VocV4 dataset (the first number) and test set of LibriSeVoc
+(the second number). Diffusion models evaluated on VocV4 and LibriSeVoc are trained on VocV4 and LibriSeVoc, respectively.
+Method
+Segmentation
+Faithfulness
+GDice ↑
+F1 ↑
+IoU ↑
+FBound ↑
+SSIM ↑
+AI ↑
+AD ↓
+AG ↑
+Fin-In ↑
+DeepSHAP
+10.93 / 8.78
+6.50 / 4.24
+3.43 / 2.21
+33.30 / 19.81
+37.03 / 33.29
+0.43 / 1.82
+95.35 / 92.74
+0.37 / 1.62
+0.04 / 0.03
+GradientSHAP
+11.71 / 10.28
+7.31 / 5.82
+3.99 / 3.03
+30.45 / 27.12
+33.55 / 31.12
+0.53 / 1.89
+91.03 / 81.22
+0.38 / 1.48
+0.08 / 0.12
+AttnLRP
+12.65 / 8.69
+8.30 / 4.15
+4.49 / 2.19
+30.29 / 15.71
+53.22 / 50.48
+0.42 / 1.82
+96.38 / 92.06
+0.37 / 1.62
+0.03 / 0.03
+ADDSegDiff
+48.26 / 52.03
+45.69 / 49.65
+31.23 / 36.33
+57.36 / 56.78
+69.04 / 74.85
+0.81 / 1.82
+68.34 / 85.06
+0.50 / 1.60
+0.31 / 0.10
+SpecSegDiff
+57.46 / 51.73
+55.34 / 49.33
+40.51 / 36.12
+66.95 / 59.08
+70.99 / 73.86
+−
+−
+−
+−
+the ground truth, however, less accurately than SpecSegDiff.
+We now compare the methods across entire dataset using
+quantitative metrics for the segmentation task, as well as faith-
+fulness metrics. The results are shown in Table 1 on both VocV4
+and LibriSeVoc datasets (separated by “/”). We do not report
+faithfulness metrics for SpecSegDiff since faithfulness metrics
+are computed for ADD model, whereas SpecSegDiff does not
+rely on any ADD model. Next, we make 3 observations based
+on the table.
+Firstly, the numbers do not vary significantly
+across the two datasets for all the models and metrics, espe-
+cially the segmentation metrics that measure the accuracy, as
+well as structural similarity between the prediction and ground
+truth. Secondly, there is a large gap between the metrics for
+classical XAI methods and diffusion-based methods. Finally,
+there is a smaller gap between SpecSegDiff and ADDSegDiff.
+The last two observations about the superior performance of
+diffusion-based methods match with our previous discussions
+based on the visual analysis of the predicted heatmaps. More-
+over, the first observation suggests that our proposed method
+can be trained on any detection dataset that contains vocoder
+artifacts. Therefore, we believe that the proposed method leads
+to a superior XAI approach that is general enough to apply to
+any detection model and better aligned with ground truth ex-
+planations compared to existing techniques. We also note that
+the ground truth annotated regions are indeed used for the ADD
+model decision, since ADDSegDiff is able to overcome other
+methods in terms of faithfulness metrics and predict regions
+with high accuracy, while being conditioned only on the inter-
+mediate features.
+Next, we address the performance gap between Spec-
+SegDiff and ADDSegDiff models based on the above results in
+Figure 3 and Table 1. Figure 3 shows that ADDSegDiff misses a
+dense region (approximately in the middle of the ground truth)
+in the top row and predicts an extra column as shown in the
+continuous version of the heatmap in the bottom row. But the
+heatmaps predicted by SpecSegDiff are better and it also per-
+forms at least as good as ADDSegDiff on segmentation metrics.
+We believe that this could be due to the complex spatial rela-
+tionship that ADDSegDiff needs to learn between latent space
+of the ADD model and time-frequency representation of the au-
+dio. The problem can be exacerbated due to the use of pre-
+trained backbones in the ADD model. These backbones, such
+as Wav2Vec2 [16], are trained as an encoder-only model. So,
+there is no objective that encourages the model to preserve all
+the spatial information. However, the mapping is straightfor-
+ward in the case of SpecSegDiff as it operates on a magnitude
+spectrogram directly. We hope that this problem can be resolved
+to some extent as we scale the training of the diffusion model to
+a larger dataset. We leave this as a future work.
+5. Conclusion
+In this paper, we proposed a data-driven approach to generate
+explanations for the ADD task. We presented a methodology
+to create a supervised dataset containing spoof audio and cor-
+responding ground truth explanation in the time-frequency do-
+main. The dataset enabled a fair comparison of existing classi-
+cal XAI techniques to generate the deepfake explanations. We
+used RawWrapper technique to extend the methods to the time-
+frequency domain. However, we found that these XAI tools
+are not able to handle the specificity required for the task. On
+the other hand, our diffusion-based XAI provides heatmaps that
+are more aligned with the ground-truth annotations and more
+faithful to the classifier in comparison to classic tools. As with
+any deep learning technique, model generalization to unseen
+vocoders, speakers, and other conditions is an important aspect.
+We believe that leveraging large pretrained diffusion backbones
+and scaling the training to diverse datasets containing annota-
+tions for many spoofing algorithms can improve robustness and
+be a potential future direction.
+5351
+
+6. References
+[1] R. R. Selvaraju, M. Cogswell, A. Das, R. Vedantam, D. Parikh,
+and D. Batra, “Grad-cam: Visual explanations from deep net-
+works via gradient-based localization,” in Proceedings of the
+IEEE international conference on computer vision, 2017, pp.
+618–626.
+[2] W. Ge, J. Patino, M. Todisco, and N. Evans, “Explaining deep
+learning models for spoofing and deepfake detection with SHap-
+ley Additive exPlanations,” in ICASSP 2022-2022 IEEE Interna-
+tional Conference on Acoustics, Speech and Signal Processing
+(ICASSP).
+IEEE, 2022, pp. 6387–6391.
+[3] W. Ge, M. Todisco, and N. Evans, “Explainable Deepfake and
+Spoofing Detection: An Attack Analysis Using SHapley Additive
+exPlanations,” in Proc. The Speaker and Language Recognition
+Workshop (Odyssey 2022), 2022, pp. 70–76.
+[4] R. Achtibat, S. M. V. Hatefi, M. Dreyer, A. Jain, T. Wiegand,
+S. Lapuschkin, and W. Samek, “AttnLRP: Attention-aware layer-
+wise relevance propagation for transformers,” in Proceedings of
+the 41st International Conference on Machine Learning, vol. 235.
+PMLR, 2024, pp. 135–168.
+[5] F. Paissan, M. Ravanelli, and C. Subakan, “Listenable Maps for
+Audio Classifiers,” in Forty-first International Conference on Ma-
+chine Learning (ICML), 2024, pp. 1–13.
+[6] Y. Zhang, B. Colman, X. Guo, A. Shahriyari, and G. Bharaj,
+“Common sense reasoning for deepfake detection,” in European
+Conference on Computer Vision.
+Springer, 2024, pp. 399–415.
+[7] P. Grinberg, A. Kumar, S. Koppisetti, and G. Bharaj, “What Does
+an Audio Deepfake Detector Focus on? A Study in the Time Do-
+main,” in Proc. of IEEE International Conference on Acoustics,
+Speech and Signal Processing (ICASSP).
+IEEE, 2025, pp. 1–5.
+[8] X. Wang and J. Yamagishi, “Spoofed training data for speech
+spoofing countermeasure can be efficiently created using neural
+vocoders,” in ICASSP 2023-2023 IEEE International Conference
+on Acoustics, Speech and Signal Processing (ICASSP).
+IEEE,
+2023, pp. 1–5.
+[9] C. Sun, S. Jia, S. Hou, and S. Lyu, “Ai-synthesized voice detection
+using neural vocoder artifacts,” in Proceedings of the IEEE/CVF
+Conference on Computer Vision and Pattern Recognition, 2023,
+pp. 904–912.
+[10] E. Mancini, F. Paissan, M. Ravanelli, and C. Subakan, “Lmac-
+td: Producing time domain explanations for audio classifiers,” in
+Proc. of IEEE International Conference on Acoustics, Speech and
+Signal Processing (ICASSP).
+IEEE, 2025, pp. 1–5.
+[11] D. Salvi, P. Bestagini, and S. Tubaro, “Towards frequency band
+explainability in synthetic speech detection,” in 2023 31st Euro-
+pean Signal Processing Conference (EUSIPCO).
+IEEE, 2023,
+pp. 620–624.
+[12] M. Li, Y. Ahmadiadli, and X.-P. Zhang, “Audio Anti-Spoofing
+Detection: A Survey,” arXiv preprint arXiv:2404.13914, 2024.
+[13] T. Liu, L. Zhang, R. K. Das, Y. Ma, R. Tao, and H. Li, “How
+Do Neural Spoofing Countermeasures Detect Partially Spoofed
+Audio?” in Interspeech 2024, 2024, pp. 1105–1109.
+[14] M. Li and X.-P. Zhang, “Interpretable Temporal Class Activa-
+tion Representation for Audio Spoofing Detection,” in Interspeech
+2024, 2024, pp. 1120–1124.
+[15] H. Tak, J. Patino, A. Nautsch, N. Evans, and M. Todisco, “An Ex-
+plainability Study of the Constant Q Cepstral Coefficient Spoof-
+ing Countermeasure for Automatic Speaker Verification,” in The
+Speaker and Language Recognition Workshop (Odyssey 2020),
+2020, pp. 333–340.
+[16] H. Tak, M. Todisco, X. Wang, J.-w. Jung, J. Yamagishi, and
+N. Evans, “Automatic speaker verification spoofing and deep-
+fake detection using wav2vec 2.0 and data augmentation,” in The
+Speaker and Language Recognition Workshop (Odyssey 2022),
+2022, pp. 112–119.
+[17] J. Frank and L. Sch¨onherr, “WaveFake: A Data Set to Facilitate
+Audio Deepfake Detection,” in Thirty-fifth Conference on Neural
+Information Processing Systems Datasets and Benchmarks Track,
+2021.
+[18] X. Wang and J. Yamagishi, “Can large-scale vocoded spoofed data
+improve speech spoofing countermeasure with a self-supervised
+front end?” in ICASSP 2024-2024 IEEE International Conference
+on Acoustics, Speech and Signal Processing (ICASSP).
+IEEE,
+2024, pp. 10 311–10 315.
+[19] G. Cazenavette, A. Sud, T. Leung, and B. Usman, “FakeInversion:
+Learning to Detect Images from Unseen Text-to-Image Models
+by Inverting Stable Diffusion,” in Proceedings of the IEEE/CVF
+Conference on Computer Vision and Pattern Recognition, 2024,
+pp. 10 759–10 769.
+[20] K. Sun, S. Chen, T. Yao, H. Liu, X. Sun, S. Ding, and R. Ji, “Dif-
+fusionFake: Enhancing Generalization in Deepfake Detection via
+Guided Stable Diffusion,” in The Thirty-eighth Annual Confer-
+ence on Neural Information Processing Systems, 2024, pp. 1–14.
+[21] J.-h. Kim, J. Heo, H.-s. Shin, C.-y. Lim, and H.-J. Yu, “Diff-
+SV: A Unified Hierarchical Framework for Noise-Robust Speaker
+Verification Using Score-Based Diffusion Probabilistic Models,”
+in ICASSP 2024-2024 IEEE International Conference on Acous-
+tics, Speech and Signal Processing (ICASSP).
+IEEE, 2024, pp.
+10 341–10 345.
+[22] Y. Bai, X.-L. Zhang, and X. Li, “Diffusion-based adversarial pu-
+rification for speaker verification,” IEEE Signal Processing Let-
+ters, pp. 2300–2304, 2024.
+[23] T. Amit, T. Shaharbany, E. Nachmani, and L. Wolf, “Segdiff:
+Image segmentation with diffusion probabilistic models,” arXiv
+preprint arXiv:2112.00390, 2021.
+[24] F. Rottensteiner, G. Sohn, M. Gerke, and J. D. Wegner, “ISPRS se-
+mantic labeling contest,” ISPRS: Leopoldsh¨ohe, Germany, vol. 1,
+no. 4, p. 4, 2014.
+[25] M. Cordts, M. Omran, S. Ramos, T. Rehfeld, M. Enzweiler,
+R. Benenson, U. Franke, S. Roth, and B. Schiele, “The cityscapes
+dataset for semantic urban scene understanding,” in Proceedings
+of the IEEE conference on computer vision and pattern recogni-
+tion, 2016, pp. 3213–3223.
+[26] N. Kumar, R. Verma, S. Sharma, S. Bhargava, A. Vahadane, and
+A. Sethi, “A dataset and a technique for generalized nuclear seg-
+mentation for computational pathology,” IEEE transactions on
+medical imaging, vol. 36, no. 7, pp. 1550–1560, 2017.
+[27] X. Wang, K. Yu, S. Wu, J. Gu, Y. Liu, C. Dong, Y. Qiao, and
+C. Change Loy, “Esrgan: Enhanced super-resolution generative
+adversarial networks,” in Proceedings of the European conference
+on computer vision (ECCV) workshops, 2018, pp. 63–79.
+[28] S. Jadon, “A survey of loss functions for semantic segmenta-
+tion,” in Proc. of IEEE conference on computational intelligence
+in bioinformatics and computational biology, 2020, pp. 1–7.
+[29] X. Wang, J. Yamagishi, M. Todisco, H. Delgado, A. Nautsch,
+N. Evans, M. Sahidullah, V. Vestman, T. Kinnunen, K. A. Lee
+et al., “ASVspoof 2019: A large-scale public database of synthe-
+sized, converted and replayed speech,” Computer Speech & Lan-
+guage, vol. 64, p. 101114, 2020.
+[30] N. M. M¨uller, P. Czempin, F. Dieckmann, A. Froghyar, and
+K. B¨ottinger, “Does audio deepfake detection generalize?”
+in
+Proc. of Interspeech, 2022, pp. 2783–2787.
+[31] H. Tak, M. Kamble, J. Patino, M. Todisco, and N. Evans, “Raw-
+boost: A raw data boosting and augmentation method applied to
+automatic speaker verification anti-spoofing,” in ICASSP 2022-
+2022 IEEE International Conference on Acoustics, Speech and
+Signal Processing (ICASSP).
+IEEE, 2022, pp. 6382–6386.
+[32] X. Wang, S. Takaki, and J. Yamagishi, “Neural source-filter
+waveform models for statistical parametric speech synthesis,”
+IEEE/ACM Transactions on Audio, Speech, and Language Pro-
+cessing, vol. 28, pp. 402–415, 2019.
+[33] R. Prenger, R. Valle, and B. Catanzaro, “Waveglow: A flow-based
+generative network for speech synthesis,” in ICASSP 2019-2019
+IEEE International Conference on Acoustics, Speech and Signal
+Processing (ICASSP).
+IEEE, 2019, pp. 3617–3621.
+5352
+

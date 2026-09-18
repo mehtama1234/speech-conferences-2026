@@ -1,0 +1,563 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+Deep learning based spatial aliasing reduction in beamforming for audio capture
+Mateusz Guzik1, Giulio Cengarle2, Daniel Arteaga2
+1Institute of Electronics, AGH University of Krakow, Poland
+2Dolby Laboratories, Barcelona, Spain
+mateusz.guzik@agh.edu.pl, giulio.cengarle@dolby.com, daniel.arteaga@dolby.com
+Abstract
+Spatial aliasing affects spaced microphone arrays, causing di-
+rectional ambiguity above certain frequencies, degrading spatial
+and spectral accuracy of beamformers. Given the limitations of
+conventional signal processing and the scarcity of deep learning
+approaches to spatial aliasing mitigation, we propose a novel ap-
+proach using a U-Net architecture to predict a signal-dependent
+de-aliasing filter, which reduces aliasing in conventional beam-
+forming for spatial capture. Two types of multichannel filters
+are considered, one which treats the channels independently
+and a second one that models cross-channel dependencies. The
+proposed approach is evaluated in two common spatial capture
+scenarios: stereo and first-order Ambisonics. The results indicate
+a very significant improvement, both objective and perceptual,
+with respect to conventional beamforming. This work shows the
+potential of deep learning to reduce aliasing in beamforming,
+leading to improvements in multi-microphone setups.
+Index Terms: spatial audio, spatial aliasing, neural beamform-
+ing, audio capture, sound field decomposition
+1. Introduction
+Beamforming enables the extraction of signals from desired
+directions using an array of microphones [1]. While often used
+as a preprocessing step, such as denoising and separation for
+automatic speech recognition, beamforming plays a central role
+in spatial audio, where it enables audio encoding, e.g. obtaining
+directional stereo signals from a spaced pair of omnidirectional
+microphones [2] or converting a multi-microphone recording
+into Ambisonics [3].
+Similarly to how the discrete sampling interval in time do-
+main determines the frequency limit above which time domain
+aliasing occurs, spatial sampling is also subject to an analogous
+limitation, known as spatial aliasing [1, 4, 5]. Spatial aliasing
+affects spaced microphone arrays, where processing based on
+phase differences suffers from directional ambiguity above the
+spatial aliasing frequency, drastically degrading spatial and spec-
+tral accuracy of beamformers.
+Considering conventional signal processing, efforts to miti-
+gate spatial aliasing in beamforming have focused on wide-band
+and multi-stage solutions [6, 7, 8], rotating arrays [9] and model-
+ing of spatial aliasing for spherical arrays [10, 11, 12]. Despite
+significant interest in deep learning approaches to signal process-
+ing, the topic of spatial aliasing mitigation has so far attracted
+little attention in the deep learning audio community, often being
+approached indirectly. To the best knowledge of the authors,
+This work was done during Mateusz Guzik’s internship at Dolby Labo-
+ratories.
+currently there is no literature that explicitly targets the reduc-
+tion of spatial aliasing with deep learning, specifically in the
+context of spatial audio. Examples of indirect approaches to the
+reduction of spatial aliasing include neural beamforming [13],
+multi-channel source separation [14, 15, 16], neural Ambisonic
+encoding [17], and Ambisonic upmixing [18]; in most of these
+cases the training objectives indirectly aim at the restoration of
+the target signal above the spatial aliasing frequency. In such
+systems, the de-aliasing capabilities are not directly evaluated,
+as their responses are a composite of multiple simultaneous en-
+hancement objectives. In addition, neural beamforming and
+source separation systems are in general not directly applicable
+to sound field decomposition.
+In this work, we consider the reduction of spatial aliasing
+in beamforming, using a deep learning approach. In particular,
+we propose a U-Net based filter, that reduces the effects of
+spatial aliasing in the signals obtained as the result of sound field
+encoding and decoding. Our approach allows to directly evaluate
+the de-aliasing capabilities of the system and has the potential
+to be easily integrated into existing spatial audio processing
+applications, e.g. obtaining first-order Ambisonics (FOA) signals
+from a tetrahedral microphone array, or obtaining directional
+stereo signals from compact omnidirectional arrays.
+This paper is structured as follows: in Section 2, the effects
+of spatial aliasing on audio capture are discussed; Section 3
+introduces the proposed filtering model; in Section 4, the filter
+estimation procedure is described; Section 5 contains the details
+of the experimental evaluation, results and discussion; Section 6
+presents final remarks and conclusions.
+2. Aliasing in spatial audio capture
+Spatial processing of audio signals captured with spaced mi-
+crophones is in general based on phase differences between
+the sensors, leveraging the property that in a certain frequency
+range they map univocally to the Direction of Arrival (DoA)
+of an acoustic wavefront [1]. The upper frequency limit of the
+aforementioned range depends on the spacing between the micro-
+phones, such that ¯f = c / (2d) , where ¯f is the spatial aliasing
+frequency, c is the speed of sound and d is the spacing between
+a pair of microphones. Above ¯f, the phase differences do not
+unambiguously map to the DoA, because sound originating from
+different directions can cause identical shift through phase wrap-
+ping. For a comprehensive discussion on spatial aliasing, the
+reader is kindly referred to [1, 4, 5].
+Figure 1 presents the effects of aliasing on spatial capture
+using conventional beamforming, where two omnidirectional
+microphones are used to form a cardioidal response at a fre-
+quency above ¯f. For each curve, the distance from the center of
+the microphone array represents the magnitude response for the
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+2515
+10.21437/Interspeech.2025-746
+
+Figure 1: Polar representation of spatially aliased conventional
+beamforming. The curves are in arbitrary logarithmic scale.
+corresponding direction. In this example, the spatial response
+is deformed due to spatial aliasing. As a result, the signal of
+source s1 is improperly attenuated, while the signal of source s2
+is improperly amplified, with respect to the alias-free cardioid
+directivity. Since these alterations caused by spatial aliasing are
+frequency-dependent, source signals will be subject to direction-
+dependent filtering, while in the alias-free case they would be
+simply scaled by frequency-independent directional factors. This
+implies that in case of spatial capture, where the goal is to obtain
+a specified frequency-independent spatial response, a frequency-
+and direction-dependent combination of both attenuation and
+amplification is needed to reduce spatial aliasing with a filtering
+approach. On the other hand, for source separation, the beam-
+former is steered towards the direction of the target source and
+the goal is to obtain the greatest possible spatial selectivity, rather
+than a smooth amplitude response across all directions.
+3. Proposed de-aliasing filtering
+In this work, we address the de-aliasing of beamformed signals,
+which we will refer to as virtual microphones, in the Short-Time
+Fourier Transform (STFT) complex domain.
+Specifically, we formulate the de-aliasing process for a given
+time-frequency tile of V virtual microphone signals arranged as
+a column vector, vft ∈CV ×1, with t being a frame index and f
+being a time index. The de-aliased signals dft ∈CD×1 can be
+obtained from the aliased signals though the following equation:
+dft = D Fft vft,
+(1)
+where Fft ∈CV ×V is the predicted de-aliasing filter matrix,
+which is the main concern of our approach, and D ∈RD×V
+is a pre-defined decoder matrix, discussed below. In this paper,
+we consider only frequency-independent decoding, although
+equation (1) could be easily generalized by making the decoding
+matrix frequency-dependent.
+The pre-defined matrix D in equation (1) decodes the virtual
+microphone signals into a specific reproduction setup. Examples
+include the mid-side decoding [19] and the Ambisonic decoding
+[3]. When the virtual microphone signals correspond directly to
+the desired decoded signals, e.g. for two left- and right-facing
+cardioid beamformers to be rendered in stereo, no decoding is
+necessary. In this case, D reduces to an identity matrix IV ×V
+and dft corresponds directly to the de-aliased virtual micro-
+phone signals. Otherwise, dft corresponds to the de-aliased
+and decoded signals. This approach is inspired by [20] and ad-
+dresses the fact that certain decoding strategies may result in a
+loss of spatial information compared to the virtual microphone
+signals. For instance, decoding Ambisonics to stereo typically
+discards the vertical component. In such cases, it proves advan-
+tageous to emphasize de-aliasing of the sound field components
+that dominate the decoded signals, while reducing emphasis on
+less significant components. However, our approach is generic
+enough so that it can achieve both alias-free decoding and alias-
+free virtual microphones, depending on the adopted matrix D.
+Note that the de-aliasing filter acts on the virtual micro-
+phones, rather than directly on the decoded signals. By using a
+multichannel matrix formulation where the virtual microphones
+can interact, the system is given the added capacity of leveraging
+a plurality of virtual microphones to de-alias each individual vir-
+tual microphone, effectively performing an implicit intermediate
+beamforming step. However, if intermediate beamforming is to
+be prevented, the filter can be reduced to a diagonal matrix. In
+the remaining parts, we refer to the former filter setting as full
+and to the latter as diag. The general formulation of equation
+(1) provides a flexible way to encapsulate a variety of possible
+scenarios in one model; as an example, if the goal is to pro-
+duce alias-free non-decoded Ambisonics, the training can be
+augmented with different decoders and decoding positions, po-
+tentially increasing the system robustness and indirectly enabling
+de-aliasing on the full sphere.
+4. U-Net-based filter prediction
+We propose to predict the de-aliasing filter matrix Fft based
+on the virtual microphone signals vft, leveraging supervised
+training of a deep neural network, similarly to [17]. Since the
+virtual microphone signals are characterized by different spa-
+tial responses or looking directions, as in the case of different
+Ambisonic components, spatial aliasing will affect each virtual
+microphone in a different way. This useful diversity and redun-
+dancy makes virtual microphone signals a suitable regressor for
+the proposed filter-predicting model.
+4.1. Alias-free supervisory signals
+Assuming S anechoic source signals sft and an alias-free en-
+coder matrix E ∈RD×S, we construct the target alias-free
+decoded beamformer signals tft ∈CD×1 using the equation:
+tft = E sft.
+(2)
+For supervised learning, tft is the target for dft in the sound
+field generated by the sources sft.
+In this work, we focus on a frequency-independent alias-free
+encoder matrix E corresponding to a first-order microphone:
+[E]ds = α + (1 −α) iT
+d js,
+(3)
+where α is a shape coefficient and id, js are directional unit
+vectors in Cartesian coordinates. The directional vector id points
+towards the d-th decoding direction, realized by the d-th row of
+the decoder matrix D, while js points towards the s-th sound
+source. α is a coefficient between 0 and 1 that defines the
+shape of the spatial response, such that 0 results in a figure-
+of-eight pattern, 0.5 produces a cardioid and 1 corresponds to
+an omnidirectional characteristic. The application of the alias-
+free encoder matrix E to the source signal vector sft can be
+illustrated using Figure 1, where the intersection of the dashed
+source DoA lines with the target spatial directivity determines the
+values for the weighted summation. Note that E does not model
+the direction-dependent phase shifts potentially introduced by
+2516
+
+a beamformer. Therefore, the complex-valued filter Fft will
+also be tasked with relative phase restoration, approximating a
+spatially uniform phase response of the de-aliased signals.
+4.2. Model, data and training procedure
+Following state-of-the-art neural processing of audio [21], the U-
+Net [22], an encoder-decoder architecture based on 2D convolu-
+tional filters, is employed as the filter-predicting model. The only
+difference between the adopted model and the original U-Net
+is the final activation function, which in our case is an identity.
+This choice was dictated by the required complex-valued filter
+properties, as described in Section 3.
+Similarly to [17], real and imaginary parts of the virtual
+microphone signals are used as an input to the model, represented
+by real-valued features unfolded across the channel dimension.
+Based on this representation, the model predicts a set of time-
+frequency masks Mcft ∈R, where c is the channel index, which
+are then reshaped to create the filter matrix Fft. As discussed in
+Section 3, the filter Fft can be either diagonal, with off-diagonal
+terms zeroed out, or it can be a full matrix filter that includes the
+cross-terms. Depending on the filter configuration, the number
+of output channels C is either equal to 2V or 2V 2, respectively,
+where the factor 2 accounts for the aforementioned real-valued
+representation of the complex-valued masks.
+The PHASEN [23] loss between the de-aliased dft and the
+alias-free tft decoded signals is optimized by minimizing its
+mean value across the decoding directions. The model is trained
+for 100 epochs using the Adam optimizer with β1 = 0.9, β2 =
+0.999, a batch size of 24 and a learning rate of 0.001, which is
+halved if the batch loss does not decrease for two epochs.
+The training is based on simulated microphone array signals
+obtained by applying delays to source signals, based on anechoic
+far field propagation with respect to the center of the array. We
+simulate a 4-channel omnidirectional microphone array, with the
+sensors arranged on a cross-like plan, where one pair is aligned
+with the x-axis and the second pair is aligned with the y-axis.
+In the experimental setups with a fixed aliasing frequency, the
+microphone spacing d for each pair is equal to 3 cm, while in
+the case of varying aliasing d is chosen randomly between 1
+and 10 cm, independently for each pair. Microphone mixture
+signals are obtained by choosing between one and four sources,
+simulating the capsule signals with the sources randomly placed
+around the array and summing their contributions for each sensor.
+The signals are then transformed by an STFT with 2048-point
+Hann window and 1024 overlapping samples.
+As source signals we use 5 s excerpts of speech, music, noise
+and environmental signals, sampled at 44.1 kHz. The speech
+samples are randomly drawn from [24] and additional 300 hours
+of speech recordings. The music signals are randomly drawn
+from a set of 4000 songs, while the noise and environmental
+recordings are randomly drawn from [25, 26].
+5. Experimental evaluation
+We investigate two experimental setups: i) two opposite-facing
+cardioids and ii) 2D First-Order Ambisonics, aka. planar, hori-
+zontal or circular FOA [3]. Additionally, both experiments are
+also subject to two variants, one with fixed and one with varying
+microphone spacing, which we refer to as fix and var.
+Experiment i) considers the case of two opposite-facing
+cardioid beams, a common setup for obtaining stereo signals
+from a pair of closely spaced omnidirectional microphones [2].
+Given raw mixture recordings, the virtual microphone signals are
+obtained by calculating pressure gradient for the x-axis pair of
+the 4-channel microphone array described in Section 4.2, which
+results in quasi-frequency-independent spatial characteristics. In
+this experimental setup, we use an identity decoder, thus the
+spatial responses of the virtual microphone signals are explicitly
+optimized, as discussed in Section 3. To obtain suitable alias-free
+target signals, we follow the procedure described in Section 4,
+with α = 0.5 in equation (3), while V = D = 2.
+Experiment ii) addresses the de-aliasing of horizontal FOA,
+obtained from the aforementioned array of four microphones.
+Similarly to experiment i), pressure gradient is calculated along
+the x- and y-axis pairs to obtain X and Y figure-of-eight signals
+respectively, while the omnidirectional component W is taken as
+an average of the four microphone signals. In this experiment, D
+is an in-phase decoder [3], which produces four cardioids along
+the front, back, left, right directions, such that V = 3 and D = 4.
+In both experiments, the raw mixtures are encoded to virtual
+microphone signals using conventional beamforming, based on
+calculation of the pressure gradient [2]. We have decided to use
+this type of beamformer to ensure a quasi-frequency-independent
+spatial response, while generalization is left as a future research
+possibility. We report the results of both objective and subjective
+evaluation, described in the following sections. Additionally, we
+provide audio samples1.
+5.1. Objective evaluation
+The objective evaluation is based on the Complex Scale-Invariant
+Signal-to-Noise-Ratio (C-Si-SNR) [27] between the de-aliased
+dft and the target decoded alias-free tft signals, averaged across
+the D decoding directions. Additionally, we heuristically calcu-
+late spatial responses for the trained model by simulating one
+source at a time for a grid of directions, predicting and apply-
+ing the de-aliasing filter, and calculating the magnitude of the
+de-aliased signal. The procedure is repeated with 100 differ-
+ent source signals for each grid direction, the magnitudes are
+aggregated and the results are normalized.
+Table 1 reports the C-Si-SNR values in dB for experiments
+i) and ii) with fixed and varying microphone spacing. Both ex-
+periments show an average C-Si-SNR close to 30 dB for fix and
+between 15 dB and 20 dB for var, which is consistent with the
+expected increasing difficulty of restoring spatial aliasing with
+varying aliasing frequency. In case of the 2D FOA experiment
+ii), where cross-microphone information is already utilized in
+the decoding step, the differences between diag and full seem
+negligible. Regarding the cardioid pair experiment i), the full
+filter shows an advantage over diag for var conditions, while for
+fix the difference is less pronounced. We hypothesize that this
+improvement could be explained by the re-introduction of the
+cross-channel interaction, which is not present in case of i) var
+diag, neither in the filter nor in the decoder.
+Table 1: C-Si-SNR values in dB for the experiments with i)
+cardioid pair and ii) 2D Ambisonics. The numbers in parentheses
+denote improvement over the aliased conditions.
+i) fix
+i) var
+ii) fix
+ii) var
+diag
+30.3±2.5
+(19.5)
+15.4±2.5
+(7.6)
+29.3±2.6
+(11.3)
+19.7±2.2
+(7.8)
+full
+27.3±2.6
+(16.6)
+20.2±2.5
+(12.4)
+28.9±2.6
+(10.2)
+19.5±2.2
+(7.6)
+1metlosz.github.io/dealiasing_audio_samples
+2517
+
+Figure 2: Spatial responses of the left- and right-facing cardioids
+of experiment i) fix, respectively in the top and bottom row, in
+four frequency bands.
+Figure 3: Spatial responses of the decoded front- and left-facing
+cardioids of experiment ii) fix, respectively in the top and bottom
+row, in four frequency bands.
+Figures 2 and 3 present polar plots of spatial responses,
+in case of the aliased and de-aliased virtual microphones, for
+experiments i) fix and ii) fix, respectively. The patterns are shown
+in four frequency bands, the first of which is below ¯f. Right-
+and rear-facing cardioids of experiment ii) are symmetrical to
+their counterparts and were omitted for the sake of space. In
+both experimental setups, the filters are effective in restoring the
+desirable spatial responses. Even in the upper band, where the
+polar patterns are not accurately restored, the filters reduce the
+spurious components at the back and sides.
+5.2. Subjective evaluation
+To validate the perceptual impact of the proposed approach, we
+have designed two listening tests using the MUSHRA method-
+ology [28] and the webMUSHRA interface [29]. The first test
+studies the impact on the timbre of a sound source with a random
+azimuth, decoded to mono using cardioid beamforming. Sub-
+jects are presented with the reference alias-free signal, the aliased
+cardioid, an anchor low-passed 3.5 kHz, and the de-aliased ver-
+sions trained with the diag or full approaches, and are instructed
+to evaluate timbral similarity between each sample and the ref-
+erence. In the second test we study the ability to recover the
+stereo localization by applying the networks to a pair of left- and
+right-facing cardioids. Here, a single sound source is positioned
+at a random azimuth between ±90◦, encoded into the aliased
+and alias-free cardioids, and processed by the same networks,
+and subjects are instructed to evaluate the localization accuracy
+compared to the reference. The anchor is a version where the
+(a) Timbre test
+(b) Localization test
+Figure 4: Box plots for MUSHRA scores across different condi-
+tions and tests. Each point identifies the average rating for all
+test excerpts for one given listener.
+source is hard-panned to the left or right channel, whichever
+is more distant from the source position. Each test comprises
+nine excerpts of music, speech, or noise, evaluated by 17 expert
+listeners. The average ratings for all test excerpts were calculated
+per listener, with results presented in Figure 4.
+A repeated measures ANOVA for the timbre test revealed a
+significant effect of rating stimuli (p < 0.001). Post-hoc tests2
+showed the aliased version scored 32 MUSHRA points below
+reference on average (p < 0.001). The diag approach performed
+similarly to the reference (0.6 points below, p = 0.4, not sig-
+nificant), while the full approach scored significantly lower (9
+points, p < 0.001). Notably, a per-excerpt analysis revealed
+that with full the difference was primarily due to a single broad-
+band music item, scoring 53 MUSHRA points below reference
+(p < 0.001), while other excerpts showed no significant differ-
+ences to the reference (5 points at most, p > 0.05).
+An analogous analysis for the localization test reveal a sig-
+nificant effect of rating stimuli (p < 0.001). Post-hoc tests
+indicate the aliased version scored significantly lower than the
+reference (46 MUSHRA points below, p < 0.001). Both the
+diag and full approaches perform similarly to the reference, with
+no significant differences (3 points at most, p > 0.05).
+These results demonstrate the effectiveness of the presented
+methods, in most cases rendering the timbre and localization
+indistinguishable from the reference. The timbre test results
+align with the C-Si-SNR improvements, while the localization
+test confirms the successful restoration of polar patterns. These
+patterns match the desired inter-channel level differences across
+most frequency bands, with only the highest bands showing
+deviations, which are perceptually less significant. This compre-
+hensive evaluation underscores the ability to effectively mitigate
+both the timbral and spatial spatial aliasing artifacts.
+6. Conclusions
+This article indicates the feasibility of restoring the timbre and
+localization degradations, caused by spatial aliasing, with a post-
+filtering neural network. The framework has the flexibility to
+account for a decoder and a multi-channel setup, which lends
+itself to different applications. The experiments indicate the
+ability to generalize across microphone arrays, while further
+research must include generalization across reverberation and
+diffuse noise. Other interesting research possibilities include
+extension to frequency-dependent polar patterns and feeding
+alias-free raw microphone signals to the network.
+2Multiple comparisons use the Benjamini–Hochberg procedure [30].
+2518
+
+7. Acknowledgments
+The authors would like to acknowledge Dr. Xu Li, Dr. Davide
+Scaini and Dr. Chunghsin Yeh from Dolby Laboratories for
+fruitful discussions and the anonymous Interspeech reviewers
+for their valuable comments.
+This work was supported by the National Science Centre,
+Poland, under grant number 2023/49/B/ST7/04100 and in part
+by the Excellence Initiative – Research University Programme
+for the AGH University of Krakow.
+8. References
+[1] J. Benesty, Microphone array signal processing.
+Springer Verlag,
+2008.
+[2] C. Faller, “Conversion of two closely spaced omnidirectional mi-
+crophone signals to an xy stereo signal,” in Audio Engineering
+Society Convention 129.
+Audio Engineering Society, 2010.
+[3] F. Zotter and M. Frank, Ambisonics: A practical 3D audio theory
+for recording, studio production, sound reinforcement, and virtual
+reality.
+Springer Nature, 2019.
+[4] J. Dmochowski, J. Benesty, and S. Aff`es, “On spatial aliasing
+in microphone arrays,” IEEE Transactions on Signal Processing,
+vol. 57, no. 4, pp. 1383–1395, 2008.
+[5] B. Rafaely, B. Weiss, and E. Bachmat, “Spatial aliasing in spheri-
+cal microphone arrays,” IEEE Transactions on Signal Processing,
+vol. 55, no. 3, pp. 1003–1010, 2007.
+[6] D.-J. Zhang, W.-T. Zhang, Y.-Y. Ma, and Z.-Z. Huang, “Anti-
+aliasing speech doa estimation under spatial aliasing conditions,”
+IEEE/ACM Transactions on Audio, Speech, and Language Pro-
+cessing, 2024.
+[7] Z. Tang, G. Blacquiere, and G. Leus, “Aliasing-free wideband
+beamforming using sparse signal representation,” IEEE Transac-
+tions on Signal Processing, vol. 59, no. 7, pp. 3464–3469, 2011.
+[8] V. V. Reddy, A. W. H. Khong, and B. P. Ng, “Unambiguous speech
+doa estimation under spatial aliasing conditions,” IEEE/ACM
+Transactions on Audio, Speech, and Language Processing, vol. 22,
+no. 12, pp. 2133–2145, 2014.
+[9] A. Cigada, M. Lurati, F. Ripamonti, and M. Vanali, “Moving
+microphone arrays to reduce spatial aliasing in the beamforming
+technique: Theoretical background and numerical investigation,”
+The Journal of the Acoustical Society of America, vol. 124, no. 6,
+pp. 3648–3658, 2008.
+[10] J. Meyer and G. W. Elko, “Handling spatial aliasing in spherical
+array applications,” in 2008 Hands-Free Speech Communication
+and Microphone Arrays, 2008, pp. 1–4.
+[11] S. Brown, V. Sethu, and D. Taubman, “Spatial Wiener filter to
+reduce spatial aliasing with spherical microphone arrays,” The
+Journal of the Acoustical Society of America, vol. 145, no. 4, pp.
+2254–2264, 2019.
+[12] D. L. Alon and B. Rafaely, “Beamforming with optimal aliasing
+cancellation in spherical microphone arrays,” IEEE/ACM Transac-
+tions on Audio, Speech, and Language Processing, vol. 24, no. 1,
+pp. 196–210, 2016.
+[13] R. Gu, S.-X. Zhang, Y. Zou, and D. Yu, “Towards unified all-neural
+beamforming for time and frequency domain speech separation,”
+IEEE/ACM Transactions on Audio, Speech, and Language Pro-
+cessing, vol. 31, pp. 849–862, 2022.
+[14] K. Tesch and T. Gerkmann, “Multi-channel speech separation using
+spatially selective deep non-linear filters,” IEEE/ACM Transactions
+on Audio, Speech, and Language Processing, vol. 32, pp. 542–553,
+2024.
+[15] A. Herzog, S. R. Chetupalli, and E. A. Habets, “Ambisep: Joint
+ambisonic-to-ambisonic speech separation and noise reduction,”
+IEEE/ACM Transactions on Audio, Speech, and Language Pro-
+cessing, vol. 31, pp. 3081–3094, 2023.
+[16] Z.-Q. Wang and D. Wang, “Combining spectral and spatial features
+for deep learning based blind speaker separation,” IEEE/ACM
+Transactions on audio, speech, and language processing, vol. 27,
+no. 2, pp. 457–468, 2018.
+[17] M. Heikkinen, A. Politis, and T. Virtanen, “Neural ambisonics
+encoding for compact irregular microphone arrays,” in ICASSP
+2024-2024 IEEE International Conference on Acoustics, Speech
+and Signal Processing (ICASSP).
+IEEE, 2024, pp. 701–705.
+[18] J. Xia and W. Zhang, “Upmix b-format ambisonic room impulse
+responses using a generative model,” Applied Sciences, vol. 13,
+no. 21, p. 11810, 2023.
+[19] J. D. Johnston and A. J. Ferreira, “Sum-difference stereo transform
+coding,” in Acoustics, Speech, and Signal Processing, IEEE Inter-
+national Conference on, vol. 2.
+IEEE Computer Society, 1992,
+pp. 569–572.
+[20] A. Sagasti, D. Scaini, and D. Arteaga, “Universal spatial audio
+transcoder,” in AES 156th Convention, Madrid, 2024. [Online].
+Available: https://aes2.org/publications/elibrary-page/?id=22517
+[21] S. Gul and M. S. Khan, “A survey of audio enhancement algo-
+rithms for music, speech, bioacoustics, biomedical, industrial and
+environmental sounds by image u-net,” IEEE Access, 2023.
+[22] O. Ronneberger, P. Fischer, and T. Brox, “U-net: Convolutional
+networks for biomedical image segmentation,” in Medical im-
+age computing and computer-assisted intervention–MICCAI 2015:
+18th international conference, Munich, Germany, October 5-9,
+2015, proceedings, part III 18.
+Springer, 2015, pp. 234–241.
+[23] D. Yin, C. Luo, Z. Xiong, and W. Zeng, “Phasen: A phase-and-
+harmonics-aware speech enhancement network,” in Proceedings
+of the AAAI Conference on Artificial Intelligence, vol. 34, no. 05,
+2020, pp. 9458–9465.
+[24] J. Trmal, “Open speech and language resources,” 2024, https:
+//www.openslr.org/index.html [Accessed: 12-11-2024].
+[25] H. Chen, W. Xie, A. Vedaldi, and A. Zisserman, “Vggsound: A
+large-scale audio-visual dataset,” in ICASSP 2020 - 2020 IEEE
+International Conference on Acoustics, Speech and Signal Process-
+ing (ICASSP), 2020, pp. 721–725.
+[26] E. Fonseca, X. Favory, J. Pons, F. Font, and X. Serra, “Fsd50k: An
+open dataset of human-labeled sound events,” IEEE/ACM Trans-
+actions on Audio, Speech, and Language Processing, vol. 30, pp.
+829–852, 2022.
+[27] Z. Ni, Y. Xu, M. Yu, B. Wu, S. Zhang, D. Yu, and M. I. Mandel,
+“Wpd++: An improved neural beamformer for simultaneous speech
+separation and dereverberation,” in 2021 IEEE Spoken Language
+Technology Workshop (SLT).
+IEEE, 2021, pp. 817–824.
+[28] “Method for the subjective assessment of intermediate quality level
+of audio systems,” International Telecommunication Union Radio-
+communication Assembly, Recommendation BS.1534-3, 2014.
+[29] M. Sch¨offler, S. Bartoschek, F.-R. St¨oter, M. R¨oß, S. Westphal,
+B. Edler, and J. Herre, “webMUSHRA — A comprehensive
+framework for web-based listening tests,” Journal of Open
+Research Software, vol. 6 (1), p. 8, 2018, herre books journals.
+[Online]. Available: https://openresearchsoftware.metajnl.com/
+articles/10.5334/jors.187/
+[30] Y. Benjamini and Y. Hochberg, “Controlling the false discovery
+rate: a practical and powerful approach to multiple testing,” Jour-
+nal of the Royal Statistical Society: Series B (Methodological),
+vol. 57, no. 1, pp. 289–300, 1995.
+2519
+

@@ -1,0 +1,644 @@
+Chain-of-Thought Training for Open E2E Spoken Dialogue Systems
+Siddhant Arora1, Jinchuan Tian1, Hayato Futami2, Jee-weon Jung†1, Jiatong Shi1, Yosuke
+Kashiwagi2, Emiru Tsunoo2, Shinji Watanabe1
+1Language Technologies Institute, Carnegie Mellon University, USA
+2Sony Group Corporation, Japan
+siddhana@andrew.cmu.edu
+Abstract
+Unlike traditional cascaded pipelines, end-to-end (E2E) spoken
+dialogue systems preserve full differentiability and capture non-
+phonemic information, making them well-suited for modeling
+spoken interactions. However, existing E2E approaches often
+require large-scale training data and generates responses lack-
+ing semantic coherence. We propose a simple yet effective strat-
+egy leveraging a chain-of-thought (CoT) formulation, ensur-
+ing that training on conversational data remains closely aligned
+with the multimodal language model (LM)’s pre-training on
+speech recognition (ASR), text-to-speech synthesis (TTS), and
+text LM tasks. Our method achieves over 1.5 ROUGE-1 im-
+provement over the baseline, successfully training spoken di-
+alogue systems on publicly available human-human conversa-
+tion datasets, while being compute-efficient enough to train on
+just 300 hours of public human-human conversation data, such
+as the Switchboard. We will publicly release our models and
+training code.
+Index Terms: spoken dialog systems, speech foundation mod-
+els, chain-of-thought
+1. Introduction
+Spoken dialogue systems [1, 2] are designed to engage in natu-
+ral and interactive conversations with end users, playing a crit-
+ical role in voice assistants and intelligent home devices. De-
+spite their growing importance, building effective spoken dia-
+logue systems remains a challenging task due to the complexity
+of human communication. Traditionally, spoken dialogue sys-
+tems [3, 4] comprise multiple modules, including voice activity
+detection (V AD) [5], automatic speech recognition (ASR) [6,
+7], natural language understanding (NLU) [8], natural language
+generation (NLG) [9], and text-to-speech (TTS) synthesis [10].
+Each of these components presents unique challenges. For in-
+stance, the ASR module must accurately process shorter, spon-
+taneous speech with disfluencies and filler words [11]. Addi-
+tionally, spoken dialogue systems must be capable of under-
+standing [12–14], and generating [15, 16] non-phonemic infor-
+mation, like emotions, to create natural interactions.
+Recently, E2E spoken dialogue systems1 [17, 18] have been
+proposed to process the user’s input speech utterance and gener-
+ate an appropriate speech response within a single unified archi-
+tecture. This approach avoids error propagation and can better
+capture non-phonemic cues such as emotion. Most existing E2E
+spoken dialogue systems [19] rely on complex architectures
+that significantly diverge from the model’s pre-training setup,
+†Currently at Apple.
+1https://openai.com/index/hello-gpt-4o/ ,
+https://deepmind.google/technologies/gemini/
+requiring extensive training compute (7 million hours of unla-
+belled audio data for multi-stream post-training and 20K hours
+of speech conversation data). Additionally, the lack of struc-
+tured reasoning in E2E systems can often lead to less coherent
+responses, which we will reveal in our experiments (Sec. 5).
+In this work, we 1 introduce a chain-of-thought (CoT) [20,
+21] training approach, restructuring post-training into a compo-
+sition of ASR, text response generation, and TTS sequences.
+We apply CoT post-training to an open multimodal LLM [22]
+pre-trained on ASR, TTS, and Text LM tasks, aligning with its
+pre-training process to enhance compatibility and enable effi-
+cient adaptation to future architectures. 2 Our experiments
+show that this efficient setup builds an effective conversational
+system using publicly available datasets, achieving strong re-
+sults with as little as 300 hours of human-human conversa-
+tion dataset Switchboard [11]. The proposed post-training ap-
+proach delivers faster convergence, lower compute costs, and
+better data efficiency, which is crucial for low-resource do-
+mains like healthcare, where large datasets are difficult to col-
+lect. 3 We compare our method with cascaded baselines,
+where the same pre-trained SpeechLM is fine-tuned separately
+for each sub-task. Results show that our CoT-based E2E
+model achieves comparable performance while being 3× more
+parameter-efficient. 4 An ablation study confirms that CoT-
+based training improves both semantic coherence and synthe-
+sized speech quality compared to traditional E2E systems. Ad-
+ditionally, our model better preserves emotional nuances in gen-
+erated speech, showing higher emotional similarity to human
+references. 5 Finally, we will release an open-source frame-
+work for training and evaluating cascaded and E2E dialogue
+systems using open source SpeechLMs on public datasets.
+2. Related studies
+Recently, “Chat” SpeechLMs [23] have gained attention for
+their ability to engage in natural and interactive conversations.
+Early efforts [24–26] developed speech-aware LMs that gener-
+ated text responses from spoken input but relied on external TTS
+and V AD systems for spoken dialogue. More recently, speech-
+to-speech LMs [27–31] have emerged, capable of both under-
+standing and generating speech within a single architecture.
+SpeechGPT [17] employs a CoT instruction-tuning ap-
+proach to enhance cross-modal conversational capabilities.
+However, SpeechGPT is trained solely on large-scale synthetic
+speech due to the difficulty of preparing speech instruction
+data. In contrast, we perform CoT training on real conver-
+sational data, showcasing its practical applicability and effec-
+tiveness in low-resource scenarios. This benefit comes from
+the explicit incorporation of ASR, text-to-text, and TTS task
+tokens (Sec. 3.1), enabling a more modular and efficient CoT
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+4833 10.21437/Interspeech.2025-2339
+
+ASR
+<latexit sha1_base64="DzYDhPmLt/912TPlY2zk+gJpBwM=">AAAB8nicbVBNS8NAEJ3Ur1q/qh69LBbBU0mKqMdSLx4r2A9IQtlsN+nSzSbsboQS+jO8eFDEq7/Gm//GTZuDtj4YeLw3w8y8IOVMadv+tiobm1vbO9Xd2t7+weFR/fikr5JMEtojCU/kMMCKciZoTzPN6TCVFMcBp4Ngelf4gycqFUvEo56l1I9xJFjICNZGcr0OiyKJvBzVRvWG3bQXQOvEKUkDSnRH9S9vnJAspkITjpVyHTvVfo6lZoTTec3LFE0xmeKIuoYKHFPl54uT5+jCKGMUJtKU0Gih/p7IcazULA5MZ4z1RK16hfif52Y6vPVzJtJMU0GWi8KMI52g4n80ZpISzWeGYCKZuRWRCZaYaJNSEYKz+vI66beaznWz9XDVaHfKOKpwBudwCQ7cQBvuoQs9IJDAM7zCm6WtF+vd+li2Vqxy5hT+wPr8AeEwkFc=</latexit>
+(
+User input 
+Speech
+ASR Transcript
+ASR Transcript 
+(Ground Truth)
+Text Response
+<latexit sha1_base64="DzYDhPmLt/912TPlY2zk+gJpBwM=">AAAB8nicbVBNS8NAEJ3Ur1q/qh69LBbBU0mKqMdSLx4r2A9IQtlsN+nSzSbsboQS+jO8eFDEq7/Gm//GTZuDtj4YeLw3w8y8IOVMadv+tiobm1vbO9Xd2t7+weFR/fikr5JMEtojCU/kMMCKciZoTzPN6TCVFMcBp4Ngelf4gycqFUvEo56l1I9xJFjICNZGcr0OiyKJvBzVRvWG3bQXQOvEKUkDSnRH9S9vnJAspkITjpVyHTvVfo6lZoTTec3LFE0xmeKIuoYKHFPl54uT5+jCKGMUJtKU0Gih/p7IcazULA5MZ4z1RK16hfif52Y6vPVzJtJMU0GWi8KMI52g4n80ZpISzWeGYCKZuRWRCZaYaJNSEYKz+vI66beaznWz9XDVaHfKOKpwBudwCQ7cQBvuoQs9IJDAM7zCm6WtF+vd+li2Vqxy5hT+wPr8AeEwkFc=</latexit>
+(
+LLM
+All 3 models separately optimized!!
+Text Response 
+(Ground Truth)
+Output Speech Response
+<latexit sha1_base64="DzYDhPmLt/912TPlY2zk+gJpBwM=">AAAB8nicbVBNS8NAEJ3Ur1q/qh69LBbBU0mKqMdSLx4r2A9IQtlsN+nSzSbsboQS+jO8eFDEq7/Gm//GTZuDtj4YeLw3w8y8IOVMadv+tiobm1vbO9Xd2t7+weFR/fikr5JMEtojCU/kMMCKciZoTzPN6TCVFMcBp4Ngelf4gycqFUvEo56l1I9xJFjICNZGcr0OiyKJvBzVRvWG3bQXQOvEKUkDSnRH9S9vnJAspkITjpVyHTvVfo6lZoTTec3LFE0xmeKIuoYKHFPl54uT5+jCKGMUJtKU0Gih/p7IcazULA5MZ4z1RK16hfif52Y6vPVzJtJMU0GWi8KMI52g4n80ZpISzWeGYCKZuRWRCZaYaJNSEYKz+vI66beaznWz9XDVaHfKOKpwBudwCQ7cQBvuoQs9IJDAM7zCm6WtF+vd+li2Vqxy5hT+wPr8AeEwkFc=</latexit>
+(
+TTS
+Assistant 
+Speaker 
+Prompt
+(a) Cascaded Spoken Dialog System
+Text-Speech Pre-trained LM
+User input Speech
+Output Speech 
+Response
+Assistant 
+Speaker 
+Prompt (b) E2E Spoken Dialog System
+Text-Speech Pre-trained LM
+<latexit sha1_base64="DzYDhPmLt/912TPlY2zk+gJpBwM=">AAAB8nicbVBNS8NAEJ3Ur1q/qh69LBbBU0mKqMdSLx4r2A9IQtlsN+nSzSbsboQS+jO8eFDEq7/Gm//GTZuDtj4YeLw3w8y8IOVMadv+tiobm1vbO9Xd2t7+weFR/fikr5JMEtojCU/kMMCKciZoTzPN6TCVFMcBp4Ngelf4gycqFUvEo56l1I9xJFjICNZGcr0OiyKJvBzVRvWG3bQXQOvEKUkDSnRH9S9vnJAspkITjpVyHTvVfo6lZoTTec3LFE0xmeKIuoYKHFPl54uT5+jCKGMUJtKU0Gih/p7IcazULA5MZ4z1RK16hfif52Y6vPVzJtJMU0GWi8KMI52g4n80ZpISzWeGYCKZuRWRCZaYaJNSEYKz+vI66beaznWz9XDVaHfKOKpwBudwCQ7cQBvuoQs9IJDAM7zCm6WtF+vd+li2Vqxy5hT+wPr8AeEwkFc=</latexit>
+(
+User input Speech
+ASR Transcript
+ASR Transcript
+Intermediate Target 1: 
+ASR Transcript
+Text Response
+<latexit sha1_base64="DzYDhPmLt/912TPlY2zk+gJpBwM=">AAAB8nicbVBNS8NAEJ3Ur1q/qh69LBbBU0mKqMdSLx4r2A9IQtlsN+nSzSbsboQS+jO8eFDEq7/Gm//GTZuDtj4YeLw3w8y8IOVMadv+tiobm1vbO9Xd2t7+weFR/fikr5JMEtojCU/kMMCKciZoTzPN6TCVFMcBp4Ngelf4gycqFUvEo56l1I9xJFjICNZGcr0OiyKJvBzVRvWG3bQXQOvEKUkDSnRH9S9vnJAspkITjpVyHTvVfo6lZoTTec3LFE0xmeKIuoYKHFPl54uT5+jCKGMUJtKU0Gih/p7IcazULA5MZ4z1RK16hfif52Y6vPVzJtJMU0GWi8KMI52g4n80ZpISzWeGYCKZuRWRCZaYaJNSEYKz+vI66beaznWz9XDVaHfKOKpwBudwCQ7cQBvuoQs9IJDAM7zCm6WtF+vd+li2Vqxy5hT+wPr8AeEwkFc=</latexit>
+(Intermediate Target 2: 
+Text Response
+Text Response
+Output Speech Response
+<latexit sha1_base64="DzYDhPmLt/912TPlY2zk+gJpBwM=">AAAB8nicbVBNS8NAEJ3Ur1q/qh69LBbBU0mKqMdSLx4r2A9IQtlsN+nSzSbsboQS+jO8eFDEq7/Gm//GTZuDtj4YeLw3w8y8IOVMadv+tiobm1vbO9Xd2t7+weFR/fikr5JMEtojCU/kMMCKciZoTzPN6TCVFMcBp4Ngelf4gycqFUvEo56l1I9xJFjICNZGcr0OiyKJvBzVRvWG3bQXQOvEKUkDSnRH9S9vnJAspkITjpVyHTvVfo6lZoTTec3LFE0xmeKIuoYKHFPl54uT5+jCKGMUJtKU0Gih/p7IcazULA5MZ4z1RK16hfif52Y6vPVzJtJMU0GWi8KMI52g4n80ZpISzWeGYCKZuRWRCZaYaJNSEYKz+vI66beaznWz9XDVaHfKOKpwBudwCQ7cQBvuoQs9IJDAM7zCm6WtF+vd+li2Vqxy5hT+wPr8AeEwkFc=</latexit>
+(Final Target: 
+Speech Output
+Assistant 
+Speaker 
+Prompt
+(Ground Truth) (Ground Truth) (c) (Proposed) CoT E2E Spoken Dialog System
+Figure 1: Training schematic for our CoT-based E2E spoken dialogue system, compared with cascaded and conventional E2E systems.
+Our approach employs multi-stage reasoning, improving semantic coherence and speech quality while preserving E2E differentiability.
+We use teacher forcing during training, and multi-stage decoding using generated intermediate outputs for inference (Sec. 3.4).
+training process. While OMNI-Flatten [32] introduced a half-
+duplex training approach, where the model sequentially per-
+forms ASR, text response generation, and TTS. Although their
+setup resembles ours, their half-duplex approach serves only as
+an intermediate training step and lacks CoT reasoning during
+inference. In contrast, our work presents a novel investigation
+into the efficacy of CoT E2E spoken dialogue systems, provid-
+ing a comprehensive comparison with standard cascaded and
+E2E methodologies using an open-source toolkit.
+3. Method
+We begin our problem formulation with a single-turn spoken di-
+alog system, where X and Y represent the user’s and system’s
+speech feature sequences. Traditional cascaded spoken dia-
+logue systems employ separate modules for sub-tasks, as shown
+in Fig. 1a. These systems typically consist of an ASR model,
+which optimizes P (Sasr|X) to produce the ASR transcript ˆSasr;
+a text response generation model based on LLM which opti-
+mizes P (Sres| ˆSasr) to estimate the text response ˆSres; and a
+TTS model, which optimizes P (Y| ˆSres, Xspk), where Xspk is
+the TTS speaker prompt. Since each module is separately op-
+timized, the system suffers from error propagation. To address
+this, E2E spoken dialogue systems [17, 19] maximize the pos-
+terior distribution P (Y|X, Xspk) as shown in Fig. 1b. While
+these systems offer fully E2E differentiable training, they lack
+structured reasoning, leading to less coherent responses and in-
+creased training data requirements.
+3.1. CoT formulation of E2E Spoken Dialog Systems
+Inspired by the strengths of both schools of thought, our method
+aims to perform CoT training by explicitly incorporating the
+prediction of ASR transcript Sasr and text response Sres within
+the E2E spoken dialogue formulation. By regarding theSasr and
+Sres as a probabilistic variable, we can theoretically incorporate
+them into the posterior distributionP (Y|X, Xspk) (§ 3) via sum
+rule. We further use Viterbi approximation and conditional in-
+dependence (C.I.) assumption to get:
+P (Y|X, Xspk)≈ P (Y|X, Xspk, ˆSres, ˆSasr)
+where ˆSres = arg max
+Sres
+p(Sres|X,Xspk, ˆSasr)
+where ˆSasr = arg max
+Sasr
+p(Sasr|X,Xspk) (1)
+To realize the formulation described in Eq.1, this work pro-
+poses a CoT E2E spoken dialog system, as shown in Figure 1c.
+The architecture is built around a pre-trained decoder-only LM
+capable of both processing and generating audio and text to-
+kens. The CoT model follows a structured decoding process:
+ASR Decoding: Generates the ASR transcript ˆSasr by model-
+ing P (Sasr|X). Text Response Prediction : Predicts the text
+Table 1: Task templates for ASR, Text Response Generation
+(T2T), TTS, and both E2E and CoT E2E (Proposed) spoken di-
+alogue models, showing their respective conditions and targets.
+The CoT E2E model includes intermediate targets, highlighted
+in blue. Here, ⟨a tk⟩,⟨t tk⟩, and⟨s tk⟩ denote the audio, text,
+and speaker tokenizer identifiers, respectively.
+Task Condition Target
+ASR Casr = (⟨asr⟩,⟨a tk⟩, X,⟨t tk⟩) Sasr
+T2T Ct2t = (⟨t2t⟩,⟨t tk⟩, ˆS
+asr
+,⟨t tk⟩) Sres
+TTS Ctts = (⟨tts⟩,⟨t tk⟩, ˆS
+res
+,⟨s tk⟩, Xspk,⟨a tk⟩) Y
+E2E ⟨s2s⟩,⟨a tk⟩, X,⟨s tk⟩, Xspk,⟨a tk⟩ Y
+CoT E2E Casr, Sasr, Ct2t, Sres, Ctts Y
+response ˆSres, optimizing P (Sres|X, ˆSasr), akin to a cascaded
+system but additionally conditions on input speech X. Final
+Speech Output Generation : Generates the speech output ˆY
+by modelling P (Y|X, Xspk, ˆSasr, ˆSres).
+Compared to standard E2E systems that model
+P (Y|X, Xspk), our CoT model preserves E2E differen-
+tiability while improving semantic coherence and speech
+quality through multi-stage reasoning, conditioning on in-
+termediate outputs ˆSasr and ˆSres. Compared to TTS in the
+cascaded system that model P (Y| ˆSres, Xspk), our approach
+reduces error propagation and improves expressive speech
+synthesis by conditioning on input speech X and ASR
+transcript ˆSasr to generate final speech output. We apply the
+proposed CoT training as a post-training strategy on an open
+SpeechLM [22] that has been pre-trained on ASR, TTS, Speech
+Continuation, and TextLM tasks. By aligning each reasoning
+stage with the SpeechLM’s pre-training tasks—namely ASR,
+text LM, and TTS — our approach achieves faster convergence
+and improved training data efficiency.
+3.2. Text and Audio Joint Tokenizer
+Our CoT training procedure utilizes autoregressive generation
+of a joint text/audio token, as defined in [22]. First, speech fea-
+ture sequence X, text S, and special token⟨token⟩ are tokenized
+(Tok(·)) to the following discrete representation:
+X = Tok(X), S = Tok(S),⟨token⟩ = Tok(⟨token⟩), (2)
+where the underline indicates the tokenized value. X =
+(x1, x2, ..., ) is a sequence of M-dimensional discrete audio
+codec and its t-th vector is represented as xt = [ x1
+t , ..., xM
+t ]⊤.
+x1
+t is reserved for a speech semantic token [33]. Similarly, S
+is composed of j-th discrete vector sj = [ sj,∅, ...,∅]⊤, where
+∅ pads null values from the 2nd to Mth dimension, as text to-
+kens are one-dimensional.⟨token⟩ is also converted similarly to
+text tokens. All tokens belong to ashared discrete vector space,
+4834
+
+Table 2: Semantic Quality on Switchboard Eval 2000 and Fisher: Our CoT-based E2E model produces more coherent responses (p <
+0.05) than conventional E2E systems and matches the performance of the state-of-the-art LLM, SmolLM.
+Model SWBD Fisher
+ROUGE-1/2/L (↑) METEOR ( ↑) Perplexity ( ↓) ROUGE-1/2/L (↑) METEOR ( ↑) Perplexity ( ↓)
+SmolLM v2-1.7B (GT Transcript) 14.0 / 2.3 / 11.5 12.9 25.4 15.3 / 3.4 / 12.5 13.9 17.9
+SpeechLM E2E 10.5 / 0.8 / 8.4 9.7 302.2 11.3 / 1.3 / 8.9 10.1 138.7
+SpeechLM CoT E2E
+Text Response (ˆSres) 14.2 / 1.3 / 10.2 14.2 37.2 17.6 / 3.2 / 12.2 17.6 33.0
+w/o Post-process (ablation) 12.3 / 1.3 / 8.6 14.8 24.1 14.6 / 2.9 / 10.0 17.7 16.1
+using GT Transcript ˆSasr (ablation) 12.3 / 1.4 / 8.8 15.0 24.5 15.0 / 3.0 / 10.2 17.8 16.6
+Speech Response ( ˆY ) 14.2 / 1.3 / 10.3 12.9 28.5 17.6 / 3.2 / 12.3 17.7 18.5
+SWBD+Fisher train ˆY (§ 4.1) 14.6 / 1.5 / 10.4 14.9 22.2 ✗ ✗ ✗
+i.e., xt, sj,⟨token⟩∈V M , whereV M comprises the union of
+text, speech semantic and acoustic token vocabularies, along
+with special tokens. This formulation enables speech, text, and
+special tokens to be autoregressively predicted using an LM.
+3.3. Training Sequence Format
+All the training and decoding steps of our model, introduced in
+Section 3.1, are tokenized into a single sequence and uniformly
+predicted. Tab. 1 presents our sequence formats for each sub-
+task in the cascaded pipeline (ASR, text response generation,
+and TTS) and for E2E and CoT E2E spoken dialogue training.
+Task tokens are denoted as⟨asr⟩,⟨t2t⟩,⟨tts⟩, and⟨s2s⟩, repre-
+senting ASR, text response generation, TTS, and E2E spoken
+dialogue tasks, respectively. Notably, the CoT E2E model does
+not introduce new task tokens and consists of intermediate tar-
+gets that represent outputs from the first and second decoding
+stages (Sec. 3.1). Prompts for each decoding stage are carefully
+designed to align closely with SpeechLM’s pre-training objec-
+tives: ASR ( Casr), text LM ( Ct2t), and TTS ( Ctts) as shown in
+Tab. 1, enabling better training efficiency.2
+3.4. Training and Inference
+During CoT-post training, we compute the loss only on the “tar-
+get” sequences: including intermediate targets Sasr, Sres and
+final target Y . During inference, our decoding process con-
+sists of three steps: 1 The SpeechLM generates the ASR
+transcript ˆS
+asr
+= arg max P (Sasr|Casr). 2 The generated
+ASR transcript is then incorporated to generate text response,
+sampled as ˆS
+res
+∼ P (Sres|Casr, ˆS
+asr
+, Ct2t) using top-k sam-
+pling. 3 The predicted text response is similarly used to con-
+struct prompt (Tab. 1) for sampling the final speech response
+ˆY ∼ P (Y|Casr, ˆS
+asr
+, Ct2t, ˆS
+res
+, Ctts). By employing joint to-
+kenization (Sec. 3.2), our approach performs CoT-based infer-
+ence (Eq. 1) within a standard LLM inference framework.
+4. Experiments
+4.1. Datasets
+For our experiments, we focus exclusively on real human-
+human conversation datasets, selecting 2 widely used corpora:
+Switchboard [11] ( ≈ 300 hours) and Fisher [34] ( ≈ 2000
+hours). For Switchboard, we use the Eval2000 dataset for eval-
+uation, while for Fisher, we follow Dialog GSLM [28], split-
+ting the dataset into 98:1:1 for train, dev, and evaluation, re-
+spectively. Additionally, we train the model in a combined set-
+ting (SWBD+Fisher train) using the entire Fisher dataset and
+the Switchboard training set and evaluate it on the Eval2000
+dataset. Before training, we apply 3 preprocessing steps: 1
+We merge silence-separated utterances within a single speaker’s
+turn to preserve conversational coherence. 2 We remove very
+short utterances (fewer than five words) to improve linguistic
+2Other prompt designs resulted in sub-optimal performance.
+Table 3: Audio Quality and Intelligibility: Our CoT E2E model,
+trained on Fisher and Switchboard, matches single-speaker
+TTS (LJSpeech VITS) performance with a high-quality speaker
+prompt (“Spk prompt”). “GT” indicates decoding with ground-
+truth responses Sres and (abl) denote ablation study.
+Model SWBD Fisher
+WER (↓) UTMOS ( ↑) WER (↓) UTMOS ( ↑)
+LJSpeech VITS (GT) 8.5 4.19 9.5 4.14
+SpeechLM
+Pre-train (GT) 47.8 2.08 55.7 1.93
+Finetune (GT) 30.5 2.21 32.6 2.14
+E2E ✗ 2.03 ✗ 2.02
+CoT E2E 13.6 3.55 12.5 3.32
+w/o Spk prompt (abl) 15.1 2.05 15.5 2.04
+w/ GT (abl) 15.5 2.25 13.2 2.23
+w/o Post-process (abl) 42.0 2.10 36.5 2.10
+SWBD+Fisher train (§ 4.1) 9.1 3.40 ✗ ✗
+context and response quality. 3 We truncate all utterances to a
+maximum length of 30 seconds.
+We evaluate spoken dialogue systems across semantic qual-
+ity and audio quality and intelligibility of response. For se-
+mantic quality, we report ROUGE [35] and METEOR [36]
+scores, using human references as ground truth, alongside per-
+plexity [37], computed using GPT-2 [38]. For E2E models, se-
+mantic quality is evaluated by transcribing synthesized speech
+ˆY using Whisper large [6]. For our CoT model, we also report
+metrics on the intermediate text response ˆSres (Eq. 1). We uti-
+lize the VERSA toolkit [39], measuring intelligibility similarly
+through Whisper hypotheses and evaluating audio quality us-
+ing UTMOS [40]. We evaluate conversation-level performance
+by extracting emotion vectors from both synthesized outputs
+and ground-truth responses using Emo2Vec [41], then measure
+their cosine similarity. We rank all spoken dialogue systems
+based on their emotional alignment and compute the average
+rank (“Emotion Rank”) across all utterances. Finally, we report
+the model sizes for both cascaded and E2E dialogue systems.
+4.2. Baseline and Experimental Setups
+We compare our CoT E2E system on response quality
+against strong task-specific baselines 3: SmolLM v2 1.7B-
+Instruct [42] for text generation and the single-speaker TTS
+model (LJSpeech VITS ) [43] from ESPnet-TTS. Our system
+applies the CoT-based post-training strategy to a pre-trained
+open-source SpeechLM [22]. For TTS, we also evaluate the
+pre-trained SpeechLM in two settings: zero-shot ( SpeechLM
+Pre-train) and fine-tuned ( SpeechLM Fine-tune ).4 We fur-
+ther compare with cascaded and E2E spoken dialogue sys-
+tems using conversation-level metrics. The cascaded systems
+combine: SpeechLM (ASR), SmolLM v2 (text response), and
+SpeechLM (TTS), evaluated in both zero-shot ( SpeechLM
+Cascaded (Pre-train)) and fine-tuned ( SpeechLM Cascaded
+3Baselines are not fine-tuned on spoken dialogue datasets.
+4SpeechLM is not instruction fine-tuned on conversational data, so
+we exclude it from the text response evaluation.
+4835
+
+Table 4: Conversation Level Statistics on Switchboard: our CoT
+E2E model better captures emotion and is parameter efficient.
+Model Emotion Rank ( ↓) Model Size ( ↓)
+SpeechLM
+Cascaded (Pre-train) 3.08 3.4B
+Cascaded (Fine-tune) 2.57 5.1B
+E2E 2.59 1.7B
+CoT E2E (SWBD + Fisher) 1.77 1.7B
+(Fine-tune)) modes. We also compare with a traditional E2E
+system (SpeechLM E2E, Sec. 3), where SpeechLM is trained
+end-to-end to directly predict speech outputs.
+Our models are implemented in PyTorch, with all experi-
+ments conducted using the ESPnet [44, 45] toolkit. The pre-
+trained SpeechLM leverages the SmolLM2 1.7B text LLM for
+initialization. We adopt the delay interleave architecture [46]
+for multi-stream language modeling. For audio tokenization,
+we concatenate codec and SSL tokens frame-by-frame. Specifi-
+cally, we utilize ESPnet-Codec [47]5 for codec tokenization and
+XEUS6 [48] for SSL tokenization. For decoding (Sec. 3.4),
+ASR uses greedy search followed by post-processing to re-
+move hallucinations, while text response generation employs
+top-k sampling (k=30, temperature = 0.8), followed by post-
+processing to remove hallucinations and constrain response
+length. For speech response generation, we apply top-k sam-
+pling (same as text response), and further post-process the out-
+puts, computing top-10 samples and selecting the speech with
+the highest intelligibility to generated text response ˆSres (Eq. 1).
+We conducted Wilcoxon signed-rank and Signed Paired Com-
+parison tests for statistical significance. Models are trained us-
+ing 4 NVIDIA H200 GPUs. We will release data processing,
+training and inference details as part of ESPnet [44, 49] toolkit.
+5. Results and Discussion
+Semantic Coherence and Audio Quality Results : Tab. 2
+presents the semantic quality of responses. Even state-of-the-
+art LLM SmolLM2 struggles to achieve high ROUGE and ME-
+TEOR scores (Tab. 2), reflecting the spontaneity and unpre-
+dictability of human-human conversations. Despite this, our
+CoT E2E model generates semantically coherent responses,
+performing on par with SmolLM2, even when SmolLM2 uses
+ground-truth transcripts. Whisper hypotheses produced from fi-
+nal speech response ˆY exhibit similar semantic quality to the
+intermediate text response ˆSres.7 We observe no significant
+performance drop when using generated ASR transcripts ˆS
+asr
+in place of ground-truth transcripts ( Sasr in CoT E2E prompt
+(Tab. 1)). Conventional E2E models (“SpeechLM E2E”) show
+poor overlap with human references and generate semantically
+incoherent sentences, as shown by their high perplexity scores.
+Next, we evaluated audio quality performance in Tab. 3.
+The pre-trained SpeechLM performs significantly worse in both
+intelligibility and speech quality against a single-speaker VITS
+model, likely due to poor generalization on disfluent, con-
+versational text and the low-quality audio in Switchboard, as
+the model uses speaker prompts Xspk (TTS prompt in Tab. 1)
+from the corresponding speaker. Fine-tuning on conversational
+datasets improves both speech quality and intelligibility. Our
+CoT post-training achieves similar performance improvements,
+5https://huggingface.co/ftshijt/espnet_codec_
+dac_large_v1.4_360epoch
+6https://huggingface.co/espnet/xeus, K-means tok-
+enizer trained on the last-layer representation with 5k clusters
+7While our post-processing increases perplexity, it prevents very
+long responses.
+Table 5: Ablation Study on intermediate task ASR: While ASR
+performance slightly decreases with CoT training, the quality
+of text responses improves (Tab. 2).
+Model SWBD Fisher
+WER (↓) CER ( ↓) WER (↓) CER ( ↓)
+OWSM CTC (3.2) 17.2 12.7 12.9 8.6
+SpeechLM
+Pre-train 18.3 13.3 14.3 9.6
+Finetune 17.8 13.1 13.4 9.0
+CoT E2E ( ˆSasr) 17.6 13.1 19.5 14.1
+SWBD + Fisher Train 22.2 17.0 ✗ ✗
+further boosting TTS quality through the post-processing step
+(Sec. 4.2, “Post-process” in Tab. 3). Additionally, replacing
+Switchboard speaker prompts with high-quality prompts from
+Librispeech (UTMOS Score ≈ 4.5) during inference (“Spk
+prompt” in Tab. 3) results in substantial gains in both intelli-
+gibility and audio quality. For the E2E SpeechLM, we can-
+not compute intelligibility due to the absence of ground-truth
+text references. However, we observe that its synthesized audio
+quality is inferior to that of the CoT-based E2E model, further
+underscoring the advantages of multi-stage reasoning. Finally,
+our CoT-based E2E model, trained on a combined dataset of
+Switchboard and Fisher, significantly (p< 0.05) outperforms all
+baselines and matches performance of the single-speaker VITS
+model, with added flexibility for multi-speaker speech.
+Conversation Level Analysis:Tab. 4 shows a conversation-
+level analysis of our CoT-based E2E model, comparing its per-
+formance with various cascaded and E2E spoken dialogue sys-
+tems. Our analysis reveals that CoT modeling enhances dia-
+logue expressiveness, as shown by higher emotion similarity
+with ground-truth human responses. Additionally, our CoT
+model demonstrates strong parameter efficiency while deliver-
+ing performance comparable to the modules in cascaded sys-
+tems (Tab. 2, 3), showcasing its applicability to on-device sce-
+narios. While its latency remains similar to cascaded systems
+due to multi-stage decoding, future work will focus on reducing
+latency through techniques like quantization.
+Ablation Study: Intermediate ASR task : Tab. 5 re-
+port the ASR performance of our CoT spoken dialogue
+model, comparing it with the OWSM 3.1 [7] and pre-trained
+SpeechLM. The pre-trained SpeechLM performs competitively
+with OWSM, with fine-tuning further reducing WER. While
+CoT post-training slightly impacts ASR performance due to
+hallucinations, note that ASR serves only as an intermediate
+task. Importantly, Tab. 2 demonstrates that the response quality
+remains robust against ASR hallucinations.
+6. Conclusion
+We propose a CoT-based formulation for E2E spoken dialogue
+systems, achieving competitive performance with task-specific
+baselines, while producing more coherent responses with su-
+perior audio quality than conventional E2E models. Our CoT-
+based approach also surpasses cascaded systems in parame-
+ter efficiency and emotional expressiveness. Future work will
+explore methods to enable real-time interaction and support
+“speaking while listening” [18, 19].
+7. Acknowledgement
+Experiments of this work used the Bridges2 system at PSC
+and Delta system at NCSA through allocations CIS210014
+and IRI120008P from the Advanced Cyberinfrastructure Co-
+ordination Ecosystem: Services & Support (ACCESS) pro-
+gram, supported by National Science Foundation grants
+#2138259,#:2138286, #:2138307, #:2137603, and #:2138296.
+4836
+
+8. References
+[1] K. Jokinen et al., Spoken dialogue systems. Morgan & Claypool
+Publishers, 2009.
+[2] C. Breazeal et al. , “Social robots that interact with people,”
+Springer handbook of robotics, pp. 1349–1369, 2008.
+[3] J. Glass, “Challenges for spoken dialogue systems,” in Proceed-
+ings of the 1999 IEEE ASRU Workshop , MIT Laboratory for
+Computer Science Cambridge, vol. 696, 1999.
+[4] R. Huang et al. , “Audiogpt: Understanding and generating
+speech, music, sound, and talking head,” in Proceedings of the
+AAAI, 2024, pp. 23 802–23 804.
+[5] J. Wiseman, Py-webrtcvad, Accessed: 2024-12-10, 2024.
+[6] A. Radford et al. , “Robust speech recognition via large-scale
+weak supervision,” in Proc. ICML, 2023.
+[7] Y . Peng et al. , “Reproducing whisper-style training using an
+open-source toolkit and publicly available data,” inProc. ASRU,
+2023.
+[8] S. Mehri et al. , “Dialoglue: A natural language understand-
+ing benchmark for task-oriented dialogue,” arXiv preprint
+arXiv:2009.13570, 2020.
+[9] B. Peng et al., “Few-shot natural language generation for task-
+oriented dialog,” in Findings of EMNLP 2020 , T. Cohn et al.,
+Eds., Online: Association for Computational Linguistics, Nov.
+2020, pp. 172–182.
+[10] Coqui, Introducing open-xtts: An open-source toolkit for tts, Ac-
+cessed: 2024-12-10, 2024.
+[11] J. Godfrey et al. , “Switchboard: Telephone speech corpus for
+research and development,” in [Proceedings] ICASSP-92: 1992
+IEEE International Conference on Acoustics, Speech, and Sig-
+nal Processing, vol. 1, 1992, 517–520 vol.1.
+[12] H. Rashkin, “Towards empathetic open-domain conversa-
+tion models: A new benchmark and dataset,” arXiv preprint
+arXiv:1811.00207, 2018.
+[13] K. Hara et al. , “Prediction of turn-taking using multitask
+learning with prediction of backchannels and fillers,” Listener,
+vol. 162, p. 364, 2018.
+[14] N. Ward et al., “Prosodic features which cue back-channel re-
+sponses in english and japanese,”Journal of pragmatics, vol. 32,
+no. 8, pp. 1177–1207, 2000.
+[15] S. Sundaram et al. , “Automatic acoustic synthesis of human-
+like laughter,”The Journal of the Acoustical Society of America,
+vol. 121, no. 1, pp. 527–535, 2007.
+[16] S. Fujie et al., “A conversation robot with back-channel feed-
+back function based on linguistic and nonlinguistic informa-
+tion,” in Proc. ICARA Int. Conference on Autonomous Robots
+and Agents, Citeseer, 2004, pp. 379–384.
+[17] D. Zhang et al., “Speechgpt: Empowering large language mod-
+els with intrinsic cross-modal conversational abilities,” arXiv
+preprint arXiv:2305.11000, 2023.
+[18] Z. Xie et al., Mini-omni: Language models can hear, talk while
+thinking in streaming, 2024.
+[19] A. D ´efossez et al., “Moshi: A speech-text foundation model for
+real-time dialogue,” Kyutai, Tech. Rep., 2024.
+[20] J. Wei et al., “Chain-of-thought prompting elicits reasoning in
+large language models,” Advances in neural information pro-
+cessing systems, vol. 35, pp. 24 824–24 837, 2022.
+[21] Z. Zhang et al., “Automatic chain of thought prompting in large
+language models,” arXiv preprint arXiv:2210.03493, 2022.
+[22] J. Tian et al. , “ESPnet-SpeechLM: An open speech language
+model toolkit,” arXiv, 2024.
+[23] S. Ji et al., Wavchat: A survey of spoken dialogue models, 2024.
+[24] Y . Chu et al., “Qwen-audio: Advancing universal audio under-
+standing via unified large-scale audio-language models,” arXiv
+preprint arXiv:2311.07919, 2023.
+[25] C. Fu et al., “Vita: Towards open-source interactive omni multi-
+modal llm,” arXiv preprint arXiv:2408.05211, 2024.
+[26] W. Held et al., “Distilling an end-to-end voice assistant without
+instruction training data,” arXiv:2410.02678, 2024.
+[27] D. Zhang et al., “Speechgpt-gen: Scaling chain-of-information
+speech generation,” arXiv preprint arXiv:2401.13527, 2024.
+[28] T. A. Nguyen et al., “Generative spoken dialogue language mod-
+eling,” Trans. Assoc. Comput. Linguistics, vol. 11, pp. 250–266,
+2023.
+[29] B. Veluri et al. , “Beyond turn-based interfaces: Syn-
+chronous llms as full-duplex dialogue agents,” arXiv preprint
+arXiv:2409.15594, 2024.
+[30] Q. Fang et al., “Llama-omni: Seamless speech interaction with
+large language models,”arXiv preprint arXiv:2409.06666, 2024.
+[31] Z. Meng et al. , “Parrot: Autoregressive spoken dialogue lan-
+guage modeling with decoder-only transformers,” in Audio
+Imagination: NeurIPS 2024 Workshop AI-Driven Speech, Mu-
+sic, and Sound Generation.
+[32] Q. Zhang et al. , “Omniflatten: An end-to-end gpt model for
+seamless voice conversation,”arXiv preprint arXiv:2410.17799,
+2024.
+[33] Z. Borsos et al., “Audiolm: A language modeling approach to
+audio generation,” IEEE/ACM TASLP, vol. 31, pp. 2523–2533,
+2023.
+[34] C. Cieri et al., “The fisher corpus: A resource for the next gen-
+erations of speech-to-text.,” in LREC, vol. 4, 2004, pp. 69–71.
+[35] C.-Y . Lin, “Rouge: A package for automatic evaluation of sum-
+maries,” in Text summarization branches out, 2004, pp. 74–81.
+[36] S. Banerjee et al., “Meteor: An automatic metric for mt evalua-
+tion with improved correlation with human judgments,” in ACL
+workshop on intrinsic and extrinsic evaluation measures for ma-
+chine translation and/or summarization, 2005, pp. 65–72.
+[37] F. Jelinek et al. , “Perplexity—a measure of the difficulty of
+speech recognition tasks,” The Journal of the Acoustical Soci-
+ety of America, vol. 62, no. S1, S63–S63, 1977.
+[38] A. Radford et al., “Language models are unsupervised multitask
+learners,” OpenAI, 2019.
+[39] J. Shi et al., “Versa: A versatile evaluation toolkit for speech,
+audio, and music,” arXiv preprint arXiv:2412.17667, 2024.
+[40] T. Saeki et al., “UTMOS: UTokyo-SaruLab system for voice-
+MOS challenge 2022,” in Interspeech, 2022, pp. 4521–4525.
+[41] Z. Ma et al. , “Emotion2vec: Self-supervised pre-training for
+speech emotion representation,” Proc. ACL 2024 Findings ,
+2024.
+[42] L. B. Allal et al., Smollm2: When smol goes big – data-centric
+training of a small language model, 2025.
+[43] T. Hayashi et al. , “Espnet-tts: Unified, reproducible, and in-
+tegratable open source end-to-end text-to-speech toolkit,” in
+ICASSP, IEEE, 2020, pp. 7654–7658.
+[44] S. Watanabe et al. , “ESPnet: End-to-end speech processing
+toolkit,” in Proceedings of Interspeech, 2018, pp. 2207–2211.
+[45] S. Arora et al., “Espnet-slu: Advancing spoken language under-
+standing through espnet,” in ICASSP, IEEE, 2022, pp. 7167–
+7171.
+[46] J. Copet et al., “Simple and controllable music generation,” Ad-
+vances in Neural Information Processing Systems, vol. 36, 2024.
+[47] J. Shi et al., “Espnet-codec: Comprehensive training and eval-
+uation of neural codecs for audio, music, and speech,” arXiv
+preprint arXiv:2409.15897, 2024.
+[48] W. Chen et al., “Towards robust speech representation learning
+for thousands of languages,” arXiv preprint arXiv:2407.00837,
+2024.
+[49] S. Arora et al. , “ESPnet-SDS: Unified toolkit and demo for
+spoken dialogue systems,” in NAACL (System Demonstrations),
+Apr. 2025, pp. 248–259.
+4837

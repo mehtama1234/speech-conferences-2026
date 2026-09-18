@@ -1,0 +1,830 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+Improving Cross-Attention based on Positional Alignment during Inference
+for Robust Long-form Speech Recognition
+Changhan Oh1,2, Kiyoung Park1,2, Jeomja Kang2, Woo Yong Choi2, Hwa Jeon Song2
+1University of Science and Technology, South Korea
+2Electronics and Telecommunications Research Institute, South Korea
+{ochh508, pkyoung, jjkang, wychoi4, songhj}@etri.re.kr
+Abstract
+End-to-end (E2E) models have significantly advanced au-
+tomatic speech recognition (ASR), with hybrid architectures
+that combine Connectionist Temporal Classification (CTC) and
+attention-based encoder-decoder (AED) models demonstrat-
+ing superior performance. However, AED architectures, par-
+ticularly Conformer, face notable challenges with long-form
+speech, with performance degradation becoming evident for au-
+dio exceeding 25 second. In this study, we propose improv-
+ing the Conformer’s robustness for long-form ASR by apply-
+ing Gaussian masking to the cross-attention mechanism of the
+Transformer decoder during inference, using the aligned posi-
+tions obtained from the CTC prefix score. The proposed method
+achieves an error reduction rate (ERR) of 88.41% (from 26.41%
+to 3.06%) for audio longer than 20 seconds on a LibriSpeech
+evaluation set constructed by concatenating three utterances.
+Moreover, the method remains effective with either a Trans-
+former or an E-Branchformer encoder.
+Index Terms:
+Cross-attention, hybrid CTC/attention, Con-
+former, Long-form speech, ASR
+1. Introduction
+With the advent of end-to-end (E2E) models, automatic speech
+recognition (ASR) has seen remarkable advancements. Con-
+nectionist Temporal Classification (CTC) [1] and Attention-
+based encoder-decoder (AED) models [2, 3] have played piv-
+otal roles in the evolution of E2E ASR systems. Subsequently,
+the hybrid CTC/attention architecture [4], combining CTC and
+AED models, has been proposed, demonstrating superior ASR
+performance compared to previous models.
+Recent work has focused on improving encoder architec-
+tures, which can be seamlessly applied into hybrid structures.
+Transformer, which achieved significant success in machine
+translation [5], has also proven effective in ASR [6], demon-
+strating an exceptional ability to capture global context through
+self-attention mechanisms.
+Conformer surpasses the Trans-
+former by incorporating both self-attention and convolutional
+modules [7], enabling the learning of both local and global
+contexts, making it one of the most prominent encoder mod-
+els.
+E-Branchformer [8, 9] achieves state-of-the-art perfor-
+mance by enhancing the merge module of the Branchformer
+[10], which captures local and global context through two sep-
+arate branches.
+However, conventional AED models exhibit significant per-
+formance degradation in long-form speech [11, 12, 13]. Espe-
+cially, the Conformer with hybrid architecture has shown weak-
+nesses in long-form exceeding 25 seconds [14]. Conventional
+ASR models have primarily focused on short-form speech [11],
+leading to the development of methods that process long-form
+speech by segmenting it [15, 16].
+These approaches often
+require additional modules, such as a voice activity detector
+(VAD). More recent research has aimed to improve the robust-
+ness of Transformer-based models for long-form speech with-
+out the need for segmentation by enhancing attention mecha-
+nisms [17]. However, these studies typically involve modify-
+ing or redesigning model architectures, making it challenging
+to leverage existing pre-trained models.
+In long-form speech recognition, while CTC-only models
+perform well, the performance of hybrid models degrades sig-
+nificantly. To address this, we propose a modification to cross-
+attention that improves the robustness of AED models for long-
+form speech. During inference, alignment is achieved by uti-
+lizing the position corresponding to the maximum CTC pre-
+fix score along the encoder output dimension. This approach
+demonstrates effective across Transformer, Conformer, and E-
+Branchformer encoders.
+2. Related works
+ASR datasets like LibriSpeech [18] primarily consist of short
+utterances under 30 seconds, but real-world applications often
+involve longer speech segments. To handle long-form speech,
+E2E ASR models typically segment audio using methods such
+as VAD or language models [15, 16, 19], or modify the in-
+ference process to move the window during transcription [20].
+Another approach focuses on architectural improvements, with
+several studies suggesting encoder modifications [14, 21].
+Ensuring monotonic alignment between speech input and
+text output is crucial in ASR, leading to proposals for attention
+mechanism adjustments [22, 23, 24, 25]. While these changes
+are rarely evaluated on long-form audio, [11] showed that en-
+forcing monotonicity in attention benefits longer speech. Addi-
+tionally, Fast Conformer [17] enhanced performance by intro-
+ducing limited context attention and global tokens.
+In AED-based or hybrid CTC/Attention-based models,
+maintaining monotonicity between the encoder output and de-
+coder input is equally important, leading to proposals for
+modifying cross-attention [26, 27].
+These methods can
+achieve monotonic alignment without being overly dependent
+on the specific encoder architecture (e.g., Conformer [7], E-
+Branchformer [8]).
+In this paper, we build on the work of [26] by introducing
+Gaussian masking to the cross-attention mechanism to achieve
+monotonic alignment. However, to find the alignment position,
+we do not modify the cross-attention during training; instead,
+we solely leverage the argmax of the CTC prefix score along the
+encoder output axis during inference. Our method significantly
+enhances performance on long-form speech with only minimal
+code modifications and can also be applied to pre-trained hybrid
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+3329
+10.21437/Interspeech.2025-2582
+
+clear
+d
+Encoder
+(e.g.,,Transformer,,
+Conformer,
+E-Branchformer)
+Add,&,Norm
+Add,&,Norm
+Feed,Forward
+Add,&,Norm
+Linear,&,Softmax
+Score
+×𝑁!
+Multi-Head
+Attention
+Cross-Attention
+𝑁"×
+Linear,(CTC),&,Softmax
+CTC,prefix,score
+Weighted,sum
+Output,Tokens
+Inputs
+Outputs
+Layer,Norm
+Transformer
+decoder
+Select.top.hypothesis
+per.encoder.output.index
+Determine.aligned.position
+by.finding.maximum.score
+Gaussian.Mask
+Figure 1: Inference process of hybrid CTC/attention architec-
+ture with proposed method. The blue rounded rectangle denotes
+our modification, which is applied exclusively during inference.
+During training, the conventional architecture is used without
+the proposed method.
+models. Furthermore, as it can be selectively applied only when
+the speech is long, it maintains strong performance on short ut-
+terances as well.
+3. Method
+In this section, we briefly introduce cross-attention in AED
+models and then describe methods for positional alignment.
+3.1. Cross-attention
+The cross-attention mechanism in the Transformer decoder, as
+shown in Fig. 1, models the relationship between the encoder’s
+final output and hidden text vectors. Unlike self-attention, in
+cross-attention, the queries come from the decoder while the
+keys and values come from the encoder, allowing the decoder
+to consider the entire encoder sequence at each time-step. Given
+that Y = (y0, . . . , yi, . . . , yl) denotes the decoder hidden state
+value for each layer, and X = (x0, . . . , xj, . . . , xT −1) de-
+notes the final output of the encoder. The corresponding cross-
+attention weights between the i-th decoder hidden state value
+and the j-th encoder output can then be expressed as follows:
+aij = softmax
+(yiW Q)(xjW K)T
+√dk
+
+,
+0 ≤i ≤l
+(1)
+At each inference time-step l, the above equation is computed
+for all i ranging from 0 to l. W Q and W K ∈Rdmodel×dk,
+where dmodel is attention dimension and dk is attention dimen-
+sion divided by the number of attention head, serve as the linear
+transformation matrices.
+3.2. Cross-attention with positional alignment
+In applications like speech recognition, the input and output
+are strictly aligned in a monotonous order, meaning that only
+a specific range of input is most relevant to generate the current
+output token. Therefore, in ASR, it is more effective to focus
+on a limited range of encoder output in cross-attention, rather
+than considering the entire input sentence. In a conventional
+AED structure, cross-attention can focus on any part of the in-
+put. However, by limiting the range of cross-attention, ASR
+performance can be improved.
+3.2.1. Previous work
+In [26], a Gaussian mask was added to the conventional cross-
+attention mechanism to align the positions between the encoder
+output and the decoder hidden state value as follows:
+aij = softmax((yiW Q)(xjW K)T
+√dk
++ Mij)
+(2)
+where, Mij represents the Gaussian mask applied to the atten-
+tion mechanism to adjust the degree of attention, defined as:
+Mij = −(j −k)2
+2σ2
+(3)
+In Eq. 3 the variance of the Gaussian, σ controls the range of
+index affected by attention mask, and k represents the aligned
+input position. The value of k, which depends on the decoder
+hidden state value index i, indicates the most relevant encoder
+location where cross-attention should focus to compute the out-
+put for the i-th token in the decoder. It is crucial to monotoni-
+cally determine the optimal value of k at each step of generat-
+ing the output sequence. In [26], the position corresponding to
+the maximum cross-attention weight was selected as k, σ was
+treated as a learnable parameter of the network that depends on
+both the input and target sequences.
+3.2.2. Proposed method
+In [26], Eq. 3 is required to be applied to both training and in-
+ference. By contrast, our work focuses on achieving monotonic
+attention by searching for alignment positions within the infer-
+ence process, without relying on these training-based methods
+[26, 28].
+This approach enables a straightforward enhance-
+ment of attention, as it does not require fine-tuning a pre-trained
+model or training a modified model from scratch. Fig. 1 depicts
+the inference process of the conventional hybrid model and our
+proposed method.
+We revise Eq. 3 into a learnable-parameter-free form by
+replacing k and σ with κ(i) and a constant, respectively, as fol-
+lows, and apply it exclusively during inference.
+Mij = −(j −κ(i))2
+2σ2
+(4)
+The cross-attention weights are computed over all parts of
+the input without accumulating the influence of previous steps;
+thus, there is a possibility that the k in Eq. 3 is not mono-
+tonic. In contrast, the CTC prefix score, calculated at each time-
+step, accumulates probabilities from previous steps, causing the
+alignment position to increase or remain unchanged, thereby en-
+suring its monotonicity. Since the CTC prefix score provides a
+score for every element in the encoder output X, a higher score
+indicates a higher likelihood that the corresponding hypothesis
+will be adopted at the current time-step. These properties are
+analogous to the cross-attention mechanism’s focus on the most
+relevant encoder output position, making it a suitable replace-
+ment for the k. Consequently, we define κ(i) as a function that
+returns the encoder output index of the hypothesis that achieves
+the maximum CTC prefix score at each i. In other words,
+κ(i) =
+ 0,
+i = 0
+arg max0≤j≤T −1(logpctc(hl, ...|X)),
+i ≥1
+(5)
+3330
+
+where T
+denotes the length of the encoder output and
+log pctc(hl, · · · | X) is the CTC prefix score [4, 29]. For each
+encoder output index j, we select the highest-scoring hypothe-
+ses among those available and then obtain the aligned position
+by taking the arg max with respect to j among those selected
+hypotheses. In the actual beam search used for inference, multi-
+ple beams are maintained at each time-step, so κ(i) is returned
+once per beam for each time-step, and these values are used in
+Eq 4. Initially, κ(i) is set to 0.
+In Eq. 4, the variance parameter σ determines how wide the
+attention span is, centered around κ(i). We fixed σ at 20, and
+additional experiments showed that this value does not signifi-
+cantly impact overall performance.
+Furthermore, in [26], Eq. 3 was applied only to the lower
+decoder layers. In contrast, we applied Eq. 4 to every layer, and
+this configuration achieved the best performance. This discrep-
+ancy may be attributed to the fact that we did not apply Eq. 3
+during training.
+4. Experiments
+4.1. Setup
+We use the LibriSpeech corpus, which consists of approx-
+imately 1,000 hours of English speech, and train Trans-
+former, Conformer, and E-Branchformer models—each with
+a Transformer decoder—based on the ESPnet [30] toolkit’s
+egs2/librispeech/asr1 recipe. Except for the absence
+of a language model, the configuration is identical to that in the
+recipe; therefore, all models are trained as conventional hybrid
+architectures. For the training set, we use the original utter-
+ances without any concatenation. This is intended to verify that
+even without additional techniques, our proposed method alone
+enables a hybrid model to achieve robust performance in long-
+form ASR.
+Furthermore, since a publicly available implementation of
+[26] does not exist, we re-implemented it using the same recipe
+as our approach. The configuration is largely identical to ours,
+except that σ is treated as a learnable parameter, and the method
+for obtaining the aligned position k differs. Unlike [26], the
+encoder is trained with a Conformer instead of a Transformer.
+4.2. Baseline results
+As reported in [14], Conformer with hybrid architecture ex-
+hibits poor recognition performance on long-form speech. To
+investigate this, we evaluated recognition performance on the
+Librispeech evaluation set across different utterance lengths, as
+well as on a set created by concatenating three utterances from
+Table 1: WER (%) comparison by speech length for Conformer
+on LibriSpeech. (Hybrid: Hybrid CTC/Attention architecture,
+CTC: CTC-only architecture)
+Len
+(sec)
+test-clean
+test-other
+Hybrid
+CTC
+Hybrid
+CTC
+0-5
+3.18
+3.85
+6.80
+8.62
+5-10
+2.42
+2.88
+5.61
+6.62
+10-15
+2.00
+2.69
+4.81
+5.87
+15-20
+2.24
+2.80
+4.61
+5.79
+20-25
+2.11
+2.41
+4.71
+4.98
+25-30
+8.08
+4.49
+11.63
+5.07
+30-35
+15.01
+4.90
+22.26
+3.16
+Table 2: WER (%) comparison by speech length for Con-
+former on the concatenated LibriSpeech (Hybrid:
+Hybrid
+CTC/Attention architecture, CTC: CTC-only architecture)
+Len
+(sec)
+test-clean
+test-other
+Hybrid
+CTC
+Hybrid
+CTC
+20-25
+3.43
+3.87
+9.57
+11.39
+25-30
+4.40
+3.80
+12.18
+11.47
+30-35
+19.14
+3.09
+26.10
+10.73
+35-40
+47.82
+3.88
+50.61
+10.40
+40-45
+55.60
+2.88
+56.60
+10.24
+45-50
+57.53
+3.78
+55.85
+9.34
+(a) Conventional
+(b) Ours
+(c) Conventional (Silence)
+(d) Ours (Silence)
+Figure 2: Cross-attention weights of the Conformer from the
+last encoder layer on approximately 50 seconds of speech. Si-
+lence refers to the results from approximately 50 seconds of au-
+dio, which includes 10 seconds of silence in the middle. (The
+image has been revised to better visualize the attention mecha-
+nism.)
+each set. Utterances longer than 50 seconds were excluded from
+the experiments. Tables 1 and 2 present the word error rate
+(WER) of the Conformer model for each utterance length.
+When the CTC weight is set to 1.0 (CTC-only), perfor-
+mance degradation does not occur on long-form speech. How-
+ever, in the hybrid model, WER sharply increases for speech
+exceeding 25 seconds. We hypothesized that this degradation
+is due to improper cross-attention alignment. Fig. 2a visual-
+izes the cross-attention weights for a randomly selected long ut-
+terance of approximately 50 seconds, revealing a non-diagonal
+pattern. The WER for this utterance is 51.45%, indicating sig-
+nificant performance degradation.
+4.3. Results on proposed method
+Table 3 presents the performance of the Conformer with the
+conventional hybrid architecture alongside that of the Con-
+former incorporating the proposed method.
+For short utter-
+ances, our approach performs comparably to the baseline, while
+for speech longer than 20 seconds, it reduces the WER. Our
+method exhibits a notably stronger performance on long-form
+3331
+
+Table 3: WER (%) comparison by speech length for Conformer
+with proposed method on LibriSpeech. Compared to the hybrid
+in Table 1, ERR (%) is shown in parentheses.
+Len
+(sec)
+test-clean
+test-other
+Ours
+CTC
+Ours
+CTC
+0-5
+3.18 (0.00)
+3.85 (-21.07)
+6.92 (-1.76)
+8.62 (-26.76)
+5-10
+2.43 (-0.41)
+2.88 (-19.01)
+5.65 (-0.71)
+6.62 (-18.00)
+10-15
+2.04 (-2.00)
+2.69 (-34.50)
+4.98 (-3.53)
+5.87 (-22.04)
+15-20
+2.32 (-3.57)
+2.80 (-25.00)
+4.89 (-6.07)
+5.79 (-25.60)
+20-25
+2.14 (-1.42)
+2.41 (-14.22)
+4.12 (12.53)
+4.98 (-5.73)
+25-30
+3.51 (56.56)
+4.49 (44.43)
+4.13 (64.49)
+5.07 (56.41)
+30-35
+4.46 (70.29)
+4.90 (67.36)
+1.83 (91.78)
+3.16 (85.80)
+Table 4: WER (%) comparison by speech length for Conformer
+with proposed method on the concatenated LibriSpeech. Com-
+pared to the hybrid in Table 2, ERR (%) is shown in parentheses.
+Len
+(sec)
+test-clean
+test-other
+Ours
+CTC
+Ours
+CTC
+20-25
+3.29 (4.08)
+3.87 (-12.83)
+9.53 (0.42)
+11.39 (-19.02)
+25-30
+3.08 (30.00)
+3.80 (13.64)
+9.83 (19.29)
+11.47 (5.83)
+30-35
+2.41 (87.41)
+3.09 (83.86)
+9.51 (63.56)
+10.73 (58.89)
+35-40
+3.33 (93.04)
+3.88 (91.89)
+8.97 (82.28)
+10.40 (79.45)
+40-45
+2.70 (95.14)
+2.88 (94.82)
+10.06 (82.23)
+10.24 (81.91)
+45-50
+3.69 (93.59)
+3.78 (93.43)
+8.41 (84.94)
+9.34 (83.28)
+speech. In the 40-45-second range, it achieves an error reduc-
+tion rate (ERR) of up to 95.14% (55.60% vs. 2.70%). Detailed
+results are provided in Table 4.
+Fig. 2b illustrates the cross-attention weights after apply-
+ing our proposed method to the same utterance depicted in Fig.
+2a. The attention after applying our proposed method shows a
+diagonal pattern, and the recognition performance is enhanced
+with an ERR of 91.55% (51.45% vs. 4.35%), validating our hy-
+pothesis that cross-attention misalignment is the cause of per-
+formance degradation in long-form speech with hybrid archi-
+tecture. Furthermore, our method remains effective even in the
+presence of silence. When a 10-second silence was inserted
+between two randomly selected 20-second utterances, ERR im-
+proved to 95.74% (42.73% vs. 1.82%). Figs. 2d and 2c illus-
+trate the cross-attention for that utterance.
+Since our method is applied only during inference, it en-
+ables the selective application of our positional alignment to the
+cross-attention mechanism exclusively for long-form speech in-
+puts. Based on our results, where our method shows an effect
+for utterances over 20 seconds, we used the conventional struc-
+ture for those under 20 seconds and our method for those over
+20 seconds. We achieved performance improvements on both
+LibriSpeech and concatenated LibriSpeech. Furthermore, due
+to the flexibility of our method, it can be easily adapted to other
+AED-based ASR models. We applied our approach to Trans-
+former and E-Branchformer models and observed similar per-
+formance improvements. Detailed results are presented in Ta-
+bles 5 and 6.
+In the case of [26], the performance on short-form speech is
+comparable to or slightly improved over the baseline. The per-
+formance on long-form speech is also improved; however, it re-
+mains significantly lower than our proposed method. As shown
+in Figs. 2a and 2c, cross-attention in long-form speech exhibits
+alignment errors. From this, it can be inferred that the position
+of the maximum cross-attention weight, as proposed in [26],
+is not the optimal aligned position for long-form speech and
+is the cause of its lower performance. In contrast, our method
+can readily obtain alignments for long-form speech without re-
+Table 5: WER (%) comparison on LibriSpeech. (Hybrid: Hy-
+brid CTC/Attention architecture. CTC (CTC-only) and Ours
+(Proposed method) are applied only to utterances longer than
+20 seconds.)
+Model
+dev-clean
+dev-other
+test-clean
+test-other
+Hybrid
+Conformer
+2.45
+5.67
+2.74
+5.85
+Transformer
+3.12
+8.09
+3.45
+7.99
+E-Branchformer
+1.99
+4.52
+2.17
+4.72
+CTC
+Conformer
+2.21
+5.60
+2.53
+5.57
+Transformer
+3.17
+8.15
+3.44
+8.10
+E-Branchformer
+1.94
+4.54
+2.15
+4.61
+Previous work [26]
+Conformer
+2.41
+5.71
+2.48
+5.66
+Ours
+Conformer
+2.17
+5.54
+2.48
+5.52
+Transformer
+3.06
+7.97
+3.28
+7.91
+E-Branchformer
+1.92
+4.51
+2.10
+4.58
+Table 6: WER (%) comparison on concatenated LibriSpeech.
+(Hybrid: Hybrid CTC/Attention architecture. CTC: CTC-only,
+Ours: Proposed method)
+Model
+dev-clean
+dev-other
+test-clean
+test-other
+Hybrid
+Conformer
+22.67
+28.32
+26.41
+27.81
+Transformer
+15.93
+24.77
+17.95
+24.33
+E-Branchformer
+13.64
+18.19
+15.51
+18.02
+CTC
+Conformer
+3.37
+11.58
+3.57
+10.86
+Transformer
+7.21
+19.93
+7.40
+19.68
+E-Branchformer
+2.62
+8.67
+2.73
+8.27
+Previous work [26]
+Conformer
+18.23
+23.59
+20.81
+23.98
+Ours
+Conformer
+3.14
+10.30
+3.06
+9.49
+Transformer
+5.54
+15.92
+5.68
+15.20
+E-Branchformer
+2.52
+7.73
+2.62
+7.31
+quiring additional fine-tuning or training a modified model from
+scratch, thereby achieving monotonic cross-attention and supe-
+rior performance.
+5. Conclusion
+In this work, we propose a method for improving long-form
+speech recognition by integrating a Gaussian mask into the
+Transformer decoder’s cross-attention mechanism during infer-
+ence. Specifically, we utilize the position index, where the CTC
+prefix score is maximized along the encoder output index, as the
+aligned position for constructing the Gaussian mask. In evaluat-
+ing Conformer models with a hybrid CTC/attention architecture
+and those with a CTC-only structure across different utterance
+lengths, we observed notable performance degradation in the
+hybrid model for utterances of 25-30 seconds or longer. Our
+method maintains the performance of hybrid models on short
+utterances while improving performance on longer utterances,
+outperforming CTC-only models. Furthermore, our method re-
+mains effective even when the hybrid model’s encoder is either
+a Transformer or an E-Branchformer.
+3332
+
+6. Acknowledgements
+This work was supported by Institute of Information &
+communications Technology Planning & Evaluation (IITP)
+grant funded by the Korea government(MSIT)(RS-2022-
+II220989(2022-0-00989), Development of Artificial Intelli-
+gence Technology for Multi-speaker Dialog Modeling)
+7. References
+[1] A. Graves, S. Fern´andez, F. Gomez, and J. Schmidhuber, “Con-
+nectionist temporal classification:
+labelling unsegmented se-
+quence data with recurrent neural networks,” in Proceedings of
+the 23rd international conference on Machine learning, 2006, pp.
+369–376.
+[2] J. K. Chorowski, D. Bahdanau, D. Serdyuk, K. Cho, and Y. Ben-
+gio, “Attention-based models for speech recognition,” Advances
+in neural information processing systems, vol. 28, 2015.
+[3] W. Chan, N. Jaitly, Q. Le, and O. Vinyals, “Listen, attend
+and spell: A neural network for large vocabulary conversational
+speech recognition,” in 2016 IEEE international conference on
+acoustics, speech and signal processing (ICASSP).
+IEEE, 2016,
+pp. 4960–4964.
+[4] S. Watanabe, T. Hori, S. Kim, J. R. Hershey, and T. Hayashi, “Hy-
+brid ctc/attention architecture for end-to-end speech recognition,”
+IEEE Journal of Selected Topics in Signal Processing, vol. 11,
+no. 8, pp. 1240–1253, 2017.
+[5] A. Vaswani, N. Shazeer, N. Parmar, J. Uszkoreit, L. Jones, A. N.
+Gomez, Ł. Kaiser, and I. Polosukhin, “Attention is all you need,”
+Advances in neural information processing systems, vol. 30, 2017.
+[6] L. Dong, S. Xu, and B. Xu, “Speech-transformer:
+A no-
+recurrence sequence-to-sequence model for speech recognition,”
+in 2018 IEEE International Conference on Acoustics, Speech and
+Signal Processing (ICASSP), 2018, pp. 5884–5888.
+[7] A. Gulati, J. Qin, C.-C. Chiu, N. Parmar, Y. Zhang, J. Yu,
+W. Han, S. Wang, Z. Zhang, Y. Wu, and R. Pang, “Conformer:
+Convolution-augmented Transformer for Speech Recognition,” in
+Proc. Interspeech 2020, 2020, pp. 5036–5040.
+[8] K. Kim, F. Wu, Y. Peng, J. Pan, P. Sridhar, K. J. Han, and
+S. Watanabe, “E-branchformer:
+Branchformer with enhanced
+merging for speech recognition,” in 2022 IEEE Spoken Language
+Technology Workshop (SLT).
+IEEE, 2023, pp. 84–91.
+[9] Y. Peng, K. Kim, F. Wu, B. Yan, S. Arora, W. Chen, J. Tang,
+S. Shon, P. Sridhar, and S. Watanabe, “A Comparative Study on E-
+Branchformer vs Conformer in Speech Recognition, Translation,
+and Understanding Tasks,” in Proc. INTERSPEECH 2023, 2023,
+pp. 2208–2212.
+[10] Y. Peng, S. Dalmia, I. Lane, and S. Watanabe, “Branchformer:
+Parallel mlp-attention architectures to capture local and global
+context for speech recognition and understanding,” in Interna-
+tional Conference on Machine Learning.
+PMLR, 2022, pp.
+17 627–17 643.
+[11] C.-C. Chiu, W. Han, Y. Zhang, R. Pang, S. Kishchenko,
+P. Nguyen, A. Narayanan, H. Liao, S. Zhang, A. Kannan et al.,
+“A comparison of end-to-end models for long-form speech recog-
+nition,” in 2019 IEEE automatic speech recognition and under-
+standing workshop (ASRU).
+IEEE, 2019, pp. 889–896.
+[12] J. D. Fox, D. Raj, N. Delworth, Q. McNamara, C. Miller, and
+M. Jett´e, “Updated corpora and benchmarks for long-form speech
+recognition,” in ICASSP 2024-2024 IEEE International Con-
+ference on Acoustics, Speech and Signal Processing (ICASSP).
+IEEE, 2024, pp. 13 246–13 250.
+[13] M. Zeineldeen, A. Zeyer, R. Schl¨uter, and H. Ney, “Chun-
+ked attention-based encoder-decoder model for streaming speech
+recognition,” in ICASSP 2024-2024 IEEE International Con-
+ference on Acoustics, Speech and Signal Processing (ICASSP).
+IEEE, 2024, pp. 11 331–11 335.
+[14] J. Pan, T. Lei, K. Kim, K. J. Han, and S. Watanabe, “Sru++: Pio-
+neering fast recurrence with attention for speech recognition,” in
+ICASSP 2022-2022 IEEE International Conference on Acoustics,
+Speech and Signal Processing (ICASSP). IEEE, 2022, pp. 7872–
+7876.
+[15] W. R. Huang, H. Zhang, S. Kumar, S.-Y. Chang, and T. Sainath,
+“Semantic Segmentation with Bidirectional Language Models
+Improves Long-form ASR,” in Proc. INTERSPEECH 2023, 2023,
+pp. 2778–2782.
+[16] M. Bain, J. Huh, T. Han, and A. Zisserman, “WhisperX: Time-
+Accurate Speech Transcription of Long-Form Audio,” in Proc.
+INTERSPEECH 2023, 2023, pp. 4489–4493.
+[17] D. Rekesh, N. R. Koluguri, S. Kriman, S. Majumdar, V. Noroozi,
+H. Huang, O. Hrinchuk, K. Puvvada, A. Kumar, J. Balam et al.,
+“Fast conformer with linearly scalable attention for efficient
+speech recognition,” in 2023 IEEE Automatic Speech Recognition
+and Understanding Workshop (ASRU).
+IEEE, 2023, pp. 1–8.
+[18] V. Panayotov, G. Chen, D. Povey, and S. Khudanpur, “Lib-
+rispeech: an asr corpus based on public domain audio books,”
+in 2015 IEEE international conference on acoustics, speech and
+signal processing (ICASSP).
+IEEE, 2015, pp. 5206–5210.
+[19] T. Yoshimura, T. Hayashi, K. Takeda, and S. Watanabe, “End-to-
+end automatic speech recognition integrated with ctc-based voice
+activity detection. icassp 2020-2020 ieee international conference
+on acoustics, speech and signal processing (icassp),” 2020.
+[20] T. Hori, N. Moritz, C. Hori, and J. L. Roux, “Transformer-Based
+Long-Context End-to-End Speech Recognition,” in Proc. Inter-
+speech 2020, 2020, pp. 5011–5015.
+[21] X. Gong, Y. Wu, J. Li, S. Liu, R. Zhao, X. Chen, and Y. Qian,
+“Longfnt: Long-form speech recognition with factorized neu-
+ral transducer,” in ICASSP 2023-2023 IEEE International Con-
+ference on Acoustics, Speech and Signal Processing (ICASSP).
+IEEE, 2023, pp. 1–5.
+[22] C. Raffel, M.-T. Luong, P. J. Liu, R. J. Weiss, and D. Eck, “Online
+and linear-time attention by enforcing monotonic alignments,” in
+International conference on machine learning. PMLR, 2017, pp.
+2837–2846.
+[23] C.-C. Chiu and C. Raffel, “Monotonic chunkwise attention,”
+arXiv preprint arXiv:1712.05382, 2017.
+[24] A. Tjandra, S. Sakti, and S. Nakamura, “Local monotonic atten-
+tion mechanism for end-to-end speech and language processing,”
+arXiv preprint arXiv:1705.08091, 2017.
+[25] X. Chang, A. S. Subramanian, P. Guo, S. Watanabe, Y. Fujita,
+and M. Omachi, “End-to-End ASR with Adaptive Span Self-
+Attention,” in Proc. Interspeech 2020, 2020, pp. 3595–3599.
+[26] Y. Zhao, C. Ni, C.-C. Leung, S. Joty, E. S. Chng, and B. Ma,
+“Cross Attention with Monotonic Alignment for Speech Trans-
+former,” in Proc. Interspeech 2020, 2020, pp. 5031–5035.
+[27] Z. Zhuang, K. Zou, C. Miao, M. Fang, T. Wei, Z. Li, W. Hu,
+S. Wang, and J. Xiao, “Improving attention-based end-to-end
+speech recognition by monotonic alignment attention matrix re-
+construction,” in ICASSP 2024-2024 IEEE International Con-
+ference on Acoustics, Speech and Signal Processing (ICASSP).
+IEEE, 2024, pp. 10 546–10 550.
+[28] N. Moritz, T. Hori, and J. Le Roux, “Triggered attention for end-
+to-end speech recognition,” in ICASSP 2019-2019 IEEE Interna-
+tional Conference on Acoustics, Speech and Signal Processing
+(ICASSP).
+IEEE, 2019, pp. 5666–5670.
+[29] H. Seki, T. Hori, S. Watanabe, N. Moritz, and J. Le Roux, “Vec-
+torized beam search for ctc-attention-based speech recognition.”
+in INTERSPEECH, 2019, pp. 3825–3829.
+[30] S. Watanabe, T. Hori, S. Karita, T. Hayashi, J. Nishitoba, Y. Unno,
+N. Enrique Yalta Soplin, J. Heymann, M. Wiesner, N. Chen,
+A. Renduchintala, and T. Ochiai, “Espnet: End-to-end speech pro-
+cessing toolkit,” in Interspeech 2018, 2018, pp. 2207–2211.
+3333
+

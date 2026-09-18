@@ -1,0 +1,744 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+From Sharpness to Better Generalization for Speech Deepfake Detection
+Wen Huang1, Xuechen Liu2, Xin Wang2, Junichi Yamagishi2†, Yanmin Qian1†
+1Auditory Cognition and Computational Acoustics Lab
+MoE Key Lab of Artificial Intelligence, AI Institute
+School of Computer Science, Shanghai Jiao Tong University, China
+2National Institute of Informatics, Japan
+holvan@sjtu.edu.cn, jyamagis@nii.ac.jp, yanminqian@sjtu.edu.cn
+Abstract
+Generalization remains a critical challenge in speech deepfake
+detection (SDD). While various approaches aim to improve ro-
+bustness, generalization is typically assessed through perfor-
+mance metrics like equal error rate without a theoretical frame-
+work to explain model performance. This work investigates
+sharpness as a theoretical proxy for generalization in SDD. We
+analyze how sharpness responds to domain shifts and find it
+increases in unseen conditions, indicating higher model sen-
+sitivity. Based on this, we apply Sharpness-Aware Minimiza-
+tion (SAM) to reduce sharpness explicitly, leading to better
+and more stable performance across diverse unseen test sets.
+Furthermore, correlation analysis confirms a statistically sig-
+nificant relationship between sharpness and generalization in
+most test settings. These findings suggest that sharpness can
+serve as a theoretical indicator for generalization in SDD and
+that sharpness-aware training offers a promising strategy for im-
+proving robustness.
+Index Terms:
+speech deepfake detection, generalization,
+sharpness-aware minimization
+1. Introduction
+Speech Deepfake Detection (SDD) aims to differentiate gen-
+uine from synthetic speech, which plays a vital role in com-
+bating audio-based misinformation, fraud, and security threats.
+However, generalization remains a major challenge, as mod-
+els trained on specific datasets often struggle when tested on
+unseen data, particularly under mismatched conditions such as
+languages, spoofing attacks, and recording environments [1,2].
+This lack of robustness highlights the need for better general-
+ization strategies to ensure reliable deepfake detection across
+diverse real-world scenarios.
+Various approaches have been proposed to improve gener-
+alization in speech deepfake detection, which can be broadly
+categorized into data-, model-, and feature-level strategies.
+Data-level methods enhance training diversity through data aug-
+mentation [3, 4] and synthetic spoofed data generation [5–7]
+to expose models to a wider range of variations.
+Model-
+level approaches improve robustness by leveraging advanced
+architectures that better capture temporal and spectral infor-
+mation [8–10] or by utilizing self-supervised learning models
+such as Wav2Vec 2.0 [11], XLS-R [12], and WavLM [13],
+which extract robust and transferable speech representations.
+Feature-level techniques focus on adjusting the feature space
+for improved discrimination without modifying model architec-
+ture [14–16].
+†Corresponding author. Code available at: https://github.com/nii-
+yamagishilab/SAM-AntiSpoofing
+Despite these advancements, generalization in speech deep-
+fake detection remains an abstract concept, typically assessed
+only through performance metrics such as Equal Error Rate
+(EER) and tandem metrics like the tandem Detection Cost
+Function (t-DCF) [17] and tandem EER (t-EER) [18]. While
+these metrics quantify how well a model performs on unseen
+data, they offer limited theoretical insight into why a model
+generalizes well or poorly. This lack of interpretability hinders
+systematic diagnosis of generalization failures and limits prin-
+cipled improvements, which highlights the need for a deeper
+theoretical understanding to guide more robust systems.
+A promising theoretical perspective on generalization
+comes from sharpness [19], which quantifies how much a
+model’s performance changes when its parameters are slightly
+altered. Intuitively, a sharp model is less robust if small pa-
+rameter changes cause large performance fluctuations. In con-
+trast, a flatter optimization surface ensures greater stability
+and better generalization to unseen data. Many studies sug-
+gest that lower sharpness correlates with improved generaliza-
+tion [19, 20], motivating the idea of minimizing sharpness to
+enhance robustness. To achieve this, Sharpness-Aware Mini-
+mization (SAM) [21] has been introduced as an optimization
+strategy that seeks model parameters in regions where the loss
+remains uniformly low. By jointly minimizing the loss value
+and sharpness, SAM aims to improve generalization beyond
+standard training methods. This concept has inspired further
+research to enhance SAM’s efficiency and effectiveness and has
+been successfully applied in computer vision and natural lan-
+guage processing. In speech processing, Shim et al. [22] applied
+SAM to multi-dataset co-training for SDD and demonstrated its
+potential for improving model robustness on its task.
+Nevertheless, the role of sharpness in explaining and quan-
+tifying generalization has yet to be explored in SDD. This work
+aims to bridge this gap by addressing two key research ques-
+tions:
+• Can sharpness serve as a theoretical indicator for general-
+ization in SDD?
+• Can SAM effectively reduce sharpness and enhance general-
+ization performance across diverse SDD datasets?
+To explore these questions, we first analyze how sharpness
+reacts to domain mismatch, examining its behavior across lan-
+guage, attack, channel, and speaker variability. Our findings
+indicate that sharpness increases in unseen conditions, which
+showcases its potential to diagnose generalization challenges.
+Next, we introduce SAM as an optimization strategy in SDD
+and evaluate its impact across diverse test sets. Our results show
+that SAM consistently improves performance, particularly in
+high-mismatch datasets, by flattening the loss landscape and re-
+ducing sharpness. Finally, we quantify the relationship between
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+5338
+10.21437/Interspeech.2025-1095
+
+Figure 1: Sharpness values computed for two models, AASIST
+and W2V-Base+Linear, across different mismatch scenarios.
+Abbreviations for test sets: WF (WaveFake), SC (SpoofCeleb),
+21LA (ASVspoof 2021 LA).
+sharpness and generalization by computing correlation metrics
+between sharpness and EER and find a statistically significant
+correlation in most out-of-distribution datasets. Overall, these
+findings suggest that sharpness can serve as a useful theoretical
+tool for understanding generalization in SDD, while also high-
+lighting the potential of sharpness-aware training to improve ro-
+bustness.
+2. Sharpness and Domain Mismatch
+Sharpness measures the sensitivity of the loss function to per-
+turbations in the model’s parameters, which is often associated
+with the model’s robustness [21]. Given this characteristic, we
+aim to first explore whether sharpness can serve as a diagnos-
+tic tool to evaluate how domain mismatch impacts the model’s
+sensitivity and robustness.
+To evaluate the sharpness of a model on a specific test
+set, we adopt the definition provided in [21, 23]. Let Stest =
+{xi, yi}n
+i=1 denote a test dataset with n samples, where xi is
+a sample and yi is its label, and let ℓi(w) represent the loss of
+a classifier parametrized by weights w, evaluated at the point
+(xi, yi). Given a maximum allowable perturbation magnitude
+ρ, the sharpness on a subset S ⊆Stest is defined as:
+s(w, S) ≜max
+∥ϵ∥2≤ρ
+1
+|S|
+X
+i:(xi,yi)∈S
+(ℓi(w + ϵ) −ℓi(w))
+(1)
+In practical computations, the sharpness is computed per batch
+and then averaged over the entire dataset Stest. This is also
+referred to as m-sharpness, where m represents the batch size.
+Since sharpness reflects model sensitivity to domain mis-
+match, we further investigate its behavior under four mismatch
+conditions, regarding language, attack, channel, and speaker.
+For sharpness calculation, we fix the batch size to m = 32 and
+the perturbation bound to ρ = 0.05. We test two models: AA-
+SIST [8] and Wav2vec Base [11] fine-tuned with linear layers
+(W2V-Base+Linear). Both models are trained on the ASVspoof
+2019 LA training set [24], which only contains clean English
+audio. The dataset and training configurations are same as the
+one provided in in 4.1.
+Figure 1 illustrates the distinct trends observed for each
+mismatch scenario:
+• Language: Sharpness is higher for the unseen Japanese sub-
+set of WaveFake (WF) than for the English subset, as the
+training data includes only English.
+• Attack: Sharpness increases significantly with the number of
+unseen spoofing attacks in the SpoofCeleb (SC) evaluation
+set, while the total number of bona fide and spoof samples is
+kept fixed.
+• Channel: Sharpness rises with the number of different chan-
+nel conditions in ASVspoof 2021 LA (21LA), especially for
+AASIST. In contrast, W2V-Base+Linear shows reduced sen-
+sitivity, likely due to robust pretraining and data augmenta-
+tion.
+• Speaker: Sharpness remains largely unchanged as the num-
+ber of speakers increases in SpoofCeleb (SC).
+These observations show that sharpness naturally reflects
+sensitivity to mismatch factors, with language, attack, and chan-
+nel variability increasing sharpness, while speaker variability
+not significantly affecting it. Notably, the W2V-Base+Linear
+model consistently exhibits lower sharpness than AASIST
+across all mismatch scenarios. This highlights the advantage of
+self-supervised learning pretraining in producing robust feature
+representations.
+Based on these findings, we observe a potential relation-
+ship between sharpness and generalization. Intuitively, a robust
+model should exhibit lower sharpness across different test sets,
+indicating less sensitivity to variations in test data. This raises
+the question of how sharpness can be minimized to enhance ro-
+bustness and generalization.
+3. Sharpness-Aware Minimization
+Sharpness-Aware Minimization is proposed in [21] to improve
+model generalization by simultaneously minimizing the loss
+value and its sharpness.
+Similar to Section 2, let S = (xi, yi)n
+i=1 be a set of la-
+beled data, and let ℓi(w) denote the loss evaluated at the point
+(xi, yi). For simplicity, we use LS(w) = 1/|S| Pn
+i=1 ℓi(w) to
+denote the accumulated loss for S.
+To optimize both the loss value and sharpness simultane-
+ously, SAM introduces the following objective function:
+LS(w) + λ∥w∥2
+2 + [ max
+∥ϵ∥2≤ρ LS(w + ϵ) −LS(w)]
+(2)
+Here, LS(w) is the original loss term, and λ∥w∥2
+2 is an L2
+regularization term. The term in square brackets corresponds
+to the sharpness-aware component, which measures how much
+the training loss increases when a perturbation ϵ (bounded by
+∥ϵ∥2 ≤ρ) is added to the model weights. This aligns with the
+definition of sharpness discussed in Section 2. After simplifica-
+tion, the SAM objective becomes:
+minw LSAM
+S
+(w) + λ∥w∥2
+2,
+where
+LSAM
+S
+(w) ≜max∥ϵ∥2≤ρ LS(w + ϵ)
+(3)
+To efficiently minimize LSAM
+S
+(w), SAM uses an effective
+approximation by leveraging a first-order expansion of LS(w)
+around w. The perturbation ϵ that maximizes LS(w + ϵ) is
+approximated as:
+ˆϵ(w) = ρ |∇wLS(w)|
+∥∇wLS(w)∥2
+(4)
+Using this approximation, the gradient of LSAM
+S
+(w) can be
+efficiently computed as:
+∇wLSAM
+S
+(w) ≈∇wLS(w)
+
+w+ˆϵ(w)
+(5)
+5339
+
+This approximation allows SAM to perform sharpness-
+aware optimization with only a small computational overhead
+compared with standard gradient descent methods. By encour-
+aging the model to minimize the worst-case loss over a neigh-
+borhood of parameter perturbations, SAM achieves flatter loss
+landscapes and improves the generalization performance of the
+model.
+4. Experiments and Analysis
+4.1. Experimental Settings
+Datasets.
+Systems were trained on the ASVspoof 2019 LA
+training set [24], which consists of 25k clean English utter-
+ances, including spoofed samples generated using 6 different
+voice conversion and text-to-speech attacks. The evaluation was
+conducted on eight unseen datasets representing diverse domain
+shifts, with performance measured using EER:
+• ASVspoof 2019 LA evaluation set (19LA) [24] contains 13
+spoofing attacks, with 2 being seen and the remaining 11 un-
+seen in the training set.
+• ASVspoof 2021 LA (21LA) [1] includes 7 channel condi-
+tions: 1 clean condition and 6 others affected by different
+codecs and transmission effects.
+• ASVspoof 2021 DF (21DF) [1] consists of 600k utterances
+with over 100 spoofing attacks processed through lossy
+codecs.
+• In-The-Wild (ITW) [2] contains crowdsourced deepfake and
+bona fide speech recorded under uncontrolled conditions.
+• Fake-Or-Real (FOR) [25] aggregates deepfake speech from
+various publicly available sources.
+• WaveFake
+(WF)
+[26]
+includes
+vocoded
+speech
+from
+LJSpeech (English) [27] and JSUT [28] (Japanese) for
+language-based evaluations.
+• ADD 2022 evaluation set (ADD) [29] is a Chinese deepfake
+dataset with multiple spoofing techniques.
+• SpoofCeleb evaluation set (SC) [30] contains 40 speakers and
+9 spoofing attacks for speaker-dependent evaluations.
+Models.
+We employed both standard supervised models
+trained from scratch (non-SSL) and fine-tuned self-supervised
+learning (SSL) pretrained models.
+For the non-SSL model,
+we use AASIST [8], an audio anti-spoofing system designed
+to detect spoofing artifacts.
+For SSL models, we utilized
+Wav2Vec 2.0 1 (Base and Large) [11], a self-supervised frame-
+work that learns speech representations from raw audio. Addi-
+tionally, we incorporated XLS-R [12], a multilingual extension
+of Wav2Vec 2.0 optimized for cross-lingual speech processing.
+These SSL models were fine-tuned with either linear layers or
+AASIST [31] as a backend classifier, denoted as +Linear or
++AASIST.
+Training Details.
+The systems were trained across three runs,
+each using a different random seed. Input speech was randomly
+chunked into 4-second segments, with RawBoost [3] augmen-
+tation applied. Training was performed using weighted cross-
+entropy loss, where the class weights for bona fide and spoof
+samples were set to 0.9 and 0.1, respectively. The Adam op-
+timizer was used for both standard and SAM training.
+For
+non-SSL models, the learning rate was set to 1e-4, follow-
+ing a cosine annealing schedule with a minimum learning rate
+of 5e-6, and a weight decay of 1e-4.
+For SSL models, the
+learning rate was set to 1e-6, with a weight decay of 1e-5.
+1github.com/facebookresearch/fairseq/tree/main/examples/wav2vec
+Figure 2:
+Visualization of the loss landscape for W2V-
+Base+Linear trained with the Adam optimizer (left) and the
+SAM optimizer (right). The x-y axes represent scaling factors
+for two weight perturbation directions, with the original model
+at (0,0). The z-axis shows the corresponding loss values for the
+perturbed model.
+In SAM optimization, the perturbation bound ρ was chosen
+from {0.05, 0.01, 0.005, 0.001}, with smaller models assigned
+larger ρ values.
+4.2. Generalization Improvement with SAM
+Table 1 presents the EER performance of various models trained
+with either standard Adam or SAM across multiple unseen test
+sets. The results demonstrate that SAM consistently improves
+generalization across nearly all models and datasets. The most
+significant improvements are observed in highly mismatched
+scenarios, particularly on 21LA, ITW, ADD, and WF, where
+SAM helps mitigate the impact of unseen conditions. Addi-
+tionally, SAM not only reduces EER but also stabilizes perfor-
+mance, as indicated by the generally lower standard deviations
+across different models. While some datasets, such as FOR and
+SC, exhibit relatively higher variance, the reduction in variance
+for models trained with SAM on most datasets suggests that
+sharpness minimization leads to more consistent and reliable
+generalization outcomes.
+Beyond optimizer comparisons, the results highlight the
+advantage of SSL models over non-SSL models. Even when
+trained with Adam, SSL models generally outperform non-SSL
+models, indicating that self-supervised pretraining enhances ro-
+bustness.
+Notably, SAM further boosts SSL model perfor-
+mance, particularly on datasets with significant domain shifts.
+This confirms that combining SSL pretraining with sharpness-
+aware optimization yields stronger generalization.
+A more detailed breakdown across models provides deeper
+insights. AASIST benefits consistently from SAM, with notable
+improvements on 21LA (4.62 vs. 8.10) and ADD (33.84 vs.
+40.48). W2V-Base and W2V-Large also show substantial gains,
+particularly for W2V-Base+Linear on 21LA (3.39 vs. 5.82) and
+W2V-Large+Linear on WF (16.69 vs. 23.97). However, for
+W2V-XLSR, the improvements are less pronounced, suggest-
+ing that the model’s pretraining may have already produced a
+robust feature space and thus reduced the impact of sharpness
+minimization. These findings demonstrate that while SAM is
+generally effective, its impact varies depending on the model
+architecture and dataset characteristics.
+To further understand how SAM influences optimization,
+we visualized the loss landscapes of W2V-Base+Linear trained
+with Adam and SAM (Figure 2). The visualizations were gener-
+ated following [32]2. We selected two random directions in the
+model’s weight space, perturbed the trained model along these
+2github.com/marcellodebernardi/loss-landscapes
+5340
+
+Table 1: Performance comparison of different models trained with either Adam or SAM across multiple test sets. The table reports the
+mean ± standard deviation EER (%) over three runs. Bold values indicate the lower value for each model.
+Model
+Optimizer
+19LA
+21LA
+21DF
+ITW
+FOR
+WF
+ADD
+SC
+AASIST
+Adam
+1.96 ± 0.61
+8.10 ± 1.33
+21.92 ± 2.61
+34.31 ± 6.73
+45.85 ± 0.68
+38.68 ± 3.02
+40.48 ± 3.98
+45.27 ± 3.01
+SAM
+1.71 ± 0.55
+4.62 ± 0.81
+19.58 ± 1.18
+33.34 ± 3.07
+33.51 ± 12.37
+33.85 ± 2.15
+33.84 ± 2.80
+43.98 ± 4.71
+W2V-Base+Linear
+Adam
+1.78 ± 0.51
+5.82 ± 1.01
+13.10 ± 3.00
+16.85 ± 2.74
+12.01 ± 2.07
+30.34 ± 6.71
+30.47 ± 9.03
+34.98 ± 1.66
+SAM
+1.21 ± 0.34
+3.39 ± 0.89
+11.93 ± 0.55
+13.66 ± 1.82
+9.57 ± 2.78
+36.95 ± 7.40
+24.29 ± 3.57
+34.87 ± 2.97
+W2V-Base+AASIST
+Adam
+2.81 ± 0.79
+4.78 ± 0.57
+10.37 ± 1.19
+18.29 ± 0.47
+11.11 ± 1.73
+27.79 ± 3.29
+36.22 ± 5.28
+45.89 ± 3.56
+SAM
+1.32 ± 0.38
+3.12 ± 0.39
+10.00 ± 0.76
+16.21 ± 2.02
+7.92 ± 1.37
+34.29 ± 2.88
+28.48 ± 3.73
+34.83 ± 0.46
+W2V-Large+Linear
+Adam
+1.37 ± 0.40
+3.11 ± 0.64
+6.79 ± 0.38
+14.96 ± 1.41
+13.24 ± 2.44
+23.97 ± 7.30
+30.97 ± 9.91
+48.35 ± 1.40
+SAM
+0.88 ± 0.10
+2.58 ± 0.37
+6.37 ± 0.30
+12.22 ± 1.41
+14.65 ± 1.79
+16.69 ± 1.59
+37.31 ± 6.68
+42.89 ± 5.73
+W2V-Large+AASIST
+Adam
+1.22 ± 0.60
+4.53 ± 0.99
+7.17 ± 0.17
+16.36 ± 1.80
+11.58 ± 1.81
+27.89 ± 2.76
+33.60 ± 3.40
+39.62 ± 4.50
+SAM
+1.04 ± 0.47
+3.60 ± 0.16
+6.82 ± 0.32
+15.46 ± 2.09
+10.02 ± 0.82
+25.12 ± 1.47
+31.41 ± 3.28
+39.67 ± 5.14
+W2V-XLSR+Linear
+Adam
+0.34 ± 0.06
+1.32 ± 0.35
+4.27 ± 0.43
+6.00 ± 0.51
+4.55 ± 1.19
+9.87 ± 3.24
+22.85 ± 2.78
+25.82 ± 1.89
+SAM
+0.20 ± 0.05
+1.87 ± 0.39
+3.38 ± 0.47
+5.99 ± 0.80
+3.69 ± 0.90
+7.66 ± 1.24
+21.71 ± 2.08
+25.65 ± 2.74
+W2V-XLSR+AASIST
+Adam
+0.34 ± 0.13
+1.85 ± 0.25
+3.61 ± 0.32
+6.89 ± 1.19
+4.56 ± 0.72
+16.92 ± 7.36
+19.67 ± 1.67
+27.50 ± 1.98
+SAM
+0.25 ± 0.12
+1.71 ± 0.27
+3.44 ± 0.54
+6.34 ± 0.62
+5.18 ± 1.48
+14.36 ± 4.74
+21.36 ± 0.59
+29.93 ± 3.30
+Figure 3: Scatter plots of sharpness (x-axis) and EER (%) (y-axis) across seven datasets. Each subplot corresponds to one dataset,
+with square markers for Adam systems and cross markers for SAM systems. A linear regression trend line is included for each group to
+represent the relationship between the two variables.
+directions, and evaluated the loss on the 19LA evaluation set.
+The visualization shows that SAM results in a noticeably flatter
+loss landscape compared to Adam, indicating reduced sensitiv-
+ity to perturbations. Additionally, the minima appear wider and
+smoother, which suggests that SAM encourages solutions that
+are more stable across variations in model parameters.
+4.3. Sharpness and Generalization
+After observing that SAM improves generalization across mul-
+tiple unseen test sets and results in a flatter loss landscape, we
+further investigated the relationship between sharpness and gen-
+eralization via statistical analysis. To do so, we calculated m-
+sharpness using the same process as described in Section 2 for
+a total of 24 systems trained with either Adam or SAM.
+The scatter plots in Figure 3 visualize the relationship
+between sharpness and EER across different datasets, where
+SAM-trained models generally exhibit lower sharpness across
+all datasets. Table 2 presents the correlation coefficients, includ-
+ing Pearson’s Correlation Coefficient (PCC), Spearman’s Rank
+Correlation Coefficient (SRCC), and Kendall’s Tau (KTAU).
+While the overall trend supports a positive correlation be-
+Table 2: Correlation coefficients between sharpness and EER
+performance across different datasets. Statistically significant
+correlations (p ≤0.05) are highlighted with a gray background,
+while highly significant values (p ≤0.01) are additionally
+underlined.
+Metric
+19LA
+21LA
+ITW
+FOR
+WF
+ADD
+SC
+PCC
+0.13
+0.65
+0.89
+0.30
+0.40
+0.65
+0.43
+SRCC
+0.53
+0.77
+0.87
+0.40
+0.52
+0.62
+0.49
+KTAU
+0.45
+0.63
+0.72
+0.32
+0.36
+0.34
+0.34
+tween sharpness and EER, the strength of this relationship
+varies across datasets. ITW, 21LA, and ADD show the strongest
+correlations across all three metrics, indicating that sharpness
+predicts generalization performance more effectively in these
+settings. In contrast, FOR, WF, and SC exhibit moderate cor-
+relations. This suggests that while sharpness ranking remains
+meaningful, other factors may also influence generalization.
+Additionally, SRCC consistently exceeds PCC, which implies
+that the relationship between sharpness and EER may not al-
+ways be strictly linear, but the general trend holds. The weakest
+correlation appears in 19LA, where PCC is low while SRCC
+and KTAU remain moderate. Since 19LA is an in-domain eval-
+uation set with training and test conditions that are largely sim-
+ilar, sharpness variations may have a more limited impact on
+performance.
+Despite these variations, sharpness exhibits moderate to
+strong and statistically significant correlations in five out of six
+out-of-domain datasets, which highlights its effectiveness as an
+indicator of generalization.
+5. Conclusion
+In this work, we examined sharpness as a theoretical proxy
+for generalization in speech deepfake detection. Our findings
+show that sharpness increases under domain shifts, indicating
+model sensitivity to unseen conditions. Our correlation anal-
+ysis confirmed its positive association with generalization, es-
+pecially in high-mismatch scenarios. We further demonstrated
+that sharpness-aware minimization reduces sharpness and gen-
+erally improves robustness, leading to better and more stable
+performance across diverse models and datasets. These results
+highlight sharpness as a useful diagnostic tool and suggest that
+sharpness-aware training can enhance model resilience to dis-
+tribution shifts.
+5341
+
+6. Acknowledgements
+This work was conducted during the first author’s intern-
+ship at NII, Japan.
+This study is partially supported by
+JST AIP Acceleration Research (JPMJCR24U3). This work
+was also supported in part by China NSFC projects under
+Grants 62122050 and 62071288, in part by Shanghai Munici-
+pal Science and Technology Commission Project under Grant
+2021SHZDZX0102.
+7. References
+[1] J. Yamagishi, X. Wang, M. Todisco, M. Sahidullah, J. Patino,
+A. Nautsch, X. Liu, K. A. Lee, T. Kinnunen, N. Evans et al.,
+“ASVspoof 2021: Accelerating progress in spoofed and deep-
+fake speech detection,” in ASVspoof 2021 Workshop-Automatic
+Speaker Verification and Spoofing Coutermeasures Challenge,
+2021.
+[2] N. M. M¨uller, P. Czempin, F. Dieckmann, A. Froghyar, and
+K. B¨ottinger, “Does audio deepfake detection generalize?” Proc.
+ISCA Interspeech, 2022.
+[3] H. Tak, M. Kamble, J. Patino, M. Todisco, and N. Evans, “Raw-
+Boost: A raw data boosting and augmentation method applied to
+automatic speaker verification anti-spoofing,” in Proc. ICASSP.
+IEEE, 2022, pp. 6382–6386.
+[4] D. S. Park, W. Chan, Y. Zhang, C.-C. Chiu, B. Zoph, E. D.
+Cubuk, and Q. V. Le, “SpecAugment: A simple data augmen-
+tation method for automatic speech recognition,” arXiv preprint
+arXiv:1904.08779, 2019.
+[5] X. Wang and J. Yamagishi, “Spoofed training data for speech
+spoofing countermeasure can be efficiently created using neural
+vocoders,” in Proc. ICASSP.
+IEEE, 2023, pp. 1–5.
+[6] ——, “Can large-scale vocoded spoofed data improve speech
+spoofing countermeasure with a self-supervised front end?” in
+Proc. ICASSP.
+IEEE, 2024, pp. 10 311–10 315.
+[7] L. Zhang, K. A. Lee, L. Zhang, L. Wang, and B. Niu, “CPAUG:
+Refining copy-paste augmentation for speech anti-spoofing,” in
+ICASSP 2024-2024 IEEE International Conference on Acous-
+tics, Speech and Signal Processing (ICASSP).
+IEEE, 2024, pp.
+10 996–11 000.
+[8] J.-w. Jung, H.-S. Heo, H. Tak, H.-j. Shim, J. S. Chung, B.-J.
+Lee, H.-J. Yu, and N. Evans, “AASIST: Audio anti-spoofing using
+integrated spectro-temporal graph attention networks,” in Proc.
+ICASSP.
+IEEE, 2022, pp. 6367–6371.
+[9] H. Wu, W. Guo, Z. Zhang, W. Zhao, S. Peng, and J. Zhang,
+“Spoofing speech detection by modeling local spectro-temporal
+and long-term dependency,” in Proc. ISCA Interspeech, 2024, pp.
+507–511.
+[10] D.-T. Truong, R. Tao, T. Nguyen, H.-T. Luong, K. A. Lee,
+and E. S. Chng, “Temporal-channel modeling in multi-head self-
+attention for synthetic speech detection,” in Proc. ISCA Inter-
+speech, 2024, pp. 537–541.
+[11] A. Baevski, Y. Zhou, A. Mohamed, and M. Auli, “wav2vec
+2.0: A framework for self-supervised learning of speech repre-
+sentations,” Advances in neural information processing systems,
+vol. 33, pp. 12 449–12 460, 2020.
+[12] A. Babu, C. Wang, A. Tjandra, K. Lakhotia, Q. Xu, N. Goyal,
+K. Singh, P. von Platen, Y. Saraf, J. Pino, A. Baevski, A. Conneau,
+and M. Auli, “XLS-R: Self-supervised cross-lingual speech rep-
+resentation learning at scale,” arXiv, vol. abs/2111.09296, 2021.
+[13] S. Chen, C. Wang, Z. Chen, Y. Wu, S. Liu, Z. Chen, J. Li,
+N. Kanda, T. Yoshioka, X. Xiao et al., “WavLM: Large-scale self-
+supervised pre-training for full stack speech processing,” IEEE
+Journal of Selected Topics in Signal Processing, vol. 16, no. 6,
+pp. 1505–1518, 2022.
+[14] Y. Zhang, F. Jiang, and Z. Duan, “One-class learning towards syn-
+thetic voice spoofing detection,” IEEE Signal Processing Letters,
+vol. 28, pp. 937–941, 2021.
+[15] H. M. Kim, K. Jang, and H. Kim, “One-class learning with adap-
+tive centroid shift for audio deepfake detection,” in Proc. ISCA
+Interspeech, 2024, pp. 4853–4857.
+[16] W. Huang, Y. Gu, Z. Wang, H. Zhu, and Y. Qian, “Generalizable
+audio deepfake detection via latent space refinement and augmen-
+tation,” in Proc. ICASSP, 2025, pp. 1–5.
+[17] T. Kinnunen, H. Delgado, N. Evans, K. A. Lee, V. Vestman,
+A. Nautsch, M. Todisco, X. Wang, M. Sahidullah, J. Yamagishi
+et al., “Tandem assessment of spoofing countermeasures and au-
+tomatic speaker verification: Fundamentals,” IEEE Trans. Audio,
+Speech, Language Process., vol. 28, pp. 2195–2210, 2020.
+[18] T. H. Kinnunen, K. A. Lee, H. Tak, N. Evans, and A. Nautsch, “t-
+EER: Parameter-free tandem evaluation of countermeasures and
+biometric comparators,” IEEE Transactions on Pattern Analysis
+and Machine Intelligence, 2023.
+[19] N. S. Keskar, D. Mudigere, J. Nocedal, M. Smelyanskiy, and
+P. T. P. Tang, “On large-batch training for deep learning: Gen-
+eralization gap and sharp minima,” 2017.
+[20] Y. Jiang, B. Neyshabur, H. Mobahi, D. Krishnan, and S. Bengio,
+“Fantastic generalization measures and where to find them,” 2020.
+[21] P. Foret, A. Kleiner, H. Mobahi, and B. Neyshabur, “Sharpness-
+aware minimization for efficiently improving generalization,” in
+International Conference on Learning Representations, 2021.
+[22] H.-j. Shim, J.-w. Jung, and T. Kinnunen, “Multi-dataset co-
+training with sharpness-aware optimization for audio anti-
+spoofing,” in Proc. ISCA Interspeech, 2023, pp. 3804–3808.
+[23] M. Andriushchenko and N. Flammarion, “Towards understanding
+sharpness-aware minimization,” in International Conference on
+Machine Learning.
+PMLR, 2022, pp. 639–668.
+[24] X. Wang, J. Yamagishi, M. Todisco, H. Delgado, A. Nautsch,
+N. Evans, M. Sahidullah, V. Vestman, T. Kinnunen, K. A. Lee
+et al., “ASVspoof 2019: A large-scale public database of synthe-
+sized, converted and replayed speech,” Computer Speech & Lan-
+guage, vol. 64, p. 101114, 2020.
+[25] R. Reimao and V. Tzerpos, “FoR: A dataset for synthetic speech
+detection,” in 2019 International Conference on Speech Technol-
+ogy and Human-Computer Dialogue (SpeD).
+IEEE, 2019, pp.
+1–10.
+[26] J. Frank and L. Sch¨onherr, “WaveFake: A data set to facilitate
+audio deepfake detection,” in Thirty-fifth Conference on Neural
+Information Processing Systems Datasets and Benchmarks Track,
+2021.
+[27] K. Ito and L. Johnson, “The LJ Speech dataset,” https://keithito.
+com/LJ-Speech-Dataset/, 2017.
+[28] R. Sonobe, S. Takamichi, and H. Saruwatari, “JSUT corpus: Free
+large-scale japanese speech corpus for end-to-end speech synthe-
+sis,” arXiv preprint arXiv:1711.00354, 2017.
+[29] J. Yi, R. Fu, J. Tao, S. Nie, H. Ma, C. Wang, T. Wang, Z. Tian,
+Y. Bai, C. Fan et al., “ADD 2022: the first audio deep synthesis
+detection challenge,” in Proc. ICASSP.
+IEEE, 2022, pp. 9216–
+9220.
+[30] J.-w. Jung, Y. Wu, X. Wang, J.-H. Kim, S. Maiti, Y. Matsunaga,
+H.-j. Shim, J. Tian, N. Evans, J. S. Chung et al., “SpoofCeleb:
+Speech deepfake detection and SASV in the wild,” IEEE Open
+Journal of Signal Processing, 2025.
+[31] H. Tak, M. Todisco, X. Wang, J.-w. Jung, J. Yamagishi, and
+N. Evans, “Automatic speaker verification spoofing and deep-
+fake detection using wav2vec 2.0 and data augmentation,” in The
+Speaker and Language Recognition Workshop, 2022.
+[32] H. Li, Z. Xu, G. Taylor, C. Studer, and T. Goldstein, “Visualizing
+the loss landscape of neural nets,” Advances in neural information
+processing systems, vol. 31, 2018.
+5342
+

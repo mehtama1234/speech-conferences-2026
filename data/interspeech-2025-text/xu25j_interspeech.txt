@@ -1,0 +1,723 @@
+Mitigating Audiovisual Mismatch in Visual-Guide Audio Captioning
+Le Xu1, Chenxing Li1,†, Yong Ren1,3, Yujie Chen1,3, Yu Gu1, Ruibo Fu3, Shan Yang1, Dong Yu2,†
+1Tencent AI Lab, Beijing, China
+2Tencent AI Lab, Seattle, USA
+3Institute of Automation, Chinese Academy of Sciences, Beijing, China
+lichenxing007@gmail.com, dongyu@ieee.org
+Abstract
+Current vision-guided audio captioning systems frequently fail
+to address audiovisual misalignment in real-world scenarios,
+such as dubbed content or off-screen sounds. To bridge this crit-
+ical gap, we present an entropy-aware gated fusion framework
+that dynamically modulates visual information flow through
+cross-modal uncertainty quantification.
+Our novel approach
+employs attention entropy analysis in cross-attention layers to
+automatically identify and suppress misleading visual cues dur-
+ing modal fusion.
+Complementing this architecture, we de-
+velop a batch-wise audiovisual shuffling technique that gen-
+erates synthetic mismatched training pairs, greatly enhancing
+model resilience against alignment noise. Evaluations on the
+AudioCaps benchmark demonstrate our system’s superior per-
+formance over existing baselines, especially in mismatched
+modality scenarios. Furthermore, our solution demonstrates an
+approximately 6x improvement in inference speed compared to
+the baseline.
+Index Terms: Audio Captioning, Multi-modal Understanding,
+Cross-modal Fusion
+1. Introduction
+Automatic audio captioning (AAC), which aims to generate nat-
+ural language descriptions for unconstrained audio clips [1],
+has emerged as a critical technology bridging machine percep-
+tion and human communication. This task is applicable in ar-
+eas such as multimedia retrieval [2, 3], assistive technologies
+for the hearing-impaired [4, 5], and intelligent video analysis
+systems [6]. While existing approaches predominantly focus
+on modelling audio signals alone [7, 8, 9, 10], recent stud-
+ies have explored leveraging visual information from accom-
+panying videos to understand complex auditory scenes better
+[11, 12, 13]. However, these vision-guided approaches typically
+rely on the assumption of perfect audiovisual correspondence,
+an assumption that often does not hold in real-world scenarios
+due to issues like dubbed content or off-screen sound sources.
+Previous multimodal AAC frameworks generally employ
+early fusion strategies (e.g., concatenation-based feature merg-
+ing [12, 13]) or late fusion architectures with attention mech-
+anisms [14, 11] to combine audio features with visual repre-
+sentations extracted from synchronized video frames. AVCap
+[12] concatenates raw audiovisual features, assuming inherent
+compatibility between modalities. Building on this, LAVCap
+[13] introduces an optimal transport-based loss function to align
+audiovisual modalities better. VACT [11] proposes an Adap-
+tive Audio-Visual Attention method that integrates audio and
+visual information through confidence scores derived from the
+†Corresponding author.
+textual modality. However, these approaches face two signif-
+icant limitations: First, they assume semantic consistency be-
+tween the modalities, which can introduce noise when this as-
+sumption is violated, such as when ambient sounds come from
+off-screen objects or when visible objects have no correspond-
+ing sounds.
+This prevalent but overlooked audiovisual mis-
+match problem can significantly degrade model performance
+by misleading cross-modal reasoning. Second, when process-
+ing long-form video inputs, concatenation-based systems incur
+prohibitive computational costs, as they require redundant en-
+coding of dense frame-level visual features even for temporally
+static acoustic events. This computational inefficiency becomes
+particularly problematic in real-time applications with strict la-
+tency requirements.
+To tackle this challenge, we introduce a novel framework
+that incorporates entropy-aware gated cross-attention with con-
+trastive data augmentation. Our key insight lies in enabling dy-
+namic modality selection rather than enforcing unconditional
+visual dependency. The proposed gate mechanism evaluates
+cross-modality relevance by calculating attention entropy dur-
+ing feature interactions, which allows for the automatic sup-
+pression of misleading visual cues during caption generation.
+Additionally, our mismatch-aware data augmentation strategy
+systematically exposes the model to mismatched audiovisual
+samples during training, which fosters robustness against real-
+world inconsistencies. The primary contributions of this work
+include:
+1. First systematic investigation of audiovisual mismatch in
+video-assisted AAC, identifying its detrimental effects on
+conventional fusion approaches;
+2. An adaptive gating mechanism based on attention entropy
+dynamics, achieving context-aware modality weighting with-
+out additional supervision;
+3. A practical learning paradigm through randomized intra-
+batch re-pairing, effectively simulating diverse mismatch
+scenarios;
+4. Comprehensive evaluations across multiple metrics demon-
+strate superior performance under mismatched conditions.
+Moreover, our system achieves an approximately 6x im-
+provement in inference speed compared to the baseline while
+still maintaining competitive accuracy.
+2. Methods
+Our proposed framework, Entropy-aware Visual-guide Audio
+Captioning (called EVACap), addresses audiovisual mis-
+matches with two key innovations: (1) an entropy-guided gated
+fusion mechanism that dynamically controls the flow of visual
+information, and (2) a probabilistic data augmentation strategy
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+161
+10.21437/Interspeech.2025-1593
+
+Audio Encoder
+Visual Encoder
+Entropy-aware Gated Fusion
+Feature Encoder
+Attention Score
+Cross Attention
+Q
+V
+V
+Attention Entropy
+1 −𝜎
+𝜎
+BOS
+Linear Layer
+EOS
+Many insects are buzzing and rustling is 
+occurring
+Many insects
+is
+occurring
+Many insects
+is
+occurring
+Text Embedding Layer
+Textual Decoder
+(b) Entropy-aware Gated Fusion Module
+(a) Overview of EVACap
+K
+Linear Layer
+Feature Encoder
+σ
+Figure 1: (a) Overview of the proposed EVACap Framework. (b) Detail of the Entropy-aware Gated Fusion module.
+that enhances model robustness.
+The overall architecture is
+based on the CAV-MAE [15] pretrained foundation, with care-
+ful adaptations tailored for caption generation.
+2.1. Audiovisual modal alignment
+As shown in Figure 1(a). We employ CAV-MAE [15] as our
+multimodal encoder due to its contrastive audiovisual alignment
+capabilities. For each input video clip (a,v), we extract temporal
+features from both modalities:
+• Visual features Fv
+∈
+RTv×d using frame-based Vision
+Transformers (ViT) [16] encoder;
+• Audio features Fa ∈RTa×d via fbank processing with same
+struct of ViT encoder.
+Unlike the original CAV-MAE modal fusion method, our
+novel entropy-gated fusion module facilitates conditional inter-
+action. This approach preserves modality-specific characteris-
+tics while allowing for context-aware integration of visual cues.
+2.2. Entropy-aware gated modal fusion
+The core innovation lies in quantifying the relevance of the
+cross-modal relationship through the analysis of the distribu-
+tion of attention. Given a query vector Q from audio A and
+key-value pairs (K,V ) from vision, where Tv and Ta denote
+the length of the visual and audio input sequences respectively:
+Patt = softmax(QKT
+√
+d
+),
+F = Patt × V.
+(1)
+We compute attention scores Patt and multimodal features
+F.
+Then we obtain the entropy Eatt over the normalized
+weights α ∈RN where N = Tv and p ∈Patt, measuring
+the dispersion of visual focus:
+Eatt = −PTa
+i=1 pi log pi
+log α
+.
+(2)
+As shown in Figure 1 (b). A learnable gate modulates visual
+influence based on this uncertainty metric:
+g = σ(wgEatt + bg),
+F = (1 −g) · A + g · F,
+(3)
+where wg, bg are trainable parameters and σ denotes sigmoid
+activation. The system utilizes the gating value g to identify
+and suppress misleading visual cues during modal fusion auto-
+matically.
+2.3. Mismatch-aware data augmentation
+To explicitly handle real-world audiovisual discrepancies, we
+propose Stochastic Modality Shuffling (SMS) during training.
+Let B = {(ai, vi)}B
+i=1 denote a batch containing B samples,
+and RB denote the set of all permutation matrices of size B:
+Algorithm 1 Stochastic Modality Shuffling
+1: Input: Batch features V = [v1, . . . , vB]
+2: Generate permutation matrix P ∼U(RB)
+3: Apply shuffle: ˆV = PV
+4: Mix with original audio: ˆB = {(ai, ˆvj)|i, j ≤B}
+This creates controlled mismatches at probability pmix by
+replacing vj with shuffled counterparts ˆvk, forcing the model
+to develop robust audio understanding without over-relying on
+visual context.
+The complete model optimizes standard captioning loss
+LCE combined with regularization terms for gate stability and
+semantic consistency across perturbed examples. Our ablation
+studies demonstrate how these components synergistically im-
+prove performance under diverse mismatch conditions.
+3. Experiments
+3.1. Experimental settings
+3.1.1. Dataset and metrics
+We conduct experiments on the AudioCaps dataset [17], the
+most extensive audio captioning corpus containing 51,308
+162
+
+Table 1: Performance on the AudioCaps test set with the context of long video inputs (18 frames). Bold represents the best performance
+for each metric, and Params denotes trainable parameters.
+Model
+Params
+Bleu1
+Bleu2
+Bleu3
+Bleu4
+METEOR
+ROUGEL
+CIDEr
+SPICE
+SPIDEr
+Audio Only
+153 M
+0.645
+0.476
+0.337
+0.231
+0.225
+0.474
+0.635
+0.162
+0.398
+AVCap
+233 M
+0.666
+0.491
+0.349
+0.240
+0.230
+0.479
+0.646
+0.170
+0.408
+Proposed
+235 M
+0.670
+0.500
+0.361
+0.258
+0.228
+0.474
+0.649
+0.170
+0.410
+Proposed w/o SMS
+235 M
+0.662
+0.492
+0.355
+0.256
+0.226
+0.473
+0.650
+0.172
+0.411
+YouTube video clips from AudioSet [18] with human-annotated
+captions. Since some links are no longer accessible, we ob-
+tained 43,941 out of 49,838 audio-video clips for the train set,
+447 out of 495 for the validation set and 866 out of 975 for the
+test set. Each clip contains 10-second audio paired with video
+frames. For the training set, each clip has one textual caption,
+while for the test set, each clip has five textual captions.
+We
+adopt
+five
+conventional
+captioning
+metrics:
+BLEUn(Bn, n
+∈
+[1, . . . , 4]) [19], METEOR (M) [20],
+ROUGEL (R) [21], CIDEr (C) [22], and SPICE (S) [23], along
+with the SPIDEr [24] metric that combines CIDEr and SPICE.
+All metrics are calculated using the MS-COCO [25] evaluation
+toolkit.
+3.1.2. Baselines
+Our experimental framework is established within the context of
+long video inputs (18 frames). Due to the unavailability of the
+multimodal model weights and associated training code from
+VACT, we exclusively present the experimental results of AV-
+Cap as our baseline. All models were trained on the training
+set using 18-frame video sequences as visual cues. The ”Au-
+dio Only” configuration represents the AVCap model without
+visual information, maintaining identical architecture to other
+systems, and serves as the experimental lower bound.
+3.1.3. Implementation details
+Our implementation builds upon the AVCap architecture. For
+video processing, we uniformly sample 18 frames (2 FPS ×
+9s) and split each frame into 16×16 patches. We extract 128-
+dimensional log Mel-filterbank (FBank) features from an au-
+dio clip using a 25ms Hamming window with a 10ms stride
+and split them into 16×16 patches to match the video feature
+structure.
+Both audio and visual features are independently
+processed through modality-specific 11-layer ViTs with 768-
+dimensional hidden states and 12 attention heads.
+3.2. Main results
+The proposed method demonstrates competitive performance
+across all metrics on the AudioCaps test set. As shown in Ta-
+ble 1. Our data augmentation variant achieves state-of-the-art
+results in all BLEU metrics, showing the effectiveness of data
+augmentation for n-gram-based evaluation. However, the base
+Proposed model without augmentation obtains the best scores in
+three semantic-aware metrics: CIDEr (0.650), SPICE (0.172),
+and SPIDEr (0.411), suggesting better semantic alignment de-
+spite slightly lower n-gram matches.
+AVCap maintains superiority in METEOR (0.230) and
+ROUGE-L (0.479), indicating particular strengths in recall-
+oriented matching and synonym recognition. The audio-only
+baseline shows expected limitations across all metrics, confirm-
+ing the value of multimodal approaches. A further analysis of
+Table 2: Study on training-phase audiovisual shuffle probabil-
+ity (Prob), where Prob controls the likelihood of randomly re-
+pairing audio and video streams within each mini-batch to sim-
+ulate mismatch scenarios during training. All models are eval-
+uated on the original unshuffled test set (0% shuffle).
+Prob
+B1
+B4
+M
+R
+C
+S
+0%
+0.662
+0.256
+0.226
+0.473
+0.650
+0.172
+5%
+0.670
+0.258
+0.228
+0.474
+0.649
+0.170
+50%
+0.656
+0.242
+0.221
+0.469
+0.631
+0.170
+100%
+0.664
+0.236
+0.223
+0.470
+0.622
+0.166
+the results can be found in Section 3.3.
+3.3. Effect of data mismatch
+3.3.1. Mismatching during training
+To validate the impact of audiovisual mismatch on system per-
+formance, we conducted model training with varying probabil-
+ity settings for SMS. The quantitative results are presented in
+Table 2. We observed that when applying a shuffling probability
+of 5% to simulate real-world mismatch conditions through per-
+turbed audiovisual pairings, the model demonstrated improved
+recall metrics at the expense of reduced semantic accuracy (as
+measured by CIDEr scores). More extreme mismatch scenarios
+with higher shuffling probabilities adversely affected all evalu-
+ation metrics, suggesting that excessive artificial mismatching
+during training degrades overall captioning quality. This empir-
+ical evidence highlights the importance of maintaining an ap-
+propriate balance between mismatch simulation and the preser-
+vation of genuine audiovisual correspondence during the aug-
+mentation process.
+3.3.2. Mismatching during prediction
+Table 3 demonstrates the effectiveness of our proposed SMS
+through systematic evaluation under varying degrees of audio-
+visual mismatch.
+First, our method exhibits superior robustness to modality
+mismatch compared to the baseline AVCap. Across seven out
+of eight evaluation metrics (excluding CIDEr), the proposed ap-
+proach shows strictly smaller performance degradation than the
+baseline when test-time shuffle probability escalates from 0% to
+100%. This resilience is particularly evident in semantic metrics
+like SPICE, where our method preserves 98.8% of the original
+performance compared to AVCap’s 92.4% retention.
+Notably, our method trained with 5% shuffle probability
+generalizes well to extreme mismatch conditions (100% shuf-
+fle), suggesting that even limited exposure to artificial mismatch
+during training enables effective generalization. The controlled
+randomization in SMS acts as a regularizer, preventing over-
+163
+
+Table 3: Complete performance comparison under different shuffle probabilities of testset.
+Method
+Probability
+Bleu1
+Bleu2
+Bleu3
+Bleu4
+METEOR
+ROUGEL
+CIDEr
+SPICE
+AVCap
+0%
+0.666
+0.491
+0.349
+0.240
+0.230
+0.479
+0.646
+0.170
+5%
+0.663
+0.487
+0.342
+0.232
+0.223
+0.474
+0.651
+0.158
+50%
+0.664
+0.487
+0.341
+0.231
+0.223
+0.472
+0.642
+0.158
+100%
+0.657
+0.481
+0.338
+0.229
+0.223
+0.470
+0.636
+0.157
+Proposed
+0%
+0.670
+0.500
+0.361
+0.258
+0.228
+0.474
+0.649
+0.170
+5%
+0.669
+0.498
+0.359
+0.255
+0.227
+0.473
+0.649
+0.169
+50%
+0.667
+0.498
+0.359
+0.255
+0.227
+0.471
+0.642
+0.168
+100%
+0.667
+0.493
+0.357
+0.258
+0.225
+0.467
+0.627
+0.168
+Table 4: Ablation study on key components: ”w/o S” denotes
+removing Stochastic Modality Shuffling, ”w/o E” indicates dis-
+abling entropy gating, ”w/o S&E” removes both components,
+and ”w/o G” represents baseline without gating mechanisms.
+Method
+B1
+B4
+M
+R
+C
+S
+Proposed
+0.670
+0.258
+0.228
+0.474
+0.649
+0.170
+w/o S
+0.662
+0.256
+0.226
+0.473
+0.650
+0.172
+w/o E
+0.660
+0.253
+0.227
+0.475
+0.640
+0.175
+w/o S&E
+0.664
+0.245
+0.224
+0.469
+0.644
+0.169
+w/o G
+0.654
+0.248
+0.226
+0.475
+0.643
+0.168
+reliance on visual modality while preserving beneficial cross-
+modal interactions.
+3.4. Ablation studies
+To validate the effectiveness of key components in our frame-
+work, we conduct comprehensive ablation studies under five
+experimental settings and quantitative results are presented in
+Table 4: (1) the full proposed model, (2) removing the SMS
+strategy, (3) disabling the attention entropy gating mechanism,
+(4) removing both SMS and entropy gating, and (5) baseline
+cross-attention fusion without any mismatch handling mecha-
+nisms.
+Three key observations emerge from the ablation studies.
+First, the model employing only traditional gating mechanisms
+(w/o S&E) demonstrates performance comparable to that of
+directly utilizing cross-attention for modality fusion (w/o G),
+thereby substantiating the efficacy of our proposed gating strat-
+egy.
+Secondly, although w/o S or w/o E leads to improve-
+ments in semantic accuracy, the simultaneous elimination of
+both components w/o S&E results in a decline in semantic pre-
+cision. This observation underscores the complementary na-
+ture of our two innovations in addressing audiovisual incon-
+gruities. Finally, the baseline cross-attention (w/o G) exhibits
+a decline across all metrics. This validates our hypothesis that
+naive cross-modal fusion leads to error propagation when au-
+diovisual mismatch occurs.
+3.5. Inference time comparison
+We conduct a comprehensive inference speed analysis to eval-
+uate the computational efficiency of different approaches under
+varying video input lengths. The experiment employs 1024-
+frame audio clips paired with video inputs sampled at two
+frames per second (fps), with frame quantities set to 0, 1, 4,
+8, 18 to simulate different temporal contexts. Each configu-
+ration undergoes five warm-up iterations before performing 10
+0
+1
+4
+8
+18
+Input Frames
+0
+2
+4
+6
+8
+10
+12
+14
+16
+18
+Inference Time (seconds)
+Proposed
+AVCap
+Figure 2: Inference time comparison (seconds) across different
+length of input video frames. 0 Input Frames denotes a baseline
+with no video modal inputs.
+timed inference runs, with the final results averaged for stabil-
+ity. Our proposed method demonstrates superior computational
+efficiency (2.369-2.733 seconds) compared to AVCap (3.416-
+15.029 seconds), mainly showing more significant advantages
+as video context expands. The audio-only baseline, operating
+without visual inputs, maintains a consistent inference time of
+2.351 seconds. This systematic evaluation reveals that our ar-
+chitecture achieves significant speed improvements while han-
+dling multimodal inputs, especially in long-sequence process-
+ing scenarios.
+4. Conclusion
+In this paper, we present a novel framework to address au-
+diovisual mismatch in video-assisted audio captioning through
+adaptive gating and mismatch-aware training. By leveraging
+cross-attention entropy as a self-supervised gate, our model
+dynamically suppresses irrelevant visual features when audio
+and video modalities are misaligned while preserving benefi-
+cial cross-modal cues in matched scenarios.
+Complemented
+by a batch-wise audiovisual shuffling strategy that simulates
+real-world mismatch noise, the approach achieves robust per-
+formance across both aligned and misaligned conditions. Ex-
+periments on standard benchmarks demonstrate state-of-the-art
+results, with ablation studies confirming the dual contributions
+of our gating mechanism and data augmentation. The solution
+requires no additional supervision or architectural complexity,
+offering practical value for real-world deployment. Future work
+will extend this paradigm to other multimodal tasks vulnerable
+to alignment noise.
+164
+
+5. References
+[1] X. Mei, X. Liu, M. D. Plumbley, and W. Wang, “Automated audio
+captioning: An overview of recent progress and new challenges,”
+EURASIP journal on audio, speech, and music processing, vol.
+2022, no. 1, p. 26, 2022.
+[2] X. Mei, X. Liu, J. Sun, M. D. Plumbley, and W. Wang, “On met-
+ric learning for audio-text cross-modal retrieval,” arXiv preprint
+arXiv:2203.15537, 2022.
+[3] X. Liu, H. Liu, Q. Kong, X. Mei, J. Zhao, Q. Huang,
+M. D. Plumbley, and W. Wang, “Separate what you describe:
+Language-queried audio source separation,”
+arXiv preprint
+arXiv:2203.15147, 2022.
+[4] R. Hong, M. Wang, M. Xu, S. Yan, and T.-S. Chua, “Dynamic
+captioning: video accessibility enhancement for hearing impair-
+ment,” in Proceedings of the 18th ACM international conference
+on Multimedia, 2010, pp. 421–430.
+[5] R. Hong, M. Wang, X.-T. Yuan, M. Xu, J. Jiang, S. Yan, and T.-
+S. Chua, “Video accessibility enhancement for hearing-impaired
+users,” ACM Transactions on Multimedia Computing, Communi-
+cations, and Applications (TOMM), vol. 7, no. 1, pp. 1–19, 2011.
+[6] S.-H. Lee, J. Wang, D. Fan, Z. Zhang, L. Liu, X. Hao, V. Bhat,
+and X. Li, “Nowyousee me: Context-aware automatic audio de-
+scription,” arXiv preprint arXiv:2412.10002, 2024.
+[7] M. Xu, C. Li, X. Tu, Y. Ren, R. Fu, W. Liang, and D. Yu, “Towards
+diverse and efficient audio captioning via diffusion models,” arXiv
+preprint arXiv:2409.09401, 2024.
+[8] X. Mei, X. Liu, Q. Huang, M. D. Plumbley, and W. Wang, “Audio
+captioning transformer,” arXiv preprint arXiv:2107.09817, 2021.
+[9] K. Drossos, S. Lipping, and T. Virtanen, “Clotho: An audio cap-
+tioning dataset,” in ICASSP 2020-2020 IEEE International Con-
+ference on Acoustics, Speech and Signal Processing (ICASSP).
+IEEE, 2020, pp. 736–740.
+[10] J. Liu, G. Li, J. Zhang, H. Dinkel, Y. Wang, Z. Yan, Y. Wang,
+and B. Wang, “Enhancing automated audio captioning via large
+language models with optimized audio encoding,” arXiv preprint
+arXiv:2406.13275, 2024.
+[11] X. Liu, Q. Huang, X. Mei, H. Liu, Q. Kong, J. Sun, S. Li,
+T. Ko, Y. Zhang, L. H. Tang et al., “Visually-aware audio
+captioning with adaptive audio-visual attention,” arXiv preprint
+arXiv:2210.16428, 2022.
+[12] J. Kim, J. Shin, and J. Kim, “Avcap: Leveraging audio-visual fea-
+tures as text tokens for captioning,” in Interspeech 2024, 2024, pp.
+1915–1919.
+[13] K. Rho, H. Lee, V. Iverson, and J. S. Chung, “Lavcap: Llm-based
+audio-visual captioning using optimal transport,” arXiv preprint
+arXiv:2501.09291, 2025.
+[14] A. Vaswani, “Attention is all you need,” Advances in Neural In-
+formation Processing Systems, 2017.
+[15] Y. Gong, A. Rouditchenko, A. H. Liu, D. Harwath, L. Karlinsky,
+H. Kuehne, and J. Glass, “Contrastive audio-visual masked au-
+toencoder,” arXiv preprint arXiv:2210.07839, 2022.
+[16] A. Dosovitskiy, “An image is worth 16x16 words: Transformers
+for image recognition at scale,” arXiv preprint arXiv:2010.11929,
+2020.
+[17] C. D. Kim, B. Kim, H. Lee, and G. Kim, “Audiocaps: Generat-
+ing captions for audios in the wild,” in Proceedings of the 2019
+Conference of the North American Chapter of the Association for
+Computational Linguistics: Human Language Technologies, Vol-
+ume 1 (Long and Short Papers), 2019, pp. 119–132.
+[18] J. F. Gemmeke, D. P. Ellis, D. Freedman, A. Jansen, W. Lawrence,
+R. C. Moore, M. Plakal, and M. Ritter, “Audio set: An ontology
+and human-labeled dataset for audio events,” in 2017 IEEE inter-
+national conference on acoustics, speech and signal processing
+(ICASSP).
+IEEE, 2017, pp. 776–780.
+[19] K. Papineni, S. Roukos, T. Ward, and W.-J. Zhu, “Bleu: a method
+for automatic evaluation of machine translation,” in Proceedings
+of the 40th annual meeting of the Association for Computational
+Linguistics, 2002, pp. 311–318.
+[20] S. Banerjee and A. Lavie, “Meteor: An automatic metric for mt
+evaluation with improved correlation with human judgments,” in
+Proceedings of the acl workshop on intrinsic and extrinsic eval-
+uation measures for machine translation and/or summarization,
+2005, pp. 65–72.
+[21] C.-Y. Lin, “Rouge: A package for automatic evaluation of sum-
+maries,” in Text summarization branches out, 2004, pp. 74–81.
+[22] R. Vedantam, C. Lawrence Zitnick, and D. Parikh, “Cider:
+Consensus-based image description evaluation,” in Proceedings
+of the IEEE conference on computer vision and pattern recogni-
+tion, 2015, pp. 4566–4575.
+[23] P. Anderson, B. Fernando, M. Johnson, and S. Gould, “Spice:
+Semantic propositional image caption evaluation,” in Computer
+Vision–ECCV 2016:
+14th European Conference, Amsterdam,
+The Netherlands, October 11-14, 2016, Proceedings, Part V 14.
+Springer, 2016, pp. 382–398.
+[24] S. Liu, Z. Zhu, N. Ye, S. Guadarrama, and K. Murphy, “Improved
+image captioning via policy gradient optimization of spider,” in
+Proceedings of the IEEE international conference on computer
+vision, 2017, pp. 873–881.
+[25] T.-Y. Lin, M. Maire, S. Belongie, J. Hays, P. Perona, D. Ramanan,
+P. Doll´ar, and C. L. Zitnick, “Microsoft coco: Common objects in
+context,” in Computer Vision–ECCV 2014: 13th European Con-
+ference, Zurich, Switzerland, September 6-12, 2014, Proceedings,
+Part V 13.
+Springer, 2014, pp. 740–755.
+165

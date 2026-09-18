@@ -1,0 +1,725 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+Benchmarking and Confidence Evaluation of LALMs For Temporal Reasoning
+Debarpan Bhattacharya∗, Apoorva Kulkarni∗, Sriram Ganapathy
+LEAP Lab, Electrical Engineering, Indian Institute of Science, India
+debarpanb@iisc.ac.in, apoorvakulkarni2001@gmail.com, sriramg@iisc.ac.in
+Abstract
+The popular success of text-based large language models
+(LLM) has streamlined the attention of the multimodal com-
+munity to combine other modalities like vision and audio along
+with text to achieve similar multimodal capabilities.
+In this
+quest, large audio language models (LALMs) have to be eval-
+uated on reasoning related tasks which are different from tra-
+ditional classification or generation tasks. Towards this goal,
+we propose a novel dataset called temporal reasoning evalua-
+tion of audio (TREA). We benchmark open-source LALMs and
+observe that they are consistently behind human capabilities on
+the tasks in the TREA dataset. While evaluating LALMs, we
+also propose an uncertainty metric, which computes the invari-
+ance of the model to semantically identical perturbations of the
+input. Our analysis shows that the accuracy and uncertainty
+metrics are not necessarily correlated and thus, points to a need
+for wholesome evaluation of LALMs for high-stakes applica-
+tions.1
+Index Terms: Large audio language models (LALM), Large
+language models (LLM), temporal reasoning, audio tasks, cali-
+bration, confidence estimation.
+1. Introduction
+The development of text-based large language models (LLM)
+like GPT [1], LLAMA [2], Gemini [3], Mistral [4], etc., have
+pushed the envelope on text processing capabilities, driven by
+unsupervised pre-training on humongous amount of text corpus
+crawled from the internet. These models have made tremendous
+advances in achieving human and super human level perfor-
+mances on tasks like creative writing, mathematics and coding,
+question answering and texual reasoning [5]. However, in the
+quest towards artificial general intelligence (AGI), it is found
+that current multi-modal skills are inferior to the text-based ca-
+pabilities [6]. The key challenge in achieving this ability is the
+requirement of multi-modal semantic alignment [7]. In some of
+the prominent open-source models, the multimodal alignment is
+addressed by fusing the text embeddings with the modality spe-
+cific vision/audio encoder, and with the light-weight adaptation
+of text-only models. Examples of such models include large
+vision language models (LVLMs)(e.g. LLAVA [8], LLAMA
+3V [9] and large audio language models (LALMs) (e.g. Qwen-
+audio [10], SALMONN [11]).
+One of the key steps in establishing the efficacy and skill-
+set of LLMs is the development of systematic evaluation pro-
+*These authors contributed equally.
+1https://github.com/iiscleap/
+Audio-LLM-benchmarking-uncertainty
+This work is supported by TCS Research Scholar Program, 2024 and
+Google GCP Credit Award, 2025.
+tocols. The text-based LLMs have seen substantial progress in
+benchmarking and standardization (For example, chatbot arena
+- [12], MMLU [5]). A detailed survey of LLM evaluation ef-
+forts is available in [13]. Similar efforts in LVLMs have also
+matured [14] and have in-turn propelled the advancement of
+these models. However, recent benchmarking efforts [15] have
+reflected that their multimodal performance wane specially in
+cross modal understanding and reasoning tasks.
+Although a handful of studies probe speech/audio founda-
+tion models for standard tasks like automatic speech recognition
+(ASR), speech synthesis, emotion recognition, speaker identifi-
+cation, and other paralinguistic tasks [16, 17, 18, 19, 11, 20],
+there are limited studies that report domain specific evaluation
+of LALMs in audio reasoning and understanding tasks. Such
+focused benchmarking remains paramount as they help to un-
+veil whether the models comprehend the occurrence of differ-
+ent events in an audio, distinguish them, and understand their
+mutual correspondence.
+While LALM model development is active, the data, the
+skills as well as the performance metrics to analyze LALMs
+for fine-grained tasks like temporal reasoning require significant
+research undertakings to understand the modelling gaps.
+In this paper, we contribute a novel dataset for benchmark-
+ing the temporal reasoning capabilities of LALMs and show
+that the current LALMs are significantly lacking in such skills.
+We highlight that the lack of such skills indicate the inability of
+models to understand fine-grained temporal information and in
+extracting this information for a question-answering task. Fur-
+ther, the paper also proposes methods for measuring the uncer-
+tainty of LALMs that focus on the resilience of the model to
+test-time perturbations that are semantically grounded.
+2. Related Work and Contributions
+Large Audio Language Models (LALMs): The early work on
+extending text-based LLMs to audio domain can be traced to ef-
+forts like Audio-PALM [21], CLAP [22] and Speech-GPT [23].
+With the popularization of the open-source LLaMa based mod-
+els [2] and with the availability of open-source speech recog-
+nition systems (Whisper - [24]), LALMs were developed using
+speech/audio encoders (Whisper-based) and LLaMa back-end.
+The pre-trained LLaMa LLMs were fine-tuned for speech/audio
+tasks using low-rank adapters [25]. Examples of such models
+include Qwen-audio [10] and SALMONN [11]. In this work,
+we explore these two models for our evaluations. Other mod-
+els, for example, GAMA [26] and Pengi [27] trim the audios to
+10 sec. and 7 sec. respectively, that makes then insuitable for
+larger audio durations of 30 sec.
+Benchmarking LALMs: A recent effort to evaluate LALMs
+for multi-audio tasks was undertaken by Chen et.
+al.
+[28].
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+2068
+10.21437/Interspeech.2025-1228
+
+Figure 1: Examples from TREA dataset illustrating the sub-
+tasks in event order, count and duration based MCQA.
+In the same vein, Sakshi et. al. [19] developed a large scale
+benchmark for audio understanding, information extraction and
+question-answering. Another benchmarking effort was pursued
+by Yang et. al. [29]. In this evaluation, 19 sub-tasks were
+probed which involved speech, music and sound classification
+tasks. In spite of these efforts, temporal reasoning capabilities
+are largely unexplored, except a recent work [30] that analyzes
+temporal reasoning by LALMs in a limited scope. They use
+CompA [31] dataset having questions based only on temporal
+ordering task. However, in the image domain, visual spatial rea-
+soning has been probed elaborately through works like [32] and
+with novel datasets like BLINK [15]. In this paper, we propose
+a dedicated dataset for probing the temporal reasoning capabil-
+ities of LALMs.
+Evaluating Models Beyond Accuracy:
+The performance
+of classification style tasks (which also include multi-choice
+question-answering (MCQA)) has primarily been based on ac-
+curacy or F1 score. Beyond accuracy, the two primary direc-
+tions of model evaluation include calibration and confidence es-
+timation [33]. Calibration refers to the correlation between the
+model’s performance (accuracy) and the posterior-probability
+score [34]. A well-calibrated model generates more accurate
+answers to MCQA when the token probability of the answer is
+higher. However, uncertainty estimation measures how confi-
+dent the model is for a given input around the local neighbour-
+hood of the given input. In natural language generation (NLG),
+the uncertainty is measured using various output samplings that
+are semantically equivalent [35]. However, in an MCQA set-
+ting, it is more appropriate to measure the epistamic uncertainty
+[36] which measures the resilience of the model to semanti-
+cally invariant perturbations of the input. In deep learning based
+image classification setting, a similar uncertainty measure was
+proposed [37]. In this paper, we adapt this framework for audio-
+based uncertainty estimation of LALMs on the temporal reason-
+ing tasks.
+Key Contributions :
+• We propose an open-source audio dataset of MCQAs specif-
+ically designed for probing temporal reasoning abilities,
+within the sub-task categories of event ordering, counting,
+and duration reasoning (Section 3).
+• We perform task-wise benchmarking of prominent LALMs
+and highlight the shortcomings of these models on tempo-
+ral reasoning tasks. Also, we show that the models perform
+differently on different reasoning sub-tasks, emphasizing the
+need for fine-grained evaluations (Section 4).
+• We propose an uncertainty measure using test-time data aug-
+mentation and report this metric along with calibration errors
+Name
+Size (Reasoning)
+Tasks
+Target Resp.
+Comment
+CompA-R [26]
+1.5k(1.5k)
+Ordering
+NLG
+Open-ended.
+MusicBench [38]
+0.4k(0)
+Captioning
+NLG
+Music Desc.
+MuChoMusic [39]
+1.2k(0.4k)
+Genre, Instruments
+NLG
+Reasoning
+AudioBench [40]
+100k(0)
+Speech, Audio
+All
+Capt., QA, Class.
+AIR-Bench [29]
+20k(0.8k)
+Audio, Music, Speech
+All
+Capt., QA, Class.
+MMAU [19]
+1k(0.7k)
+Audio, Music
+MCQA
+Reasoning, QA.
+TREA (ours)
+0.6k(0.6k)
+Audio
+MCQA
+Order, Count, Dur.
+Table 1: Comparison of various audio benchmarks for evaluat-
+ing LALMs. Here, NLG means natural language generation.
+for the LALMs. We show that the performance and uncer-
+tainty measures are not correlated. Both being important, our
+study calls for benchmarking uncertainty measures, besides
+the performance evaluations (Section 5).
+3. Dataset Design
+We design a dataset to benchmark temporal reasoning tasks in
+audio, termed temporal reasoning evaluation of audio (TREA).
+It probes the models on three sub-tasks - event duration (TREA-
+D), ordering (TREA-O) and counting (TREA-C). The dataset
+size is 600 samples, with each sub-task containing 200 samples.
+The dataset is derived from the Environmental Sound Clas-
+sification dataset (ESC-50) [41], having audio recordings from
+50 different environmental sound classes. Each recording is
+of 5 sec duration in the ESC-50 dataset. All the audio files
+in the TREA dataset are obtained by combining multiple ESC-
+50 audio recordings. To compute effective duration of the ESC
+recordings, an activity detection using a simple energy based
+threshold is used to discard silent regions of the audio. Exam-
+ples from the TREA dataset are shown in Fig. 1.
+3.1. TREA-D: Audio event duration
+This subset of the TREA data contains audio files related to the
+event duration MCQA. For example, an MCQA based on event
+duration is - (which of the following sound events correspond
+to the longest duration?). During the combination of the audio
+recordings from ESC-50, it is ensured that the duration of the
+largest (shortest) event is significantly more (less) than the du-
+ration of other events in the combined audio file. This ensures
+that there is no ambiguity in the ground-truth labels.
+3.2. TREA-O: Audio event ordering
+This data subset focuses on probing if the LALM model under-
+stands the temporal order of the audio-events. An example of an
+MCQA is - (which sound event occurred after “can opening”
+sound?). To avoid any ambiguity, it is ensured that none of the
+audio events repeat in the same recording.
+3.3. TREA-C: Audio event counting
+This subset consists of audio recordings that contain repeti-
+tive events of the same event class. The model is probed with
+MCQA questions like - (how many unique sound sources are
+present in the audio file?).
+3.4. Comparison with other datasets
+The comparison of the proposed dataset with other audio eval-
+uation benchmarks is given in Table 1. As seen here, the other
+datasets do not largely focus on the temporal reasoning tasks
+in audio. The only exception is the MMAU dataset, where au-
+dio reasoning tasks are included. However, the public release of
+2069
+
+Audio-LLM(s)
+Size
+Baselines
+MMAU
+TREA
+Temp. Reason.
+Dur.
+Order
+Count
+Random
+-
+-
+-
+27.5
+23.5
+26.5
+Human
+-
+-
+-
+92.2
+98.9
+81.1
+Qwen2-Audio [10]
+7B
+Vanilla
+33.3
+38.5
+61.0
+31.0
+CoT
+31.3
+44.5
+49.0
+16.5
+Explanation
+37.5
+39.5
+59.0
+23.5
+7B + 70B
+Desc. + LLM-QA
+41.7
+44.5
+51.0
+21.0
+SALMONN [11]
+13B
+Vanilla
+41.7
+42.0
+34.0
+20.5
+CoT
+37.5
+34.0
+46.5
+23.0
+Explanation
+35.4
+37.5
+51.5
+27.5
+13B + 70B
+Desc. + LLM-QA
+47.9
+47.0
+69.0
+45.5
+Table 2: Performance (Accuracy %) of various LALMs on temporal reasoning tasks in MMAU and TREA dataset. For description
++ LLM-QA, the LALM provides the audio description and an inference call is made to LLaMa-3.3-70B [2] model to perform text
+MCQA using the audio captions.
+MMAU has only a small number of temporal reasoning samples
+(48 samples). The larger full test set offers leaderboard evalu-
+ation, but the calibration can not be analyzed in the absence of
+ground truth labels. Further, it often has only one audio event
+per sample, making it limited in evaluation scope. The proposed
+TREA dataset attempts to bridge these gaps and aims to provide
+insights about the fine-grained audio reasoning capabilities of
+the current LALMs.
+4. Benchmarking and analysis
+We consider audio temporal reasoning subset of MMAU
+dataset [19] (48 samples), and the proposed TREA dataset (total
+600 samples spread across 3 fine grained tasks). The LALMs
+are evaluated in zero-shot manner and the performance (accu-
+racy (%)) is reported in Table 2. The top row (random) denotes
+an experiment where one of the 4 options were chosen randomly
+for all the questions. The second row (human) represents the
+human performance on these tasks, where 6 participants per-
+formed the task on a smaller subset (45 questions, 15 for each
+sub-task) from the TREA dataset. We perform the LALM eval-
+uations in multiple settings,
+• Vanilla: This is basic version where the LALM is prompted
+to respond to the MCQA with response restricted to the an-
+swer choice among the four options.
+• Chain-of-thought (CoT): In this setting, the LALM is
+prompted to process the question, and then think step-by-step
+leading to the final answer choice [42].
+• Explanation: In this setting, the LALM is asked to provide
+the best answer choice and then provide an explanation as to
+why the answer choice was made.
+• Audio description + LLM-QA: Here, LALM is used in gen-
+erative fashion. It is prompted with only the audio data and
+asked to provide a detailed audio caption. Further, the cap-
+tion along with the textual MCQ is given to a text-based
+LLaMa-3.3-70B-Instruct model to choose the right
+option.
+The key takeaways from this evaluation (Table 2) are:
+• We observe that the performance on audio temporal reason-
+ing tasks are poor for all the LALMs (the best performance
+is < 50% on two out of the three TREA tasks), highlight-
+ing their lack of understanding of audio events in the tempo-
+ral domain. Note that, the human performance on 2 tasks is
+> 90% and 1 task is > 80%, illustrating a large performance
+gap with LALMs.
+• The performance in reasoning sub-tasks is largely varied- it is
+moderate in ordering and poor in duration and counting tasks.
+This shows the importance of benchmarking with respect to
+fine-grained reasoning sub tasks.
+• In vanilla experiments, Qwen2-audio performs the best in or-
+der and count task of TREA dataset, whereas SALMONN
+performs the best in duration task of TREA dataset and in
+MMAU.
+• The benefits of prompt based reasoning strategies like CoT
+and explanations are not very clear unlike the case in text-
+based LLMs, where CoT has shown clear advantages [42].
+• Using LALMs in generative mode to generate audio captions
+and then using a separate LLM (LlaMa-3.3) to select right
+answer choice from the audio caption produces interesting re-
+sults. SALMONN generated captions result in 67.1% mean
+relative improvement in TREA dataset and 12.9% relative
+improvement in MMAU dataset. However, performances for
+Qwen2-Audio is worse than those from SALMONN.
+• We hypothesize that, the multimodal discriminative ability of
+SALMONN is poor, and hence it fails to achieve high ac-
+curacy in spite of having high quality captions generated by
+SALMONN.
+5. Metrics Beyond Accuracy
+5.1. Test-time Uncertainty Measure
+We propose to measure the uncertainty in the decision making
+for a test sample using data perturbations. The perturbations
+are generated in such a way that the semantic content of the
+perturbed sample is identical to the original test sample (unal-
+tered ground truth label) The analogy in image classification is
+the perturbations created using the same object with different
+orientations, contrast and zoom [37], without altering the object
+class present in the image. The steps involved in computation
+of the uncertainty measure for LALMs are the following.
+5.1.1. Data augmentation
+Examples of data perturbation are shown in Fig, 2. The local
+semantic augmentations are performed in a variety of ways to
+ensure both diversity (audio and text manipulations) and seman-
+tic grounding. For all tasks, the textual modification involves
+rephrasing of the question in multiple ways while ensuring that
+the meaning is unchanged (aug paraphrase()). For audio
+perturbations, we use various augmentation strategies.
+• aug silence(): This operation inserts silence (of ran-
+dom duration) at various positions (randomly chosen) be-
+2070
+
+Audio-LLM(s)
+Duration Task
+Ordering Task
+Counting Task
+Combined
+Acc. (↑)
+ECE (↓)
+EUE (↓)
+Acc. (↑)
+ECE (↓)
+EUE (↓)
+Acc. (↑)
+ECE (↓)
+EUE (↓)
+Acc. (↑)
+ECE (↓)
+EUE (↓)
+Qwen2-Audio-Instruct-7B
+48.7
+27.5
+31.1
+49.3
+27.1
+23.0
+16.6
+60.27
+24.4
+38.2
+38.3
+26.2
+SALMONN-13B
+46.2
+13.9
+24.3
+41.0
+12.7
+33.2
+17.3
+42.2
+7.0
+34.9
+18.22
+21.5
+SALMONN+LLaMa-83B
+52.4
+43.8
+41.9
+63.8
+31.7
+26.7
+51.7
+47.6
+53.2
+55.9
+41.0
+40.6
+Table 3: Benchmarking LALMs: Accuracy on the perturbed samples, expected calibration error (ECE), and expected uncertainty
+(EUE). SALMONN+LLaMa 83B represents SALMONN-13B and LLaMa-70B. All values are in %.
+Figure 2: Examples of original sample (from order task), and
+two perturbed samples, one with audio modification and one
+with text modification.
+tween sound events. This augmentation is used in all tasks.
+• aug volume(): In this setting, the volume of various audio
+event recordings are amplified or attenuated. This augmenta-
+tion is used in all tasks.
+• aug shuffle order():
+The order of various audio
+events are randomized, keeping duration of the audio events
+unchanged. This augmentation is used in duration task.
+• aug duration(): The duration of the audio event is var-
+ied. This augmentation is used in the order tasks.
+• aug insertion deletion():
+The number of audio
+event repetitions for same class is randomized while com-
+bining them. This augmentation is used in counting tasks.
+For every audio sample, 60 perturbations are generated (combi-
+nation of 4 text modifications and 15 audio modifications). To
+limit computation, we chose a subset of 15 original test samples
+for each task, leading to a total 2.7k augmented samples.
+5.1.2. Uncertainty computation
+Let {xi
+n}N
+i=1 denote the test-time perturbations corresponding
+to a sample xn. For this sample, the uncertainty is measured as,
+Uxn = 1
+N
+N
+X
+i=1
+|i : M(xi
+n)̸ = M(xn)|
+(1)
+where, M(xn) is model’s prediction (output answer choice)
+for the test input xn. As all the samples i = 1..N are gen-
+erated by preserving the semantics, the uncertainty (Eq. (1))
+measures the lack of consistency in the model’s response to
+semantically equivalent input perturbations. An expected un-
+certainty measure (EUE) is measured as the average of Uxn for
+n = {1, ..., K} test samples. Note that, this measure does not
+require access to ground truth label.
+5.2. Calibration Error
+For a data point (xn, yn) ∈D, if a model makes prediction ˆy
+with confidence pn (token probability) such that
+pn ∝Pr(ˆyn = yn)
+(2)
+then the model is called as a perfectly confidence-calibrated sys-
+tem. The degree of calibration is often measured using the -
+expected calibration error (ECE) [43].
+ECE =
+B
+X
+i=1
+wi ∗|acc(bi) −conf(bi)|
+(3)
+where pn ∈[0.0, 1.0] is split in B bins {bi}B
+i=1. The | · | is
+the absolute value operator, bin accuracy acc(bi) is,
+acc(bi) = |ˆyn = yn : xn ∈D and pn ∈bi|
+|bi|
+(4)
+and the average bin confidence conf(bi) is,
+conf(bi) =
+P{pn : pn ∈bi}
+|bi|
+(5)
+Also, the weight of the bin bi is wi = |bi|
+|D| .
+5.3. Results and Discussion
+The benchmarking of LALMs using calibration and uncertainty
+metrics is reported in Table 3. We observe that the accuracy
+measure does not always provide the full picture with respect
+to the performance of the LALM model. The combination of
+SALMONN with LLaMa model gives the best performance in
+all cases, however, the uncertainty (EUE) and calibration (ECE)
+errors are lower for the SALMONN-13B model.
+It highlights the need to understand if the model’s token
+probabilities are good estimates of the confidence (lower cal-
+ibration error) and if the model is resilient to semantically
+grounded perturbations (lower uncertainty error) in addition to
+the accuracy metrics that are commonly reported.
+6. Conclusion
+In this paper, we have proposed multiple novel components that
+help advance the understanding and benchmarking of LALMs.
+First, the work proposes a novel dataset named temporal rea-
+soning evaluation of audio (TREA) which allows fine-grained
+assessment of the LALM’s capabilities on order, duration and
+counting of audio events separately. Second, the paper reports
+their inferiority on these tasks, with the best achieved accu-
+racy being < 50% on two out of the three tasks. Finally, the
+work makes a novel contribution in quantifying the uncertainty
+of the LALM’s predictions at test-time, without requiring the
+model access or the ground-truth labels. We hypothesize that
+the proposals made in this work will shape the next phase of
+LALM development, where temporal reasoning as well as con-
+fidence/uncertainty estimation become important factors in the
+model design.
+2071
+
+7. References
+[1] J. Achiam, S. Adler et al., “GPT-4 technical report,” arXiv
+preprint arXiv:2303.08774, 2023.
+[2] H. Touvron, T. Lavril et al., “LLaMa: Open and efficient founda-
+tion language models,” arXiv preprint arXiv:2302.13971, 2023.
+[3] G. Team, R. Anil et al., “Gemini: a family of highly capable mul-
+timodal models,” arXiv preprint arXiv:2312.11805, 2023.
+[4] A. Q. Jiang, A. Sablayrolles et al., “Mistral 7b,” arXiv preprint
+arXiv:2310.06825, 2023.
+[5] D. Hendrycks, C. Burns et al., “Measuring massive multitask lan-
+guage understanding,” in International Conference on Learning
+Representations, 2024.
+[6] M. R. Morris, J. Sohl-Dickstein et al., “Levels of AGI: Op-
+erationalizing progress on the path to agi,” arXiv preprint
+arXiv:2311.02462, 2023.
+[7] D. Zhang, Y. Yu et al., “MM-LLMs: Recent advances in multi-
+modal large language models,” arXiv preprint arXiv:2401.13601,
+2024.
+[8] H. Liu, C. Li et al., “Visual instruction tuning,” Advances in neu-
+ral information processing systems, vol. 36, 2024.
+[9] H. Rasheed, M. Maaz et al., “Llava++:
+Extending visual
+capabilities with llama-3 and phi-3,” 2024. [Online]. Available:
+https://github.com/mbzuai-oryx/LLaVA-pp
+[10] Y. Chu, J. Xu et al., “Qwen-audio: Advancing universal audio un-
+derstanding via unified large-scale audio-language models,” arXiv
+preprint arXiv:2311.07919, 2023.
+[11] C.
+Tang,
+W.
+Yu
+et
+al.,
+“SALMONN:
+Towards
+generic
+hearing abilities for large language models,” arXiv preprint
+arXiv:2310.13289, 2023.
+[12] W.-L. Chiang, L. Zheng et al., “Chatbot arena: An open plat-
+form for evaluating llms by human preference,” arXiv preprint
+arXiv:2403.04132, 2024.
+[13] Y. Chang, X. Wang et al., “A survey on evaluation of large lan-
+guage models,” ACM Transactions on Intelligent Systems and
+Technology, vol. 15, no. 3, pp. 1–45, 2024.
+[14] P. Xu, W. Shao et al., “LVLM: A comprehensive evaluation
+benchmark for large vision-language models,” IEEE Transactions
+on Pattern Analysis and Machine Intelligence, 2024.
+[15] X. Fu, Y. Hu et al., “BLINK: Multimodal large language models
+can see but not perceive,” in European Conference on Computer
+Vision.
+Springer, 2024, pp. 148–166.
+[16] X. Gao, Y. Chen et al., “Ttslow: Slow down text-to-speech with
+efficiency robustness evaluations,” IEEE Transactions on Audio,
+Speech and Language Processing, 2025.
+[17] S. Wang, C.-H. Yang et al., “Can Whisper perform speech-
+based in-context learning?” in ICASSP 2024-2024 IEEE Inter-
+national Conference on Acoustics, Speech and Signal Processing
+(ICASSP).
+IEEE, 2024, pp. 13 421–13 425.
+[18] W. Cui, D. Yu et al., “Recent advances in speech language models:
+A survey,” arXiv preprint arXiv:2410.03751, 2024.
+[19] S. Sakshi, U. Tyagi et al., “MMAU: A massive multi-task au-
+dio understanding and reasoning benchmark,” arXiv preprint
+arXiv:2410.19168, 2024.
+[20] A. Waheed, H. Atwany et al., “What do speech foundation models
+not learn about speech?” arXiv preprint arXiv:2410.12948, 2024.
+[21] P. K. Rubenstein, C. Asawaroengchai et al., “AudioPALM: A
+large language model that can speak and listen,” arXiv preprint
+arXiv:2306.12925, 2023.
+[22] B. Elizalde, S. Deshmukh et al., “CLAP learning audio concepts
+from natural language supervision,” in ICASSP 2023-2023 IEEE
+International Conference on Acoustics, Speech and Signal Pro-
+cessing (ICASSP).
+IEEE, 2023, pp. 1–5.
+[23] D. Zhang, S. Li et al., “SpeechGPT: Empowering large language
+models with intrinsic cross-modal conversational abilities,” arXiv
+preprint arXiv:2305.11000, 2023.
+[24] A. Radford, J. W. Kim et al., “Robust speech recognition via
+large-scale weak supervision,” in International conference on ma-
+chine learning.
+PMLR, 2023, pp. 28 492–28 518.
+[25] E. J. Hu, Y. Shen et al., “LoRA: Low-rank adaptation of large
+language models,” arXiv preprint arXiv:2106.09685, 2021.
+[26] S. Ghosh, S. Kumar et al., “Gama: A large audio-language model
+with advanced audio understanding and complex reasoning abili-
+ties,” in Proceedings of the 2024 Conference on Empirical Meth-
+ods in Natural Language Processing, 2024, pp. 6288–6313.
+[27] S. Deshmukh, B. Elizalde et al., “Pengi: An audio language model
+for audio tasks,” Advances in Neural Information Processing Sys-
+tems, vol. 36, pp. 18 090–18 108, 2023.
+[28] Y. Chen, X. Yue et al., “Beyond single-audio: Advancing multi-
+audio processing in audio large language models,” arXiv preprint
+arXiv:2409.18680, 2024.
+[29] Q. Yang, J. Xu et al., “AIR-Bench: Benchmarking large audio-
+language models via generative comprehension,” arXiv preprint
+arXiv:2402.07729, 2024.
+[30] C.-Y. Kuan and H.-y. Lee, “Can large audio-language models
+truly hear?
+tackling hallucinations with multi-task assessment
+and stepwise audio reasoning,” in ICASSP 2025-2025 IEEE Inter-
+national Conference on Acoustics, Speech and Signal Processing
+(ICASSP).
+IEEE, 2025, pp. 1–5.
+[31] S. Ghosh,
+A. Seth,
+S. Kumar,
+U. Tyagi,
+C. K. Evuru,
+S. Ramaneswaran, S. Sakshi, O. Nieto, R. Duraiswami, and
+D. Manocha,
+“Compa:
+Addressing the gap in composi-
+tional reasoning in audio-language models,” arXiv preprint
+arXiv:2310.08753, 2023.
+[32] J. Wang, Y. Ming et al., “Is a picture worth a thousand words?
+delving into spatial reasoning for vision language models,” Ad-
+vances in Neural Information Processing Systems, vol. 37, pp.
+75 392–75 421, 2025.
+[33] J. Geng, F. Cai et al., “A survey of confidence estimation and cal-
+ibration in large language models,” in Proceedings of the 2024
+Conference of the North American Chapter of the Association for
+Computational Linguistics: Human Language Technologies (Vol-
+ume 1: Long Papers), 2024, pp. 6577–6595.
+[34] C. Jia, Y. Yang et al., “Scaling up visual and vision-language rep-
+resentation learning with noisy text supervision,” in International
+conference on machine learning.
+PMLR, 2021, pp. 4904–4916.
+[35] L. Kuhn, Y. Gal et al., “Semantic uncertainty: Linguistic invari-
+ances for uncertainty estimation in natural language generation,”
+arXiv preprint arXiv:2302.09664, 2023.
+[36] O. Shorinwa, Z. Mei et al., “A survey on uncertainty quantifica-
+tion of large language models: Taxonomy, open research chal-
+lenges, and future directions,” arXiv preprint arXiv:2412.05563,
+2024.
+[37] Y. Bahat and G. Shakhnarovich, “Classification confidence
+estimation with test-time data-augmentation,” arXiv preprint
+arXiv:2006.16705, 2020.
+[38] J. Melechovsky, Z. Guo et al., “Mustango:
+Toward control-
+lable text-to-music generation,” arXiv preprint arXiv:2311.08355,
+2023.
+[39] B. Weck, I. Manco et al., “Muchomusic: Evaluating music under-
+standing in multimodal audio-language models,” arXiv preprint
+arXiv:2408.01337, 2024.
+[40] B. Wang, X. Zou et al., “Audiobench: A universal benchmark for
+audio large language models,” arXiv preprint arXiv:2406.16020,
+2024.
+[41] K. J. Piczak, “ESC: Dataset for environmental sound classifica-
+tion,” in Proceedings of the 23rd ACM international conference
+on Multimedia, 2015, pp. 1015–1018.
+[42] J. Wei, X. Wang et al., “Chain-of-thought prompting elicits rea-
+soning in large language models,” Advances in neural information
+processing systems, vol. 35, pp. 24 824–24 837, 2022.
+[43] Z. Jiang, J. Araki et al., “How can we know when language mod-
+els know? on the calibration of language models for question an-
+swering,” Transactions of the Association for Computational Lin-
+guistics, vol. 9, pp. 962–977, 2021.
+2072
+

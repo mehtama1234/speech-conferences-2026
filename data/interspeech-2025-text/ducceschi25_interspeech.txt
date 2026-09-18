@@ -1,0 +1,781 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+Speech transcription from South Tyrolean Dialect to Standard German with
+Whisper
+Luca Ducceschi∗, Greta H. Franzini∗
+Institute for Applied Linguistics, Eurac Research, Italy
+luca.ducceschi@eurac.edu, greta.franzini@eurac.edu
+Abstract
+This study presents the first fine-tuned Whisper model for
+the automatic translation of South Tyrolean dialectal speech
+into Standard German text. To address an unmet need for sub-
+titling and translation, we introduce a small corpus of man-
+ually annotated and synthetic speech data compiled for this
+task. Through fine-tuning and hyperparameter optimisation, our
+model achieves a BLEU score of 86.18 significantly outper-
+forming baseline error rates. Our findings highlight Whisper’s
+effectiveness in handling dialectal speech, contributing to low-
+resource language research. The model is already being used
+in a heritage collaboration for large-scale translation of audio-
+visual archival material and is also being considered for appli-
+cation in news broadcasting and tourism promotion. Future di-
+rections include expanding the training data and extending hy-
+perparameter optimisation to improve the model’s performance
+and generalisation across South Tyrolean dialectal variations.
+Index Terms: speech-to-text, translation, large language mod-
+els, Whisper, low-resource languages, dialects, German
+1. Introduction
+The South Tyrolean dialect (hereafter South Tyrolean), spoken
+in Italy’s northernmost province of South Tyrol (S¨udtirol), is a
+protected Austro-Bavarian variety blending Germanic and Ro-
+mance linguistic elements (Italian and Ladin) [1]. Unlike South
+Tyrolean German, the region’s standard German variety, South
+Tyrolean is primarily oral and lacks a standardised orthography.
+Widely used informally across generations, South Tyrolean is
+favoured for casual communication like text messages and so-
+cial media, while formal contexts rely on the standard variety.1
+Although unique, South Tyrol’s sociolinguistic situation paral-
+lels many European regions where regional dialects dominate
+informal oral communication within diaglossic or diglossic set-
+tings [3].
+Limited subtitling of dialectal speech in formal media con-
+texts restricts access for individuals with hearing impairments
+or those unfamiliar with South Tyrolean, such as visitors or
+non-native residents. This study responds to an explicit demand
+from local community beneficiaries for an automated solution
+to transcribe and subtitle South Tyrolean speech into Standard
+German, introducing the first Whisper fine-tuned model for this
+purpose.
+*These authors contributed equally.
+1According to [2, p. 1], 98% of German-speaking South Tyroleans
+report being able to speak the dialect fluently.
+2. Related work
+In recent years, strides have been made in the field of NLP
+for Germanic dialects, enhancing the accessibility and usabil-
+ity of these linguistic varieties in digital formats [4, 5, 6, 7, 8].
+With regard to spoken data, [9] lists 39 audio datasets covering
+low and high German dialects. The AnDy project uses AI and
+the REDE corpus[10] to automatically analyse the dynamics of
+German dialectal speech, while a 343-hour corpus of read Swiss
+German speech annotated with Standard German text has been
+used to fine-tune an XLS-R translation model [11]. Swiss Ger-
+man and Luxembourgish are the only Germanic dialects to have
+been processed for translation into Standard German. Swiss
+German studies include hybrid Hidden Markov Models [12],
+Time Delay Neural Networks with Kaldi [13] and pronunci-
+ation mapping to Standard German [14], as well as transfer
+learning with Jasper and DeepSpeech [15, 16] and on other
+well-performing hybrid systems [17]. Luxembourgish research
+fine-tuned Whisper and wav2vec 2.0 on 67 hours of annotated
+speech, achieving better results with Whisper [18].
+Building on the speaker-centric NLP perspective advocated
+in recent discussions on low-resource language colonising dis-
+course [19], a survey of 327 speakers of German varieties found
+strong support for systems transcribing dialect to Standard Ger-
+man (61%) [6]. While this result may not be fully representative
+of the broader population, they highlight interest in advancing
+dialect NLP and spoken language processing technologies.
+3. Method
+3.1. Datasets
+3.1.1. GOLD
+As is often the case with under-resourced languages, no ad-
+equate corpora exist yet for the development of a Speech-to-
+Text/Translation system for South Tyrolean2. For this reason,
+we are creating a corpus of labelled South Tyrolean-to-Standard
+German data by combining different publicly available sources,
+both openly licensed and proprietary, with our own speech
+recordings. Publicly available sources span spontaneous and
+scripted speech, include both proprietary and openly licensed
+language datasets, and capture a wide range of dialectal diver-
+sity. The dataset currently comprises 412 minutes (6 hours and
+52 minutes) of speech drawn from four distinct spoken sources
+(ARB, ALP, EUR, IDM), down-sampled to 16kHz, totalling approx-
+imately 4, 000 sentences or data points, as summarised in Table
+2Multilingual speech datasets consulted: Mozilla CommonVoice,
+Google Cloud Speech-to-Text V2, VoxLingua 107, Facebook Vox Pop-
+uli, VoxForge, Multilingual LibriSpeech Corpus, M-AILABS Speech
+Dataset, VoxCeleb, CMU Wilderness Multilingual Speech Dataset and
+FLEURS.
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+1
+10.21437/Interspeech.2025-1976
+
+Table 1: Overview of the GOLD corpus, detailing speech type, duration, average sentence length in characters, the number of tokens,
+types and token/type ratio of the Standard German reference text, number of unique speakers and estimated age group of the speakers.
+Dataset
+Speech type
+Hours
+avg(L)
+Tokens
+Types
+TTR
+Speakers
+Age
+ARB
+read
+00:47:56
+44.47
+5, 533
+1, 233
+0.222
+3
+25 −45
+ALP
+read, spontaneous
+04:47:23
+42.31
+36, 144
+146
+0.004
+180
+15 −86
+EUR
+read, spontaneous
+00:13:22
+115.40
+1, 508
+457
+0.303
+3
+25 −45
+IDM
+spontaneous
+01:03:53
+120.85
+8, 599
+2, 472
+0.287
+86
+25 −75
+TOTAL
+06:52:34
+51, 784
+273
+1. We must partly rely on proprietary data because openly li-
+censed datasets for this task are scarce.
+ARB.
+Scripted
+speech
+from
+the
+publicly
+available
+DaZUgeH ¨OREN textbook for learners of South Tyrolean.
+The textbook includes CD tracks featuring exercise prompts
+spoken in dialect, accompanied by printed translations in
+Standard German. Data acquisition involved converting the MP3
+tracks into WAV format, manually transcribing the corresponding
+printed translations and manually aligning audio and text with
+ELAN3. As per Whisper requirements, audio files exceeding
+30 seconds were manually chunked into shorter segments. The
+correspondence between audio and text in this dataset is not
+always accurate, with occasional deviations in the printed text.
+ALP. Formal and informal speech from the crowdsourced
+multilingual speech corpus AlpiLinK (v1.1.3) [20]. We ex-
+tracted the South Tyrolean speech data collected through the
+Standard German translation task, which amounts to a total 30
+sentences uttered by multiple speakers.
+EUR. Our own speech recordings of human translators spon-
+taneously producing spoken dialect translations of Standard
+German sentences drawn from newspaper texts provided with
+Korpus S¨udtirol4. The participants contributing to this speech
+corpus —which will be made freely available to the scientific
+community— are affiliated with our home institution, and were
+required to sign a form consenting to the use and the open ac-
+cess publication of their voices. They are shown Standard Ger-
+man sentences, selected in a manner similar to that of [21, p.
+2], asked to translate them to South Tyrolean speech, and given
+the option to revise their translation. For each participant, we
+collect information about their age, gender, provenance and di-
+alectal variant spoken. Speech is recorded in segments of under
+30 seconds using a dynamic cardioid vocal microphone5. Each
+segment is then manually aligned with its corresponding refer-
+ence text, where the spoken South Tyrolean translation serves
+as a direct, literal representation of the Standard German text.
+IDM. Spontaneous speech from 44 subtitled videos posted
+on YouTube by IDM S¨udtirol6. The videos are promotional in
+nature and cover a wide range of topics. We downloaded the
+videos as MP4 files through the Python pytube library7. In a
+second step, we split the videos into frames, increased the con-
+trast of the frames to make the text stand out more prominently
+against the background and ran PaddleOCR [22] on each frame
+cropping to the bottom 1/3 of the image. Errors in the result-
+ing OCR were mainly caused by misrecognised special charac-
+ters (ß, ¨a, ¨u, ¨o), video quality and textual background interfer-
+ence. The OCR was then manually corrected so as to obtain a
+3Version 6.4. https://archive.mpi.nl/tla/elan
+4http://www.korpus-suedtirol.it/index.html
+5Behringer ULTRAVOICE XM8500.
+6https://www.youtube.com/@suedtirol.official
+7https://pytube.io/en/latest/index.html
+clean reference text for each video. Next, we clipped the au-
+dio —which often contains background music— in WAV format
+from the videos, manually aligning audio segments of under 30
+seconds to the corrected OCR using ELAN. The dataset con-
+taining the audio and text information was obtained thanks to
+a custom Python script used to processed ELAN EAF files. As
+these are subtitled videos, the correspondence between audio
+and text in this dataset is rarely literal.
+3.1.2. SYNTH
+The synthetic dataset is derived from the first 119 episodes of
+the Budl&Stubn podcast8. The episodes were downloaded as
+MP3 files from SoundCloud using the Python soundcloud-lib
+library9. The dataset totals 7, 127.35 minutes (118 hours and 47
+minutes) of speech. The translated transcription was performed
+using the Whisper large-v3 model, with diarisation enabled
+through the Python pyannote library. After filtering out sen-
+tences shorter than 2 seconds, the final synthetic training dataset
+comprised 6, 729 chunks.
+3.2. Model
+We chose to work with Whisper (large-v3 model) over its
+prominent contender, wav2vec 2.0, primarily due to findings
+from [18], whose study closely aligns with our objectives. Their
+research demonstrated that Whisper’s semi-supervised archi-
+tecture surpasses wav2vec 2.0 in handling poor audio quality
+and multilingual speech, and in output quality, particularly in
+terms of capitalisation and punctuation. This is a critical fac-
+tor for Germanic languages where capitalisation rules are strin-
+gent. However, as [18] do not address translation tasks, we also
+turned to [15] for insights on adapting Whisper for translation.
+Each dataset was split 80-20, with 80% allocated for train-
+ing and 20% for testing. Within the training set, 20% was used
+for validation. We selected the Word Error Rate (WER) as eval-
+uation metric for automatic speech recognition and BLEU for
+translation. Confidence intervals (CI) were obtained with boot-
+strap sampling with 1000 samples. All of the experiments were
+conducted on the high-performance computing infrastructure of
+the South Tyrol Scientific Network10, using an AMD EPYC
+7543P 32-Core Processor (CPU) and an NVIDIA A100 Am-
+pere 40GB Graphics Card (GPU).
+4. Results and discussion
+4.1. Baseline
+A baseline analysis of the Whisper large-v3 model (1.5B pa-
+rameters) set to German and performed on the GOLD dataset re-
+8https://soundcloud.com/budlundstubn
+9https://pypi.org/project/soundcloud-lib/
+10https://www.unibz.it/en/services/ict-services/
+2
+
+Table 2: Hyperparameter configurations for gold, optGold and optSynth.
+Hyperparameters
+gold
+optGold
+optSynth
+Range
+Best
+Range
+Best
+adam beta1
+–
+0.85, 0.99
+0.965
+0.872, 0.947
+0.899
+adam beta2
+–
+0.95, 0.999
+0.959
+0.966, 0.996
+0.972
+adam epsilon
+1 × 10−8
+1 × 10−9, 1 × 10−6
+1.44 × 10−8
+5.71 × 10−9, 1.03 × 10−7
+2.09 × 10−8
+batch size
+4
+4, 8, 16
+4
+4, 8
+4
+dropout
+–
+0.0, 0.2
+0.090
+0.039, 0.093
+0.074
+grad accum steps
+1
+1, 2, 4
+1
+2, 4
+4
+learning rate
+5 × 10−6
+1 × 10−8, 1 × 10−4
+1.50 × 10−6
+8.02 × 10−8, 7.69 × 10−6
+2.42 × 10−7
+lr scheduler
+–
+linear, cosine, constant
+linear
+linear, cosine, constant
+linear
+max grad norm
+–
+0.1, 5.0
+3.699
+1.140, 3.460
+2.729
+num train epochs
+10
+5, 20
+18
+6, 13
+8
+warmup steps
+100
+50, 200
+177
+87, 192
+129
+weight decay
+0.01
+1 × 10−6, 1 × 10−2
+3.19 × 10−5
+1.38 × 10−6, 7.73 × 10−3
+8.51 × 10−6
+sulted in a WER of 0.53 and a BLEU score of 33.95, indicat-
+ing a moderate level of accuracy with notable errors, while still
+demonstrating a good degree of similarity between the predicted
+and the reference translation.
+4.2. Preliminary fine-tuning
+In an initial experiment we fine-tuned a model on the GOLD
+dataset, explicitly setting the language argument to German11
+and using the generic hyperparameter configuration listed in Ta-
+ble 2 (column gold). As shown in Table 3, the model demon-
+strated a significant reduction in WER and improvement in
+BLEU compared to the baseline.
+Increasing the number of
+training epochs to 50 did not improve performance; neverthe-
+less, to assess the impact of this parameter configuration on
+boosting Whisper’s performance on our small datasets, we con-
+ducted hyperparameter optimisation.
+4.3. Optimisation
+To gauge the best hyperparameter configuration for model fine-
+tuning, we conducted multiple optimisation experiments on
+GOLD (hereafter optGold) and on SYNTH (hereafter optSynth)
+with the Optuna framework [23]12. Our choice of hyperparam-
+eter ranges was informed by existing literature, but we extended
+these to explore a broader spectrum of possibilities.
+optGold20.
+Starting from the range shown in Table 2
+and setting Optuna’s optimisation multivariate parameter to
+false to examine the impact of Whisper’s hyperparameters in
+isolation [24], this experiment ran 20 training trials in 20 hours.
+The best configuration achieved a 12% WER and a BLEU score
+of 78.90 on GOLD, improving on the preliminary fine-tuning
+experiment across all error metrics. These results were influ-
+enced by five key parameters, which together accounted for
+most of the model’s performance variance. In order of impor-
+tance, Adam ϵ had the greatest impact, followed by number of
+epochs, warm-up steps, learning rate and Adam β. The domi-
+nance of Adam ϵ suggests that its small 1.44 × 10−8 value (the
+same as recommended by [25]) was crucial for stable and ef-
+fective learning while a higher value could have caused larger
+fluctuations in gradients, leading to poor convergence. Training
+duration and learning rate scheduling were closer to the higher
+end of the value range we set, suggesting that longer training
+and more aggressive learning rate scheduling helped achieve
+11Applied to both Whisper’s tokeniser and decoder. Omitting the
+language specification resulted in markedly poor results, which are not
+worth reporting.
+12https://optuna.org/
+optimal performance. Finally, the Adam β1 value (0.96) fa-
+cilitated smoother updates while slowing adaptation to new pat-
+terns (convergence delay). Similarly, the β2 value (0.95) would
+indicate a more stable but slower adjustment of the learning rate.
+optGold70. To further investigate the impact of hyperpa-
+rameter optimisation, we conducted a second experiment with
+Optuna’s multivariate parameter set to true and 70 trials
+(Figure 1). The process ran for 41:08:57 hours, allowing for
+a more comprehensive exploration of parameter interactions.
+However, while the results showed no performance improve-
+ment over optGold20, indicating that a wider search space did
+not yield beneficial parameter configurations, weight decay and
+learning rate showed a higher level of importance.
+optSynth20. For the optSynth study, we ran an experi-
+ment with Optuna’s multivariate parameter disabled and an-
+other with it enabled. For the former experiment, we increased
+the GPU and RAM size, as well as the trial numbers to 20, for
+a total training runtime of 920 minutes (15:20:38 hours). The
+best trial from this study, presented in Table 2, used SGD over
+AdamW as the optimiser. While slightly better than the base-
+line, its overall performance on the test set remained poor. To
+further investigate this result, we retrained the best checkpoint
+on SYNTH for 50 epochs. However, the performance showed
+only negligible improvements compared to training the same
+model for 8 epochs and the baseline, suggesting that increas-
+ing the number of epochs had no meaningful impact. Indeed,
+the most influential hyperparameters for this best trial, in order
+of importance, were: Adam β2 (0.97), dropout rate (7%), max
+gradient norm (2.72), learning rate (very small at 2.42 × 10−7)
+and warm-up steps (129). In the latter experiment, the model’s
+optimisation progress after 13 epochs showed no improvement
+on the error rates of optSynth20, leading us to conclude that
+that Optuna’s multivariate parameter had little to no bearing
+on the convergence behavior for this particular benchmark.
+4.3.1. optGold20 output
+Below, we present a short selection of the model’s predictions
+(Hyp) alongside the reference translations (Ref), focussing on
+cases with the highest error rates.
+Whisper’s errors can be
+grouped into several categories. A common issue is halluci-
+nations, with the model generating words not present in the
+audio or duplicating utterances. It also struggles to recognise
+some named entities, often replacing them with more com-
+mon (Example 1), phonetically similar or even invented names.
+Occasionally, it misrecognises gender, transforming female-
+referenced sentences into male ones (Example 2). Another is
+lexical reformulation, where the model substitutes words with
+3
+
+Table 3: Performance of Whisper’s baseline and fine-tuned large-v3 models on GOLD. Confidence intervals (CI) were obtained with
+bootstrap sampling over 1000 samples.
+Model
+Epochs
+WER
+WER CI
+BLEU
+BLEU CI
+Resources
+Train time
+baseline
+–
+0.53
+0.49, 0.57
+33.95
+30.68, 37.23
+–
+–
+gold
+10
+0.19
+0.15, 0.23
+78.90
+74.95, 82.59
+CPU:1, A100(3G,24GB):1, GPU:1, Mem:24G, Node:1
+09:04:11
+gold
+50
+0.28
+0.25, 0.32
+61.75
+58.56, 65.00
+CPU:1, A100(3G,24GB):1, GPU:1, Mem:24G, Node:1
+–
+Study
+Epochs
+WER
+WER CI
+BLEU
+BLEU CI
+Resources
+Optim. time
+optGold20
+6
+0.12
+0.09, 0.16
+86.18
+82.07, 89.55
+CPU:1, A100(3G,40GB):1, GPU:1, Mem:32G, Node:1
+01:03:14
+optGold70
+14
+0.15
+0.12, 0.18
+82.60
+78.70, 86.13
+CPU:1, A100(3G,80GB):1, GPU:1, Mem:64G, Node:1
+00:28:19
+optSynth20
+8
+0.55
+0.50, 0.59
+33.67
+30.94, 36.26
+CPU:1, A100(3G,80GB):1, GPU:1, Mem:64G, Node:1
+00:46:58
+optSynth20
+50
+0.54
+0.50, 0.59
+33.79
+30.76, 36.31
+CPU:1, A100(3G,80GB):1, GPU:1, Mem:64G, Node:1
+03:27:43
+Figure 1: Parallel coordinate plot of optGold70 showing opti-
+misation progress across 70 trials, with darker lines represent-
+ing the best performing trials.
+synonyms, altering the phrasing while preserving meaning (Ex-
+ample 3). Some errors stem from data preprocessing, where
+insufficient padding at the start of audio chunks causes the first
+word to be misinterpreted. In other cases, the model accurately
+translates the audio, whereas the reference text presents a refor-
+mulation.
+1. Dataset: ALP; WER: 0.14; BLEU: 84.08
+Ref: Sara sagt, dass wir zu viel essen. — Hyp: Lisa sagt,
+dass wir zu viel essen.
+2. Dataset: ALP; WER: 0.25; BLEU: 53.03
+Ref: Martina war draußen unterwegs, hast du sie gesehen?
+Was hat sie gemacht?
+— Hyp:
+Martin war draußen
+unterwegs, hast du ihn gesehen? Was hat er gemacht?
+3. Dataset: EUR; WER: 0.43; BLEU: 29.15
+Ref: Die Nachbarprovinz Trient musste da mit f¨unf Prozent
+weit h¨ohere Werte verzeichnen,
+ganz abgesehen vom
+restlichen Staatsgebiet, das durchschnittlich rund zw¨olf
+Prozent aufweist. — Hyp: Die Nachbarprovinz Trient hat
+damit 5 Prozent weit h¨ohere Werte verzeichnen m¨ussen, ganz
+angesehen vom restlichen Stoatsgebiet, das durchschnittlich
+um 12 Prozent aufweist.
+4. Dataset: IDM; WER: 0.30; BLEU: 56.59
+Ref: In meinem Umfeld haben die Natur und der Wein die
+wichtigste Rolle gespielt. — Hyp: wo um mich herum die
+Natur und der Wein die wichtigste Rolle gespielt haben.
+4.4. Limitations
+The fine-tuning dataset used is limited in size and lacks balance
+among the different South Tyrolean variations, which may af-
+fect the generalisability of the findings and introduce biases due
+to the underrepresentation of certain dialects.
+In compliance with submission anonymisation rules, access
+to the code and the reusable portion of the training datasets will
+be provided upon acceptance of this submission.
+4.5. Ethical considerations
+Participants of the EUR corpus consented to the use of their
+anonymised contributions and their involvement was entirely
+voluntary. No metadata or personal identifiable information was
+used in the training or evaluation of the model.
+5. Conclusion and future work
+In this study, we fine-tuned a Speech-to-Text model for trans-
+lating South Tyrolean dialect into Standard German using Ope-
+nAI’s Whisper, concurrently compiling a first corpus for this
+purpose. Compared to the baseline, our optimised model re-
+duced the WER from 53% to 12% and achieved a BLEU score
+of 86.18, reflecting a higher-quality transcription.
+The best
+performance was obtained using targeted hyperparameter op-
+timisation, particularly for AdamW parameters, learning and
+dropout rates. While the model performed well on manually
+annotated data, results on the synthetic dataset remained subop-
+timal, indicating a need for further refinement. Despite dataset
+size and resource limitations, our approach successfully im-
+proved dialectal speech processing, showing promise for prac-
+tical applications in subtitling and archival documentation. In-
+deed, our model is currently deployed in partnership with a lo-
+cal heritage beneficiary, the Office for Film and Media of the
+Autonomous province of Bolzano, to mass-translate audiovi-
+sual archives. The Office will review and correct the transla-
+tions, providing feedback to refine the model and ensuring its
+practical relevance to community-specific needs. The model is
+also being considered for deployment in news broadcasting and
+tourism promotion.
+Future work will focus on expanding and combining train-
+ing data, extending optimisation experiments to include a much
+larger number of trials and exploring alternative multitask mod-
+els such as Seamless M4Tv213, distill-whisper-large-v314 and
+NVIDIA Canary15 for comparative analysis and improved gen-
+eralisation.
+13https://huggingface.co/docs/transformers/en/
+model doc/seamless m4t v2
+14https://huggingface.co/distil-whisper/
+distil-large-v3
+15https://huggingface.co/nvidia/canary-1b
+4
+
+6. References
+[1] L. M. Eichinger, “South Tyrol: German and Italian in a Changing
+World,” Journal of Multilingual and Multicultural Development,
+vol. 23, no. 1-2, pp. 137–149, 2002.
+[2] ASTAT, “Sprachkenntnisse und Sprachgebrauch im Alltag in
+S¨udtirol - 2024,” 2024. [Online]. Available: https://astat.provinz.
+bz.it/de/aktuelles-publikationen-info.asp?art=ASTAT685122
+[3] P. Auer, Perspectives on variation: Sociolinguistic, historical,
+comparative.
+De Gruyter Mouton, 2005, ch. Europe’s sociolin-
+guistic unity, or: A typology of European dialect/standard con-
+stellations, pp. 7–42.
+[4] N. Aepli, C¸ . C¸ ¨oltekin, R. Van Der Goot, T. Jauhiainen, M. Kazzaz,
+N. Ljubeˇsi´c, K. North, B. Plank, Y. Scherrer, and M. Zampieri,
+“Findings of the VarDial evaluation campaign 2023,” in Tenth
+Workshop on NLP for Similar Languages, Varieties and Dialects
+(VarDial 2023), Y. S. et al., Ed. Dubrovnik, Croatia: Association
+for Computational Linguistics, May 2023, pp. 251–261. [Online].
+Available: https://aclanthology.org/2023.vardial-1.25
+[5] A. Kantharuban, I. Vuli´c, and A. Korhonen, “Quantifying
+the Dialect Gap and its Correlates Across Languages,” 2023.
+[Online]. Available: https://arxiv.org/abs/2310.15135
+[6] V. Blaschke, B. Kovaˇci´c, S. Peng, H. Sch¨utze, and B. Plank,
+“MaiBaam: A multi-dialectal Bavarian Universal Dependency
+treebank,”
+in Proceedings of the 2024 Joint International
+Conference on Computational Linguistics, Language Resources
+and Evaluation (LREC-COLING 2024).
+Torino, Italia: ELRA
+and ICCL, May 2024, pp. 10 921–10 938. [Online]. Available:
+https://aclanthology.org/2024.lrec-main.953
+[7] A. Oliver, S.
+´Alvarez, E. W. Stemle, and E. Chiocchetti,
+“Training an NMT system for legal texts of a low-resource
+language variety (South Tyrolean German – Italian),”
+in
+Proceedings of the 25th Annual Conference of the European
+Association for Machine Translation, X. S. et al., Ed., vol. 1.
+Sheffield, United Kingdom: European Association for Machine
+Translation,
+Jun. 2024,
+pp. 573–579. [Online]. Available:
+https://eamt2024.github.io/proceedings/vol1.pdf
+[8] S. Peng, Z. Sun, H. Shan, M. Kolm, V. Blaschke, E. Artemova,
+and B. Plank, “Sebastian, Basti, Wastl?! Recognizing Named En-
+tities in Bavarian Dialectal Data,” 2024.
+[9] V. Blaschke,
+H. Sch¨utze,
+and B. Plank,
+“A survey of
+corpora for Germanic low-resource languages and dialects,” in
+Proceedings of the 24th Nordic Conference on Computational
+Linguistics (NoDaLiDa).
+T´orshavn, Faroe Islands: University
+of Tartu Library, May 2023, pp. 392–414. [Online]. Available:
+https://aclanthology.org/2023.nodalida-1.41
+[10] J. Herrgen, ““Regionalsprache.de” (REDE): from dialect to
+variation
+space,”
+Dialectologia:
+revista
+electr`onica,
+pp.
+79–87, 2010. [Online]. Available:
+https://raco.cat/index.php/
+Dialectologia/article/view/242103
+[11] M. Pl¨uss, J. Deriu, Y. Schraner, C. Paonessa, J. Hartmann,
+L. Schmidt, C. Scheller, M. H¨urlimann, T. Samardˇzi´c, M. Vogel,
+and M. Cieliebak, “STT4SG-350:
+A speech corpus for all
+Swiss German dialect regions,” in Proceedings of the 61st
+Annual Meeting of the Association for Computational Linguistics
+(Volume 2:
+Short Papers),
+A. Rogers,
+J. Boyd-Graber,
+and N. Okazaki, Eds.
+Toronto, Canada:
+Association for
+Computational Linguistics, Jul. 2023, pp. 1763–1772. [Online].
+Available: https://aclanthology.org/2023.acl-short.150
+[12] Philip N. Garner and David Imseng and Thomas Meyer, “Au-
+tomatic speech recognition and translation of a Swiss German
+dialect: Walliserdeutsch,” in Proc. Interspeech 2014, 2014, pp.
+2118–2122.
+[13] T.
+Kew,
+I.
+Nigmatulina,
+L.
+Nagele,
+and
+T.
+Samardˇzi´c,
+“UZH TILT: A Kaldi recipe for Swiss German Speech to
+Standard German Text,” in SwissText/KONVENS, 2020. [Online].
+Available: https://api.semanticscholar.org/CorpusID:219986596
+[14] M. Stadtschnitzer and C. A. Schmidt, “Adaptation and Training
+of a Swiss German Speech Recognition System using Data-
+driven Pronunciation Modelling,” in Proceedings of DAGA-44.
+Jahrestagung f¨ur Akustik, M¨unchen, 2018. [Online]. Available:
+https://publica.fraunhofer.de/handle/publica/400968
+[15] M. B¨uchi,
+M. A. Ulasik,
+M. H¨urlimann,
+F. Benites de
+Azevedo
+e
+Souza,
+P.
+von
+D¨aniken,
+and
+M.
+Cieliebak,
+“ZHAW-InIT at GermEval 2020 task 4: low-resource speech-
+to-text,”
+in Proceedings of the 5th Swiss Text Analytics
+Conference (SwissText) & 16th Conference on Natural Language
+Processing (KONVENS), S. Ebling, D. Tuggener, M. H¨urlimann,
+M. Cieliebak, and M. Volk, Eds.
+CEUR Workshop Proceedings,
+2020.
+[Online].
+Available:
+https://digitalcollection.zhaw.ch/
+handle/11475/21550
+[16] A. Agarwal and T. Zesch, “LTL-UDE at Low-Resource Speech-
+to-Text Shared Task:
+Investigating Mozilla DeepSpeech in a
+low-resource setting,” in SwissText/KONVENS, 2020. [Online].
+Available: https://api.semanticscholar.org/CorpusID:219985402
+[17] Y. Arabskyy, A. Agarwal, S. Dey, and O. Koller, “Dialectal
+Speech Recognition and Translation of Swiss German Speech
+to Standard German Text: Microsoft’s Submission to SwissText
+2021,” 2021. [Online]. Available:
+https://arxiv.org/abs/2106.
+08126
+[18] P. Gilles, L. E. A. Hillah, and N. Hosseini Kivanani, “ASRLUX:
+Automatic Speech Recognition For The Low-Resource Language
+Luxembourgish,”
+in Proceedings of the 20th International
+Congress of Phonetic Sciences, R. Skarnitzl and J. Vol´ın, Eds.
+Guarant International, 2023, pp. 3091–3095. [Online]. Available:
+https://hdl.handle.net/10993/55819
+[19] A. Ramponi, “Language Varieties of Italy: Technology Chal-
+lenges and Opportunities,” Transactions of the Association for
+Computational Linguistics, vol. 12, pp. 19–38, 2024.
+[20] S. Rabanus,
+A. Kruijt,
+B. Alber,
+E. Bidese,
+L. Gaeta,
+G. Raimondi, P. Benedetto Mas, S. Bertollo, J. Casalicchio,
+R. Cioffi, P. Cordin, M. Cosentino, S. Dal Negro, A. Gl¨uck,
+J. Kokkelmans, A. Murelli, A. Padovan, A. Pons, M. Rivoira,
+M. Tagliani, C. Saracco, E. Siviero, A. Tomaselli, R. Videsott,
+A. Vietti, and B. M. Vogt, “Alpilink corpus 1.0.0,” Meyrin, 2023.
+[Online]. Available: https://zenodo.org/record/8360170
+[21] M. Pl¨uss, M. H¨urlimann, M. Cuny, A. St¨ockli, N. Kapotis,
+J. Hartmann, M. A. Ulasik, C. Scheller, Y. Schraner, A. Jain,
+J. Deriu, M. Cieliebak, and M. Vogel, “SDS-200:
+A Swiss
+German Speech to Standard German Text Corpus,”
+2022.
+[Online]. Available: https://arxiv.org/abs/2205.09501
+[22] S. Kanakaraddi, A. Chikaraddi, S. Giraddi, K. Gull, and M. Patil,
+“Optimized Scene Text Detector and Paddle Optical Character
+Recognizer Techniques to Extract Text from Images,” in Proceed-
+ings of 4th International Conference on Artificial Intelligence and
+Smart Energy, S. Manoharan, A. Tugui, and Z. Baig, Eds. Cham:
+Springer Nature Switzerland, 2024, pp. 218–230.
+[23] T. Akiba, S. Sano, T. Yanase, T. Ohta, and M. Koyama,
+“Optuna:
+A Next-generation Hyperparameter Optimization
+Framework,”
+in Proceedings of the 25th ACM SIGKDD
+International Conference on Knowledge Discovery & Data
+Mining, ser. KDD ’19.
+New York, NY, USA: Association for
+Computing Machinery, 2019, p. 2623–2631. [Online]. Available:
+https://doi.org/10.1145/3292500.3330701
+[24] S. Watanabe, “Tree-Structured Parzen Estimator: Understanding
+Its Algorithm Components and Their Roles for Better Empirical
+Performance,” 2023. [Online]. Available: https://arxiv.org/abs/
+2304.11127
+[25] D. P. Kingma and J. Ba, “Adam:
+A Method for Stochastic
+Optimization,” 2017. [Online]. Available: https://arxiv.org/abs/
+1412.6980
+5
+

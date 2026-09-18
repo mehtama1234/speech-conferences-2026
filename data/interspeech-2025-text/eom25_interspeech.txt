@@ -1,0 +1,641 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+SiamCTC:
+Learning Speech Representations through Monotonic Temporal Alignment
+SooHwan Eom1, Mark Hasegawa-Johnson2, Chang D. Yoo *1
+1Korea Advanced Institute of Science and Technology, South Korea
+2University of Illinois Urbana-Champaign, United States
+{sean1105, cd yoo}@kaist.ac.kr, jhasegaw@illinois.edu
+Abstract
+Self-supervised speech representation learning has made signif-
+icant progress through Siamese networks, which leverage dif-
+ferent views of the same input. However, existing methods of-
+ten require frame-wise alignment between these views, over-
+looking the broader linguistic context invariance across differ-
+ent speaking styles. We introduce SiamCTC, a framework that
+integrates Siamese networks with Connectionist Temporal Clas-
+sification (CTC) to learn speech representations without strict
+frame-level correspondence. By employing CTC loss to estab-
+lish flexible, monotonic alignments between differing tempo-
+ral realizations of the same content, SiamCTC accommodates
+speed perturbations and other temporal augmentations. This de-
+sign relaxes frame-wise constraints while preserving temporal
+coherence and enhancing robustness to speaking-rate variations
+in downstream tasks. Our experiments demonstrate that Siam-
+CTC leads to more adaptable speech representations, particu-
+larly at diverse speaking rates.
+Index Terms: self-supervised learning, speech representation
+learning
+1. Introduction
+Self-supervised learning (SSL) for speech representation learns
+from unlabeled data, using the input signal itself as the super-
+visory signal. By avoiding manual transcriptions, SSL enables
+deep neural network training on large-scale raw speech corpora,
+providing effective pre-training and robust representations for
+downstream tasks such as automatic speech recognition (ASR)
+[1] and speaker verification [2].
+Speech signals inherently capture a variety of attributes, in-
+cluding speaker characteristics, environmental conditions, and
+linguistic content. Our primary focus is on extracting linguis-
+tic context, specifically, latent phonetic properties that charac-
+terize linguistic information. Previous SSL approaches have
+employed techniques such as in-utterance contrastive learning
+[3, 4, 5] or masked unit prediction [6]. However, they often ne-
+glect linguistic content invariance to varying speech conditions
+(e.g., speaking rate), limiting robustness when test conditions
+differ from those seen during training [7].
+Motivated by the growing success of self-supervised learn-
+ing in computer vision, we turn to Siamese-based frameworks
+[8, 9, 10, 11, 12], which learn from two distinct ‘views’ of the
+same data sample. These frameworks employ objectives such as
+contrastive learning, similarity maximization, or masked feature
+prediction to capture the shared information between views. A
+key insight of these methods is the existence of a latent structure
+*Corresponding author.
+that remains invariant under different transformations, which
+Siamese networks aim to extract.
+Several attempts have been made to apply Siamese net-
+works to speech representation learning [13, 14, 15, 16]. How-
+ever, they typically rely on frame-wise self-supervised labels,
+creating two main limitations: (1) restricting temporal augmen-
+tations like speed perturbation, as these can introduce frame
+misalignment, and (2) not fully leveraging linguistic content in-
+variance across natural variations in speaking style and rate.
+To overcome these limitations, we propose SiamCTC, a
+novel framework for speech representation learning that uses
+monotonic alignment between latent representations and self-
+supervised labels. Our approach integrates three key compo-
+nents: (1) a Siamese network to extract invariant speech repre-
+sentations, (2) a Connectionist Temporal Classification (CTC)
+[17] prediction head to learn monotonic alignments without im-
+posing strict frame-wise constraints, and (3) in-utterance tem-
+poral contrastive learning to prevent representation collapse.
+By explicitly modeling content invariance within utter-
+ances, SiamCTC captures linguistic representations more effec-
+tively, even with misaligned views introduced by speed pertur-
+bations. Our main contributions are summarized as follows:
+• A flexible framework that eliminates frame-wise alignment
+constraints while maintaining temporal coherence through
+CTC-based monotonic alignment learning.
+• An effective combination of Siamese networks and CTC for
+robust speech representation learning, improving generaliza-
+tion to varied speaking styles and speeds.
+• Comprehensive empirical evaluation across multiple down-
+stream tasks, improving the widely used SSL models such as
+HuBERT [6] and WavLM [18].
+Through extensive experiments, we demonstrate that Siam-
+CTC achieves improved results compared to conventional SSL
+frameworks, highlighting the benefits of speech invariance
+through monotonic alignment.
+2. Related Works
+2.1. Self-Supervised Speech Representation Learning
+Self-supervised speech representation learning methods can be
+broadly classified into three categories based on their pretext
+task. Generative approaches (e.g., VQ-VAE [21], APC [22]) re-
+construct or predict speech signals, potentially preserving non-
+linguistic attributes such as speaker characteristics. Contrastive
+methods such as CPC [3] and wav2vec series [4, 5] distinguish
+positive samples from negative ones. Although effective, they
+often assume strict temporal correspondence.
+Predictive ap-
+proaches (e.g., HuBERT [6], wavLM [18], Data2vec [23]) rely
+on masked frame prediction objectives. While advancing the
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+3573
+10.21437/Interspeech.2025-2746
+
+speed/tempo
+perturbation
+𝑋𝑋
+෨𝑋𝑋
+encoder
+𝑓𝑓𝜃𝜃
+෨𝑍𝑍
+𝑍𝑍
+attention scores
+ℒ𝐶𝐶𝐶𝐶𝐶𝐶
+ℒ𝐾𝐾𝐾𝐾𝐾𝐾
+ℒ𝑇𝑇𝑇𝑇𝑇𝑇𝑇𝑇𝑇𝑇
+= −log 𝑝𝑝(𝑍𝑍| ෨𝑍𝑍)
+= 𝔻𝔻KL(hard ∥soft)
+positive pair: adjacent
+negative pair: random
+from DTW
+or Viterbi
+ℒ𝑇𝑇𝑇𝑇𝑇𝑇𝑇𝑇𝑇𝑇
+predictor
+Figure 1: An overview of SiamCTC framework. Overview of our proposed SiamCTC framework. The model processes two views of the
+same input sequence X and ˜
+X, where one undergoes speed/tempo perturbation. Both sequences pass through a shared encoder fθ to
+produce representation Z and ˜Z. The framework optimizes three learning objectives: (1) CTC loss (LCT C) for monotonic alignment
+learning, (2) KL divergence loss (LKLD) between hard and soft alignments, and (3) Temporal InfoNCE losses (LT INCE) that treat
+adjacent features as positive pairs while sampling negative pairs randomly within the sequence. Hard alignments are computed via the
+Viterbi algorithm [19] or DTW [20] and serve as a reference for the soft alignments learned by the model.
+state-of-the-art, their frame-wise consistency reliance can cause
+speed perturbation sensitivity.
+2.2. Siamese Networks for Self-Supervised Learning
+Siamese-based frameworks have become prominent in SSL,
+particularly in computer vision [8, 10, 12, 11, 9]. These frame-
+works learn robust, invariant embeddings by comparing aug-
+mented input views via contrastive or distillation objectives.
+In speech, several recent works [13, 14, 15, 16] have ex-
+plored Siamese-based approaches.
+SPIN and R-SPIN [13,
+14], inspired by SwaV [24], employ iterative clustering un-
+der speaker perturbation but rely on frame-level contrast. C-
+Siam [15] introduces dual encoders and a contrastive objective
+that assumes consistent temporal correspondence via predefined
+framewise alignment. DinoSR [16] combines masked pseudo-
+label prediction with online clustering and self-distillation, but
+also depends on frame-level alignment. While promising, their
+reliance on strict temporal matching can reduce robustness to
+varying speaking rates. LASER [25] partially addresses this
+limitation through soft-DTW [26] for direct sequence compari-
+son. In contrast, our approach combines a Siamese framework
+with CTC-based alignment prediction, offering a more flexible
+alignment mechanism.
+3. SiamCTC
+This section introduces SiamCTC, a novel framework for learn-
+ing speech representations invariant to temporal variations by
+combining a Siamese encoder with a Connectionist Temporal
+Classification (CTC) [17] alignment head. Auxiliary alignment
+consistency and temporal contrastive losses further refine align-
+ment and prevent collapse. The overall goal is to train an en-
+coder that captures linguistic representations whose sequential
+structure remains invariant to temporal perturbations. Figure 1
+provides an overview of our approach.
+3.1. Siamese Encoder with Temporal Perturbation
+Given an input speech utterance X, we create two views: the
+original sequence X and its temporally perturbed version ˜
+X.
+Both sequences are processed by a shared encoder fθ to obtain
+their respective representations:
+Z = fθ(X),
+˜Z = fθ( ˜
+X).
+(1)
+Our approach learns flexible inter-view alignments without
+strict, predefined frame-level correspondence. This design en-
+ables effective use of temporal augmentations, improving ro-
+bustness to natural variations in speech rate.
+3.2. Monotonic Alignment Learning
+Connectionist Temporal Classification (CTC) [17] aims to max-
+imize the log-likelihood between two sequences with unknown
+alignments, a common scenario in automatic speech recogni-
+tion [27, 28]. Specifically, CTC sums the likelihoods of all valid
+alignment paths, leveraging a forward-backward procedure for
+efficient computation.
+In our framework, the original representation Z serves as
+the target sequence or ‘pseudo-label’ for the CTC loss. The
+perturbed view representation ˜Z is passed through a linear pre-
+diction layer ϕ to produce predicted representations. Frame-
+wise logits for CTC are then derived from the attention scores
+between Z and ϕ( ˜Z). These logits, forming an attention score
+matrix, are used in the CTC loss:
+LCTC = −log
+X
+π∈B−1(Z)
+p(π|ϕ( ˜Z)),
+(2)
+where B is the CTC many-to-one mapping and π represents
+valid alignment path.
+This allows CTC to learn alignments
+without requiring pre-defined discrete frame-wise labels.
+For practical implementation, since CTC typically expects
+the input length to be longer than or equal to the target length,
+we transpose our logits when necessary to fit this requirement
+(e.g., under speed-up perturbation). Furthermore, to handle the
+mandatory <blank> symbol in CTC decoding, we reserve a
+fixed <blank> column in our attention logits.
+3.3. Temporal Contrastive Loss
+A trivial solution to the CTC objective is to collapse all frames
+into a single representation, thereby minimizing alignment cost
+without preserving fine-grained distinctions. To avoid this and
+ensure that distinct representations are learned for temporally
+3574
+
+distinct speech segments, we incorporate a temporal InfoNCE
+(TINCE) loss:
+LTINCE(h) = Ei,N
+"
+−log
+es(˜hi,hi+1)/τ
+es(˜hi,hi+1)/τ + P
+j∈N es(˜hi,hj)/τ
+#
+,
+(3)
+where h = [h1, h2, ...] is the input feature sequence, ˜h = ψ(h)
+is a linear prediction of anchor frame hi, τ is a temperature
+hyperparameter, s(a, b) = a⊤b/∥a∥∥b∥is the cosine similarity,
+and N is a set of M negative samples drawn from positions
+at least K steps away from i. The core idea is that adjacent
+frames (positive pairs) should be more similar than randomly
+sampled non-adjacent frames (negative pairs). By pushing apart
+non-adjacent features, TINCE helps prevent the representation
+from collapsing into a single vector and preserves fine-grained
+adjacency between frames, which we refer to as “local context.”
+As a final loss, we compute the TINCE loss separately for
+both branches Z and ˜Z and then take the average:
+LTINCE = 1
+2(LTINCE(Z) + LTINCE( ˜Z))
+(4)
+3.4. Alignment Consistency Loss
+While CTC can learn monotonic alignments, its alignment qual-
+ity may degrade without sufficient guidance. To address this,
+we utilize KL divergence loss LKLD between the hard align-
+ment path (phard), obtained via Viterbi [19] or DTW [20], and
+the attention scores (psoft):
+LKLD = DKL(phard∥psoft).
+(5)
+This loss constrains the learned attention to remain close
+to a meaningful alignment reference. In practice, we find that
+LKLD has a relatively minor effect, as the TINCE loss already
+discourages representation collapse and implicitly guides the
+soft alignment away from extreme solutions.
+3.5. Overall Objective
+We combine these losses into a single training objective:
+L = LCTC + αLKLD + βLTINCE,
+(6)
+where α and β are balancing coefficients. We set 1.0 for both
+coefficients. This composite objective simultaneously encour-
+ages robust monotonic alignment, alignment consistency, and
+non-collapsing temporal structure.
+4. Experimental Details
+4.1. Datasets
+We use LibriSpeech [29] for both pre-training and downstream
+fine-tuning. LibriSpeech is a widely used corpus of approxi-
+mately 1,000 hours of read English audiobooks derived from
+LibriVox, sampled at 16 kHz. It is partitioned into subsets des-
+ignated as “clean” or “other,” reflecting differences in recording
+quality and speaker accents. In this work, we focus on the train-
+clean-100 split to facilitate rapid experimentation and training
+efficiency under limited computational resources. For evalua-
+tion, we use the test-clean subset.
+4.2. Model Training
+We use two pre-trained self-supervised speech encoders as our
+base: HuBERT [6] and WavLM [18]. Both models were orig-
+inally trained on 960 hours of LibriSpeech [29] corpus, and
+Table 1:
+Performance comparison on phoneme recognition
+(PR) and automatic speech recognition (ASR) downstream
+tasks. We report Phoneme Error Rate (PER%) and Word Er-
+ror Rate (WER%), with lower values indicating better perfor-
+mance. The numbers in parentheses show the performance gap
+relative to the base model.
+Model
+PR
+ASR
+PER(%) ↓
+WER(%) ↓
+HuBERT [6]
+5.41
+6.42
+HuBERT+Spin [13]
+4.39 (-1.02)
+6.34 (-0.08)
+HuBERT+LASER [25]
+4.61 (-0.80)
+6.18 (-0.24)
+HuBERT+SiamCTC
+4.32 (-1.09)
+6.23 (-0.19)
+WavLM [18]
+4.84
+6.21
+WavLM+Spin [13]
+4.18 (-0.66)
+5.88 (-0.33)
+WavLM+LASER [25]
+4.28 (-0.56)
+5.92 (-0.29)
+WavLM+SiamCTC
+3.96 (-0.88)
+5.73 (-0.48)
+are publicly available via S3PRL.12 The model is then further
+trained for 5,000 updates, with a total batch size of 8. We em-
+ploy AdamW optimizer [30] with a peak learning rate of 2e-5,
+linearly warmed up over the first 1,000 updates and then lin-
+early decayed thereafter. A maximum gradient norm of 1.0 is
+applied to stabilize training.
+The encoder architecture is based on HuBERT [6] and
+WavLM [18], and outputs 256-dimensional features. The align-
+ment head uses a temperature of 2.0. For hard alignment, we
+rely on the Viterbi algorithm [19]. For temporal contrastive
+learning, we use −1 as <blank> log probability, sample 20
+negative examples from positions at least 5 frames away and ap-
+ply a contrastive temperature of 0.2. For data augmentation, we
+apply speed perturbations using factors {0.8, 0.9, 1.0, 1.1, 1.2}
+and pitch perturbations using factors {−2, −1, 0, 1, 2}.
+4.3. Baselines
+We compare our approach with two widely used self-supervised
+speech representation encoders, HuBERT [6] and WavLM [18].
+In addition, we compare ours with their SPIN [13] and LASER
+[25] variants, which are fine-tuned on the same base models as
+ours. All models are evaluated under identical conditions using
+the SUPERB benchmark for fair comparison.3
+4.4. Evaluation Metrics
+We report Phoneme Error Rate (PER%) and Word Error Rate
+(WER%) on the LibriSpeech test-clean for phoneme recogni-
+tion and ASR tasks, respectively. In addition, we conduct abla-
+tion studies to examine the contribution of each loss component.
+We also test model robustness against speaking rate variations
+in speed-perturbed versions of the evaluation set.
+5. Experiment Results
+5.1. Main Results
+Table 1 summarizes our results in phoneme recognition (PR)
+and automatic speech recognition (ASR) on LibriSpeech, com-
+1https://huggingface.co/s3prl/converted_
+ckpts/resolve/main/hubert_base_ls960.pt
+2https://huggingface.co/s3prl/converted_
+ckpts/resolve/main/wavlm_base.pt
+3https://github.com/s3prl/s3prl
+3575
+
+Table 2:
+Ablation study on different loss components for
+phoneme recognition.
+We evaluate performance in terms of
+Phoneme Error Rate (PER%) using combinations of CTC,
+KL divergence (KLD), and Temporal InfoNCE (TINCE) loss.
+Lower PER indicates better performance.
+Loss
+PR
+CTC
+KLD
+TINCE
+PER(%) ↓
+✓
+✗
+✗
+5.26
+✓
+✓
+✗
+5.16
+✓
+✗
+✓
+4.48
+✓
+✓
+✓
+4.32
+paring HuBERT [6] and WavLM [18] baselines with variants
+enhanced by SPIN [13], LASER [25], or our proposed Siam-
+CTC. We report phoneme error rate (PER%) and word error
+rate (WER%), with lower values indicating better performance.
+The values in parentheses show the improvement relative to the
+respective baseline.
+For HuBERT-based systems, SiamCTC achieves the low-
+est PER (4.32%), surpassing both SPIN (4.39%) and LASER
+(4.61%). Although LASER slightly outperforms SiamCTC in
+WER (6.18% vs. 6.23%), our method consistently produces a
+strong overall result.
+In the WavLM-based setting, SiamCTC again shows the
+largest improvement in PER (down from 4.84% to 3.96%) com-
+pared to SPIN (4.18%) and LASER (4.28%). Notably, Siam-
+CTC also attains the best WER (5.73%) among the WavLM
+variants. These findings suggest that our explicit monotonic
+alignment objective provides robust benefits in capturing lin-
+guistic content, even under varying speaking rates.
+5.2. Ablation Study
+Table 2 presents an ablation study examining the effect of each
+loss component on phoneme recognition performance with Hu-
+BERT base model. We evaluate different configurations of CTC
+loss, alignment consistency loss (KLD), and Temporal InfoNCE
+(TINCE) loss using the Phoneme Error Rate (PER%), where
+lower values indicate better performance.
+A baseline model employing only CTC achieves a PER of
+5.26%. Adding the KLD term to guide alignment consistency
+reduces PER to 5. 16%, indicating that aligning the learned at-
+tention with a hard alignment reference provides moderate im-
+provements. In contrast, replacing KLD with TINCE yields a
+more substantial gain, lowering the PER to 4.48%. This result
+suggests that temporal contrastive learning effectively preserves
+local context and mitigates representation collapse, even with-
+out explicit hard alignment guidance.
+Finally, combining CTC, KLD, and TINCE further in-
+creases performance to 4.32%, demonstrating that alignment
+consistency and temporal contrastive learning complement each
+other. In general, these findings confirm that both KLD and
+TINCE play a significant role in improving the robustness and
+accuracy of the learned speech representations.
+5.3. Analysis
+We evaluate the fine-tuned HuBERT and its SiamCTC variant
+on speed factors {0.8, 0.9, 1.0, 1.1, 1.2} to assess the robust-
+ness of our framework against different speaking rates. Figure 2
+shows the Phoneme Error Rate (PER) for each factor, where
+lower values indicate better performance.
+0.80
+0.85
+0.90
+0.95
+1.00
+1.05
+1.10
+1.15
+1.20
+Speed Factor
+4.5
+5.0
+5.5
+6.0
+6.5
+PER (%)
+Phoneme Error Rate at Different Speaking Rates
+HuBERT
+SiamCTC
+Figure 2: Phoneme Error Rate (PER) on LibriSpeech test-clean
+for different speed factors. The blue circle line represents Hu-
+BERT, and the orange square line represents SiamCTC.
+Across all speed factors, SiamCTC consistently achieves a
+lower PER than HuBERT. At the original speed (1.0), HuBERT
+obtains a PER of 5.41%, whereas SiamCTC achieves 4.32%.
+When the audio is slowed down, HuBERT’s PER rises above
+5.60%, peaking at 6.52% at 0.8×. In contrast, SiamCTC ex-
+hibits a smaller performance drop, staying below 4.6%. For
+faster speech, HuBERT performance again degrades to 6.28%
+at 1.2×, whereas SiamCTC remains relatively stable (4.7% at
+1.2×). These results suggest that learning temporal perturba-
+tion invariance produces more robust representations across var-
+ious speaking speeds and styles.
+6. Conclusion
+We proposed SiamCTC, a self-supervised learning framework
+that merges Siamese encoding with a Connectionist Tempo-
+ral Classification (CTC) based alignment objective as its core
+mechanism to handle temporal perturbations in speech. This
+is complemented by temporal InfoNCE (TINCE) loss and an
+alignment consistency loss to prevent representation collapse
+and refine alignment quality. SiamCTC provides flexible align-
+ment without relying on strict frame-level matching, thus cap-
+turing content invariance across varying speaking rates. Exper-
+iments on the LibriSpeech dataset show that SiamCTC demon-
+strates notable performance gains over established baselines,
+suggesting its effectiveness in preserving linguistic content even
+under speed perturbations. Our findings emphasize the benefits
+of learning flexible monotonic alignments in a self-supervised
+manner, paving the way for more robust and adaptive speech
+representation learning.
+7. Limitation
+While SiamCTC has shown promising performance, we ob-
+serve that the downstream results can be sensitive to hyper-
+parameters such as augmentation strategies, negative pair sam-
+pling, and attention logit temperature. In particular, we find that
+using a lower temperature, which produces more peaked logits,
+is critical for alignment seeking. Future work would address
+these sensitivities with more robust or adaptive strategies.
+While current SiamCTC is built on pre-trained models for
+efficiency, training SiamCTC from scratch may further reveal
+its full potential–especially if combined with broader augmen-
+tation techniques like masking. Exploring discrete speech units
+(e.g., via Vector Quantization [21]) for applications like spoken
+language modeling [31], beyond current continuous representa-
+tions, can be another future direction.
+3576
+
+8. Acknowledgements
+This work was partly supported by Center for Applied Research
+in Artificial Intelligence (CARAI) grant funded by DAPA and
+ADD (UD230017TD) and partly supported by Institute of Infor-
+mation & communications Technology Planning & Evaluation
+(IITP) grant funded by the Korea government(MSIT) (No.RS-
+2022-II220184, Development and Study of AI Technologies to
+Inexpensively Conform to Evolving Policy on Ethics).
+9. References
+[1] A. Baevski and A. Mohamed, “Effectiveness of self-supervised
+pre-training for asr,” in ICASSP 2020-2020 IEEE Interna-
+tional Conference on Acoustics, Speech and Signal Processing
+(ICASSP).
+IEEE, 2020, pp. 7694–7698.
+[2] C.-I. Lai, “Contrastive predictive coding based feature for au-
+tomatic speaker verification,” arXiv preprint arXiv:1904.01575,
+2019.
+[3] A. van den Oord, Y. Li, and O. Vinyals, “Representation learning
+with contrastive predictive coding,” 2019.
+[4] S. Schneider, A. Baevski, R. Collobert, and M. Auli, “wav2vec:
+Unsupervised pre-training for speech recognition,” 2019.
+[5] A. Baevski, H. Zhou, A. Mohamed, and M. Auli, “wav2vec 2.0:
+A framework for self-supervised learning of speech representa-
+tions,” 2020.
+[6] W.-N. Hsu, B. Bolte, Y.-H. H. Tsai, K. Lakhotia, R. Salakhutdi-
+nov, and A. Mohamed, “Hubert: Self-supervised speech represen-
+tation learning by masked prediction of hidden units,” IEEE/ACM
+Trans. Audio, Speech and Lang. Proc., vol. 29, p. 3451–3460, oct
+2021.
+[7] W.-N. Hsu, A. Sriram, A. Baevski, T. Likhomanenko, Q. Xu,
+V. Pratap, J. Kahn, A. Lee, R. Collobert, G. Synnaeve, and
+M. Auli, “Robust wav2vec 2.0: Analyzing domain shift in self-
+supervised pre-training,” in Interspeech 2021, 2021, pp. 721–725.
+[8] T. Chen, S. Kornblith, M. Norouzi, and G. Hinton, “A simple
+framework for contrastive learning of visual representations,” in
+Proceedings of the 37th International Conference on Machine
+Learning, ser. Proceedings of Machine Learning Research, vol.
+119.
+PMLR, 13–18 Jul 2020, pp. 1597–1607.
+[9] M. Caron, H. Touvron, I. Misra, H. J´egou, J. Mairal, P. Bo-
+janowski, and A. Joulin, “Emerging properties in self-supervised
+vision transformers,” in Proceedings of the IEEE/CVF Interna-
+tional Conference on Computer Vision (ICCV), October 2021, pp.
+9650–9660.
+[10] J.-B. Grill, F. Strub, F. Altch´e, C. Tallec, P. Richemond,
+E. Buchatskaya, C. Doersch, B. Avila Pires, Z. Guo, M. Ghesh-
+laghi Azar, B. Piot, k. kavukcuoglu, R. Munos, and M. Valko,
+“Bootstrap your own latent - a new approach to self-supervised
+learning,” in Advances in Neural Information Processing Systems,
+vol. 33, 2020, pp. 21 271–21 284.
+[11] K. He, H. Fan, Y. Wu, S. Xie, and R. Girshick, “Momentum con-
+trast for unsupervised visual representation learning,” in Proceed-
+ings of the IEEE/CVF Conference on Computer Vision and Pat-
+tern Recognition (CVPR), June 2020.
+[12] X. Chen and K. He, “Exploring simple siamese representation
+learning,” in Proceedings of the IEEE/CVF Conference on Com-
+puter Vision and Pattern Recognition (CVPR), June 2021, pp.
+15 750–15 758.
+[13] H.-J. Chang, A. H. Liu, and J. Glass, “Self-supervised Fine-tuning
+for Improved Content Representations by Speaker-invariant Clus-
+tering,” in Proc. Interspeech, 2023.
+[14] H.-J. Chang and J. Glass, “R-spin: Efficient speaker and noise-
+invariant representation learning with acoustic pieces,” in Pro-
+ceedings of the 2024 Conference of the North American Chapter
+of the Association for Computational Linguistics: Human Lan-
+guage Technologies (Volume 1: Long Papers).
+Mexico City,
+Mexico: Association for Computational Linguistics, Jun. 2024,
+pp. 642–662.
+[15] S. Khorram, J. Kim, A. Tripathi, H. Lu, Q. Zhang, and H. Sak,
+“Contrastive siamese network for semi-supervised speech recog-
+nition,” in ICASSP 2022 - 2022 IEEE International Conference
+on Acoustics, Speech and Signal Processing (ICASSP), 2022, pp.
+7207–7211.
+[16] A. H. Liu, H.-J. Chang, M. Auli, W.-N. Hsu, and J. Glass, “Di-
+nosr: Self-distillation and online clustering for self-supervised
+speech representation learning,” in Advances in Neural Informa-
+tion Processing Systems, vol. 36, 2023, pp. 58 346–58 362.
+[17] A. Graves, S. Fern´andez, F. Gomez, and J. Schmidhuber, “Con-
+nectionist temporal classification:
+labelling unsegmented se-
+quence data with recurrent neural networks,” in Proceedings of the
+23rd International Conference on Machine Learning, ser. ICML
+’06.
+New York, NY, USA: Association for Computing Machin-
+ery, 2006, p. 369–376.
+[18] S. Chen, C. Wang, Z. Chen, Y. Wu, S. Liu, Z. Chen, J. Li,
+N. Kanda, T. Yoshioka, X. Xiao, J. Wu, L. Zhou, S. Ren, Y. Qian,
+Y. Qian, J. Wu, M. Zeng, and F. Wei, “Wavlm: Large-scale self-
+supervised pre-training for full stack speech processing,” 2021.
+[19] A. Viterbi, “Error bounds for convolutional codes and an asymp-
+totically optimum decoding algorithm,” IEEE Transactions on In-
+formation Theory, vol. 13, no. 2, pp. 260–269, 1967.
+[20] H. Ney and S. Ortmanns, “Dynamic programming search for con-
+tinuous speech recognition,” IEEE Signal Processing Magazine,
+vol. 16, no. 5, pp. 64–83, 1999.
+[21] A. van den Oord, O. Vinyals, and k. kavukcuoglu, “Neural dis-
+crete representation learning,” in Advances in Neural Information
+Processing Systems, vol. 30, 2017.
+[22] Y.-A. Chung and J. Glass, “Generative pre-training for speech
+with autoregressive predictive coding,” in ICASSP, 2020.
+[23] A. Baevski, W.-N. Hsu, Q. Xu, A. Babu, J. Gu, and M. Auli,
+“data2vec: A general framework for self-supervised learning in
+speech, vision and language,” in Proceedings of the 39th Inter-
+national Conference on Machine Learning, ser. Proceedings of
+Machine Learning Research, vol. 162.
+PMLR, 17–23 Jul 2022,
+pp. 1298–1312.
+[24] M. Caron, I. Misra, J. Mairal, P. Goyal, P. Bojanowski, and
+A. Joulin, “Unsupervised learning of visual features by contrast-
+ing cluster assignments,” in Advances in Neural Information Pro-
+cessing Systems, vol. 33, 2020, pp. 9912–9924.
+[25] A. Meghanani and T. Hain, “Laser: Learning by aligning self-
+supervised representations of speech for improving content-
+related tasks,” in Interspeech 2024, 2024, pp. 2835–2839.
+[26] M. Cuturi and M. Blondel, “Soft-dtw: a differentiable loss func-
+tion for time-series,” in Proceedings of the 34th International
+Conference on Machine Learning - Volume 70, ser. ICML’17.
+JMLR.org, 2017, p. 894–903.
+[27] A. Graves and N. Jaitly, “Towards end-to-end speech recogni-
+tion with recurrent neural networks,” in Proceedings of the 31st
+International Conference on International Conference on Ma-
+chine Learning - Volume 32, ser. ICML’14.
+JMLR.org, 2014,
+p. II–1764–II–1772.
+[28] S. Eom, E. Yoon, H. S. Yoon, C. Kim, M. Hasegawa-Johnson,
+and C. D. Yoo, “Adamer-ctc: Connectionist temporal classifi-
+cation with adaptive maximum entropy regularization for auto-
+matic speech recognition,” in ICASSP 2024 - 2024 IEEE Inter-
+national Conference on Acoustics, Speech and Signal Processing
+(ICASSP), 2024, pp. 12 707–12 711.
+[29] V. Panayotov, G. Chen, D. Povey, and S. Khudanpur, “Lib-
+rispeech: An asr corpus based on public domain audio books,”
+in 2015 IEEE International Conference on Acoustics, Speech and
+Signal Processing (ICASSP), 2015, pp. 5206–5210.
+[30] I. Loshchilov and F. Hutter, “Decoupled weight decay regulariza-
+tion,” in International Conference on Learning Representations,
+2019.
+[31] A. Sicherman and Y. Adi, “Analysing discrete self supervised
+speech representation for spoken language modeling,” in ICASSP
+2023 - 2023 IEEE International Conference on Acoustics, Speech
+and Signal Processing (ICASSP).
+IEEE, Jun. 2023, p. 1–5.
+3577
+

@@ -1,0 +1,544 @@
+WavShape: Information-Theoretic Speech Representation Learning
+for Fair and Privacy-Aware Audio Processing
+Oguzhan Baser1∗, A. Ege Tanriverdi1∗, Kaan Kale1,2∗, Sandeep Chinchali1, Sriram Vishwanath1,2
+1Department of Electrical and Computer Engineering, The University of Texas at Austin, USA
+2Department of Electrical and Computer Engineering, Georgia Institute of Technology, USA
+oguzhanbaser@utexas.edu
+Abstract
+Speech embeddings often retain sensitive attributes such as
+speaker identity, accent, or demographic information, posing
+risks in biased model training and privacy leakage. We pro-
+pose WavShape, an information-theoretic speech representation
+learning framework that optimizes embeddings for fairness and
+privacy while preserving task-relevant information. We lever-
+age mutual information (MI) estimation using the Donsker-
+Varadhan formulation to guide an MI-based encoder that sys-
+tematically filters sensitive attributes while maintaining speech
+content essential for downstream tasks. Experimental results
+on three known datasets show that WavShape reduces MI be-
+tween embeddings and sensitive attributes by up to 81% while
+retaining 97% of task-relevant information. By integrating in-
+formation theory with self-supervised speech models, this work
+advances the development of fair, privacy-aware, and resource-
+efficient speech systems.
+Index Terms: information-theoretic encoding, mutual informa-
+tion, bias mitigation, speech compression, privacy, fairness
+1. Introduction
+The speech processing field and audio-based machine learn-
+ing (ML) has undergone a rapid transformation in recent years,
+driven by the advances in ML architectures such as transformers
+and self-supervised learning models [1, 2, 3, 4]. These innova-
+tions have significantly enhanced speech recognition, speaker
+identification, and audio-based generative models which have
+several applications from real-time transcription to expres-
+sive text-to-speech synthesis and multilingual communication.
+However, despite these advancements, many challenges remain
+in fair and inclusive speech that generalizes across diverse pop-
+ulations, linguistic variations, and environmental conditions.
+A fundamental challenge in speech representation (SR)
+learning is efficient extraction and compression of information
+from raw audio while preserving relevant features for down-
+stream tasks. While ML models have achieved remarkable per-
+formance, their interpretability, fairness, and generalizationre-
+main key concerns, particularly in real-world deployment sce-
+narios where data imbalance, demographic bias, and privacy
+constraints must be accounted for [5, 6, 7]. To address these
+concerns, an information-theoretic approach tospeech encoding
+and representation learningcan provide a structured foundation
+for efficient, fair, and privacy-preservingaudio processing.
+Information theory (IT) has long served as the foundation
+of communication, signal processing, and data compression
+[8, 9]. It offers rigorous mathematical tools to characterize
+optimal representation learning, minimizing redundancy while
+*The first three authors have equal contribution.
+Figure 1: How does WavShape encode fair and bias-free
+speech representations? Our framework first extracts speech
+embeddings using a pre-trained speech encoder (e.g., Whis-
+per). These embeddings, which may contain private and bi-
+ased attributes, are then transformed via the WavShape projec-
+tion layer to generate bias-mitigated public embeddings. The
+IT evaluator (blue) optimizes WavShape by minimizing the MI
+between speech embeddings and sensitive attributes while max-
+imizing MI with task-relevant features and original represen-
+tation. During training, the feature extractor is frozen, only
+WavShape and the IT evaluator are updated. At inference, the
+IT evaluator is removed, and WavShape is used in conjunction
+with the base feature extractor (green), ensuring bias-free and
+privacy-preserving embeddings for fair and inclusive modeling.
+maximizing task-relevant information. In the context of speech
+processing, information-theoretic approaches have been applied
+to speech compression, feature selection, and speaker privacy
+[10, 11]. However, the full potential of these methods remains
+underexplored in modern deep learning-based speech models .
+Specifically, the interplay betweenmutual information (MI) and
+speech encoding holds promise for developing task-aware, per-
+sonalized, and fair SRs that adapt to diverse speaker character-
+istics and linguistic variations.
+This paper represents an early step toward bridging IT
+principles with SR learning, particularly in self-supervised and
+transformer-based models. We introduce an optimal adaptive
+audio encoding framework that integrates MI-based learning
+objectives to improve fairness, privacy, and efficiency of SRs .
+Building upon our work in text domain, our approach extends
+MI maximization and variational inference to speech feature
+learning, enabling a principled mechanism for interpretable
+and bias-aware compression of speech signals.
+Literature Review: Despite recent advancements in ASR and
+SR learning, the integration of MI remains underexplored. Ex-
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+4873 10.21437/Interspeech.2025-2528
+
+isting MI-based methods in ML focus on enhancing the SR
+for performance [12, 13, 14, 15, 16], but none systemati-
+cally address fairness and privacy constraints in speech pro-
+cessing. Conversely, fairness- and security-aware works ex-
+ist [17, 18, 19, 20] but lack a mathematical framework to
+incorporate these objectives into training. Recent works in
+other domains have successfully leveraged MI-based optimiza-
+tion to achieve privacy-preserving and fairness-aware encoding
+[21, 22], highlighting an urgent need for MI-driven approaches
+that ensure fair, privacy-secure, and efficient SRs. This work
+fills the gap by introducing a MI-based framework for struc-
+tured, fairness-aware, and privacy-preserving speech process-
+ing. In the light of prior work, our contributions are threefold:
+• We opensource 1 an information-theoretic architecture for fair
+and private speech processing, leveraging Whisper [3] and
+variational MI inference [23, 24].
+• We introduce MI-based encoding techniques to optimize SRs
+for fairness, privacy, and efficient resource allocation , en-
+suring that compressed speech features retain maximal task-
+relevant information.
+• We explore how MI estimation techniques can serve as an
+alternative to traditional distortion metrics in speech com-
+pression, leading to more interpretable, fair, and adaptable
+speech models in real-world settings.
+By integrating MI into speech processing ML architec-
+tures, this work aims to advance inclusive and equitable speech
+technologies, contributing to robust, privacy-preserving, and
+resource-efficient AI systemsthat serve diverse user populations.
+2. Methodology
+Here, we detail our architecture and its theoretical foundations.
+2.1. MI in Speech Representation Learning
+Consider two random variables, X∈X and E∈E , whereX
+represents the space of raw speech spectogram, andE denotes
+the space of compressed or transformed SRs. The MI between
+X and E, denoted asI(X; E), quantifies how much informa-
+tion about X is preserved when mapped to E. Following Shan-
+non’s definition [8], MI is:
+I(X; E) =
+X
+X∈X
+X
+E∈E
+PX,E(X,E ) log
+ PX,E(X,E )
+PX(X)PE(E)
+
+,
+(1)
+where PX,E(X,E ) is the joint probability distribution of the
+original and transformed SRs, while PX(X) and PE(E) are
+the marginal probability distributions. When dealing with con-
+tinuous speech signals, summations are replaced with integrals,
+and mass functions are replaced with density functions.
+In the context of SR learning, maximizing MI ensures that
+essential acoustic, linguistic, and paralinguistic features are
+preserved in the transformed representation while filtering out
+redundant or sensitive information. This is particularly critical
+in designing fair and privacy-aware speech processing models
+that generalize across diverse speaker populations.
+A practical MI formulation based on theDonsker-Varadhan
+representation of the Kullback-Leibler divergence [23] is:
+I(X; E) = sup
+F:Ω→R
+EPX,E[F (X, E)]− log EPXPE[eF(X,E)].
+(2)
+1www.github.com/UTAustin-SwarmLab/WavShape
+Here, the function F (X, E) acts as a discriminator that
+approximates MI. This optimization can be solved using ML,
+whereF is parameterized as a neural network, trained via SGD
+[25]. In practice, MI estimation is achieved by replacing the ex-
+pectations with empirical averages computed over mini-batches
+sampled from the joint and marginal distributions.
+2.2. Optimizing The Speech Representation for Fairness
+Our objective is to design a learned encoderψΘψ,ϕ Θϕ :X→
+E that transforms raw speech signals X into compressed and
+structured embeddings E, while ensuring fairness, efficiency,
+and privacy. The encoder is optimized as follows:
+max
+Θϕ
+γI(ϕΘϕ(X); X) +
+NlX
+i=1
+λiI(ϕΘϕ(X);Ti(X))
+−
+NsX
+j=1
+µjI(ϕΘϕ(X);Sj(X)),
+(3)
+where Θϕ are the trainable parameters of the encoder, Ti(X)
+represents the i-th task-relevant acoustic or linguistic feature
+(e.g., phonetic content, speaker identity, or prosody), Sj(X)
+represents the j-th sensitive attribute (e.g., speaker demograph-
+ics, accent, or background noise characteristics), γ,λi, and µj
+are tunable hyperparameters that balance the trade-offs between
+information preservation, utility, and privacy. The dimensional-
+ity of E controls the level of compression applied to the SR.
+Unlike traditional approaches that rely on heuristic distor-
+tion metrics (e.g., mean squared error in reconstructed wave-
+forms), this formulation explicitly models task-relevant and
+sensitive information, allowing SRs to be optimized for multiple
+privacy and fairness-aware objectives. For simplicity, we hence-
+forth denote Θϕ as Θ since it is the trainable part inψΘψ,ϕ Θϕ.
+The optimization objective consists of three key terms,
+each with a separate physical interpretation. (1) Information-
+Preserving Compression (γI(ϕΘ(X); X)) ensures that essen-
+tial information from the speech is retained with less re-
+dundancy. Unlike classical compressions minimizing re-
+construction loss, this approach explicitly maximizes MI,
+leading to task-specific compression that preserves rele-
+vant characteristics. (2) Task-Oriented Speech Encoding
+(PNl
+i=1λiI(ϕΘ(X);Ti(X))) enhances representations to be
+more informative for specific downstream tasks (e.g., speech
+recognition, emotion detection, speaker verification). It is use-
+ful for scenarios where selective preservation of acoustic cues
+is crucial, such as emotion recognition in noisy environments
+or speaker adaptation in multilingual systems. (3) Fairness
+and Privacy Constraints (−PNs
+j=1µjI(ϕΘ(X);Sj(X))) sup-
+presses any unwanted information that could introduce biases
+or privacy risks , such as speaker gender, accent, or ethnicity.
+Hence, the models trained on encoded speech embeddings do
+not unfairly discriminate against certain demographics.
+We offer a principled approach to learning task-optimized
+and fairness-aware SRs. Specifically, it can prevent unintended
+biases in ASR by filtering out accent and demographic-related
+features or embeddings (e.g., age, gender), minimize personally
+identifiable information while preserving linguistic content.
+2.3. WavShape Architecture
+Following the theory, we present WavShape, an information-
+theoretic representation learning framework for speech. It con-
+sists of two components as shown in Fig. 1. A speech encoder
+4874
+
+(in green) transforms raw audio into structured representations
+while preserving task-relevant and fairness-aware speech prop-
+erties. An information-theoretic evaluator (in blue) acts as a
+differentiable loss function to guide the encoder’s training.
+The trained encoder can be deployed across diverse speech
+datasets, making it applicable to bandwidth-efficient speech
+transmission, privacy-preserving voice communication, and
+fairness-aware speech modeling. The computational cost of
+using WavShape is comparable to the inference cost of self-
+supervised or transformer-based speech models.
+Speech Encoder consists of a two-stage transformation. (1)
+Feature Extraction Layer (Non-trainable) uses a pre-trained
+embedding model (e.g., wav2vec 2.0 [1], CLAP [4], Whisper
+[3]) to convert raw waveforms into an intermediate representa-
+tion that encodes phonetic, prosodic, and linguistic information.
+This ensures robustness to speaker variability and environmen-
+tal noise while maintaining essential acoustic properties. (2)
+Information-Theoretic Embedding Layer (Trainable) maps the
+extracted features into lower-dimensional speech embeddings.
+We optimize this to preserve task-relevant information while fil-
+tering out sensitive or redundant attributes (e.g., speaker iden-
+tity, accent), guided by MI-based constraints described previ-
+ously, ensuring that encoded representations balance efficiency,
+fairness, and privacy. (1) and (2) together enable task-adaptive
+speech encoding, where the embedding retains maximal useful
+information while suppressing bias or privacy leaks.
+Information-Theoretic Evaluator: plays a critical role in opti-
+mizing the encoder. It estimates the MI terms required for train-
+ing by evaluating the information retained between raw and en-
+coded SRsI(X; E), the utility of the representation for spe-
+cific tasksI(E;Ti(X)), and the removal of sensitive attributes
+I(E;Sj(X)). Following prior work on MI estimation [26, 27],
+we adopt the Donsker-Varadhan MI formulation, which allows
+MI to be approximated using a discriminator network trained
+via SGD as in Eq. 2. By using universal approximator ML
+models [28] to approximate MI, the evaluator efficiently quan-
+tifies how well the speech encoding preserves desired properties
+while discarding unwanted features.
+2.4. Training Procedure
+Training involves a dual optimization where the encoder and the
+MI evaluator are updated iteratively.
+Encoder Training (Epoch-Level Optimization): At each epoch,
+the encoder weights Θ are updated based on the MI-based loss
+function. The optimizer maximizes task-relevant information
+retention while minimizing sensitive attribute leakage. The en-
+coded representations are progressively refined to optimize fair-
+ness, privacy, and efficiency constraints.
+MI Estimation (Iteration-Level Optimization): At each iteration
+within an epoch, we estimate the MI terms using a batch of
+speech samples and update it in each iteration. The MI estima-
+tor refines its predictions over time, guiding better the encoder’s
+training. As training progresses, the number of MI estimation
+iterations required per epoch decreases for faster convergence.
+After sufficient training, we use the encoder separately for SR
+learning, compression, and privacy-aware speech analytics.
+2.5. Use Cases
+The encoded SRs produced by WavShape can be deployed in
+several real-world applications. V oice assistant models perform
+better for standard English accents, disadvantaging non-native
+speakers. WS reduces the bias by minimizing MI between ac-
+Figure 2: We train two pairs of classifiers to predict task-
+relevant (left) and sensitive (right) binary labels (yellow and
+purple). We train one pair with Whisper embeddings while the
+other gets our embeddings as input. We project the whole CV
+dataset into a 2D t-SNE space with the trained classifiers and vi-
+sualize the best decision boundary. The task-relevant structure
+remains intact while sensitive attributes are effectively obscured
+compared to the models trained with original embeddings.
+cents and embeddings, improving fairness. In telehealth, it sup-
+presses health-revealing cues to protect privacy.
+Efficient Speech Transmission (Compression): It reduces band-
+width by encoding speech into low-dimensional representations
+that retain essential phonetic and prosodic features, useful for
+low-latency streamingor real-time speech synthesis.
+Privacy Preserving Models (Anonymization): WS filters out
+biometric or demographic attributes to anonymize interactions.
+Bias-Resistant Speech Recognition (Fairness): It suppresses
+sensitive speaker attributes (e.g., gender, regional dialect) to re-
+duce bias for more inclusive and equitable voice systems.
+WS is model-agnostic. It can project any ASR encoder out-
+put into a compressed, bias-controlled space after training. The
+ASR’s decoder can be fine-tuned or used solely as WS loss.
+3. Experimental Setup
+Here, we present the datasets, encoders, baselines, and metrics.
+Datasets: We evaluate our MI-driven speech encoding frame-
+work on three datasets. The Mozilla Common V oice (CV)
+dataset [29] provides speech recordings with metadata on age,
+gender, and accent . We encode age as the task label while
+suppressing gender and accent , ensuring privacy-preserving
+and bias-mitigated SRs for fair ASR. The VCTK Corpus [30]
+comprises recordings from 109 English speakers representing
+a diverse range of accents. Each participant reads around 400
+sentences. Its labels have each speaker’s gender, age and region.
+Models: We utilize Whisper [3] to extract features and
+lightweight neural networks for classification. Whisper is a
+transformer-based ASR model trained on 680,000 hours of mul-
+tilingual speech, making it highly robust to acoustic variabil-
+ity and noise. Its self-supervised representations capture rich
+phonetic, linguistic, and contextual features, making it an ideal
+front-end encoder for our framework. By extracting its em-
+beddings, we ensure task-relevant information is retained while
+enabling MI-driven filtering of sensitive attributes. We train
+lightweight DNN on MI-optimized embeddings to quantify pri-
+vacy leakage, fairness constraints, and task performance.
+4875
+
+Figure 3: ROC and AUROC scores for the classifiers trained
+to predict task-relevant attributes (left) and sensitive attributes
+(right). The results demonstrate that our MI-based encoding
+preserves task-relevant distinctions while effectively reducing
+the predictability of sensitive attributes.
+Baselines: We compare four types of embeddings. Original is
+the raw Whisper embeddings as the upper bound for utility and
+leakage. Random is the outputs from a randomly initialized en-
+coder to assess informativeness without learning. Noisy is the
+Whisper embeddings with Gaussian differential privacy (DP)
+noise [31]. Encoded (Ours) is the WavShape-optimized embed-
+dings that explicitly retain task-relevant and suppress sensitive
+attributes. We exclude adversarial training as it lacks control
+over removed information unlike these baselines.
+Evaluation Metrics: t-SNE [32] projects the embeddings into
+2D space, revealing how task-related and sensitive attributes are
+encoded. Comparing pre- and post-encoding t-SNE plots, we
+validate that WS preserves task-relevant structure while sup-
+pressing sensitive information. AUROC [33] measures a clas-
+sifier’s ability to distinguish between classes. High AUROC
+for task-relevant and low AUROC for sensitive labels confirm
+that WS retains useful features while reducing private attribute
+leakage. Also, we study MI as a metric to see how privacy
+(sensitive) and utility (task-related) evolve over epochs.
+Hyperparameters: We detail the architecture and training con-
+figurations at the project’s repository due to the limited space.
+4. Results
+WS produces compressed embeddings for privacy-preserving
+and fair SR. We validate our approach using two speech
+datasets, aiming to compress representations while pre-
+serving task-relevant information and filtering out sensi-
+tive attributes. The optimization objective simplifies to:
+maxΘI(ϕΘ(X);T (X))−µI(ϕΘ(X);S(X)), where T (X)
+represents age in CV dataset and gender in VCTK dataset as
+target labels, whileS(X) denotes accent in VCTK dataset and
+gender in CV dataset as sensitive labels. WS compresses the
+embeddings from 512 to 64 dimensions and uses 1024 batch,
+90x stable for MI estimation as DV error scales linearly with
+Figure 4: IT Estimator’s mean MI values for task-related Ti(.)
+(utility) and sensitive Si(.) (privacy) features over the number
+of epochs. WS embeddings get more descriptive for the tasks
+while supressing sensitive information over time.
+the dimension and inversely with the batch size.. We compute
+MI between the WS embeddings and labels. MI estimation is
+performed over mini-batches spanning the full dataset, ensur-
+ing stability and robustness. To qualitatively assess the privacy
+and fairness, we projected the embeddings before and after WS
+transformation using t-SNE as in Fig. 2. The MI results in Fig.
+4 show that the encoded representations in CV dataset retain
+separability for task-relevant information while making sensi-
+tive attributes indistinguishable , as evidenced by a reduction
+in the MI between embeddings and sensitive label “gender”
+from 0.40029 to 0.07493 , while task-relevant MI (between
+embeddings and “age”) is maintained at 0.23569 . Similarly,
+for the VCTK dataset,the MI between embeddings and sensi-
+tive label “accent” decreases from 0.41647 to 0.07114 while
+the MI between embeddings and target label “gender” re-
+mained around 0.65510 . The ROC curves in Fig. 3 reveal
+that the task-relevant area under the ROC curves (AUROC) re-
+mains comparable to the original embeddings for both datasets,
+while there is a 38.36% and a 25.77% decrease in the sensitive
+attribute AUROC for VCTK and CV respectively, confirming
+that our representation significantly reduces privacy leakage
+and bias propagation without compromising task utility.
+5. Conclusion
+This work integrates MI with SR learning, offering a principled
+approach for task-adaptive, privacy-preserving, and fairness-
+aware speech processing. By optimizing speech embeddings
+through IT constraints, we demonstrate how learned represen-
+tations can balance utility, fairness, privacy, and resource effi-
+ciency, addressing the challenges in lossy compression, unbi-
+ased speech modeling, and privacy-aware voice data sharing.
+Our framework establishes a structured mechanism for con-
+trolling speech feature retention and suppression, leveraging a
+weighted optimization objective that enables fine-grained trade-
+offs between competing goals. While our current formulation
+employs a linear combination of MI-based objectives, future
+work will explore nonlinear optimization strategies that dy-
+namically adjust trade-offs through reinforcement learning and
+multi-objective optimization techniques. Another key direction
+is the development of automated hyperparameter tuning mech-
+anisms, informed by rate-distortion theory and DP, to optimize
+fairness and privacy constraints without manual selection.
+Ultimately, this work lays the foundation for bias-resistant,
+privacy-secure, and resource-efficient speech models, contribut-
+ing to the broader goal of fair and inclusive speech technology.
+4876
+
+6. Acknowledgments
+This work was supported in part by the National Science Foun-
+dation grants under No. 2148186 and No. 2133481. Any opin-
+ions, findings, and conclusions or recommendations expressed
+in this material are those of the authors and do not necessarily
+reflect the views of the National Science Foundation.
+7. References
+[1] A. Baevski, Y . Zhou, A. Mohamed, and M. Auli, “wav2vec
+2.0: A framework for self-supervised learning of speech repre-
+sentations,” Advances in neural information processing systems ,
+vol. 33, pp. 12 449–12 460, 2020.
+[2] A. Gulati, J. Qin, C.-C. Chiu, N. Parmar, Y . Zhang, J. Yu,
+W. Han, S. Wang, Z. Zhang, Y . Wu, and R. Pang, “Conformer:
+Convolution-augmented transformer for speech recognition,” in
+Interspeech 2020, 2020, pp. 5036–5040.
+[3] A. Radford, J. W. Kim, T. Xu, G. Brockman, C. McLeavey, and
+I. Sutskever, “Robust speech recognition via large-scale weak
+supervision,” in International conference on machine learning .
+PMLR, 2023, pp. 28 492–28 518.
+[4] B. Elizalde, S. Deshmukh, M. Al Ismail, and H. Wang, “Clap
+learning audio concepts from natural language supervision,” in
+ICASSP 2023-2023 IEEE International Conference on Acoustics,
+Speech and Signal Processing (ICASSP). IEEE, 2023, pp. 1–5.
+[5] A. Leschanowsky and S. Das, “Examining the interplay between
+privacy and fairness for speech processing: A review and perspec-
+tive,” in 4th Symposium on Security and Privacy in Speech Com-
+munication, 2024, pp. 1–11.
+[6] T. Feng, R. Hebbar, N. Mehlman, X. Shi, A. Kommineni,
+S. Narayanan et al., “A review of speech-centric trustworthy ma-
+chine learning: Privacy, safety, and fairness,” APSIPA Transac-
+tions on Signal and Information Processing, vol. 12, no. 3, 2023.
+[7] O. Baser, M. Yavuz, K. Ugurlu, F. Onat, and B. U. Demirel, “Au-
+tomatic detection of the spike-and-wave discharges in absence
+epilepsy for humans and rats using deep learning,” Biomedical
+Signal Processing and Control, vol. 76, p. 103726, 2022.
+[8] C. E. Shannon, “A mathematical theory of communication,” The
+Bell system technical journal, vol. 27, no. 3, pp. 379–423, 1948.
+[9] T. M. Cover, Elements of information theory . John Wiley &
+Sons, 1999.
+[10] R. Gray, A. Buzo, A. Gray, and Y . Matsuyama, “Distortion mea-
+sures for speech processing,” IEEE Transactions on Acoustics,
+Speech, and Signal Processing, vol. 28, no. 4, pp. 367–376, 1980.
+[11] F. Fleuret, “Fast binary feature selection with conditional mutual
+information.” Journal of Machine learning research, vol. 5, no. 9,
+2004.
+[12] F. Zhang, W. Zhou, Y . Liu, W. Geng, Y . Shan, and C. Zhang,
+“Disentangling age and identity with a mutual information mini-
+mization for cross-age speaker verification,” in Interspeech 2024,
+2024, pp. 3789–3793.
+[13] J. Li, J. Han, S. Deng, T. Zheng, Y . He, and G. Zheng, “Mu-
+tual information-based embedding decoupling for generalizable
+speaker verification,” in Interspeech 2023, 2023, pp. 3147–3151.
+[14] S. Yang, M. Tantrawenith, H. Zhuang, Z. Wu, A. Sun, J. Wang,
+N. Cheng, H. Tang, X. Zhao, J. Wang, and H. Meng, “Speech
+representation disentanglement with adversarial mutual informa-
+tion learning for one-shot voice conversion,” inInterspeech 2022,
+2022, pp. 2553–2557.
+[15] W. Kang, M. J. Alam, and A. Fathan, “Mim-dg: Mutual informa-
+tion minimization-based domain generalization for speaker verifi-
+cation,” in Interspeech 2022, 2022, pp. 3674–3678.
+[16] H. Xue, X. Wang, Y . Zhang, L. Xie, P. Zhu, and M. Bi,
+“Learn2sing 2.0: Diffusion and mutual information-based tar-
+get speaker svs by learning from singing teacher,” in Interspeech
+2022, 2022, pp. 4267–4271.
+[17] P. Dheram, M. Ramakrishnan, A. Raju, I.-F. Chen, B. King,
+K. Powell, M. Saboowala, K. Shetty, and A. Stolcke, “Toward
+fairness in speech recognition: Discovery and mitigation of per-
+formance disparities,” in Interspeech 2022, 2022, pp. 1268–1272.
+[18] I.-E. Veliche, Z. Huang, V . Ayyat Kochaniyan, F. Peng, O. Kalinli,
+and M. L. Seltzer, “Towards measuring fairness in speech recog-
+nition: Fair-speech dataset,” inInterspeech 2024, 2024, pp. 1385–
+1389.
+[19] W.-S. Chien and C.-C. Lee, “An investigation of group versus in-
+dividual fairness in perceptually fair speech emotion recognition,”
+in Interspeech 2024, 2024, pp. 3205–3209.
+[20] O. Baser, K. Kale, and S. P. Chinchali, “Securespectra: Safeguard-
+ing digital identity from deep fake threats via intelligent signa-
+tures,” in Proc. Interspeech 2024, 2024, pp. 1115–1119.
+[21] H. Esfahanizadeh, W. Wu, M. Ghobadi, R. Barzilay, and
+M. M´edard, “Infoshape: Task-based neural data shaping via mu-
+tual information,” inICASSP 2023-2023 IEEE International Con-
+ference on Acoustics, Speech and Signal Processing (ICASSP) .
+IEEE, 2023, pp. 1–5.
+[22] K. Kale, H. Esfahanizadeh, N. Elias, O. Baser, M. M ´edard, and
+S. Vishwanath, “Texshape: Information theoretic sentence em-
+bedding for language models,” in 2024 IEEE International Sym-
+posium on Information Theory (ISIT) . IEEE, 2024, pp. 2038–
+2043.
+[23] M. D. Donsker and S. S. Varadhan, “Asymptotic evaluation of
+certain markov process expectations for large time, i,” Communi-
+cations on pure and applied mathematics, vol. 28, no. 1, pp. 1–47,
+1975.
+[24] A. Kraskov, H. St ¨ogbauer, and P. Grassberger, “Estimating mutual
+information,” Physical Review E—Statistical, Nonlinear, and Soft
+Matter Physics, vol. 69, no. 6, p. 066138, 2004.
+[25] H. Robbins and S. Monro, “A stochastic approximation method,”
+The annals of mathematical statistics, pp. 400–407, 1951.
+[26] M. I. Belghazi, A. Baratin, S. Rajeshwar, S. Ozair, Y . Bengio,
+A. Courville, and D. Hjelm, “Mutual information neural estima-
+tion,” inProceedings of the 35th International Conference on Ma-
+chine Learning, vol. 80. PMLR, 10–15 Jul 2018, pp. 531–540.
+[27] J. Song and S. Ermon, “Understanding the limitations of vari-
+ational mutual information estimators,” in International Confer-
+ence on Learning Representations.
+[28] K. Hornik, M. Stinchcombe, and H. White, “Multilayer feedfor-
+ward networks are universal approximators,” Neural networks ,
+vol. 2, no. 5, pp. 359–366, 1989.
+[29] R. Ardila, M. Branson, K. Davis, M. Henretty, M. Kohler,
+J. Meyer, R. Morais, L. Saunders, F. M. Tyers, and G. Weber,
+“Common voice: A massively-multilingual speech corpus,” in
+Proceedings of the 12th Conference on Language Resources and
+Evaluation (LREC 2020), 2020, pp. 4211–4215.
+[30] C. Veaux, J. Yamagishi, K. MacDonald et al., “Cstr vctk corpus:
+English multi-speaker corpus for cstr voice cloning toolkit,” Uni-
+versity of Edinburgh. The Centre for Speech Technology Research
+(CSTR), vol. 6, p. 15, 2017.
+[31] C. Dwork, “Differential privacy,” in International colloquium on
+automata, languages, and programming . Springer, 2006, pp.
+1–12.
+[32] L. Van der Maaten and G. Hinton, “Visualizing data using t-sne.”
+Journal of machine learning research, vol. 9, no. 11, 2008.
+[33] J. A. Hanley and B. J. McNeil, “The meaning and use of the area
+under a receiver operating characteristic (roc) curve.” Radiology,
+vol. 143, no. 1, pp. 29–36, 1982.
+4877

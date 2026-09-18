@@ -1,0 +1,612 @@
+LombardTokenizer: Disentanglement and Control of V ocal Effort
+in a Neural Speech Codec
+Maxime Jacquelin1,2, Ma¨eva Garnier1, Laurent Girin1, R´emy Vincent2, Olivier Perrotin1
+1Univ. Grenoble Alpes, CNRS, Grenoble INP, GIPSA-lab, France
+2V ogo, France
+maxime.jacquelin@gipsa-lab.grenoble-inp.fr, maeva.garnier@gipsa-lab.grenoble-inp.fr,
+laurent.girin@gipsa-lab.grenoble-inp.fr, r.vincent@vogo-group.com,
+olivier.perrotin@gipsa-lab.grenoble-inp.fr
+Abstract
+Disentangling distinct types of information in speech represen-
+tations is crucial for improving speech synthesis and voice con-
+version systems. In this work, we introduce LombardTokenizer,
+a neural speech codec able to separate features related to vo-
+cal effort from other acoustic (and semantic) information. This
+model is built on SpeechTokenizer, a model proposed in the lit-
+erature based on multi-stage quantisation, which focused on iso-
+lating semantic content in its first quantisation layer. We show
+that the level of vocal effort can be effectively captured in the
+second quantisation layer by conditioning the quantisation layer
+with neural encoders trained to represent vocal effort. Exper-
+imental results demonstrate that the proposed method signif-
+icantly outperforms existing methods in speech conversion be-
+tween neutral and Lombard speech, while maintaining excellent
+speech synthesis quality, offering improved control over vocal
+effort and naturalness of synthesised speech.
+Index Terms: neural speech codec, lombard speech, vocal ef-
+fort encoding, latent space regularisation, speech tokenization
+1. Introduction
+Neural audio codecs have revolutionised speech processing by
+enabling efficient compression and high quality audio synthesis.
+At the core of state-of-the-art neural codecs, such as Sound-
+Stream [1] and EnCodec [2] is Residual Vector Quantisation
+(RVQ) [3], a cascaded quantisation architecture that hierarchi-
+cally represents complex speech and audio information, from
+coarse global features to fine-grained acoustic details. This hi-
+erarchical structure has proven effective for both speech manip-
+ulation [4] and low-bitrate coding [5], paving the way for more
+advanced applications in speech synthesis and transformation.
+Building on the success of RVQ-based neural codecs,
+SpeechTokenizer [6] introduced a novel approach to disentan-
+gling information in speech signals. The model’s first RVQ
+layer is explicitly guided by the output of a self-supervised
+learning (SSL) speech model, namely HuBERT [7], ensuring
+that it captures what the authors define as semantic representa-
+tions. This effectively isolated phonetic information from other
+source of acoustic variability encoded in the subsequent RVQ
+layers, allowing for separate modifications to phonetic content
+and acoustic representations in voice conversion applications.
+However, disentangling different dimensions of acoustic vari-
+ations remains an open challenge, particularly when analysing
+speech produced at varying levels of intensity and vocal effort.
+Such variations in vocal effort can be observed in challenging
+situations of communication, such as speaking over a distance,
+in noisy environments (a phenomenon known as the ‘Lombard
+effect’ [8]) or when addressing to a hearing-impaired individ-
+ual. In all cases, increased vocal effort is typically accompanied
+by global acoustic modifications such as an elevated fundamen-
+tal frequency (f0), a flattened spectral slope and an increased
+frequency of the vowel’s first formant (F1) [9, 10], but also
+by segment-specific modifications [11, 12, 13]. Additionally,
+a form of hyper-articulation can be observed in some of these
+speech styles, such as Lombard speech (i.e., produced in noise),
+with enhanced phonemic contrasts, prosodic cues and voice
+modulations [14, 15] contributing to their increased speech in-
+telligibility under adverse conditions [16].
+Traditional approaches to neutral-to-Lombard speech con-
+version often rely on explicit manipulation of acoustic features,
+such as pitch contours or energy levels [17, 18, 19, 20]. More
+recent methods use deep neural networks to learn a mapping
+between neutral and Lombard speech, either in a supervised or
+unsupervised manner [21, 22, 23, 24]. In parallel, research on
+voice conversion has also explored techniques for disentangling
+speaker identity and speaking style from linguistic content.
+Models like FreeVC [25] combine the SSL model WavLM [26]
+with d-vector speaker embeddings [27] to achieve high qual-
+ity voice conversion. Other works, such as [28] integrate Hu-
+BERT with a pitch encoder and a speaker encoder to model se-
+mantic content, prosodic information, and speaker characteris-
+tics separately. These approaches demonstrate the effectiveness
+of SSL models in generating semantic representations and dis-
+entangling them from prosodic and speaker features in neutral
+speech. However, they do not explicitly target the disentangle-
+ment of specific prosodic and acoustic features associated with
+the Lombard effect.
+This paper introduces LombardTokenizer, a neural speech
+codec designed to encode speech modifications induced by vari-
+ations in vocal effort separately from other acoustic and seman-
+tic information. This model is built on SpeechTokenizer and its
+RVQ structure. In addition to isolating the semantic content in
+the first RVQ layer, we demonstrate that Lombard speech trans-
+formations can be effectively captured in the second RVQ layer
+by leveraging deep neural encoders trained to represent vocal
+effort. Notably, we train the model on neutral speech, fine-tune
+it on loud speech and evaluate it on loud and Lombard speech
+following a zero-shot approach to assess its ability to generalise
+to unseen vocal effort conditions. A second contribution of this
+paper is to replace HuBERT with the multilingual SSL model
+mHuBERT [29] in the first RVQ layer to improve the semantic
+representation and enable zero-shot generalisation across lan-
+guages. The performance of LombardTokenizer was assessed
+both objectively and subjectively from experiments conducted
+on a loud speech dataset (A VID [30]) as well as a new Lom-
+bard speech dataset (FLombard [31]) specifically recorded for
+this study, which can therefore be considered as the third con-
+tribution of this paper.
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+5778 10.21437/Interspeech.2025-1639
+Semantic
+Distillation
+Encoder
+Decoder
+Discriminator
+VQ1
+VQ2
+VQ8
+mHuBERT
+Lombard
+Encoder
+-
+Quantizer
++
+-
++
+-
+Lombard
+Distillation
+Figure 1: Schema of the proposed LombardTokenizer model.
+2. Method
+In this section, we first present the architecture of LombardTok-
+enizer. We then describe the two datasets with variation of vocal
+effort. Finally, we present the training procedure designed to
+disentangle vocal effort and semantic information in our model.
+2.1. Model Architecture
+The proposed LombardTokenizer model is based on the archi-
+tecture of SpeechTokenizer, as depicted in Fig. 1. It uses the
+convolutional-based (CNN) encoder-decoder network, with a
+two-layer BiLSTM at the end of the encoder and front-end of
+the decoder convolution blocks. The output of the encoder is
+quantised through eight RVQ layers. In SpeechTokenizer, the
+first RVQ layer is forced to learn semantic-oriented codebooks
+during training via distillation by HuBERT.
+Our model introduces two key extensions that are detailed
+in Sec. 2.3: (i) Lombard-specific encoders plugged on the sec-
+ond RVQ layer to force the latter to learn codebooks encoding
+vocal effort features, and (ii) the replacement of HuBERT with
+the multilingual mHuBERT model [29] to generalise the dis-
+entanglement of semantic information in the first RVQ layer to
+several languages.
+2.2. Speech Datasets
+To extract vocal effort relevant information, we use the A VID
+dataset [30]. This dataset includes recordings of 50 non-
+necessarily native English speakers (25 males and 25 females)
+exhibiting controlled changes in four different intensity cate-
+gories (soft, normal, loud, very loud). To elicit each cate-
+gory, the speakers were instructed with textual guidelines but
+were not forced to produce speech in a predefined intensity
+level. In this work, we used the speech signals produce during
+the sentence reading task, totalling 8 h of speech, with 2 h for
+each intensity condition and approximately 10 min per speaker.
+While the A VID dataset exhibits a high dynamic intensity range
+(40 dB), it does not explicitly capture natural Lombard speech
+as it occurs in real noisy environments.
+To address this limitation, we introduce FLombard [31], a
+dataset where speakers actively adapt their speech in response
+to background noise, ensuring a more authentic representation
+of Lombard speech characteristics. This newly collected dataset
+features 40 French speakers (20 male and 20 female) producing
+Lombard speech under four different levels of white noise heard
+via headphones (0, 65, 75, 85 dB SPL). The recordings were
+conducted in a controlled listening room to ensure high quality
+audio capture. In total, the dataset contains approximately 8 h
+of speech, with 2 h for each noise condition and an average of
+13 min per speaker.
+2.3. Training Strategy
+Lombard Speech Encoding: To capture vocal effort features,
+we first introduce two different Lombard speech encoders, E1
+and E2, and train them on the A VID dataset. As for E1, we
+implemented a d-vector model from [32], pre-trained on Lib-
+riSpeech and V oxCeleb [33]. This model takes as input a 40-
+band mel-spectrogram and outputs a speaker embedding vector
+of size 256. The model is optimised with the generalised end-
+to-end loss function [27]. To make the model more suitable
+for encoding vocal effort variation, we concatenate the mean
+intensity of the speech signal with the mel-spectrogram input
+and apply a 41-to-40 fully-connected (FC) layer during the fine-
+tuning on A VID. The second model,E2, is our own. It consists
+of three CNN layers, followed by an LSTM layer and two FC
+layers. It was trained on A VID to predict the intensity of a nor-
+malised input waveform (whose RMS is 1). The intensity to
+predict was made speaker-independent: we applied a Min-Max
+normalisation for each speaker in the A VID dataset to scale the
+mean intensity of all signals between 0 and 1. After training,
+instead of using the final output of E2, we extract the interme-
+diate representation after the first FC, with a dimensionality of
+32, to capture vocal effort features.
+Semantic and Lombard Distillation: To disentangle se-
+mantic and vocal effort from other acoustic features in Lom-
+bardTokenizer, we take advantage of the hierarchical structure
+of the RVQ module. We use the SSL model mHuBERT and
+one of our two Lombard speech encoders to guide the first and
+the second RVQ layers, respectively, during LombardTokenizer
+training, as shown in Fig. 1. The mHuBERT, E1, and E2 rep-
+resentations have a dimensionality of 768, 256 and 32, respec-
+tively. To match those dimensions with the quantised output of
+the first and second RVQ layer (each of size 1024), we apply a
+1024-to-D FC layer to the quantised features before applying
+the distillation loss, following the approach described in [6]:
+Ldistill =− 1
+D
+DX
+d=1
+logσ
+
+cos
+
+AQ(:,d)
+. , X(:,d)
+
+, (1)
+where Q. denotes the quantised output of the first or second
+RVQ layer, X denotes the corresponding semantic or Lom-
+bard speech representation, A is the projection matrix, and D
+is the dimension of the representation ( 768, 256, or 32). The
+superscript (:,d ) denotes a vector comprising values from all
+time steps at dimension d, while cos(·) is the cosine similar-
+ity and σ(·) denotes the sigmoid activation. Those two losses
+comes in addition to the reconstruction, discriminative and RVQ
+commitment losses, necessary to train SpeechTokenizer [6].
+Since we have two possible Lombard speech encoders to
+plug, E1 and E2, this gives us two versions of LombardTok-
+enizer, that we call LT1 and LT2, respectively. In both versions,
+the representation distillation strategy ensures that the second
+RVQ layer learns to encode features related to vocal effort,
+while the first layer remains focused on semantic information.
+Fine-tuning on V ocal Effort: We first pre-trained our
+LombardTokenizer models with semantic and Lombard distilla-
+tions on a large-scale, multi-speaker dataset, using LibriSpeech
+dataset [34]. Then, we further fine-tuned the model on the A VID
+dataset. Fine-tuning on data that encompass vocal effort varia-
+tion is a crucial step in our approach, as it allows the model
+to explicitly learn and encode the acoustic characteristics asso-
+ciated with different levels of vocal effort. Unlike pre-trained
+speech tokenizers that primarily capture general speech fea-
+tures, fine-tuning on such datasets enables the codebook of the
+5779
+second RVQ layer to effectively encode variations in intensity,
+spectral tilt, and prosodic cues linked to vocal effort.
+2.4. Experiments
+Details of the models implementations and examples of synthe-
+sised speech are available in our demo website.1
+Synthesis quality: A first step was to compare the quality
+and intelligibility of speech synthesised by LombardTokenizer
+against two strong baselines: EnCodec [2], a state-of-the-art
+neural audio codec, and SpeechTokenizer [6], the backbone of
+our method. Those four models were trained on LibriSpeech
+360 h ‘clean’ training subset and fine-tuned on 6 h from 40
+speakers of A VID. The sampling rate of the speech signals was
+16 kHz. For training and fine-tuning, we used 2 A100 GPUs,
+with a learning rate of 1e−4, for 20 epochs and a batch size
+of 32 per GPU. Evaluation of speech synthesis was performed
+on unseen parts of LibriSpeech and A VID, with 2 h for 2620
+sentences and 1.50 h for 2200 sentences, respectively, as well
+as on FLombard, with 1.30 h for 1920 sentences. Two metrics,
+PESQ [35] and STOI [36], were used to evaluate objectively the
+quality and intelligibility of the speech synthesized.
+Modeling and conversion of vocal effort: In a second
+step, we evaluated the ability of LombardTokenizer to capture
+speech transformations related to vocal effort and control this
+dimension in re-synthesis. An evaluation combining both ob-
+jective metrics and perceptual listening tests was conducted on
+both A VID and FLombard datasets to evaluate performance un-
+der in-domain and zero-shot conditions, respectively. The eval-
+uation compares the two variants of LombardTokenizer (LT 1
+and LT2) against FreeVC [25], a state-of-the-art voice conver-
+sion model that also combines an SSL model (WavLM [26])
+and a speaker embedding. Two variations of FreeVC were con-
+sidered: one using the standard speaker encoder from [32] and
+one modified with the Lombard speech encoder E1, referred to
+as FVCspk and FVClmb, respectively. Both models were trained
+and fine-tuned with a procedure similar to LombardTokenizer.
+V ocal effort conversion was performed by switching the vocal
+effort encoding of a source and a target signals. For Lombard-
+Tokenizer, the output of the second RVQ layer of an encoded
+source signal was replaced by the output of the second RVQ
+layer of an encoded target signal, while keeping the other layers
+unchanged. For FreeVC, the embedding (speaker or Lombard)
+of the encoded source signal was replaced by the embedding of
+an encoded target signal, while keeping the output from WavLM
+unchanged. V ocal effort adaptation across speakers is flexibly
+achieved by both methods, by selecting a target representation
+from either the same speaker (intra-speaker conversion) or a dif-
+ferent speaker (inter-speaker conversion).
+An objective evaluation of these four conversion methods
+was conduced on the following data: for A VID and FLombard
+dataset, 24 utterances were selected, each produced by 8 speak-
+ers (4 males and 4 females) at four levels of vocal effort. Each
+sentence was then converted to the three other levels of vocal
+effort with our four models, given either a target signal with
+same speaker and same utterance (intra-speaker conversion), or
+two target signals with two different speakers and same utter-
+ance (inter-speaker conversion). This resulted in 27 648 sen-
+tences to evaluate for each dataset. Two metrics, the Word Error
+Rate (WER) and Equal Error Rate (EER), were used to quantify
+content preservation and speaker similarity, respectively. Ad-
+ditionally, the Jensen-Shannon divergence (JS), a symmetrised
+1https://github.com/lombardtokenizer/
+lombardtokenizer.github.io
+Table 1: PESQ and STOI scores for EnCodec (EC), Speech-
+Tokenizer (ST) and LombardTokenizer (LT) reported for Lib-
+riSpeech (LB), AVID and FLombard (FL) test sets. We report
+mean scores and 95% confidence intervals.
+Dataset Method PESQ [−0.5; 4.5]↑ STOI [0; 1]↑
+EC 3.32± 0.03 0.94± 0.01
+LB ST 3.01± 0.05 0.93± 0.02
+LT 3.07± 0.04 0.93± 0.02
+EC 3.25± 0.07 0.92± 0.03
+A VID ST 2.88± 0.08 0.91± 0.04
+LT 3.01± 0.06 0.91± 0.05
+EC 2.94± 0.11 0.90± 0.06
+FL ST 2.54± 0.11 0.88± 0.07
+LT 2.81± 0.07 0.89± 0.05
+version of the Kullback-Leibler divergence, was computed on
+frame-wise fundamental frequency and spectral slope distribu-
+tions (JS-F0 and JS-Slope) to evaluate acoustic consistency be-
+tween the transformed and target signals.
+V ocal effort modification was also assessed through a lis-
+tening test with comparative ratings. The latter consisted in rat-
+ing the perceived vocal effort on a scale from 0 (soft) to 100
+(very loud) of 8 signals: the four natural rendition of an utter-
+ance with the four levels of vocal effort, and the conversion of
+vocal effort of the utterance from a source to a target level with
+the four models, at non-adjacent levels of vocal effort (i.e., be-
+tween soft and loud levels, or between normal and very loud
+levels). A single{source, target} pair was selected for each ut-
+terance, and combinations were randomly distributed across ut-
+terances. For each dataset, the same 24 utterances were rated
+with four speakers and both the intra- and one inter-speaker
+conversion, for a total of 192 comparative ratings. 40 English
+speakers for A VID and 40 French speakers for FLombard, all
+native, were recruited via the Prolific platform 2 and performed
+24 comparative ratings each, following a Latin Square design.
+Statistical significance between score distributions across mod-
+els and vocal effort levels was assessed using Dunn’s test.
+3. Results
+3.1. Synthesis quality
+Table 1 presents the comparison of synthesis quality and intelli-
+gibility – as evaluated through the PESQ and STOI scores – be-
+tween our method: LombardTokenizer (LT), and two baselines:
+EnCodec (EC) and SpeechTokenizer (ST). As both Lombard-
+Tokenizer variants present no significant difference in speech
+synthesis performance, we only report the results for LT 1. The
+results show that for neutral speech – as represented in the Lib-
+riSpeech dataset (LB) –, LombardTokenizer and SpeechTok-
+enizer achieve similar levels of synthesis quality and intelligi-
+bility, which reflects their shared architecture and strategy of
+semantic regularisation. For speech produced with increased
+vocal effort – as represented in A VID and FLombard (FL)
+datasets –, LombardTokenizer outperforms SpeechTokenizer,
+with the greatest performance gap observed for the FLombard
+dataset, corresponding to a zero-shot generalisation scenario.
+This supports the interest of using multilingual SSL and Lom-
+bard speech encoder to guide the RVQ layers. EnCodec con-
+sistently achieves the highest scores of synthesis quality and in-
+telligibility, certainly because it does not constrain its quantised
+layers to capture specific types of information. Interestingly,
+2https://www.prolific.com
+5780
+Soft Normal Loud Very Loud
+0
+20
+40
+60
+80
+100 AVID - Intra
+Soft Normal Loud Very Loud
+AVID - Inter
+Soft Normal Loud Very Loud
+FLombard - Intra
+Soft Normal Loud Very Loud
+FLombard - Inter
+Vocal Effort Score
+GT
+FVCspk
+FVClmb
+LT1
+LT2
+Figure 2: Perceptual evaluations of vocal effort conversion with the two variants of LombardTokenizer and FreeVC on the AVID and
+FLombard test sets (intra- and inter-speaker conditions).
+this advantage becomes less pronounced with the FLombard
+dataset, which includes expressive speech and unseen data con-
+ditions. In these cases, LombardTokenizer demonstrates com-
+petitive performance due to its targeted regularisation strategies.
+3.2. Modeling and conversion of vocal effort
+Objective evaluation:
+As shown in Table 2, both variants of LombardTokenizer
+outperform the FreeVC models across all objective metrics on
+both datasets. For the A VID dataset, LT 1 achieves the low-
+est WER (10.97 %) and EER (6.67 %), indicating strong per-
+formance in maintaining both intelligibility and speaker iden-
+tity. Meanwhile, LT 2 slightly outperforms LT1 in terms of JS-
+F0 (0.03) and JS-Slope ( 0.07), reflecting its superior ability to
+capture the spectral modifications that accompany variations in
+vocal effort. The performance gap becomes more pronounced
+for the FLombard dataset. Here, both LombardTokenizer vari-
+ants maintain their advantage, with LT 2 achieving the lowest
+WER (15.77 %), which demonstrates its robustness in unfamil-
+iar conditions. While EER scores increase slightly compared
+to A VID, reflecting the added challenge of vocal effort conver-
+sion on unseen conditions, LT 1 and LT2 still outperform both
+FreeVC models. This suggests that they retain speaker charac-
+teristics more effectively, even under zero-shot conditions.
+Perceptual evaluation:
+The results from the perceptual evaluation, displayed in
+Fig. 2, confirm that the listeners were able to perceive and dis-
+tinguish different levels of vocal effort. Indeed, for the untrans-
+formed samples of both datasets (Ground Truth - GT), the per-
+ceived level of vocal effort shows significantly distinct distribu-
+tions for each category of produced vocal intensity (p< 0.01).
+This distinctiveness is slightly less pronounced in FLombard
+compared to A VID, which may stem from the greater vocal in-
+tensity range covered in A VID (spans a 40 dB range between
+soft and very loud speech) compared to FLombard (only 20 dB).
+Conversely, regardless of the dataset or speaker configu-
+rations (intra- and inter-speaker), the perceived effort of sam-
+ples transformed with FreeVC does not exhibit significant dif-
+ferences across the four categories of produced vocal intensity.
+This suggests that FreeVC does not manage to generate dis-
+tinct variations in vocal effort. While such result was some-
+what expected for the variant using the standard speaker en-
+coder, it is more surprising for the FreeVC model that relies
+on the Lombard encoder, indicating its poor ability to lever-
+age Lombard-specific information for expressive conversion. In
+contrast, both LombardTokenizer variants appear to accurately
+convert vocal effort, showing similar distributions of perceived
+effort between the transformed samples (after conversion) and
+Table 2: Objective evaluations of vocal effort conversion with
+the two variants LombardTokenizer and FreeVC on AVID and
+FLombard. We report WER, EER, JS-F0 and JS-Slope.
+Dataset Method WER (%)↓ EER (%)↓ JS-F0↓ JS-Slope↓
+GT 7.83 4 .79 − −
+FVCspk 20.35 16 .67 0 .24 0 .34
+A VID FVClmb 17.50 25 .00 0 .22 0 .33
+LT1 10.97 6 .67 0.04 0 .08
+LT2 12.73 7 .83 0.03 0 .07
+GT 11.46 7 .34 − −
+FVCspk 24.04 22 .50 0 .16 0 .30
+FL FVClmb 32.63 33 .13 0 .14 0 .28
+LT1 17.74 16.88 0.05 0 .06
+LT2 15.77 18.29 0.04 0 .04
+the untransformed ones (corresponding to the conversion tar-
+get, GT), across all four categories of vocal intensity. A slight
+performance drop is observed in inter-speaker conversion (ev-
+idenced by wider distributions), compared to the intra-speaker
+conversion. However, this difference remains non-significant,
+indicating that LombardTokenizer maintains robust conversion
+quality across different speakers.
+The results of both objective and perceptual evaluations
+confirm the superiority of our approach. Indeed, while both LT1
+and FVClmb utilise the same Lombard encoder, only our model
+achieves effective vocal effort conversion. Moreover, the sim-
+ilar performances observed between the two variants, LT 1 and
+LT2, demonstrate the strong ability of the LombardTokenizer
+method to generalise to various vocal effort representations.
+4. Conclusion
+This paper introduced LombardTokenizer, a novel framework
+that extends the concept of RVQ regularisation by introducing
+targeted regularisation in the second RVQ layer using Lombard
+speech encoders, while leveraging the multilingual mHuBERT
+for semantic guidance in the first RVQ layer. Two variants of
+LombardTokenizer were explored: one based on ad-vector en-
+coder and another using an intensity predictor. Both objec-
+tive and perceptual evaluations demonstrated that LombardTok-
+enizer outperforms existing models in both speech synthesis and
+conversion tasks. Notably, LombardTokenizer achieved strong
+performance regardless of the vocal effort representation and
+demonstrated effective zero-shot generalisation. More gener-
+ally, this work provides new insight to the problem of disen-
+tangling different dimensions of speech variation (such as vocal
+effort, expressivity, speech clarity) in neural speech codecs.
+5781
+5. References
+[1] N. Zeghidour, A. Luebs, A. Omran, J. Skoglund, and
+M. Tagliasacchi, “Soundstream: An end-to-end neural audio
+codec,” IEEE/ACM Trans. on Audio, Speech, and Language Pro-
+cessing (TASLP), vol. 30, pp. 495–507, 2022.
+[2] A. D ´efossez, J. Copet, G. Synnaeve, and Y . Adi, “High fidelity
+neural audio compression,”Trans. on Machine Learning Research
+(TMLR), 2023.
+[3] A. Vasuki and P. Vanathi, “A review of vector quantization tech-
+niques,” IEEE Potentials, vol. 25, no. 4, pp. 39–47, 2006.
+[4] J. Zeqian, W. Yuancheng, S. Kai, and T. Xu, “Naturalspeech 3:
+Zero-shot speech synthesis with factorized codec and diffusion
+models,” in Int. Conf. on Machine Learning, 2024.
+[5] Y . Zheng, W. Tu, L. Xiao, and X. Xu, “Srcodec: Split-residual
+vector quantization for neural speech codec,” in IEEE Int. Conf.
+on Acoustics, Speech and Signal Processing (ICASSP), 2024, pp.
+451–455.
+[6] X. Zhang, D. Zhang, S. Li, Y . Zhou, and X. Qiu, “Speechtok-
+enizer: Unified speech tokenizer for speech language models,” in
+Int. Conf. on Learning Representations (ICLR), 2024.
+[7] W.-N. Hsu, B. Bolte, Y .-H. H. Tsai, K. Lakhotia, R. Salakhutdi-
+nov, and A. Mohamed, “Hubert: Self-supervised speech represen-
+tation learning by masked prediction of hidden units,”IEEE/ACM
+Trans. on Audio, Speech, and Language Processing (TASLP) ,
+vol. 29, pp. 3451–3460, 2021.
+[8] E. Lombard, “Le signe de l’ ´elevation de la voix,” Annu. maladies
+oreille larynx nez pharynx, vol. 27, pp. 101–119, 1911.
+[9] R. Schulman, “Articulatory dynamics of loud and normal speech,”
+J. Acoust. Soc. Am., vol. 85, no. 1, pp. 295–312, 1989.
+[10] D. Rostolland, “Acoustic features of shouted voice,” Acta Acus-
+tica united with Acustica, vol. 50, no. 2, pp. 118–125, 1982.
+[11] ——, “Phonetic structure of shouted voice,” Acta Acustica united
+with Acustica, vol. 51, no. 2, pp. 80–89, 1982.
+[12] W. V . Summers, D. B. Pisoni, R. H. Bernacki, R. I. Pedlow, and
+M. A. Stokes, “Effects of noise on speech production: Acoustic
+and perceptual analyses,” J. Acoust. Soc. Am. , vol. 84, no. 3, pp.
+917–928, 1988.
+[13] A. Castellanos, J.-M. Bened ´ı, and F. Casacuberta, “An analysis
+of general acoustic-phonetic features for spanish speech produced
+with the lombard effect,” Speech Comm., vol. 20, no. 1-2, pp. 23–
+35, 1996.
+[14] M. Garnier, N. Henrich, and D. Dubois, “Influence of sound im-
+mersion and communicative interaction on the lombard effect,”J.
+of Speech, Language, and Hearing Research , vol. 53, pp. 588–
+608, 2010.
+[15] M. Garnier, L. M ´enard, and B. Alexandre, “Hyper-articulation in
+lombard speech: An active communicative strategy to enhance
+visible speech cues?” J. Acoust. Soc. Am. , vol. 144, no. 2, pp.
+1059–1074, 2018.
+[16] M. D. Skowronski and J. G. Harris, “Applied principles of clear
+and lombard speech for automated intelligibility enhancement in
+noisy environments,” Speech Comm., vol. 48, no. 5, pp. 549–558,
+2006.
+[17] R. Patel, M. Everett, and E. Sadikov, “Loudmouth: Modifying
+text-to-speech synthesis in noise,” in Proc. of Int. ACM SIGAC-
+CESS Conf. on Computers and Accessibility, 2006, pp. 227–228.
+[18] T. Toda, A. W. Black, and K. Tokuda, “V oice conversion based
+on maximum-likelihood estimation of spectral parameter trajec-
+tory,” IEEE Trans. on Audio, Speech, and Language Processing
+(TASLP), vol. 15, no. 8, pp. 2222–2235, 2007.
+[19] O. Perrotin and C. d’Alessandro, “V ocal effort modification in
+singing synthesis,” in Proc. of Interspeech, 2016, pp. 1235–1239.
+[20] E. Jokinen, U. Remes, and P. Alku, “Intelligibility enhancement
+of telephone speech using gaussian process regression for normal-
+to-lombard spectral tilt conversion,” IEEE/ACM Trans. on Audio,
+Speech, and Language Processing (TASLP) , vol. 25, no. 10, pp.
+1985–1996, 2017.
+[21] S. Seshadri, L. Juvela, J. Yamagishi, O. R ¨as¨anen, and P. Alku,
+“Cycle-consistent adversarial networks for non-parallel vocal ef-
+fort based speaking style conversion,” in IEEE Int. Conf. on
+Acoustics, Speech and Signal Processing (ICASSP) , 2019, pp.
+6835–6839.
+[22] G. Li, R. Hu, S. Ke, R. Zhang, X. Wang, and L. Gao, “Speech
+intelligibility enhancement using non-parallel speaking style con-
+version with stargan and dynamic range compression,” in IEEE
+Int. Conf. on Multimedia and Expo (ICME), 2020, pp. 1–6.
+[23] G. Li, X. Wang, R. Hu, H. Zhang, and S. Ke, “Intelligibil-
+ity enhancement via normal-to-lombard speech conversion with
+long short-term memory network and bayesian gaussian mixture
+model,” IEEE Trans. on Multimedia (TMM) , vol. 23, pp. 3035–
+3047, 2021.
+[24] Q. Hu, T. Bleisch, P. Petkov, T. Raitio, E. Marchi, and V . Laksh-
+minarasimhan, “Whispered and lombard neural speech synthesis,”
+in IEEE Spoken Language Technology Workshop (SLT), 2021, pp.
+454–461.
+[25] J. Li, W. Tu, and L. Xiao, “Freevc: Towards high-quality text-
+free one-shot voice conversion,” in IEEE Int. Conf. on Acoustics,
+Speech and Signal Processing (ICASSP), 2023, pp. 1–5.
+[26] S. Chen, C. Wang, Z. Chen, Y . Wu, S. Liu, Z. Chen, J. Li,
+N. Kanda, T. Yoshioka, X. Xiaoet al., “Wavlm: Large-scale self-
+supervised pre-training for full stack speech processing,” IEEE J.
+of Selected Topics in Signal Processing, vol. 16, no. 6, pp. 1505–
+1518, 2022.
+[27] L. Wan, Q. Wang, A. Papir, and I. L. Moreno, “Generalized end-
+to-end loss for speaker verification,” inIEEE Int. Conf. on Acous-
+tics, Speech and Signal Processing (ICASSP) , 2018, pp. 4879–
+4883.
+[28] A. Polyak, Y . Adi, J. Copet, E. Kharitonov, K. Lakhotia, W.-N.
+Hsu, A. Mohamed, and E. Dupoux, “Speech resynthesis from dis-
+crete disentangled self-supervised representations,” inProc. of In-
+terspeech, 2021.
+[29] M. Z. Boito, V . Iyer, N. Lagos, L. Besacier, and I. Calapode-
+scu, “mhubert-147: A compact multilingual hubert model,” arXiv
+preprint arXiv:2406.06371, 2024.
+[30] P. Alku, M. Kodali, L. Laaksonen, and S. R. Kadiri, “Avid: A
+speech database for machine learning studies on vocal intensity,”
+Speech Comm., vol. 157, p. 103039, 2024.
+[31] M. Jacquelin, M. Garnier, L. Girin, R. Vincent, and O. Perrotin,
+“The French Lombard Dataset,” May 2025. [Online]. Available:
+https://doi.org/10.5281/zenodo.15533059
+[32] S. Liu, Y . Cao, D. Wang, X. Wu, X. Liu, and H. Meng,
+“Any-to-many voice conversion with location-relative sequence-
+to-sequence modeling,” IEEE/ACM Trans. on Audio, Speech, and
+Language Processing (TASLP), vol. 29, pp. 1717–1728, 2021.
+[33] A. Nagrani, J. S. Chung, and A. Zisserman, “V oxceleb: a large-
+scale speaker identification dataset,” Telephony, vol. 3, pp. 33–
+039, 2017.
+[34] V . Panayotov, G. Chen, D. Povey, and S. Khudanpur, “Lib-
+rispeech: an asr corpus based on public domain audio books,”
+in IEEE Int. Conf. on acoustics, speech and signal processing
+(ICASSP), 2015, pp. 5206–5210.
+[35] A. W. Rix, J. G. Beerends, M. P. Hollier, and A. P. Hekstra, “Per-
+ceptual evaluation of speech quality (PESQ)-a new method for
+speech quality assessment of telephone networks and codecs,”
+in IEEE Int. Conf. on Acoustics, Speech and Signal Processing
+(ICASSP), vol. 2, 2001, pp. 749–752.
+[36] C. H. Taal, R. C. Hendriks, R. Heusdens, and J. Jensen, “A short-
+time objective intelligibility measure for time-frequency weighted
+noisy speech,” inIEEE Int. Conf. on Acoustics, Speech and Signal
+Processing (ICASSP), 2010, pp. 4214–4217.
+5782

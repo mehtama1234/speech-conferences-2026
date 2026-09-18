@@ -1,0 +1,657 @@
+Voice Impression Control in Zero-Shot TTS
+Keinichi Fujita, Shota Horiguchi, Yusuke Ijima
+NTT, Inc., Japan
+kenichi.fujita@ntt.com
+Abstract
+Para-/non-linguistic information in speech is pivotal in shap-
+ing the listeners’ impression. Although zero-shot text-to-
+speech (TTS) has achieved high speaker fidelity, modulat-
+ing subtle para-/non-linguistic information to control perceived
+voice characteristics, i.e., impressions, remains challenging. We
+have therefore developed a voice impression control method in
+zero-shot TTS that utilizes a low-dimensional vector to repre-
+sent the intensities of various voice impression pairs (e.g., dark–
+bright). The results of both objective and subjective evalua-
+tions have demonstrated our method’s effectiveness in impres-
+sion control. Furthermore, generating this vector via a large lan-
+guage model enables target-impression generation from a natu-
+ral language description of the desired impression, thus elimi-
+nating the need for manual optimization.
+Index Terms: speech synthesis, zero-shot TTS, speaker em-
+beddings, voice impression
+1. Introduction
+Speech contains both linguistic and para-/non-linguistic infor-
+mation [1]. Para-/non-linguistic information adds variations
+to the spoken content, shaping the listeners’ impressions. To
+achieve human-like expressive speech synthesis, control over
+various voice qualities, speaking styles, and perceived im-
+pressions is essential. While advances in zero-shot text-to-
+speech (TTS) synthesis have enabled natural-sounding speech
+generation from a few seconds of reference speech [2, 3, 4], its
+controllability is still challenging. Most zero-shot TTS systems
+struggle to control the impression of the generated utterances
+and can only mimic the speaker’s characteristics and the speak-
+ing style of the provided reference speech.
+This challenge arises because the representations extracted
+from the reference speech are often entangled with factors such
+as pitch, rhythm, and speaking style, thereby hindering intu-
+itive control. In response, efforts have been made to disentan-
+gle prosody, content, and acoustic details in speech representa-
+tions [5, 6]. However, these methods only disentangle above ba-
+sic features, thus limiting intuitive control over high-level voice
+impressions. Another promising approach involves leveraging
+emotion-related auxiliary information [7, 8, 9, 10, 11]. Meth-
+ods in this vein have demonstrated some effectiveness even in
+zero-shot scenarios [10, 12]. However, emotions represent only
+a narrow subset of the broader characteristics that shape voice
+impressions, and as such, they are insufficient to control the full
+range of impressions. Using simple voice qualities is similarly
+insufficient [13].
+For diverse speech control, Tachibana et al. [14] utilized
+voice impressions to adapt parameters in an HMM-based TTS
+method. However, parameter adaptation is unsuitable for zero-
+Reference Speech
+High (1) – Low (7)
+Masc. (1) – Fem. (7)
+⁝
+Slow (1) – Fast (7)
+3.5
+2.1
+⁝
+4.5
+Voice Impression
+Vector
+Speaker Embedding
+Encoder
+Decoder
+Variance
+Adapter
+Linguistic Vector
+Mel Spectrogram
+Dropout
+Linears
+Linears
+STL
+Control
+Module
+GRL:
+Impression Concat
+TTS
+Model
+Proposed Method
+Speech
+Encoder
+x
+𝒙’
+Figure 1: Overview of proposed method.
+shot TTS. Recent text-based conditioning methods [15, 16, 17,
+18] also aim for diverse speech control via various text descrip-
+tions, but most have focused on controlling both speaker char-
+acteristics and styles, without targeting style control for specific
+speakers. Furthermore, text-based description is often insuffi-
+cient for precise control of fine details in the generated speech.
+To address this limitation, we propose a zero-shot TTS
+method for voice impression control. The key idea is to use
+a low-dimensional voice impression vector in which each di-
+mension represents the intensity of an antonym pair describing
+impressions (e.g., “dark–bright”). This vector enables intuitive
+and flexible voice impression control. To integrate speaker and
+voice impression information, we introduce a control module
+that removes impression-related information from the speaker
+representation and then reintroduces it based on the impression
+vector. Audio examples are available on our demo page1.
+2. Proposed method
+An overview of the proposed TTS method is shown in Fig. 1.
+We conducted the training in two steps to ensure stability. In
+the first step, we pre-train a zero-shot TTS model excluding the
+control module to obtain a high-quality TTS model. In the sec-
+ond step, we incorporate the proposed control module to inte-
+grate speaker and voice impression information. We train only
+the control module while keeping the other modules frozen.
+This section explains the backbone TTS model, voice impres-
+sion vector, control module, and voice impression vector gener-
+ation via a large language model (LLM).
+2.1. Backbone zero-shot TTS model
+The model utilizes the target speaker’s embedding extracted
+from reference speech to condition the TTS model. To ex-
+tract the speaker embedding , we used a speech encoder and
+style token layer (STL) [19]. The speech encoder extracts
+representations using a self-supervised learning (SSL) speech
+1https://ntt-hilab-gensp.github.io/is2025voiceimpression/
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+4363 10.21437/Interspeech.2025-1192
+
+model [4] and aggregates them into a single embedding x via
+a weighted sum [20], a bidirectional LSTM, and an attention
+mechanism [21, 22]. The STL further transforms the embed-
+ding x to ensure its stability, resulting in the speaker embed-
+ding. Joint training of the TTS model and these modules en-
+sures that the generated speaker embedding is well-suited for
+the TTS model.
+2.2. Voice impression vector and control module
+Controlling voice impression is challenging because var-
+ious types of speaker information—including impression
+information—are entangled in the embedding x extracted us-
+ing a pre-trained speech encoder. To achieve flexible voice im-
+pression control, we propose two key components to 1) remove
+impression information coming from the embedding x and 2)
+reintroduce it via the impression vector.
+For the first purpose, we apply adversarial learning with a
+gradient reversal layer (GRL) [23] to remove impression infor-
+mation from the embedding x, following the emotional TTS
+studies [7, 10]. We also apply dropout with a high-ratio (0.8
+in this paper) to the embedding x for disentanglement [24, 25].
+This encourages the system to rely on the impression vector for
+impression-related information while using x solely to preserve
+target speaker characteristics.
+The impression vector utilized for the second purpose is
+a low-dimensional vector in which each dimension quantifies
+the degree or intensity of a certain impression pair. We use the
+following ten pairs of antonyms to describe impressions cover-
+ing common voice quality expressions [26, 27]: A) High–Low
+pitched, B) Masculine–Feminine, C) Clear–Hoarse, D) Calm–
+Restless, E) Powerful–Weak, F) Youthful–Elderly, G) Thick–
+Thin, H) Tense–Relaxed, I) Dark–Bright, and J) Cold–Warm.
+To expand the controllable aspects of voice impressions, we
+added another pair, K) Slow–Fast, related to speaking rate.
+2.3. Voice impression vector generation with automatic
+mapping from freely described impressions using LLM
+The impression vector allows for fine-grained adjustments to
+the target voice impression. However, manual tuning to ob-
+tain speech with the desired impression is labor-intensive and
+requires expert knowledge, especially when the desired impres-
+sion significantly differs from the source speech or when ad-
+ditional information (e.g., long-context details) must be con-
+sidered. Inspired by LLM-based text-guided image genera-
+tion [28], we propose leveraging an LLM to generate impres-
+sion vectors automatically (Fig. 2). The prompt comprises a
+task description, instructions, and the target specification. Text-
+based instructions, designed to improve the consistency of the
+LLM predictions, define each dimension and its corresponding
+scores for the utterance prior to modulation.
+The inherent adaptability of LLMs enables vector gener-
+ation using text-only prompts, effectively incorporating addi-
+tional elements such as context, speaking style, and dialogue
+history. A previous TTS study utilized LLMs to adjust low-level
+speech features such as pitch, energy, and duration on the basis
+of context [17]. Our method expands the application of LLMs
+to generate high-level features, i.e., voice impression vectors.
+Unlike prompt-based TTS methods that generate speech in a
+single step, our approach offers more granular control by allow-
+ing minimal manual adjustments to the impression vector after
+an initial global style approximation guided by the LLM.
+# 11 voice impressions on a scale from 1 to 7
+# Create scores on the target speaking style
+LLM
+Voice Impression
+Vector
+Text
+Output
+Task Description
+Instructions
+# Sleepy
+Target Specification
+# Talk to children
+“Sleepy” Vector
+“Talk to children”
+Vector
+High (1) – Low (7)
+Masc. (1) – Fem. (7)
+⁝
+Slow (1) – Fast (7)
+2.6
+5.3
+⁝
+3.3
+High (1) – Low (7)
+Masc. (1) – Fem. (7)
+⁝
+Slow (1) – Fast (7)
+2.0
+5.5
+⁝
+3.9
+# Impressions
+## Scores represent pre -modulation states
+High (1)–Low (7): 2.1
+Masc. (1)–Fem. (7): 5.3
+⁝
+Slow (1)–Fast (7): 4.3
+Prompt for LLM
+Figure 2: Voice impression vector generation via a LLM.
+Prompt examples are available on our demo page1.
+3. Experimental setup
+3.1. Dataset
+We used our in-house 1,800-hour 22 kHz Japanese speech
+database comprising 20,270 speakers. It was split into two
+parts: 1,588,847 utterances from 20,222 speakers for training
+and 7,278 utterances from 48 speakers for validation. All ut-
+terances were labeled with an 11-dimensional voice impression
+vector (see details in Sect. 3.2).
+3.2. Collection of voice impression vectors
+The scores for each dimension A) through J) of the voice im-
+pression vectors were obtained via subjective evaluation. Given
+the impracticality of subjective evaluations for all utterances
+due to time and cost constraints, we adopted automatic label-
+ing using a three-step process: crowdsourcing subjective scores,
+training an impression vector estimator, and estimating vectors
+for all utterances. The K) Slow–Fast scores were calculated by
+standardizing speech rates (in moras per second) across the en-
+tire dataset. The data preparation process is detailed below.
+We began by collecting subjective evaluations from 1,154
+speakers in the dataset. Each speaker’s single utterance was
+rated on ten impression pairs, namely A) through J). Although
+only one utterance was evaluated per speaker, we can assume
+that each speaker’s voice impression remained constant across
+other unevaluated utterances. This assumption is supported by
+the design of the TTS dataset, in which the speakers were in-
+structed to maintain a consistent speaking style. Participants
+rated each utterance on each impression pair using a 7-point
+Likert scale (e.g., 1: dark to 7: bright). Each utterance was
+evaluated by at least ten participants, and the average score for
+each pair was utilized as its corresponding impression vector.
+To automatically label the remaining data, we trained an im-
+pression vector estimator using utterances and their correspond-
+ing impression vectors obtained from the subjective evaluation.
+The estimator architecture comprised an SSL model followed
+by a bidirectional LSTM and an attention mechanism. For the
+SSL model, we used the publicly available HuBERT BASE [29]
+trained on ReazonSpeech [30]2. The model was trained to min-
+imize the mean squared error (MSE). The training data com-
+prised 146,809 utterances from 1,067 speakers and 6,151 vali-
+dation data from 44 speakers. All these utterances respectively
+belong to the training and validation data described in Sect. 3.1.
+The estimator was trained for 30 epochs, and the epoch with the
+lowest validation MSE was selected. For testing, we evaluated
+the model using 5,719 utterances from 43 speakers not included
+in the training or validation data. The root MSE was 0.338, indi-
+cating high estimation accuracy. After training, we applied the
+2https://huggingface.co/rinna/japanese-hubert-base
+4364
+
+Table 1: Correlation coefficients among dimensions in voice impression vector.
+Values in bold indicate strong positive or negative correlation.
+A B C D E F G H I J K
+A) High–Low pitched 1.00
+B) Masculine–Feminine −0.67 1.00
+C) Clear–Hoarse −0.61 0.36 1.00
+D) Calm–Restless −0.44 0.13 0.07 1.00
+E) Powerful–Weak 0.49 −0.17 −0.56 −0.25 1.00
+F) Youthful–Elderly 0.58 −0.22 −0.64 −0.37 0.33 1.00
+G) Thick–Thin −0.80 0.67 0.48 0.35 −0.19 −0.55 1.00
+H) Tense–Relaxed 0.65 −0.30 −0.72 −0.26 0.79 0.51 −0.43 1.00
+I ) Dark–Bright −0.77 0.35 0.67 0.35 −0.67 −0.56 0.61 −0.80 1.00
+J ) Cold–Warm −0.35 0.11 0.41 −0.01 −0.23 −0.31 0.32 −0.39 0.56 1.00
+K) Slow–Fast 0.02 −0.21 0.30 −0.04 −0.13 −0.37 −0.02 −0.17 0.11 0.16 1.00
+A B C D E F G H I J K
+□3 □2 □1 0 +1 +2 +3
+Modulation
+1
+2
+3
+4
+5
+6
+7Score
+(a) Speaker 1 (female)
+□3 □2 □1 0 +1 +2 +3
+Modulation
+1
+2
+3
+4
+5
+6
+7Score
+ (b) Speaker 2 (male)
+Figure 3: Objective evaluation results for single-dimension
+modulation of the voice impression vector.
+estimator to utterances that had not been subjectively evaluated
+and obtained their impression vectors. Note that the impression
+pairs are not independent. Table 1 lists the correlations among
+the dimensions, calculated using impression vectors obtained
+from subjective evaluations instead of the estimated data.
+3.3. Training conditions
+The TTS model was FastSpeech2 [31], as implemented in a
+previous study [32], which features four and six feed-forward
+Transformer blocks in the encoder and the decoder, respectively.
+The inputs were 303-dimensional linguistic vectors, while the
+target was an 80-dimensional log-mel spectrogram with a frame
+shift of 10.0 ms. We used HuBERT B ASE trained on Reazon-
+Speech2 as the SSL model, keeping its parameters frozen. Hu-
+BERT processed raw audio input sampled at 16 kHz into a 768-
+dimensional vector sequence, which is further converted into
+fixed-length 384-dimensional speaker embedding. In the con-
+trol module, the embedding x (384 dimensions) and voice im-
+pression vectors (11 dimensions) were projected to 32 dimen-
+sions. Dropout was applied with a rate of 0.8. These hyper-
+parameters were determined empirically. For waveform gener-
+ation, we employed HiFi-GAN (V1) [33].
+To ensure stable training, we initially pre-trained the back-
+bone TTS model for 200k steps without the control module. We
+used the Adam optimizer [34] with the Noam scheduler [35].
+Subsequently, we further trained the backbone TTS model us-
+ing a GAN [36, 37] for an additional 200k steps at a fixed learn-
+ing rate of 0.001 to improve quality. Finally, we inserted the
+control module and trained it with the same training data for an
+additional 50k steps. During this stage, we employed the same
+GAN with its associated loss function for adversarial training,
+and all modules except the control module were frozen.
+□1.5 □1.0 □0.5 0.0 0.5 1.0 1.5
+□3□2□1 0 +1 +2 +3
+Modulation (E)
+□3□2□1 0 +1 +2 +3
+Modulation (H)
+(a) Dim. E (Powerful–Weak)
+□3□2□1 0 +1 +2 +3
+Modulation (E)
+□3□2□1 0 +1 +2 +3
+Modulation (H) (b) Dim. H (Tense–Relaxed)
+Figure 4: Change in scores when two dimensions (E
+and H) are simultaneously modulated.
+4. Results
+4.1. Objective evaluation
+We conducted three objective evaluations to verify impression
+controllability and its effect on speaker similarity. We selected
+two speakers—Speaker 1 (female) and Speaker 2 (male)—not
+present in training or validation data, and chose one utterance
+from each as the reference speech. This implies that the genera-
+tion is in a zero-shot condition. We generated 50 utterances per
+condition in each of the following experiments. To evaluate the
+degree of change in impression, we repurposed the impression
+estimator, originally prepared for data generation.
+First, we modulated one dimension of the impression vector
+corresponding to the reference speech. The modulation ranged
+from −3 to +3 relative to its original value. The proposed model
+takes a voice impression vector itself as input, but from the
+perspective of impression controllability, we report the results
+based on the modulation levels of the vector. Figure 3 illus-
+trates the changes in the impression of the modulated dimen-
+sions. The consistent upward trend across all dimensions for
+both Speaker 1 and Speaker 2 indicates that changes in the im-
+pression vector correspond to changes in the impression.
+Second, we examined simultaneous two-dimensional mod-
+ulation because, in many cases, we must modulate more than
+one dimension at the same time to achieve the desired impres-
+sion using manual or LLM modulation. We selected dimen-
+sions E and H because of their high correlation (Table 1). The
+modulation level ranged from −3 to +3. We then analyzed the
+changes in the corresponding impression vector dimensions (E
+and H) estimated from the generated speech. Figure 4 presents
+the results for Speaker 1, where it is clear that even with the
+simultaneous modulation, the generated speech consistently re-
+flected the intended changes. Note that the same tendency was
+observed for Speaker 2 and other dimensions. These experi-
+ments demonstrate that our proposed method successfully alters
+the impressions corresponding to the modulated dimensions.
+Finally, we used Resemblyzer 3 to evaluate the impact of
+modulation on speaker identity. In Fig. 5, we analyzed how the
+cosine similarity between the generated utterance and the refer-
+ence speech transitioned as the modulation level changed from
+0 to ±1, ±2, and ±3. For comparison, we also show the av-
+erage cosine similarity to different recorded speech of the same
+speaker, as well as the distribution of cosine similarities to that
+of different speakers of the same gender (20 female and 21 male
+speakers, respectively). As shown, greater modulation reduced
+similarity; however, modulated utterances were still more sim-
+3https://github.com/resemble-ai/Resemblyzer
+4365
+
+0.4 0.5 0.6 0.7 0.8
+Similarity
+self (modulated ±1)
+self (modulated ±2)
+self (modulated ±3)
+others (rec)
+average similarity
+to self (rec)
+average similarity
+to self (w/o modulation)
+(a) Results for Speaker 1 (female)
+0.4 0.5 0.6 0.7 0.8
+Similarity
+self (modulated ±1)
+self (modulated ±2)
+self (modulated ±3)
+others (rec)
+(b) Results for Speaker 2 (male)
+Figure 5: Speaker similarity to target speaker’s reference
+speech evaluated with Resemblyzer. “self” denotes generated
+utterances with and without modulation, with levels of ±1, ±2,
+and ±3. “self/others (rec)” denotes different recorded speech
+of the same speaker and the recorded speech of different speak-
+ers of the same gender, respectively.
+Table 2: Results of subjective evaluation on voice impression
+scores with 95% confidence interval.
+Modulation level
+Speaker Dim. −3 −1.5 +1.5 +3
+Speaker 1
+B 3.39 ± 0.19 3 .89 ± 0.18 4 .14 ± 0.20 4 .33 ± 0.24
+E 3.44 ± 0.14 3 .61 ± 0.11 4 .30 ± 0.12 4 .68 ± 0.13
+F 3.35 ± 0.17 3 .61 ± 0.16 5 .03 ± 0.14 5 .70 ± 0.15
+I 3.03 ± 0.17 3 .48 ± 0.14 4 .59 ± 0.14 4 .85 ± 0.19
+Speaker 2
+B 3.45 ± 0.21 3 .71 ± 0.20 4 .46 ± 0.18 4 .71 ± 0.17
+E 3.37 ± 0.14 3 .68 ± 0.10 4 .38 ± 0.12 4 .71 ± 0.16
+F 3.86 ± 0.15 3 .97 ± 0.12 4 .08 ± 0.12 4 .54 ± 0.16
+I 3.20 ± 0.15 3 .56 ± 0.12 4 .42 ± 0.12 4 .66 ± 0.14
+ilar than those from different speakers. This suggests that the
+proposed method achieves noticeable changes in voice impres-
+sion while minimizing deterioration in speaker similarity. Some
+outliers are due to large changes in pitch, e.g., resulting from
+modulation in the B) Masculine–Feminine dimension.
+4.2. Subjective evaluation
+We conducted subjective evaluations of the controllability
+and naturalness of the proposed method. Referring to
+Table 1, we selected four weakly correlated dimensions:
+B) Masculine–Feminine, E) Powerful–Weak, F) Youthful–
+Elderly, and I) Dark–Bright. We then modulated each impres-
+sion vector dimension using the values −3.0, −1.5, +1.5, and
++3.0. For each modulation level, we synthesized 12 sentences
+for each speaker, Speaker 1 and Speaker 2. The experiments
+for controllability and naturalness were conducted on a crowd-
+sourcing platform with 478 and 178 participants, respectively,
+and each utterance was evaluated at least ten times.
+To evaluate controllability, each participant was instructed
+to listen to pairs of samples—each consisting of one with voice
+impression modulation and one without—and rate the impres-
+sion difference using a 7-point Likert scale (e.g., 1: dark to
+7: bright). The order of the two samples was randomized. Ta-
+ble 2 lists the results. The changes in voice impression align
+with the respective modulations, with larger modulation widths
+resulting in greater impression changes.
+The naturalness was evaluated using a mean opinion
+Table 3: Results of subjective evaluation on naturalness scores
+with 95% confidence interval. Bold numbers indicate p < . 05
+in the difference to No modulation (0).
+Modulation level
+Speaker Dim. −3 −1.5 0 +1.5 +3
+Speaker 1
+B 3.55 ± 0.22 3 .74 ± 0.18 3 .72 ± 0.18 3 .84 ± 0.19 3 .66 ± 0.19
+E 3.62 ± 0.20 3 .72 ± 0.19 3 .72 ± 0.18 3.36 ± 0.22 3 .18 ± 0.22
+F 3.20 ± 0.19 3 .34 ± 0.20 3.72 ± 0.18 3 .72 ± 0.19 3 .45 ± 0.22
+I 3.02 ± 0.25 3 .18 ± 0.21 3.72 ± 0.18 3 .55 ± 0.18 2.71 ± 0.24
+Speaker 2
+B 3.51 ± 0.18 3 .56 ± 0.16 3 .61 ± 0.14 3 .46 ± 0.18 3.07 ± 0.20
+E 3.35 ± 0.19 3.64 ± 0.17 3 .61 ± 0.14 3.21 ± 0.18 2 .88 ± 0.20
+F 3.46 ± 0.20 3 .60 ± 0.16 3 .61 ± 0.14 3 .43 ± 0.18 3.23 ± 0.17
+I 3.18 ± 0.19 3 .33 ± 0.17 3.61 ± 0.14 3 .38 ± 0.18 2.78 ± 0.22
+Table 4: Preference scores (%) of AB test between LLM-based
+generation (left) vs. no modulation (right). Bold numbers indi-
+cate the significantly preferred method with p < . 05.
+Target impression Speaker 1 Speaker 2 All
+Sleepy 98.5 vs. 1.5 91.0 vs. 9.0 94.6 vs. 5.4
+Urgent, attention grabbing 67.4 vs. 32.6 81.9 vs. 18.1 74.6 vs. 25.4
+score (MOS) on a five-point scale (5: very natural to 1: very un-
+natural). Naturalness was assessed to detect quality degradation
+introduced by the impression modulation. The results in Table 3
+show some degradation in naturalness but most speech samples
+with low naturalness scores exhibited outlier expressions, such
+as “feminine male,” “weak,” and “strongly dark/bright” utter-
+ances. Compared to neutral utterances, their expressions could
+convey less naturalness.
+4.3. Evaluation of voice impression vector generation using
+an LLM
+We conducted a subjective evaluation of voice impression gen-
+eration using an LLM. We selected one utterance each from
+Speaker 1 and Speaker 2, and generated them to convey the im-
+pressions of “sleepy” and “urgent, attention-grabbing,” respec-
+tively. These impressions were chosen because their complex-
+ity exceeds the emotion-based methods or simple dimensional
+adjustments in this study. Although we utilized simple expres-
+sions for simplicity, more detailed contexts and scenarios could
+be specified. We used ChatGPT-4o [38] for the LLM.
+Subjective evaluations were conducted via crowdsourcing
+with 436 participants. In the test, participants listened to pairs
+of samples: one generated using LLM and one without. For
+each pair, they selected one sample that better matched the tar-
+get impression. The experimental results, summarized in Ta-
+ble 4, show a significant preference for the sample with the tar-
+get impression generated using LLM. These results demonstrate
+that leveraging an LLM enables us to achieve the desired voice
+expressions without direct vector modulation. Audio examples
+and generated impression vectors from the LLM are available
+on our demo page1.
+5. Conclusion
+We introduced a voice impression control method in zero-shot
+TTS utilizing a voice impression vector. Objective and sub-
+jective evaluations demonstrated that the proposed method con-
+trols voice impression while preserving speaker similarity to the
+reference speech. Moreover, our findings confirmed the feasi-
+bility of controlling voice impressions with an LLM via the pro-
+posed vector. Future work will involve voice impression con-
+straints on neural audio codecs—similar to the approach used
+in NaturalSpeech3 [6], which emphasizes prosody and acoustic
+details—and evaluating the effectiveness.
+4366
+
+6. References
+[1] A. S. Cowen, H. A. Elfenbein, P. Laukka, and D. Keltner, “Map-
+ping 24 emotions conveyed by brief human vocalization.” Ameri-
+can Psychologist, vol. 74, no. 6, p. 698, 2019.
+[2] E. Cooper, C.-I. Lai, Y . Yasuda, F. Fang, X. Wang, N. Chen, and
+J. Yamagishi, “Zero-shot multi-speaker text-to-speech with state-
+of-the-art neural speaker embeddings,” in Proc. ICASSP, 2020,
+pp. 6184–6188.
+[3] S. Chen, C. Wang, Y . Wu, Z. Zhang, L. Zhou, S. Liu, Z. Chen,
+Y . Liu, H. Wang, J. Li, L. He, S. Zhao, and F. Wei, “Neural
+codec language models are zero-shot text to speech synthesizers,”
+TASLP, vol. 33, pp. 705–718, 2025.
+[4] K. Fujita, T. Ashihara, H. Kanagawa, T. Moriya, and Y . Ijima,
+“Zero-shot text-to-speech synthesis conditioned using self-
+supervised speech representation model,” in Proc. ICASSP Work-
+shops (ICASSPW), 2023, pp. 1–5.
+[5] A. Polyak, Y . Adi, J. Copet, E. Kharitonov, K. Lakhotia, W.-N.
+Hsu, A. Mohamed, and E. Dupoux, “Speech resynthesis from dis-
+crete disentangled self-supervised representations,” inProc. Inter-
+speech, 2021, pp. 3615–3619.
+[6] Z. Ju, Y . Wang, K. Shen, X. Tan, D. Xin, D. Yang, Y . Liu, Y . Leng,
+K. Song, S. Tang, Z. Wu, T. Qin, X.-Y . Li, W. Ye, S. Zhang,
+J. Bian, L. He, J. Li, and S. Zhao, “NaturalSpeech 3: Zero-shot
+speech synthesis with factorized codec and diffusion models,” in
+Proc. ICML, 2024.
+[7] T. Li, X. Wang, Q. Xie, Z. Wang, and L. Xie, “Cross-speaker emo-
+tion disentangling and transfer for end-to-end speech synthesis,”
+TASLP, vol. 30, pp. 1448–1460, 2022.
+[8] S. Pan and L. He, “Cross-speaker style transfer with prosody bot-
+tleneck in neural speech synthesis,” in Proc. Interspeech, 2021,
+pp. 4678–4682.
+[9] S. Sivaprasad, S. Kosgi, and V . Gandhi, “Emotional prosody con-
+trol for speech generation,” in Proc. Interspeech, 2021, pp. 4653–
+4657.
+[10] M. Kang, W. Han, S. J. Hwang, and E. Yang, “ZET-speech: Zero-
+shot adaptive emotion-controllable text-to-speech synthesis with
+diffusion and style-based models,” inProc. Interspeech, 2023, pp.
+4339–4343.
+[11] K. Inoue, S. Hara, M. Abe, N. Hojo, and Y . Ijima, “Model archi-
+tectures to extrapolate emotional expressions in DNN-based text-
+to-speech,” Speech Communication, vol. 126, pp. 35–43, 2021.
+[12] D.-H. Cho, H.-S. Oh, S.-B. Kim, and S.-W. Lee, “Emo-
+Sphere++: Emotion-controllable zero-shot text-to-speech via
+emotion-adaptive spherical vector,” IEEE Transactions on Affec-
+tive Computing, pp. 1–16, 2025.
+[13] F. Rautenberg, M. Kuhlmann, F. Seebauer, J. Wiechmann, P. Wag-
+ner, and R. Haeb-Umbach, “Speech synthesis along perceptual
+voice quality dimensions,” in Proc. ICASSP, 2025, accepted.
+[14] M. Tachibana, T. Nose, J. Yamagishi, and T. Kobayashi, “A tech-
+nique for controlling voice quality of synthetic speech using mul-
+tiple regression HSMM,” in Proc. Interspeech, 2006, pp. 2438–
+2441.
+[15] Z. Guo, Y . Leng, Y . Wu, S. Zhao, and X. Tan, “PromptTTS: Con-
+trollable text-to-speech with text descriptions,” in Proc. ICASSP,
+2023, pp. 1–5.
+[16] M. Kawamura, R. Yamamoto, Y . Shirahata, T. Hasumi, and
+K. Tachibana, “LibriTTS-P: A corpus with speaking style and
+speaker identity prompts for text-to-speech and style captioning,”
+in Proc. Interspeech, 2024, pp. 1850–1854.
+[17] A. Sigurgeirsson and S. King, “Controllable speaking styles us-
+ing a large language model,” in Proc. ICASSP, 2024, pp. 10 851–
+10 855.
+[18] D. Yang, S. Liu, R. Huang, C. Weng, and H. Meng, “InstructTTS:
+Modelling expressive TTS in discrete latent space with natural
+language style prompt,” TASLP, vol. 32, pp. 2913–2925, 2024.
+[19] Y . Wang, D. Stanton, Y . Zhang, R.-S. Ryan, E. Battenberg, J. Shor,
+Y . Xiao, Y . Jia, F. Ren, and R. A. Saurous, “Style Tokens: Unsu-
+pervised style modeling, control and transfer in end-to-end speech
+synthesis,” in Proc. ICML, vol. 80, 2018, pp. 5180–5189.
+[20] S. Chen, Y . Wu, C. Wang, S. Liu, Z. Chen, P. Wang et al. ,
+“Why does self-supervised learning for speech recognition benefit
+speaker recognition?” in Proc. Interspeech, 2022, pp. 3699–3703.
+[21] C. Raffel and D. P. W. Ellis, “Feed-forward networks with atten-
+tion can solve some long-term memory problems,” in Proc. ICLR
+Workshop, 2016.
+[22] A. Ando, S. Kobashikawa, H. Kamiyama, R. Masumura, Y . Ijima,
+and Y . Aono, “Soft-target training with ambiguous emotional ut-
+terances for DNN-based speech emotion classification,” in Proc.
+ICASSP, 2018, pp. 4964–4968.
+[23] Y . Ganin and V . Lempitsky, “Unsupervised domain adaptation by
+backpropagation,” in Proc. ICML, vol. 37, 2015, pp. 1180–1189.
+[24] A. Jaiswal, R. Y . Wu, W. Abd-Almageed, and P. Natarajan, “Un-
+supervised adversarial invariance,” in Proc. NeurIPS , vol. 31,
+2018.
+[25] R. Peri, M. Pal, A. Jati, K. Somandepalli, and S. Narayanan, “Ro-
+bust speaker recognition using unsupervised adversarial invari-
+ance,” in Proc. ICASSP, 2020, pp. 6614–6618.
+[26] M. Nagano, Y . Ijima, and S. Hiroya, “The influence of semantic
+primitives in an emotion-mediated willingness to buy model from
+advertising speech,” Acoustical Science and Technology, vol. 46,
+no. 1, pp. 87–95, 2025.
+[27] H. Kido and H. Kasuya, “Extraction of everyday expression as-
+sociated with voice quality of normal utterance,” Journal of ASJ,
+vol. 55, no. 6, pp. 405–411, 1999, (In Japanese with English title).
+[28] L. Lian, B. Li, A. Yala, and T. Darrell, “LLM-grounded diffu-
+sion: Enhancing prompt understanding of text-to-image diffusion
+models with large language models,” TMLR, 2024, featured Cer-
+tification.
+[29] W.-N. Hsu, B. Bolte, Y .-H. H. Tsai, K. Lakhotia, R. Salakhutdi-
+nov, and A. Mohamed, “HuBERT: Self-supervised speech repre-
+sentation learning by masked prediction of hidden units,” TASLP,
+vol. 29, pp. 3451–3460, 2021.
+[30] Y . Yin, D. Mori, and S. Fujimoto, “ReazonSpeech: A free and
+massive corpus for Japanese ASR,” in Proc. Annual Meeting of
+the Association for NLP, 2023, pp. 1134–1139.
+[31] Y . Ren, C. Hu, X. Tan, T. Qin, S. Zhao, Z. Zhao, and T.-Y . Liu,
+“FastSpeech 2: Fast and high-quality end-to-end text to speech,”
+in Proc. ICLR, 2020.
+[32] C.-M. Chien, J.-H. Lin, C.-y. Huang, P.-c. Hsu, and H.-y. Lee, “In-
+vestigating on incorporating pretrained and learnable speaker rep-
+resentations for multi-speaker multi-style text-to-speech,” inProc.
+ICASSP, 2021, pp. 8588–8592.
+[33] J. Kong, J. Kim, and J. Bae, “HiFi-GAN: Generative adversarial
+networks for efficient and high fidelity speech synthesis,” inProc.
+NeurIPS, vol. 33, 2020, pp. 17 022–17 033.
+[34] D. P. Kingma and J. Ba, “Adam: A method for stochastic opti-
+mization,” in Proc. ICLR, 2015.
+[35] A. Vaswani, N. Shazeer, N. Parmar, J. Uszkoreit, L. Jones, A. N.
+Gomez et al. , “Attention is all you need,” in Proc. NeurIPS ,
+vol. 30, 2017.
+[36] H. Kanagawa and Y . Ijima, “Multi-speaker modeling for DNN-
+based speech synthesis incorporating generative adversarial net-
+works,” in Proc. SSW, 2019, pp. 40–44.
+[37] X. B. Peng, A. Kanazawa, S. Toyer, P. Abbeel, and S. Levine,
+“Variational discriminator bottleneck: Improving imitation learn-
+ing, inverse RL, and GANs by constraining information flow,” in
+Proc. ICLR, 2019.
+[38] OpenAI, “Hello GPT-4o,” 2024, accessed:2024-02-14.
+4367

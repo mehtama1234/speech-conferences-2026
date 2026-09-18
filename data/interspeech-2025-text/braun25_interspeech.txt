@@ -1,0 +1,525 @@
+Pitfalls and Limits in Automatic Dementia Assessment
+Franziska Braun*1, Christopher Witzl*1, Andreas Erzigkeit2, Hartmut Lehfeld 3, Thomas
+Hillemacher3, Tobias Bocklet1, Korbinian Riedhammer1
+1Technische Hochschule N¨urnberg, Germany
+2Geromed GmbH Erlangen, Germany
+3Klinik f¨ur Psychiatrie und Psychotherapie, Universit¨atsklinik der Paracelsus Medizinischen
+Privatuniversit¨at, Klinikum N¨urnberg, Germany
+franziska.braun@th-nuernberg.de, witzlch88229@th-nuernberg.de
+Abstract
+Current work on speech-based dementia assessment focuses on
+either feature extraction to predict assessment scales, or on the
+automation of existing test procedures. Most research uses pub-
+lic data unquestioningly and rarely performs a detailed error
+analysis, focusing primarily on numerical performance. We
+perform an in-depth analysis of an automated standardized de-
+mentia assessment, the Syndrom-Kurz-Test. We find that while
+there is a high overall correlation with human annotators, due
+to certain artifacts, we observe high correlations for the severely
+impaired individuals, which is less true for the healthy or mildly
+impaired ones. Speech production decreases with cognitive
+decline, leading to overoptimistic correlations when test scor-
+ing relies on word naming. Depending on the test design,
+fallback handling introduces further biases that favor certain
+groups. These pitfalls remain independent of group distribu-
+tions in datasets and require differentiated analysis of target
+groups.
+Index Terms: dementia screening, neuropsychological tests,
+pathological speech
+1. Introduction
+In clinical practice, dementia screening usually comprises a
+combination of medical and psychological assessments, includ-
+ing history taking, biomarker extraction, and standardized cog-
+nitive testing. These assessments are typically administered by
+clinical experts after self or medical indication (e.g., decline
+in cognitive abilities). However, neuropsychological testing is
+time-intensive as it needs professionally supported assessment
+of a broad range of cognitive capabilities such as short- and
+long-term memory, recognition, and numerical understanding.
+This increases the costs of diagnosis and limits the feasibility of
+early detection initiatives. As a result, providing prompt identi-
+fication of these conditions, and enabling dementia care accessi-
+bility, remains hardly given for many persons affected. Recent
+advances in automated speech recognition (ASR), make auto-
+matic cognitive assessments based on speech possible, holding
+the potential to facilitate early diagnosis, enable medical imple-
+mentation, and enhance the quality of life for those affected.
+Moreover, data collection in automatic settings would help with
+studying larger populations for the early stages of cognitive de-
+cline, improving both research and clinical outcomes. Since
+many established neuropsychological tests rely heavily on ver-
+bal test responses, they appear suitable for ASR-based automa-
+tion. However, state-of-the-art ASR systems such as OpenAI’s
+Whisper [1] exhibit multiple challenges when deployed in cog-
+nitive testing scenarios. The target speech domain comprises
+*Equal contribution.
+elderly speech (which differs from the middle-aged speech on
+which ASR systems are mostly trained), increased dialectal
+variations and accents within older populations and among de-
+mentia patients, as well as pathological speech patterns such
+as prolonged pauses and interruptions. Further challenges arise
+from the structured and constrained nature of speech elicited
+during cognitive testing, which differs significantly from spon-
+taneous, natural speech, which ASR systems are usually trained
+on (e.g., podcast and video sources). For effective early demen-
+tia detection and monitoring, automated test evaluation must
+remain highly sensitive to subgroups with no or mild cogni-
+tive impairment, while screening for later dementia stages re-
+mains relatively straightforward. Tackling previously named
+challenges, this work analyses the speech-based automation of
+the Syndrom-Kurz-Test (SKT), an established cognitive perfor-
+mance test that is sensitive to the early stages of dementia syn-
+drome. We automatically evaluate the SKT subtest based on
+manual and automatic transcripts using OpenAI’s open-weight
+ASR model Whisper. In a case study, we analyze the overall
+correlation to expert scoring for 158 subjects performing the
+SKT as part of a comprehensive dementia assessment proce-
+dure. Further analysis of correlations for individual subgroups
+of individuals with no cognitive impairment (NCI), mild cogni-
+tive impairment (MCI), and dementia (DEM) reveals potential
+pitfalls in automatic speech-based dementia assessment. We
+find that evaluation performance decreases for NCI and MCI
+groups and is related to high transcription word error rates. In
+an in-depth test analysis, we discuss the pitfalls and limits of au-
+tomatic dementia assessment, which can lead to over-optimistic
+results and misleading conclusions. We also propose guide-
+lines to mitigate these issues, providing the basis for more inter-
+pretable, transparent, and reliable automated dementia assess-
+ment.
+2. Related Work
+Speech-based dementia assessment has garnered increasing at-
+tention in recent years, with research efforts mainly focusing
+on two key approaches. The first approach involves extracting
+linguistic and acoustic features from elicited speech (e.g., pic-
+ture description tasks) to estimate cognitive impairment through
+established clinical scales such as the Mini-Mental State Ex-
+amination (MMSE) and the Montreal Cognitive Assessment
+(MoCA) [2, 3, 4, 5, 6]. The second one centers on automat-
+ing neuropsychological test procedures (e.g., Verbal Fluency,
+Boston Naming Test, CERAD-NB) by leveraging speech pro-
+cessing technologies [7, 8, 9, 10, 11, 12, 13]. Although these
+methods have shown promise, they often rely on limited pub-
+licly available datasets. The DementiaBank Pitt corpus [14],
+consisting of U.S. English speech data, remains the most widely
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+5663 10.21437/Interspeech.2025-2280
+
+used resource. Initiatives such as the ADReSS [2], ADReSSo
+[3], and MADReSS [4] challenges have demonstrated that
+it is possible to differentiate between pathological and non-
+pathological speech samples. However, the clinical relevance of
+this binary classification is limited, as even laypersons may dis-
+tinguish dementia patients from healthy controls. Commonly
+employed dementia screening tools, such as the MMSE [15]
+and MoCA [16], are widely used due to their simplicity and ease
+of administration. Nonetheless, these tools face several limita-
+tions, including a lack of normalization for demographic fac-
+tors like age and education, and a binary classification of cogni-
+tive status. In contrast, the Syndrom-Kurz-Test [17, 18] offers a
+more detailed assessment by classifying cognitive performance
+across six stages based on attention and memory tasks, making
+it more sensitive to early-stage dementia. In our previous work,
+we demonstrated the feasibility of automating SKT scoring on a
+small subset of 30 subjects using [12], revealing strong correla-
+tions with expert assessments when using manual transcripts.
+The reliability of automated evaluations decreased using au-
+tomatic transcripts due to recognition errors of the ASR sys-
+tem (mod9), particularly in SKT subtests 2, 6, and 9. Expand-
+ing upon previous research, our work emphasizes a subgroup-
+specific analysis of automatic dementia assessments, focusing
+on differences in ASR accuracy across individuals with no cog-
+nitive impairment (NCI), mild cognitive impairment (MCI), and
+dementia (DEM). By considering these subgroups, we aim to
+uncover potential biases and limitations inherent in automatic
+speech-based dementia screening methods.
+3. SKT
+The Syndrom-Kurz-Test (SKT) [17], is a test instrument for
+assessing memory and attention deficits, characterized by its
+patient-centered design and brief administration time, it is par-
+ticularly well-suited for routine clinical practice. Furthermore,
+the test’s individual tasks are designed for clarity and can be ex-
+plained using alternative phrasing or different languages, ensur-
+ing broad accessibility. The test inventory comprises nine sub-
+tests, derived from established psychological and psychiatric as-
+sessment methods. The subtests are categorized based on their
+primary focus: either attention or memory performance. For
+providing a comprehensive understanding of the test’s execu-
+tion and evaluation, please refer to our work [12, 18]. Test per-
+formance in the attention subtests (1, 3, 6, 7) is assessed based
+on the time required to complete the respective tasks, while the
+memory subtests (2, 8, 9) are evaluated by counting the num-
+ber of omitted objects; these concepts are used to derive the
+raw test scores. In attention subtests, subjects are instructed to
+complete the tasks as quickly and accurately as possible. Errors
+need to be pointed out by the examiner and require the sub-
+jects’ correction; the correction time is included in the process-
+ing time. In the memory sub-tests, it is not necessary to work
+as quickly as possible; the time available should be sufficient
+to recall the objects. However, if an incorrect object is named,
+the examiner asks whether the participant is certain about their
+response. Confirmed misnamings are logged as confabulations,
+which are noted in the protocol but not scored. The normaliza-
+tion of raw test scores accounts for subjects’ age and IQ range
+(<90, 90–110, >110), resulting in norm scores between 0 and
+3 for each subtest. The sum of all norm values yields the SKT
+total score, ranging from 0 to 27. This total score serves as an in-
+dicator of cognitive impairment, particularly when memory and
+attention sub-scores exhibit homogeneous profiles [17]. The in-
+terpretation of the overall SKT result follows a clinically estab-
+lished classification. Total scores between 0 and 4 indicate no
+cognitive impairment, while scores between 5 and 8 correspond
+to mild cognitive impairment. For dementia severity, the to-
+tal score differentiates between mild (9–13), moderate (14–18),
+severe (19–23) and very severe dementia (24–27). Regardless
+of the overall score, the sub-scores for memory and attention
+provide a detailed assessment of impairment in the respective
+cognitive domain.
+4. Data
+This study builds on a subset of the Nuremberg single-center
+corpus [12], comprising audio recordings along with ground
+truth transcriptions following the guidelines of Dresing & Pehl
+[19]. These recordings capture clinical interviews, as well as
+SKT and CERAD-NB assessments performed at the Memory
+Clinic of the Department of Psychiatry and Psychotherapy at
+Nuremberg Hospital. The recordings were conducted as part of
+routine clinical practice, where all subgroups (NCI, MCI, and
+DEM) were recruited from the same pool of patients mitigat-
+ing selection and interviewer bias. It should be noted that some
+participants exhibit strong regional dialects and accents, and all
+speakers wore surgical masks, both holding challenges for ASR
+systems. The subset consists of 158 individuals aged between
+49 and 89 years ( µ = 73.69 ± 9.02), including 63 male and
+95 female participants doing the SKT. The cohort presents a di-
+verse range of pre-existing conditions, such as depression, de-
+mentia, and other neurological or psychiatric disorders. Table
+1 summarizes the demographics of the subgroups NCI, MCI,
+and DEM based on the SKT total score. All tests were con-
+ducted and evaluated in face-to-face sessions by psychological
+experts, strictly following the SKT Manual guidelines [17] (see
+section 3). During the evaluation process, raw scores from the
+memory and attention subtests were normalized using the es-
+tablished SKT norms from 2015 (see Table 11 in [18]).
+Table 1: Demographics for NCI, MCI, and DEM subgroups.
+Group N Age Gender Education Y ears
+NCI 68 73.8±8.9 34m/34f 12.9±2.2
+MCI 44 74.2±10.1 16m/28f 12.3±2.8
+DEM 46 73.1±8.2 13m/33f 11.5±2.0
+Overall 158 73.7±9.0 63m/95f 12.3±2.4
+5. Method
+5.1. Automatic Transcription
+The ASR system “Whisper” ( whisper-large-v3) is used
+for automatic transcription; model weights are open-source and
+can be accessed online*. Inference is performed with the open-
+source runtime environment whisper.cpp†, with the lan-
+guage set to German and timestamp generation disabled. V oice
+Activity Detection (V AD) is used for pre-processing the raw
+audio to isolate speech segments and remove non-speech parts
+such as silence, background noise, and other irrelevant artifacts.
+This is particularly important for encoder-decoder based ASR
+systems, which may otherwise produce hallucinated output in
+*https://huggingface.co/openai/
+whisper-large-v3
+†https://github.com/ggerganov/whisper.cpp/
+releases/tag/v1.7.4
+5664
+
+silent or low-energy segments. To improve segmentation ac-
+curacy, a smoothing strategy is applied that includes a padding
+mechanism to maintain linguistic coherence and prevent abrupt
+segment transitions. Following V AD-based segmentation, dif-
+ferent chunking strategies are explored to optimize transcrip-
+tion accuracy and coherence. The first approach involves merg-
+ing all detected speech segments into a single continuous audio
+file before transcription ( merged). This ensures that context
+is maintained throughout the recording though it could intro-
+duce artifacts when merging disjointed speech segments. The
+second approach processes each detected speech segment inde-
+pendently, storing and transcribing them separately (chunked).
+While this method allows for precise alignment between tran-
+scriptions and their corresponding timestamps, it risks losing
+global context, particularly for long-form transcription. To
+mitigate the loss of contextual information, a third approach
+combines independent chunking with a prompting mechanism.
+Here, transcriptions from previous chunks are used as prompts
+for subsequent chunks, helping to maintain coherence across
+segment boundaries, particularly in extended speech interac-
+tions (prompted).
+5.2. Automatic Scoring
+The analysis focuses exclusively on subtests that can be eval-
+uated based on an audio recording and its corresponding tran-
+script. To ensure accurate number recognition, all numbers in
+the transcripts are normalized to their digit equivalents (e.g.,
+“eins” to “1”, for numbers between 0 and 99). This process ac-
+counts for dialectal variations (e.g., “zwei” vs. “zwo” mapped
+to “2”). Furthermore, to obtain accurate word timestamps for
+scoring, forced alignment is performed using the Kaldi-based
+mod9 engine ‡, which utilizes DNNs and HMMs for tran-
+scription and alignment. Test evaluation is performed separately
+for each task group. The first group includes subtests 1 (object
+naming), 2 (immediate recall of objects), 8 (delayed recall of
+objects), and 9 (object recognition). In these tasks, the number
+of correctly recognized objects -including synonyms- is deter-
+mined using a Levenshtein distance-based similarity measure
+(90% match threshold relative to word length). The recognized
+words are then stored along with their respective timestamps.
+For subtest 1, the processing duration is determined using the
+timestamp of the last recognized word, which serves as the
+score. For subtests 2, 8, and 9, the number of missing objects
+is computed based on the recognized items. The second group
+comprises subtests 3 (reading numbers), 6 (counting symbols),
+and 7 (interference test). Here, the extracted words from the
+transcript are compared against the expected task-specific re-
+sponses, including predefined two-digit numbers, the expected
+range of counted symbols, and the intended letters. The times-
+tamp of the last correctly identified word within the expected
+response set is used to determine the processing duration, which
+serves as the final score. If no valid number or interference let-
+ter is detected in the transcript, it is assumed that the participant
+did not respond, and the raw score was set to 60.
+6. Experiments
+Transcription quality is measured by Word Error Rate (WER)
+and Word Correctness (WC) with respect to human ground truth
+transcriptions. Automated test scoring is evaluated using Pear-
+son correlation with the expert-assigned scores. Metrics were
+calculated by selecting the best audio pre-processing for each
+‡https://mod9.io
+subtest and for each subject group. This is intended to inves-
+tigate performance across different patient groups in automatic
+evaluation and transcription, as well as to allow differentiated
+interpretation.
+6.1. Target Group Analysis
+Table 2 shows the Person correlation for the automatic evalu-
+ation of the SKT based on ground truth (GT) and automatic
+(ASR) transcriptions. We obtain high ASR correlations for sub-
+tests 1, 2, 3, 8, and 9 approaching or even exceeding GT cor-
+relations (e.g., for SKT1), suggesting that the automatic evalu-
+ation of these subtests is straightforward. It is noticeable that 8
+performs better than 2 despite sharing the same task (recalling
+objects) and that 6 and 7 show lower performance for ASR as
+well as GT, leading us to deeper analysis.
+Table 2: Pearson correlation with expert scores for SKT subtest
+evaluation using ground-truth (GT) and ASR transcripts with
+different audio pre-processing. Overall is computed across all
+pooled data points.
+Subtest GT Corr . ASR Corr . Preprocessing Type
+1 0.82 0.93 prompted
+2 0.86 0.84 merged
+3 0.85 0.88 merged
+6 0.79 0.47 merged
+7 0.87 0.74 chunked
+8 0.97 0.95 merged
+9 0.72 0.73 raw
+Overall 0.86 0.77 —
+The individual target groups are analyzed, focusing primar-
+ily on NCI and MCI subjects, while DEM subjects are con-
+sidered mainly for monitoring. Based on expert assessments
+(Section 3), participants are assigned to one of three groups.
+Performance varies notably between groups, with unimpaired
+individuals showing comparatively low evaluation quality (Ta-
+ble 3). The overall correlation of 0.77 (Table 2) may there-
+fore be overoptimistic while critical groups exhibit lower per-
+formance.
+Table 3: Pearson correlation with expert scores per subtest and
+cognitive group. Overall is computed across pooled data points.
+Subtest NCI (n=68) MCI (n=44) DEM (n=46)
+GT ASR GT ASR GT ASR
+1 0.72 1.00 0.62 0.97 0.96 0.88
+2 0.69 0.78 0.85 0.78 0.90 0.73
+3 0.72 0.75 0.73 0.73 0.96 0.99
+6 0.61 0.28 0.82 0.41 0.70 0.65
+7 0.58 0.18 0.80 0.76 0.81 0.75
+8 0.87 0.90 1.00 0.94 0.97 0.91
+9 0.49 0.42 0.61 0.77 0.66 0.68
+Overall 0.70 0.51 0.82 0.78 0.87 0.82
+Analyzing individual tests, such as subtest 7, reveals pitfalls
+due to multiple factors. The NCI group shows a high WER
+and low WC, indicating frequent transcription errors unlike in
+the MCI and DEM groups. This stems from more impaired
+5665
+
+individuals often using the full 60 seconds with pausing, aiding
+speech recognition, while less impaired individuals (NCI) speak
+faster and more fluently, leading to repetition hallucinations in
+the specific atypical speech context (i.e., sequence of letters),
+resulting in lower correlation and metrics.
+Table 4: Pearson correlation, WER, and WC for subtest 7 across
+groups; GT uses manual transcripts, ASR uses generated ones.
+All refers to a single correlation computed across all data.
+Group GT ASR WER WC
+NCI 0.58 0.18 1.05 0.49
+MCI 0.80 0.76 0.53 0.50
+DEM 0.81 0.75 0.63 0.55
+All 0.87 0.74 0.78 0.51
+Table 5 shows correlation differences between subtests 2
+and 8, both requiring object recall. Although subtest 8 shows
+a higher correlation, this is not reflected in the WER and WC
+values. This stems from the SKT structure and the behavior of
+the subjects between the two tests; subtest 2 follows the imme-
+diate stimulus (subtest 1) directly where subjects tend to memo-
+rize more items (immediate recall), making speech recognition
+more impactful, whereas delayed recall in subtest 8 reduces this
+effect since fewer items are memorized.
+Table 5: Pearson correlation, WER, and WC for subtests 2 and
+8 by group. ASR uses generated transcripts. All refers to a
+single correlation computed across all pooled data points.
+Group SKT2 SKT8
+ASR WER WC ASR WER WC
+NCI 0.78 0.35 0.68 0.90 0.34 0.70
+MCI 0.78 0.35 0.66 0.94 0.40 0.62
+DEM 0.73 0.46 0.63 0.91 0.49 0.53
+All 0.81 0.38 0.66 0.92 0.40 0.63
+Subtest 9 (see Table 6) shows correlation differences within
+the subgroups; NCI is scoring lowest (0.42), followed by DEM
+(0.68) and MCI (0.77), despite lower performance in form of
+WERs and WCs with increasing impairment. Healthier indi-
+viduals tend to recall more items, making speech recognition
+performance more critical. Further data analysis revealed three
+subjects who only pointed instead of naming objects, and others
+who verbally confirmed or denied objects, introducing errors in
+automatic evaluation.
+Table 6: Pearson correlation, WER, and WC for subtest 9 by
+groups; GT uses manual transcripts, ASR uses generated ones.
+All refers to a single correlation computed across all pooled
+data points.
+Group GT ASR WER WC
+NCI 0.49 0.42 0.30 0.74
+MCI 0.61 0.77 0.31 0.72
+DEM 0.66 0.68 0.38 0.67
+All 0.72 0.73 0.33 0.71
+6.2. Adressing Limitations
+To mitigate the previous limitations and improve subtest-
+specific performance, we have taken the following adap-
+tations: For subtest 6 scoring, we use the last word
+timestamp, for subtest 7, we employ a grammar-supported
+mod9 engine for ASR, and for subtest 9 use the LLM
+Qwen2.5-32B-Instruct-MLX-4bit§ to filter negated
+words. These methods raise the overall correlation from 0.77
+to 0.87 (compare Table 2 and Table 7). Subtest 6 correlations
+increase notably for MCI (0.41 to 0.74) and DEM (0.65 to 0.74),
+while subtest 9 shows limited improvement in the DEM group
+due to LLM unreliability. Subtest 7 correlations improve sig-
+nificantly (NCI: 0.18 to 0.91) with mod9, though results rely on
+therapist-intervened letter production. Overall, NCI and MCI
+group correlations increase from 0.51 to 0.68 and 0.78 to 0.87,
+respectively, emphasizing the importance of precise subgroup
+analysis and adaptations.
+Table 7: Pearson Correlation values for different SKT subtests
+across cognitive subgroups and overall.
+Subtest NC MCI DEM Overall
+1 1.00 0.97 0.88 0.93
+2 0.78 0.78 0.73 0.84
+3 0.75 0.73 0.99 0.88
+6 0.29 0.74 0.88 0.74
+7 0.91 0.95 0.88 0.96
+8 0.90 0.94 0.91 0.95
+9 0.41 0.77 0.68 0.73
+Overall 0.68 0.87 0.88 0.87
+7. Conclusion
+This study underscores the critical importance of detailed tar-
+get group and error analysis in the automatic assessment of
+dementia and other medical conditions. Without such analy-
+ses, there is a risk of drawing overoptimistic conclusions about
+the reliability of automated methods, obscuring group-specific
+weaknesses that could compromise clinical effectiveness. Sup-
+plementary experiments of predicting dementia in the ADReSS
+Challenge using only word count and age of the interviewer or
+patient, resulted in high accuracies of up to 0.73, highlighting
+the need for the interpretability and transparency of concepts
+underlying the numerical performance. This is particularly con-
+cerning in clinical and assistive contexts, where accurate tran-
+scription is essential for diagnosis, communication aids, and re-
+search. To enhance the robustness of automatic speech recog-
+nition in these domains, future research should consider hybrid
+approaches that integrate Whisper’s capabilities with traditional
+ASR methods. Such strategies may improve performance con-
+sistency across diverse patient populations. Furthermore, we
+strongly advocate for explainable and differentiated evaluation
+methodologies, as demonstrated by our findings, which reveal
+that superficial performance improvements do not always trans-
+late to meaningful diagnostic advancements. Ensuring method-
+ological transparency and comprehensive analysis will be cru-
+cial in maintaining the validity and comparability of future re-
+search in this field.
+§https://huggingface.co/lmstudio-community/
+Qwen2.5-32B-Instruct-MLX-4bit
+5666
+
+8. References
+[1] A. Radford, J. W. Kim, T. Xu, G. Brockman, C. McLeavey,
+and I. Sutskever, “Robust speech recognition via large-
+scale weak supervision,” 2022. [Online]. Available: https:
+//arxiv.org/abs/2212.04356
+[2] S. Luz, F. Haider, S. d. l. Fuente, D. Fromm, and B. MacWhin-
+ney, “Alzheimer’s Dementia Recognition Through Spontaneous
+Speech: The ADReSS Challenge,” in Interspeech 2020. ISCA,
+2020, pp. 2172–2176.
+[3] ——, “Detecting Cognitive Decline Using Speech Only: The
+ADReSSo Challenge,” in Interspeech 2021. ISCA, Aug. 2021,
+pp. 3780–3784.
+[4] S. Luz, F. Haider, D. Fromm, I. Lazarou, I. Kompatsiaris, and
+B. MacWhinney, “Multilingual alzheimer’s dementia recognition
+through spontaneous speech: a signal processing grand
+challenge,” 2023. [Online]. Available: https://arxiv.org/abs/2301.
+05562
+[5] B. Barrera-Altuna, D. Lee, Z. Zarnaz, J. Han, and S. Kim, “The
+interspeech 2024 taukadial challenge: Multilingual mild cognitive
+impairment detection with multimodal approach,” in Interspeech
+2024, 2024, pp. 967–971.
+[6] F. Braun, S. P. Bayerl, P. A. P ´erez-Toro, F. H ¨onig, H. Lehfeld,
+T. Hillemacher, E. N¨oth, T. Bocklet, and K. Riedhammer, “Clas-
+sifying Dementia in the Presence of Depression: A Cross-Corpus
+Study,” in Proc. INTERSPEECH 2023, 2023, pp. 2308–2312.
+[7] J. Tr ¨oger, N. Linz, A. K ¨onig, P. Robert, and J. Alexanders-
+son, “Telephone-based dementia screening i: Automated semantic
+verbal fluency assessment,” in Proceedings of Pervasive Health ,
+2018, p. 59–66.
+[8] A. K ¨onig, N. Linz, J. Tr ¨oger, M. Wolters, J. Alexandersson, and
+P. Robert, “Fully Automatic Speech-Based Analysis of the Se-
+mantic Verbal Fluency Task,” Dementia and Geriatric Cognitive
+Disorders, vol. 45, no. 3-4, pp. 198–209, 2018.
+[9] N. Kim, J.-H. Kim, M. K. Wolters, S. E. MacPherson, and J. C.
+Park, “Automatic scoring of semantic fluency,” Frontiers in Psy-
+chology, vol. 10, 2019.
+[10] S. J. Kwon, H. S. Kim, J. H. Han, J. B. Bae, J. W. Han, and K. W.
+Kim, “Reliability and validity of alzheimer’s disease screening
+with a semi-automated smartphone application using verbal flu-
+ency,” Frontiers in Neurology, vol. 12, 2021.
+[11] M. Lofgren and W. Hinzen, “Breaking the flow of thought: In-
+crease of empty pauses in the connected speech of people with
+mild and moderate Alzheimer’s disease,” Journal of Communica-
+tion Disorders, vol. 97, p. 106214, May 2022.
+[12] F. Braun, M. F ¨orstel, B. Oppermann, A. Erzigkeit, H. Lehfeld,
+T. Hillemacher, and K. Riedhammer, “Automated Evaluation of
+Standardized Dementia Screening Tests,” in Proc. Interspeech
+2022, 2022, pp. 2478–2482.
+[13] F. Braun, A. Erzigkeit, H. Lehfeld, T. Hillemacher, K. Riedham-
+mer, and S. P. Bayerl, “Going Beyond the Cookie Theft Picture
+Test: Detecting Cognitive Impairments Using Acoustic Features,”
+in Text, Speech, and Dialogue , P. Sojka, A. Hor ´ak, I. Kope ˇcek,
+and K. Pala, Eds. Springer International Publishing, 2022, pp.
+437–448.
+[14] J. T. Becker, F. Boller, O. L. Lopez, J. Saxton, and K. L. McGo-
+nigle, “The natural history of Alzheimer’s disease: description of
+study cohort and accuracy of diagnosis,” Archives of Neurology ,
+vol. 51, no. 6, pp. 585–594, 1994.
+[15] M. F. Folstein, S. E. Folstein, and P. R. McHugh, ““Mini-mental
+state” - a practical method for grading the cognitive state of pa-
+tients for the clinician,” Journal of Psychiatric Research, vol. 12,
+no. 3, pp. 189–198, 1975.
+[16] Z. S. Nasreddine, N. A. Phillips, V . B ´edirian, S. Charbonneau,
+V . Whitehead, I. Collin, J. L. Cummings, and H. Chertkow, “The
+Montreal Cognitive Assessment, MoCA: A Brief Screening Tool
+For Mild Cognitive Impairment,” Journal of the American Geri-
+atrics Society, vol. 53, no. 4, pp. 695–699, Apr. 2005.
+[17] H. Erzigkeit, Der Syndrom-Kurztest zur Erfassung von
+Aufmerksamkeits- und Ged ¨achtnisst¨orungen. Vaterstetten,
+Germany: Vless Verlag-Ges., 1977, vol. 1.
+[18] M. Stemmler, H. Lehfeld, and R. Horn, SKT nach Erzigkeit - SKT
+Manual Edition 2015. Erlangen, Germany: Universit ¨at Erlangen-
+N¨urnberg, 2015, vol. 1.
+[19] T. Dresing and T. Pehl, “Transkription,” in Handbuch Qualitative
+F orschung in der Psychologie, G. Mey and K. Mruck, Eds. Wies-
+baden, Germany: VS Verlag f ¨ur Sozialwissenschaften, 2010, pp.
+723–733.
+5667

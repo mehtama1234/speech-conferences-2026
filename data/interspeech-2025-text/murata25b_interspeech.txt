@@ -1,0 +1,615 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+Eigenvoice Synthesis based on Model Editing for Speaker Generation
+Masato Murata1,2, Koichi Miyazaki1, Tomoki Koriyama1, Tomoki Toda2
+1CyberAgent, Japan
+2Nagoya University, Japan
+murata masato@cyberagent.co.jp, miyazaki koichi xa@cyberagent.co.jp,
+koriyama tomoki@cyberagent.co.jp, tomoki@icts.nagoya-u.ac.jp
+Abstract
+Speaker generation task aims to create unseen speaker
+voice without reference speech. The key to the task is defining
+a speaker space that represents diverse speakers to determine
+the generated speaker trait.
+However, the effective way to
+define this speaker space remains unclear. Eigenvoice synthesis
+is one of the promising approaches in the traditional parametric
+synthesis framework, such as HMM-based methods, which
+define a low-dimensional speaker space using pre-stored
+speaker features.
+This study proposes a novel DNN-based
+eigenvoice synthesis method via model editing. Unlike prior
+methods, our method defines a speaker space in the DNN
+model parameter space. By directly sampling new DNN model
+parameters in this space, we can create diverse speaker voices.
+Experimental results showed the capability of our method to
+generate diverse speakers’ speech. Moreover, we discovered a
+gender-dominant axis in the created speaker space, indicating
+the potential to control speaker attributes.
+Index Terms: speech synthesis, speaker generation, task arith-
+metic, model editing, eigenvoice synthesis
+1. Introduction
+Text-to-speech (TTS) technology has become widely used in
+various applications such as character voice creation in video
+content, conversational assistants, and audiobook narration.
+Due to the demand to generate voices with diverse speech ex-
+pressions, various studies have tackled related tasks, specifi-
+cally focused on generating speech with diverse speaker char-
+acteristics. Since traditional TTS models rely on the training
+datasets, they can only generate speech of existing seen speak-
+ers in the dataset but cannot generate that of unseen speakers.
+To address this limitation, zero-shot TTS has been proposed to
+generate speech of unseen speakers using a reference speech
+of the target speaker. However, this approach requires a refer-
+ence speech, which is not always available. In other words, it
+has difficulty in generating “really unseen” speakers’ voices. In
+contrast, there is a task called “speaker generation” that aims
+to generate diverse voices of unseen speakers without requiring
+reference speech [1]. In the speaker generation task, defining
+a speaker space that represents diverse speakers is necessary to
+determine the speaker characteristics to be generated. However,
+the effective way to define this speaker space remains unclear,
+and several prior studies have explored various approaches.
+Eigenvoice synthesis [2] is one of the approaches for
+the speaker generation task that defines a low-dimensional
+speaker space using pre-stored speaker-dependent representa-
+tions. Then, this speaker space is spanned by basis vectors ex-
+tracted from speaker-dependent representations of multiple pre-
+stored speakers (called base speakers). In this created speaker
+space, arbitrary speaker characteristics are represented as the
+weighted sum form of basis vectors. These basis vectors are
+called “eigenvoice”, which are mutually orthogonal and repre-
+sent the dominant component among base speakers. This eigen-
+voice method [3, 4, 5] has been applied to TTS [2] and voice
+conversion [6] tasks. Previous studies succeeded in generat-
+ing diverse speech characteristics by changing the weight co-
+efficients of the basis vector. Furthermore, this eigenvoice ap-
+proach is applicable not only to the speaker generation task, but
+also to speaker adaptation and speech style control along the
+dominant axis.
+Although the eigenvoice methods are based on traditional
+probabilistic models, such as Hidden Markov Model (HMM),
+there are several other deep neural network (DNN)-based ap-
+proaches based on a similar idea of creating a speaker space.
+Speaker embedding-based methods generate unseen speaker by
+sampling speaker embeddings from speaker distribution [1, 7].
+Text prompt-based methods represent speaker characteristics
+using text prompts [8, 9, 10]. However, since these works rely
+on additional modules designed for the task, complex training
+processes or extensive datasets are required.
+In contrast, recent research proposed a model merging
+speaker interpolation method that does not require any specifi-
+cally designed additional modules [11]. Model merging is one
+of the model editing methods that interpolates the model param-
+eters of two base models [12]. They reported that applying the
+model merging to TTS models can control speaker attributes.
+By extending this model merging-based method, we pro-
+pose a novel DNN-based eigenvoice synthesis method based on
+model editing. Although the prior method [11] represents the
+generated speaker characteristics by simply interpolating be-
+tween two base models, our proposed method represents arbi-
+trary speaker characteristics in a low-dimensional linear space
+in the high-dimensional DNN model parameter space.
+Our
+method defines this linear space as “speaker space”. We can
+obtain new speakers’ TTS model parameters by directly sam-
+pling from this speaker space, which achieves diverse speaker
+voice generation. We evaluated the generated speakers’ voices
+regarding naturalness, intelligibility, and speaker diversity. The
+results showed that our proposed method can generate diverse
+speakers while keeping speech quality. Moreover, our analysis
+suggests the presence of a gender-dominant axis in the defined
+speaker space, indicating the potential for controlling gender at-
+tributes. Audio samples are available on our demo page1.
+The main contributions of this paper are as follows:
+• To the best of our knowledge, our method is the first DNN-
+based eigenvoice synthesis method that represents diverse
+1https://muramasa2.github.io/
+model-editing-eigenvoice/
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+5523
+10.21437/Interspeech.2025-277
+
+speaker traits in high-dimensional model parameter space.
+• We demonstrate that our proposed method can synthesize di-
+verse speakers’ voices without using external modules.
+• Our experimental results suggest that the speaker space cre-
+ated by the proposed method has a gender-dominant axis, po-
+tentially enabling attribute manipulation.
+2. Model merging speaker interpolation
+based on task arithmetic
+Task Arithmetic is one of the model editing methods that di-
+rectly edits trained model parameters using a task vector, which
+is defined as the difference between pre-trained model parame-
+ters and fine-tuned model parameters [13]. Each task vector is
+considered to include the abilities for the target task. By scaling
+and combining task vectors through various arithmetical opera-
+tions, it creates new model parameters as follows:
+τ = θft −θpre
+(1)
+θnew = θpre + α · τ
+(2)
+where τ is the task vector between a fine-tuned model θft and a
+pre-trained model θpre, and θnew is the resultant new model pa-
+rameters created with this task vector. The resultant model is re-
+ported to obtain different model behaviors, such as performance
+improvements in image classification and speech recognition
+tasks [12, 14], the acquisition of multiple language-related task
+capabilities [13, 15], and obtaining intermediate attribute out-
+puts in image and speech synthesis [16, 11]. Unlike conven-
+tional transfer learning, it does not require additional training.
+Based on the task arithmetic method, model merging
+speaker interpolation method [11] was proposed for speaker
+generation task. The resultant model parameters by merging
+single-speaker models A and B are defined as follows:
+θα = (1 −α)θA + αθB
+(3)
+= θpre + {(1 −α)τA + ατB}
+(4)
+where α is the merging coefficient, θA and θB are the existing
+fine-tuned weight parameters of each base TTS model, and τA
+and τB are the task vectors for each base TTS model.
+3. Proposed method
+Inspired by the model merging-based speaker interpolation
+method [11], we propose a novel eigenvoice synthesis method
+based on model editing. Instead of the interpolating between
+two base models, our proposed method represents arbitrary
+speaker characteristics in a low-dimensional linear space in
+the DNN model parameter space. While the prior eigenvoice
+method [2] used the stack of the HMM model parameters for
+base speakers, we utilize task vectors as speaker representations
+to obtain the basis vectors of the speaker space. By sampling
+from this speaker space, we can obtain diverse speakers’ TTS
+model parameters, which allows us to generate diverse speaker
+voices.
+We first prepare N single-speaker TTS models as the base
+models (N is on the order of 101 to 104), each fine-tuned from
+the same pre-trained initialization. Subsequently, we extract
+task vectors for each speaker (the updated value of the model
+parameter from the pre-trained model) and apply 1D flatten to
+it into M-dim vector, denoted as ai ∈RM×1, (i = 1, . . . , N).
+Then, M denotes the number of the model parameters updated
+during fine-tuning process (M is on the order of 105 to 1010).
+Speaker 2
+Base TTS model 
+Speaker Matrix
+𝐚!
+𝐚"
+Speaker 1
+Base TTS model 
+Speaker N
+Base TTS model 
+…
+𝐚#
+…
+𝐀=
+Speaker 
+parameter vector
+SVD
+…
+…
+Basis vectors 𝐁
+2nd basis vector 𝐛"
+1st basis vector 𝐛!
+Nth basis vector 𝐛#
+𝐛! 𝐛"
+𝐛#
+…
+𝐚#$%
+New Speaker
+TTS model 
+Σ
+Weight w&$%,#
+Weight w&$%,!
+Weight w&$%,"
+ 𝐰&$%~𝒩(𝟎, 1
+𝑁𝐈)
+Sampling
+Figure 1: The process of generating the new speakers’ TTS
+model by the proposed method. The blue and red rectangles
+show the speaker parameter vectors and basis vectors of the
+speaker space. The white rectangle shows the elements of the
+randomly sampled speaker coefficient vector.
+The M value is extremely large compared to the number of base
+speakers N (i.e., M ≫N). In this study, this M-dim vector
+ai is referred to as the speaker parameter vector. By stacking
+N speaker parameter vectors as column vectors, we create a
+speaker matrix A = [a1, . . . , aN] ∈RM×N. Each column
+vector ai is considered to be a representation of the speaker
+characteristics of the i-th speaker. We then apply singular value
+decomposition (SVD) to this speaker matrix A, as follows:
+A = UΣV⊤
+(5)
+where U ∈RM×N is a matrix whose columns are the left
+singular vectors of A, Σ ∈RN×N is a diagonal matrix con-
+taining singular values of A, and V ∈RN×N is a matrix
+whose columns are the right singular vectors of A. Now we
+define the column vector of V⊤as a speaker coefficient vector
+wi, (i = 1, . . . , N) as follows:
+V⊤= [w1, . . . , wN].
+(6)
+Then, each speaker parameter vector ai can be expressed as
+follows:
+ai = UΣwi = Bwi
+(7)
+where B ∈RM×N represents the basis vectors and wi is the
+speaker coefficient vector corresponding to the i-th speaker.
+This indicates that each base speaker parameter vector ai can
+be represented as a weighted sum form of the basis vectors B
+with the speaker coefficient vector wi.
+3.1. Speaker space in model parameter space
+As explained above, each base speaker parameter vector ai can
+be represented as a weighted sum form of the basis vectors B
+with the speaker coefficient vector wi. Hence, the speaker coef-
+ficient vector wi is considered to include each speaker’s infor-
+mation. In other words, in this low-dimensional linear space
+spanned by the basis vectors B, any speaker parameter vec-
+tor can be represented by manipulating the speaker coefficient
+vector wi. This paper refers to the low-dimensional model pa-
+rameter linear space spanned by the basis vectors as speaker
+5524
+
+Table 1: The MOS and WER score with 95% confidence interval
+(CI) for the comparative method and proposed method.
+Methods
+MOS (↑)
+WER (↓)
+GT
+4.29 ± 0.11
+4.20 ± 0.10
+x-vector
+base speaker
+3.96 ± 0.13
+4.21 ± 0.09
+generated speaker
+3.99 ± 0.14
+2.51 ± 0.06
+proposed
+base speaker
+4.00 ± 0.12
+3.18 ± 0.06
+generated speaker
+3.81 ± 0.16
+2.20 ± 0.06
+space. Consequently, our proposed method can generate diverse
+speaker voices by varying the speaker coefficient vector wi in
+the speaker space. Thus, this method is considered an eigen-
+voice approach. This indicates the applicability to speaker adap-
+tation and speech style control along the dominant axis similar
+to the prior eigenvoice methods [2, 3, 4, 5, 6].
+3.2. Sampling strategy of the speaker coefficient vector
+To generate arbitrary speakers’ voices, we use the sampling
+strategy for the speaker coefficient vector w that matches the
+statistics of the base speakers ai, (i = 1, . . . , N). In this study,
+the speaker matrix A is standardized as a preprocessing step
+before performing SVD. The statistic values for the seen base
+speaker parameter vectors are calculated as follows:
+E[ai] = 0
+(8)
+Cov[ai] = 1
+N AA⊤= UΣV⊤VΣ⊤U⊤
+(9)
+= 1
+N UΣΣ⊤U⊤.
+(10)
+This study adopted a Gaussian sampling for a speaker coeffi-
+cient vector wn from a normal distribution N
+ 0, 1
+N I
+
+. The
+statistical values of the arbitrary speaker parameter vector an
+are then formulated as bellow:
+wn ∼N
+
+0, 1
+N I
+
+(11)
+E[an] = UΣE[wn] = 0
+(12)
+Cov[an] = UΣCov[wn]Σ⊤U⊤= 1
+N UΣΣ⊤U⊤.
+(13)
+Under this sampling strategy, these statistic values are consis-
+tent with those of the seen base speaker parameter vector ai.
+Consequently, by sampling the speaker coefficient vector wi
+from the normal distribution N
+ 0, 1
+N I
+
+, we can generate arbi-
+trary speaker parameter vectors an that statistically match the
+seen base speaker parameter vectors ai.
+4. Experiments
+4.1. Experimental settings
+4.1.1. Datasets
+In the experiments, we used the VCTK [17] dataset which con-
+tains approximately 44 hours of English speech from 109 speak-
+ers. From this dataset, we extracted 10 speakers’ data (p225,
+p226, p227, p228, p229, p230, p231, p232, p237, and p241) in-
+cluding 5 male and 5 female speakers as the base speaker subset.
+4.1.2. Base Speaker Models
+We
+adopted
+the
+implementation
+and
+configuration
+of
+Conformer-FastSpeech2 (CFS2) [18, 19, 20] from ESPnet [21].
+Figure 2: t-SNE visualization of the speaker embeddings of the
+base (blue dots) and generated speakers (red triangles).
+For waveform generation,
+we used a pre-trained HiFi-
+GAN [22] vocoder from the ParallelWaveGAN repository2. As
+base speaker models, we created single-speaker TTS models for
+each of the 10 speakers by fine-tuning on their respective data.
+Then, we used the same pre-trained model initialization trained
+on the full VCTK dataset. During fine-tuning, we updated only
+the parameters of the variance adaptor and decoder module as
+these components are speaker-dependent. In total, 5 × 1010
+model parameters were updated through fine-tuning.
+4.1.3. Comparative Method
+As a comparative method, we developed an x-vector-based
+multi-speaker TTS model using the same CFS2 architecture.
+As a speaker encoder, this approach employed a pre-trained x-
+vector module [23] from SpeechBrain [24] (trained on the Vox-
+Celeb1 [25] and VoxCeleb2 [26] datasets). This baseline model
+was trained from scratch using the 10 base speakers’ data, as
+described in Section 4.1.1. To generate new speakers’ voices
+using the baseline model, we adopted the same sampling strat-
+egy as the proposed model. Specifically, we applied SVD on the
+stack of the x-vectors and created new speaker x-vectors using
+the x-vector speaker space obtained by SVD.
+4.2. Speech quality evaluation
+In speech synthesis, generated speech sometimes include arti-
+facts that can lead to naturalness and intelligibility degradation.
+Thus, to evaluate naturalness and intelligibility, we employed
+the mean opinion score (MOS) and word error rate (WER)
+metrics, respectively. We generated speech samples with 10
+test sentences randomly selected from the VCTK test set for
+100 generated speakers. We also evaluated the ground truth
+speech (GT) from the base speakers in the VCTK dataset and
+synthesized speech from each base speaker TTS model (base
+speaker). We denote our proposed method as “proposed” and
+the x-vector-based comparative method as “x-vector”.
+For the MOS evaluation, 40 participants rated the natural-
+ness of the given speech samples on a 5-point scale. Each par-
+ticipant evaluated 5 randomly selected speech samples for each
+method, resulting in a total of 25 speech samples per partici-
+pant. Participants were recruited through a crowdsourcing plat-
+form, Amazon Mechanical Turk3. For the intelligibility evalua-
+tion, we calculated WER scores using a pre-trained Conformer
+model [19] from ESPnet Model Zoo4.
+2https://github.com/kan-bayashi/
+ParallelWaveGAN
+3https://www.mturk.com/
+4https://github.com/espnet/espnet_model_zoo
+5525
+
+0.80
+0.85
+0.90
+0.95
+1.00
+Cosine Similarity
+0.0
+0.2
+0.4
+Probability
+Base Speaker
+Generated Speaker
+Figure 3: The distribution of the cosine similarity between each
+generated speaker and the nearest base speaker (GT).
+Table 1 shows the MOS and WER results for each
+method. Compared with the x-vector-based method, the pro-
+posed method achieved a comparable MOS score and a slightly
+better WER score. Being consistent with previous research on
+model merge interpolation [11], this indicates that the proposed
+method can generate speech with high quality on par with the
+x-vector-based approach. However, it must be noted that the
+primary focus of this work is not to achieve high-quality speech
+synthesis quality but to generate diverse speaker characteristics.
+4.3. Speaker diversity evaluation
+To evaluate the diversity of the generated speakers, we calcu-
+lated the similarities of speaker embeddings of generated and
+base speakers. We generated speech samples using 10 test sen-
+tences for 100 generated speakers. We also used the synthe-
+sized speech from the 10 base speaker TTS models with 100
+test sentences randomly selected from the VCTK test set. Then,
+we extracted speaker embeddings from the generated speakers
+and the base speakers (both GT speech and TTS-synthesized
+speech) using the Resemblyzer toolkit [27].
+We first investigated the distribution of speaker embeddings
+of base speakers (TTS) and generated speakers using t-SNE.
+Figure 2 shows the t-SNE visualization of the speaker embed-
+dings. The base speakers (blue dots) were clustered into distinct
+groups corresponding to the 10 base speakers, consisting of 5
+male and 5 female speakers. In contrast, the generated speakers
+(red triangles) were more scattered than those of the base speak-
+ers and surrounded by these base male and female clusters. This
+suggests that the proposed method can generate diverse speaker
+voices, including both male and female.
+To evaluate the diversity of generated speakers, we also in-
+vestigated the distribution of cosine similarities to the speaker
+embeddings of GT base speakers. For each generated speaker,
+we calculated the similarity between the generated speaker and
+each of the 10 GT-based speakers. Then, we obtained the max-
+imum cosine similarity to the 10 GT speakers (i.e., the simi-
+larity to the most similar base speaker). The same procedure
+was followed for the base speakers (TTS) and generated speak-
+ers (x-vector-based). If the maximum similarity was close to
+1.0, it meant that the generated speaker was very similar to any
+of the base speakers. Otherwise, it can be said that the gener-
+ated speaker had various characteristics that differed from the
+base speakers. Figure 3 shows the distribution of maximum
+cosine similarities between the speaker embeddings of the gen-
+erated speaker (proposed) and the GT base speakers. In our
+proposed method, the maximum cosine similarities were dis-
+tributed from 0.82 to 0.97, indicating that generated speakers
+included speakers with different speaker characteristics from
+that of the base speakers. Even compared with the generated
+speaker from x-vector-based method, in which maximum co-
+sine similarities were distributed from 0.78 to 0.97, our pro-
+posed method achieved comparable speaker diversity. Thus, the
+p226
+p227
+p237
+p241
+p232
+p229
+p228 p230
+p231 p225
+Figure 4: The visualization of the primary elements of speaker
+coefficient vectors of base speaker parameter vectors. Each dots
+correspond to the base speakers.
+(a) Male Speaker
+(b) Female Speaker
+Figure 5: F0 plot of the base speaker (blue solid) and inverted
+speaker (red dash) samples for both cases where the original
+speaker is male and female.
+result showed that our proposed method is capable of represent-
+ing a broader range of speaker characteristics compared to the
+base TTS models.
+5. Discussion
+For further understanding of the extracted eigenvoice axis, we
+analyzed the base speaker coefficient vectors. Through the anal-
+ysis of the speaker coefficient vectors wi, (i = 1, . . . , N) ob-
+tained via SVD, we observed that the signs (positive or negative
+number) of the first principal component of the speaker coeffi-
+cient vector corresponded to the gender attribute, as shown in
+Figure 4. To investigate this tendency, we conducted an exper-
+iment where we inverted only the sign of the first component
+of each 10-base speaker’s coefficient vector and generated the
+corresponding inverted speaker parameter vector. The resulting
+models, based on the inverted speaker parameter vectors, gen-
+erated speech with the opposite gender to the original one. We
+also observed the pitch curve differences between the synthe-
+sized speech of the original speaker and the inverted speaker by
+using the Harvest [28] method. In Figure 5, distinct pitch dif-
+ferences are observed between the original and inverted speak-
+ers for both cases where the original speaker is male and fe-
+male. This indicates the possibility that the first basis axis of
+the speaker space is related to gender attributes and the pos-
+sibility of controlling gender attributes by manipulating model
+parameters along this axis.
+6. Conclusions
+In this study, we proposed a model editing-based eigenvoice
+synthesis method to generate diverse speakers’ voices. We con-
+ducted subjective and objective evaluations of the generated
+speakers’ voices from various perspectives.
+The experimen-
+tal results demonstrated that our method can generate diverse
+speakers’ speech while maintaining high naturalness and intel-
+ligibility. Furthermore, we discovered a gender-dominant at-
+tribute axis, such as gender, in the created speaker space, indi-
+cating the potential for attribute manipulation.
+In future work, we plan to explore various attribute spaces
+created by our method, such as emotions and styles.
+5526
+
+7. References
+[1] D. Stanton, M. Shannon, S. Mariooryad, R. Skerry-Ryan, E. Bat-
+tenberg, T. Bagby, and D. Kao, “Speaker generation,” in Proc.
+ICASSP, 2022, pp. 7897–7901.
+[2] K. Shichiri, A. Sawabe, T. Yoshimura, K. Tokuda, T. Masuko,
+T. Kobayashi, and T. Kitamura, “Eigenvoices for hmm-based
+speech synthesis,” in Proc. ICSLP, 2002, pp. 1269–1272.
+[3] R. Kuhn, J.-C. Junqua, P. Nguyen, and N. Niedzielski, “Rapid
+speaker adaptation in eigenvoice space,” IEEE Trans. Speech Au-
+dio Process., vol. 8, pp. 695–707, 2000.
+[4] R. Kuhn, P. Nguyen, J.-C. Junqua, R. Boman, N. Niedzielski,
+S. Fincke, K. Field, and M. Contolini, “Fast speaker adaptation
+using a priori knowledge,” in Proc. ICASSP, vol. 2, 1999, pp. 749–
+752.
+[5] P. Nguyen,
+R. Kuhn,
+J.-C. Junqua,
+N. Niedzielski,
+and
+C. Wellekens, “Eigenvoices: A compact representation of speak-
+ers in model space,” Annales Des T´el´ecommunications, vol. 55,
+no. 3, pp. 163–171, Mar 2000.
+[6] T. Toda, Y. Ohtani, and K. Shikano, “Eigenvoice conversion based
+on gaussian mixture model,” in Proc. Interspeech, 2006, pp. paper
+1717–Thu2A3O.5.
+[7] A. Watanabe, S. Takamichi, Y. Saito, D. Xin, and H. Saruwatari,
+“Mid-attribute speaker generation using optimal-transport-based
+interpolation of gaussian mixture models,” in Proc. ICASSP,
+2023, pp. 1–5.
+[8] Y. Zhang, G. Liu, Y. Lei, Y. Chen, H. Yin, L. Xie, and Z. Li,
+“Promptspeaker: Speaker generation based on text descriptions,”
+in Proc. ASRU, 2023, pp. 1–7.
+[9] R. Shimizu, R. Yamamoto, M. Kawamura, Y. Shirahata, H. Doi,
+T. Komatsu, and K. Tachibana, “Prompttts++:
+Controlling
+speaker identity in prompt-based text-to-speech using natural lan-
+guage descriptions,” in Proc. ICASSP, 2024, pp. 12 672–12 676.
+[10] Z. Chen, X. Liu, E. Cooper, J. Yamagishi, and Y. Qian, “Gener-
+ating speakers by prompting listener impressions for pre-trained
+multi-speaker text-to-speech systems,” in Proc. Interspeech, 2024,
+pp. 4428–4432.
+[11] M. Murata, K. Miyazaki, and T. Koriyama, “An attribute inter-
+polation method in speech synthesis by model merging,” in Proc.
+Interspeech, 2024, pp. 3380–3384.
+[12] M. Wortsman, G. Ilharco, S. Y. Gadre, R. Roelofs, R. Gontijo-
+Lopes, A. S. Morcos, H. Namkoong, A. Farhadi, Y. Carmon,
+S. Kornblith et al., “Model soups: averaging weights of multi-
+ple fine-tuned models improves accuracy without increasing in-
+ference time,” in Proc. ICML, 2022, pp. 23 965–23 998.
+[13] G. Ilharco, M. T. Ribeiro, M. Wortsman, L. Schmidt, H. Ha-
+jishirzi, and A. Farhadi, “Editing models with task arithmetic,”
+in Proc. ICLR, 2023.
+[14] G. Ramesh, K. Audhkhasi, and B. Ramabhadran, “Task vector al-
+gebra for asr models,” in Proc. ICASSP, 2024, pp. 12 256–12 260.
+[15] P. Yadav, D. Tam, L. Choshen, C. Raffel, and M. Bansal, “Ties-
+merging: resolving interference when merging models,” in Proc.
+NeurIPS, 2024.
+[16] O. Avrahami, D. Lischinski, and O. Fried, “Gan cocktail: mixing
+gans without dataset access,” in Proc. ECCV, 2022, pp. 205–221.
+[17] J. Yamagishi, C. Veaux, and K. MacDonald, “CSTR VCTK
+Corpus: English multi-speaker corpus for CSTR voice cloning
+toolkit,” University of Edinburgh. The Centre for Speech Technol-
+ogy Research (CSTR), 2016.
+[18] P. Guo, F. Boyer, X. Chang, T. Hayashi, Y. Higuchi, H. Inaguma,
+N. Kamo, C. Li, D. Garcia-Romero, J. Shi et al., “Recent develop-
+ments on espnet toolkit boosted by conformer,” in Proc. ICASSP,
+2021, pp. 5874–5878.
+[19] A. Gulati, C.-C. Chiu, J. Qin, J. Yu, N. Parmar, R. Pang,
+S. Wang, W. Han, Y. Wu, Y. Zhang, and Z. Zhang, “Conformer:
+Convolution-augmented transformer for speech recognition,” in
+Proc. Interspeech, 2020, pp. 5036–5040.
+[20] Y. Ren, C. Hu, X. Tan, T. Qin, S. Zhao, Z. Zhao, and T.-Y. Liu,
+“Fastspeech 2: Fast and high-quality end-to-end text to speech,”
+in Proc. ICLR, 2021.
+[21] S. Watanabe, T. Hori, S. Karita, T. Hayashi, J. Nishitoba, Y. Unno,
+N. Enrique Yalta Soplin, J. Heymann, M. Wiesner, N. Chen,
+A. Renduchintala, and T. Ochiai, “ESPnet: End-to-end speech
+processing toolkit,” in Proc. Interspeech, 2018, pp. 2207–2211.
+[22] J. Kong, J. Kim, and J. Bae, “HiFi-GAN: Generative adversarial
+networks for efficient and high fidelity speech synthesis,” in Proc.
+NeurIPS, vol. 33, 2020, pp. 17 022–17 033.
+[23] D. Snyder, D. Garcia-Romero, G. Sell, D. Povey, and S. Khudan-
+pur, “X-vectors: Robust dnn embeddings for speaker recognition,”
+in Proc. ICASSP, 2018, pp. 5329–5333.
+[24] M. Ravanelli, T. Parcollet, P. Plantinga, A. Rouhe, S. Cornell,
+L. Lugosch, C. Subakan, N. Dawalatabad, A. Heba, J. Zhong,
+J.-C. Chou, S.-L. Yeh, S.-W. Fu, C.-F. Liao, E. Rastorgueva,
+F. Grondin, W. Aris, H. Na, Y. Gao, R. D. Mori, and Y. Ben-
+gio, “SpeechBrain:
+A general-purpose speech toolkit,” 2021,
+arXiv:2106.04624.
+[25] A. Nagrani, J. S. Chung, and A. Zisserman, “VoxCeleb: A Large-
+Scale Speaker Identification Dataset,” in Proc. Interspeech, 2017,
+pp. 2616–2620.
+[26] J. S. Chung, A. Nagrani, and A. Zisserman, “VoxCeleb2: Deep
+Speaker Recognition,” in Proc. Interspeech, 2018, pp. 1086–1090.
+[27] L. Wan, Q. Wang, A. Papir, and I. L. Moreno, “Generalized end-
+to-end loss for speaker verification,” in Proc. ICASSP, 2018, pp.
+4879–4883.
+[28] M. Morise, “Harvest: A high-performance fundamental frequency
+estimator from speech signals,” in Proc. Interspeech, 2017, pp.
+2321–2325.
+5527
+

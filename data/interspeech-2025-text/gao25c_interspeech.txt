@@ -1,0 +1,687 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+Improving Child Speech Recognition and Reading Mistake Detection by Using
+Prompts
+Lingyun Gao, Cristian Tejedor-Garcia, Catia Cucchiarini, Helmer Strik
+Centre for Language Studies, Radboud University, the Netherlands
+{lingyun.gao, cristian.tejedorgarcia, catia.cucchiarini, helmer.strik}@ru.nl
+Abstract
+Automatic reading aloud evaluation can provide valuable
+support to teachers by enabling more efficient scoring of reading
+exercises. However, research on reading evaluation systems and
+applications remains limited. We present a novel multimodal
+approach that leverages audio and knowledge from text resources.
+In particular, we explored the potential of using Whisper and
+instruction-tuned large language models (LLMs) with prompts
+to improve transcriptions for child speech recognition, as well
+as their effectiveness in downstream reading mistake detection.
+Our results demonstrate the effectiveness of prompting Whisper
+and prompting LLM, compared to the baseline Whisper model
+without prompting. The best performing system achieved state-
+of-the-art recognition performance in Dutch child read speech,
+with a word error rate (WER) of 5.1%, improving the baseline
+WER of 9.4%. Furthermore, it significantly improved reading
+mistake detection, increasing the F1 score from 0.39 to 0.73.
+Index Terms: child speech recognition, reading mistake detec-
+tion, prompts, Whisper, large language models, LLM, prompting
+1. Introduction
+Reading aloud is regularly assessed in primary education as a
+measure of reading skills, but this form of assessment is labor-
+intensive [1] and error-prone, as teachers must manually evaluate
+read speech, identify mistakes, and assign scores. Automating
+this process could improve efficiency, which is important as
+declining literacy rates highlight the need for innovative solu-
+tions [2]. Advances in large pretrained ASR systems have made
+speech-based assessment more feasible [3], yet most ASR mod-
+els are designed for adults [4, 5] and struggle with child speech
+recognition [6, 7, 8, 9].
+Downstream reading evaluation and especially reading mis-
+take detection presents even greater challenges [7, 10, 11, 12],
+as most ASR techniques tend to prioritize transcribing correct
+speech, thereby neglecting reading mistakes. It has been ob-
+served that most publicly available large pretrained ASR models
+struggle with incorrectly spoken speech. ASR models with a
+language model as a decoder, such as Whisper [5], excel at tran-
+scribing correctly spoken words, but frequently fail to detect
+reading mistakes. In contrast, models with a Connectionist Tem-
+poral Classification (CTC) decoder like wav2vec2-CTC [13] are
+better at identifying reading mistakes, but struggle with overall
+transcription accuracy.
+Concerning the evaluation of read-aloud speech, there is an-
+other important observation. Evaluation of read-aloud speech is
+inherently multimodal, as teachers assess speech by referencing
+familiar texts and using their understanding of common reading
+mistakes [14, 15]. However, few studies integrate multimodal
+input (e.g., combining audio and text) or prior knowledge into
+this task. Two main approaches enhance ASR transcription using
+multimodal input. The first involves ASR models that integrate
+text prompts. For instance, the Whisper model uses text prompts
+as contextual cues for speech transcription. Kany & Trouvain
+[16] highlight its effectiveness in transcribing fillers in child read-
+aloud speech, while Harmsen et al. [8] examine its application to
+reading word lists. Although Whisper often corrects reading mis-
+takes rather than directly transcribing them, its confidence scores
+aid in detecting misread words. These findings indicate that
+modifying prompts can adjust Whisper’s output style to support
+downstream tasks. However, Whisper’s ability to incorporate
+prior knowledge remains limited [17]. Instruction-tuned large
+language models (LLMs) may present a more effective alterna-
+tive. The second approach utilizes LLMs with prompts to refine
+ASR transcriptions. Southwell et al. [18] enhance child con-
+versation recognition through LLM-based hypothesis rescoring,
+while Tur et al. [19] use LLM prompting to generate refined ASR
+hypotheses. However, the potential of using Whisper and LLMs
+with prompts for recognizing child read speech, and especially
+detecting reading mistakes, remains largely unexplored.
+In this work, we present a novel contribution by investigat-
+ing the use of prompts with Whisper and large language models
+to integrate diverse prior textual information for child speech
+recognition and reading mistake detection. Given the scarcity of
+resources in this area, our study particularly emphasizes method-
+ological innovations. The research questions (RQs) we address
+are: RQ1. To what extent can Whisper with prompts and LLM
+with prompts enhance performance in child speech recognition?
+RQ2. To what extent can these two methods improve reading
+mistake detection?
+2. Method
+2.1. Data
+This study uses read speech data from the Jasmin-CGN Corpus
+[20], featuring recordings of 71 Dutch primary school pupils
+(ages 6–13, 35 female, 36 male) reading three stories aloud
+at their mastery levels. The dataset includes orthographic and
+phonemic annotations, as well as reading mistake annotations
+for the first story [21]. The data normalization process includes
+removing punctuation and capitalization, as well as standardizing
+Dutch words with varying formats.
+The test dataset consists of 2.05 hours of speech of children
+reading the first story, encompassing 14,251 reading attempts.
+These include 11,322 correctly read words, 615 incorrect words
+or word fragments, and attempts with inaudible words. Addition-
+ally, a validation dataset is provided, which includes 55-second
+audio recordings of five sentences with reading mistakes se-
+lected from the third reading story of a single speaker, paired
+with orthographic transcriptions.
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+2850
+10.21437/Interspeech.2025-658
+
+2.2. Evaluation Metrics
+In this work, we analyze substitution, deletion, and insertion
+errors made by children during reading aloud. To detect these
+mistakes, we use force alignment with SCTK1, following the
+loose criteria of [22], where a detected mistake is considered
+valid if its predicted label and position match the ground truth.
+We assess child speech recognition performance using Word Er-
+ror Rate (WER), which quantifies transcription accuracy based
+on these errors, with lower WER indicating better performance.
+For reading mistake detection, we evaluate Precision (correctly
+identified mistakes among predictions), Recall (detected mis-
+takes among actual mistakes), and F1-score (harmonic mean of
+Precision and Recall).
+2.3. Prompting Methods
+We address our RQs by constructing two prompting pipelines
+(Figure 1): prompting Whisper and prompting LLM. In the
+prompting Whisper pipeline (Figure 1.a), we examine whether
+Whisper with prompts can improve speech transcription with
+reading mistakes and enhance downstream reading mistake de-
+tection. This is achieved by prompting Whisper models with
+text containing generated mistakes while exploring optimal set-
+tings for this approach. We use Whisper models as our speech
+recognition module as they support text prompt transfer styles
+of transcriptions2 and appear to be the state-of-the-art (SOTA)
+models for Dutch child speech recognition [7]. Then, we explore
+the potential of integrating knowledge from read text and other
+CTC model transcriptions to Whisper transcriptions by prompt-
+ing LLM and its impact in reading mistake detection, as shown
+in Figure 1.b.
+Figure 1: Overviews of prompting Whisper pipeline (a) on the
+left side and prompting LLM pipeline (b) on the right side.
+2.3.1. Prompting Whisper Pipeline
+We form a three-step reading mistake detection pipeline for
+prompting Whisper as shown in Figure 1.a. In Step 1, we apply
+reading mistake categories [23, 24] and use a rule-based mistake
+generation algorithm to insert random mistakes before the target
+word in the reading text (e.g., "het is zondag" becomes "h het it
+is zon zondag"). This mistake-inserted text is then used as the
+prompt for Whisper. We test three configurations: (1) reading
+text with 10% mistakes (one mistake per ten words), (2) read text
+with 100% mistakes (3) four irrelevant read text sentences with
+300% mistakes. Since Whisper has a limited token capacity for
+prompts, reading text containing a story with 100% mistakes has
+1https://github.com/usnistgov/SCTK, accessed in January 2025
+2https://cookbook.openai.com/examples/whisper_prompting_guide, accessed in January 2025
+nearly reached the maximum token size. These settings help as-
+sess the impact of mistake proportion and resource of additional
+context on Whisper hypothesis transferring. Next, in Step 2, the
+Whisper model processes the audio together with the generated
+prompt to transcribe the input speech. We perform hallucination
+check and then use it for reading mistake detection by comparing
+the number of tokens in the hypothesis with the original reading
+text. On average, child audio contains approximately 8% reading
+mistakes [21]. Based on this observation, we establish a heuristic
+hallucination threshold, which is confirmed through the valida-
+tion dataset. In our method, hypotheses that are 20% longer or
+5% shorter than the read text are flagged as hallucinations and
+replaced with a standard Whisper transcription (without prompt).
+Finally, in Step 3, we align the new hypotheses generated with
+different Whisper models with the orthographic transcription and
+the read text to explore the effectiveness of our methods with
+different Whisper models on improving child speech recognition
+and the best model on downstream tasks.
+2.3.2. Prompting LLM Pipeline
+We apply a multi-step reading mistake detection pipeline involv-
+ing Whisper and the LLM, as shown in Figure 1.b. In Step 1,
+we obtain the Whisper hypothesis using the optimal prompt-
+ing Whisper method (irre. 300% mistake) and we generate
+hypothesis transcriptions from a speech foundation model with
+CTC decoder, which serves as the audio-context-only hypothesis.
+This paper employs wav2vec2, further pretrained and fine-tuned
+on Dutch adult speech [25], due to its superior performance in
+Dutch child speech recognition and insertion mistake detection
+compared to other CTC models[7]. In Step 2, text prompts for
+the LLM are formulated by integrating: (1) the read text for
+correcting name entities and infrequent words (2) examples in
+common reading mistakes in children [23] to determine plausible
+mistakes, (3) improve Whisper mistake hypothesis by checking
+CTC hypotheses and the read text (e.g.,improving insertion,
+keeping phonetically similar substitution mistakes or reverting to
+the reference word) and examples. The LLM is then instructed
+to generate an improved output based on modifying the Whisper
+hypothesis. Two input-output configurations are evaluated: (1)
+the LLM receives the reading text and both hypotheses as input
+and produces a refined hypothesis, and (2) the LLM is provided
+with forced alignments for (read text, Whisper hypothesis) and
+(read text, wav2vec2 hypothesis) pairs and generates a forced
+alignment for the (read text, new hypothesis) pair. In Step 3, we
+obtain the new hypothesis either directly from the LLM response
+or by extracting it from the output alignment. We then evaluate
+the effectiveness of the generated new hypothesis from different
+LLM models in improving child speech recognition and to de-
+termine the best-performing model for the downstream reading
+mistake detection task.
+Regarding the selection of LLMs, we choose GPT-4o-mini,
+which achieves the best Dutch language generation and under-
+standing tasks among relatively small (<100B) LLM models [26],
+as our baseline LLM. In addition to GPT-4o-mini3, we evaluated
+Llama 3.3-70B-Instruct4, and DeepSeek-R1-Distill-Llama 70B5,
+as they are similarly sized open-source models. Llama 3.3-70B-
+Instruct has shown comparable performance in few-shot Dutch
+language tasks with GPT-4o-mini, while DeepSeek-R1-Distill-
+Llama 70B exhibits potential for superior reasoning capabilities
+compared to GPT-4o-mini.
+3https://platform.openai.com/docs/models, accessed in December 2024
+4https://huggingface.co/meta-llama/Llama-3.3-70B-Instruct, accessed in February 2025
+5https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Llama-70B, accessed in Feb. 2025
+2851
+
+3. Results
+We experimented with a single A100 GPU, WhisperX [27],
+huggingface pipeline and OpenAI API, and DeepSeek API. The
+code and prompts used in this project can be found online6.
+3.1. Prompting Whisper
+Table 1 shows the child speech recognition performance of the
+prompting Whisper method under various prompt configurations
+for Whisper Large v2 and Large v3. The prompting Whisper
+pipeline using irrelevant text with 300% mistakes can effectively
+improve child speech recognition for both Whisper models. For
+Whisper v2, compared to the "No Prompt" setting, providing
+the model with a prompt containing the read text decreases
+performance. However, providing the model with irrelevant text
+with 300% mistakes proves effective, achieving the lowest WER
+of 8.1%. Whisper Large v3 performs comparably to Whisper
+Large v2 in child read speech recognition without prompting,
+and each setting of the prompting Whisper method has a similar
+effect on the two models. Whisper Large v3 exhibits significantly
+more hallucinations, causing most transcriptions to revert to the
+baseline during hallucination checks, which slightly improves
+its performance in read-text prompting settings.
+Table 1: Comparison of WER using different prompt settings for
+Whisper Large v2 and Whisper Large v3
+Whisper prompt settings
+WER: v2
+WER: v3
+no prompt
+9.4
+9.3
+read text with 10% mistakes
+13.1
+9.7
+read text with 100% mistakes
+11.3
+9.8
+irrelevant text with 300% mistakes
+8.1
+8.9
+3.2. Prompting LLM
+Table 2 summarizes WER results for different prompt settings us-
+ing GPT-4o-mini in the pipeline, with or without the prompting
+Whisper method. With optimal prompting from Whisper, WER
+is 8.1%. When the LLM is prompted with the Whisper hypothe-
+sis to generate a new hypothesis directly ("+LLM: hypothesis"),
+performance declines. However, providing the LLM with align-
+ment hypotheses—constructed from Whisper transcriptions and
+the read text—and asking it to refine them ("+LLM: alignment
+hypothesis") significantly improves child speech recognition,
+reducing WER to 5.1%. The same trend is observed without
+prompting Whisper, but its optimal setting remains less effective
+than incorporating prompting Whisper.
+Table 2: Comparison of WER using different prompt settings for
+LLM with and without prompting Whisper
+prompting LLM settings
+LLM + Whisper
+LLM + prompting Whisper
+No prompt
+9.4
+8.1
++LLM:hypothesis
+9.8
+9.1
++LLM:alignment hypothesis
+7.9
+5.1
+Table 3 compares WER scores across three LLMs under two
+prompt settings, using the optimal prompting Whisper method
+versus the no-prompt setting. In the "LLM: hypothesis" setting,
+WER worsens for all models, with Llama 70B showing the least
+degradation at 9.0%. Conversely, the "LLM: alignment hypothe-
+sis" setting significantly improves WER across all models, with
+Llama 70B achieving the best performance at 5.1%. This sug-
+gests that the proposed prompting method is generalizable across
+LLMs of similar size. Furthermore, the relative improvement of
+6https://github.com/Lingygao/reading-mistake-detection-with-prompt, accessed in May 2025
+GPT-4o-mini and LLaMA 70B correlates with their Dutch un-
+derstanding task scores[26], indicating that WER improvements
+align with each model’s Dutch proficiency.
+Table 3: Comparison of WER across three LLM models
+prompting LLM settings
+GPT-4o-mini
+LLama 70b
+DeepSeek-R1-distill 70b
+no LLM
+8.1
+8.1
+8.1
+LLM:hypothesis
+9.1
+9.0
+9,4
+LLM:alignment hypothesis
+5.1
+7.6
+7.7
+3.3. Reading Mistake Detection
+Table 4 evaluates the effectiveness of different settings for
+prompting Whisper and prompting LLM in detecting reading
+mistakes, with Whisper Large v2 and GPT-4o-mini. Baseline
+Whisper (without prompting) achieves an overall F1=0.39, ex-
+celling in deletions (F1=0.71), but struggling with insertions
+(F1=0.27) and substitutions (F1=0.48). Adding read text with
+10% mistakes lowers overall performance (F1=0.36), while
+using read text with 100% mistakes significantly improves it
+(F1=0.58), especially for insertions (F1=0.68) and substitu-
+tions (F1=0.63), though deletions drop sharply. The highest
+performance (F1=0.61) is achieved with irrelevant text con-
+taining 300% mistakes, improving insertions (F1=0.67), main-
+taining deletions (F1=0.70), but slightly reducing substitutions
+(F1=0.45).
+Table 4: Comparison of reading mistake Detection Performance
+on precision, recall and F1 for different prompting Whisper
+settings and prompting LLM settings based on whisper with
+irrelevant text + 300% mistakes
+Prompt settings
+All mistakes
+Ins
+Sub
+Del
+Precision
+Recall
+F1
+F1
+F1
+F1
+Whisper without prompt
+0.54
+0.31
+0.39
+0.27
+0.48
+0.71
++read text 10% mistakes
+0.37
+0.35
+0.36
+0.29
+0.42
+0.35
++read text 100% mistakes
+0.50
+0.71
+0.58
+0.68
+0.63
+0.36
++irre. text 300% mistakes
+0.58
+0.65
+0.61
+0.67
+0.45
+0.70
+Whisper + irrelevant text as prompt
++LLM:hypothesis
+0.72
+0.32
+0.45
+0.41
+0.38
+0.73
++LLM:hypothesis alignment
+0.76
+0.70
+0.73
+0.76
+0.75
+0.71
+These results show that both the "read text with 100% mis-
+takes" and "irrelevant text with 300% mistakes" settings effec-
+tively improve reading mistake detection, particularly for inser-
+tion mistakes. This suggests that prompting Whisper with a
+high-error prompt (>100% errors) effectively enhances the Whis-
+per model’s ability to capture reading mistakes. However, the
+"read text with 100% mistakes" setting substantially improves
+substitution detection while reducing precision and significantly
+impairing deletion detection. This suggests that this setting
+improves ASR transcriptions for incorrectly read words, but
+introduces excessive errors, thereby impairing the detection of
+deletion mistakes.
+With the optimal prompting-Whisper method, incorporating
+LLMs can further boost performance with the hypothesis align-
+ment settings. The best overall performance is observed (Table
+4) with the LLM using hypothesis alignment, which achieves
+an F1 score of 0.73 for all mistakes. This setting demonstrates
+balanced improvements across all metric and mistake types, with
+insertion, substitution, and deletion F1 scores of 0.76, 0.75, and
+0.71, respectively. These findings suggest that combining Whis-
+per with irrelevant prompts for transcription and LLMs with
+hypothesis alignment for refinement is highly effective in im-
+proving reading mistake detection. However, using an LLM with
+hypothesis as input/output lowers the F1 score, achieving higher
+2852
+
+precision, but lower recall. This highlights the importance of
+alignment for the effectiveness of prompting the LLM method.
+3.4. Frequent ASR Transcription Error Analysis
+This section examines frequent ASR substitution and deletion
+errors across our proposed methods, exploring how these errors
+change with different approaches to reveal patterns of improve-
+ment and challenges. Table 5 categorizes the most frequent ASR
+substitution errors (>6 occurrences) into seven types: break-
+ing long words, misrecognizing named entities, misrecognizing
+multisyllabic words as phonetically similar words (with simi-
+lar vowels or similar consonants), misrecognizing monosyllabic
+words, inserting or deleting often silent/unvoiced letters (e.g.,
+e/n/t/h), and other substitutions, to provide a insightful view of
+substitution error patterns in the optimal prompting Whisper and
+prompting LLM methods. Compared to the baseline Whisper
+method, the optimal prompting Whisper method (using irrele-
+vant text as a prompt) introduces new substitution errors, such
+as breaking long words (e.g., ’cameraploeg’ →’camera ploeg’),
+similar-vowel errors (’anneleen’ →’annelien’), and increased in-
+sertion/deletion of e/n/t/h, particularly n (’toonden’ →’toonde’),
+which shows a general decrease in accuracy. Other Whisper
+prompting variations, which use reading text with generated
+mistakes, show similar error patterns, but sometimes misrecog-
+nize words as artificially generated mistakes in the prompt (e.g.,
+’lekke’ misrecognized as ’lekkke’), suggesting that prompting
+with reading text with generated mistakes may misguide Whisper
+by treating the generated mistakes as a reference.
+Table 5: Categorization of the most frequent ASR substitution er-
+rors (>6 occurrences) across Baseline, prompting Whisper with
+irrelevant text, and prompting LLM with hypothesis alignment
+Baseline (%)
+Prompting Whisper (%)
+Prompting LLM (%)
+Break long words
+0 (0.0%)
+8 (4.65%)
+0 (0.0%)
+Name entity error
+7 (7.53%)
+7 (4.07%)
+0 (0.0%)
+Similar consonant
+16 (17.20%)
+15 (8.72%)
+0 (0.0%)
+Similar vowel
+5 (5.38%)
+18 (10.47%)
+0 (0.0%)
+Mono-syllable
+23 (24.73%)
+26 (15.12%)
+12 (17.91%)
+Delete/insert e/n/t/h
+7 (7.53%)
+47 (27.33%)
+10 (14.93%)
+Other substitutions
+35 (37.63%)
+51 (29.65%)
+45 (67.16%)
+Total
+93 (100%)
+172 (100%)
+67 (100%)
+In contrast, the optimal Prompting LLM method (using hy-
+pothesis alignment for both input and output) effectively reduces
+substitution errors in top frequent long words and named entities,
+which may largely rely on knowledge from the reading text. It
+also reduces errors in phonetically similar words, monosyllabic
+words, and substitutions caused by insertions or deletions of
+e/n/t/h, indicating that LLMs utilize Dutch phoneme-grapheme
+knowledge. These findings suggest that LLMs integrate reading
+text and linguistic knowledge to improve transcription accuracy.
+However, when prompted with raw ASR hypotheses and asked
+to revise them, LLMs show only slight improvements in substi-
+tution errors and continue to struggle with long-text alignment.
+Similarly, using hypothesis alignment as input while generating
+a new hypothesis produces results similar to direct hypothesis
+prompting, suggesting LLMs may favor correcting pre-existing
+errors over aligning mistakes accurately.
+The five most frequent ASR deletion errors in the Whisper
+baseline, [’de’ (47), ’en’ (30), ’ze’ (30), ’dat’ (25), ’een’ (25)],
+align with common self-repetition and short-word mistakes re-
+ported in [21]. The Prompting Whisper setting, with over 100%
+generated mistakes, improves recognition and reduces deletions.
+In irrelevant text settings, deletions shift to [’de’ (26), ’en’ (16),
+’een’ (12), ’ggg:noise’ (12), ’s’ (12)], though the 10% mistake
+setting worsens deletion errors. Compared to optimal prompting
+Whisper, the prompting LLM method slightly reduces mono-
+syllable word deletions. These findings suggest that prompting
+Whisper effectively transfers a transcription style that captures
+self-repetition and short-word insertion mistakes more accurately
+than the baseline Whisper, while further prompting with LLM
+improves recognition, possibly by integrating the captured mis-
+takes from the CTC model.
+4. Discussion and Conclusion
+In this work, we combined Whisper with prompts and LLMs
+with prompts to enhance child speech recognition and reading
+mistake detection, particularly in settings where resources are
+limited. By addressing two RQs, we evaluated the effectiveness
+of these methods in improving child speech recognition and
+reading mistake detection.
+To address RQ1, namely to what extent Whisper with
+prompts and LLM with prompts can enhance performance in
+child speech recognition, we analyzed word recognition perfor-
+mance as measured by WER of the two prompting methods in
+various settings and models. The prompting Whisper method
+using irrelevant text with generated 300% mistakes effectively
+enhanced child speech recognition for both Whisper models. The
+best result was achieved with Whisper Large v2, reducing WER
+to 8.1% from the baseline 9.4% (Table 1). The prompting LLM
+method with hypothesis alignment further improved recognition,
+with GPT-4o-mini achieving the lowest WER of 5.1% (Table 2).
+Regarding RQ2, namely to what extent these prompting
+methods can improve reading mistake detection, we applied
+Whisper Large v2 and GPT-4o-mini and analyzed metrics includ-
+ing precision, recall and F1 scores for reading mistake detection
+of the two prompting methods across different settings. As seen
+in the rows at the top of Table 4, both the "read text with 100%
+mistakes" and "irrelevant text with 300% mistakes" settings im-
+proved Recall and F1, but the irrelevant text setting improved
+three metrics. The highest F1 score at 0.61 was achieved by the
+"irrelevant text setting", up from the baseline 0.39. As seen in
+the bottom part of Table 4, the prompting LLM method with hy-
+pothesis alignment setting further enhanced detection, reaching
+the highest F1-score at 0.73.
+Besides, the ASR error analysis showed that prompting
+Whisper with high-error prompts (more than 100% mistakes
+in prompt text) helped detect more reading mistakes, particu-
+larly self-repetitions and short-word insertions. However, this
+also led to increased hallucinations and reduced word accuracy.
+Interestingly, using irrelevant text as a prompt, instead of the
+actual read text, proved more effective. This likely prevented
+the model from using the prompt as a spelling reference. The
+prompting LLM method further improved performance by lever-
+aging infrequent words, Dutch phoneme knowledge, and CTC
+transcriptions which provided additional mistake predictions.
+Our results suggested broad applicability across LLMs, but the
+method required extra forced-alignment tools. In our proposed
+method, the LLM must be prompted with aligned text and must
+produce aligned output, making the process computationally
+intensive. Also, its ability to handle long speech segments and
+additional input text is constrained by the LLM’s token limit.
+In future work, we will address the sensitivity of the prompt-
+ing LLM method, which depends on external tools and LLM
+variability, affecting reliability. Furthermore, biases towards
+human mistakes in speech and LLM models may impact child
+speech recognition across tasks, particularly in low-resource
+settings. Therefore, future research will focus on enhancing
+robustness.
+2853
+
+5. Acknowledgements
+This publication is part of the project Responsible AI for Voice
+Diagnostics (RAIVD) with file number NGF.1607.22.013 of the
+research programme NGF AiNed Fellowship Grants which is
+financed by the Dutch Research Council (NWO).
+6. References
+[1] A. van Til, F. Kamphuis, J. Keuning, M. Gijsel, J. Vloedgraven,
+and A. de Wijs, “Wetenschappelijke verantwoording LVS-toetsen
+DMT,” 2018.
+[2] N. Swart, J. Gubbels, M. in ‘t Zandt, M. Wolbers, and E. Segers,
+“PIRLS-2021: Trends in leesprestaties, leesattitude en leesgedrag
+van tienjarigen uit Nederland.” Nijmegen, 2023.
+[3] D. Ivanko, D. Ryumin, and A. Karpov, “A review of recent ad-
+vances on deep learning methods for audio-visual speech recogni-
+tion,” Mathematics, vol. 11, no. 12, p. 2665, 2023.
+[4] V. Pratap, A. Tjandra, B. Shi, P. Tomasello, A. Babu, S. Kundu,
+A. Elkahky, Z. Ni, A. Vyas, M. Fazel-Zarandi et al., “Scaling
+speech technology to 1,000+ languages,” Journal of Machine
+Learning Research, vol. 25, no. 97, pp. 1–52, 2024.
+[5] A. Radford, J. W. Kim, T. Xu, G. Brockman, C. McLeavey, and
+I. Sutskever, “Robust speech recognition via large-scale weak
+supervision,” in International conference on machine learning.
+PMLR, 2023, pp. 28 492–28 518.
+[6] R. Fan, N. Balaji Shankar, and A. Alwan, “Benchmarking chil-
+dren’s asr with supervised and self-supervised speech foundation
+models,” in Interspeech 2024, 2024, pp. 5173–5177.
+[7] L. Gao, C. Tejedor-Garcia, H. Strik, and C. Cucchiarini, “Read-
+ing miscue detection in primary school through automatic speech
+recognition,” in Interspeech 2024, 2024, pp. 5153–5157.
+[8] W. Harmsen, F. Hubers, R. van Hout, C. Cucchiarini, and H. Strik,
+“Measuring word correctness in young initial readers: Compar-
+ing assessments from teachers, phoneticians, and asr models,” in
+9th Workshop on Speech and Language Technology in Education
+(SLaTE), 2023, pp. 11–15.
+[9] Y. Zhang, Z. Yue, T. Patel, and O. Scharenborg, “Improving child
+speech recognition with augmented child-like speech,” in Inter-
+speech 2024, 2024, pp. 5183–5187.
+[10] P. G. Shivakumar and S. Narayanan, “End-to-end neural systems
+for automatic children speech recognition: An empirical study,”
+Computer Speech & Language, vol. 72, p. 101289, 2022.
+[11] R. Gothi, R. Kumar, M. Pereira, N. Nayak, and P. Rao, “A dataset
+and two-pass system for reading miscue detection,” in Interspeech
+2024, 2024, pp. 4014–4018.
+[12] B. Molenaar, C. Tejedor-Garcia, C. Cucchiarini, and H. Strik,
+“Automatic Assessment of Oral Reading Accuracy for Reading
+Diagnostics,” in Proc. Interspeech 2023, 2023, pp. 5232–5236.
+[13] A. Baevski, Y. Zhou, A. Mohamed, and M. Auli, “wav2vec 2.0: A
+framework for self-supervised learning of speech representations,”
+Advances in neural information processing systems, vol. 33, pp.
+12 449–12 460, 2020.
+[14] J. Mostow, J. Nelson-Taylor, and J. E. Beck, “Computer-guided
+oral reading versus independent practice: Comparison of sustained
+silent reading to an automated reading tutor that listens,” Journal
+of Educational Computing Research, vol. 49, no. 2, pp. 249–276,
+2013.
+[15] N. K. Duke and K. B. Cartwright, “The Science of Reading Pro-
+gresses: Communicating Advances Beyond the Simple View of
+Reading,” Reading Research Quarterly, vol. 56, no. S1, pp. S25–
+S44, 2021.
+[16] V. Kany and J. Trouvain, “Computergestützte bestimmung des
+sprechflusses bei vorschulkindern,” in Elektronische Sprachsig-
+nalverarbeitung 2024, Tagungsband der 35. Konferenz, Regens-
+burg, 6.-8. März 2024.
+TUDpress, 2024, pp. 62–69.
+[17] C.-K. Yang, K.-P. Huang, and H.-Y. Lee, “Do Prompts Really
+Prompt? Exploring the Prompt Understanding Capability of Whis-
+per,” in 2024 IEEE Spoken Language Technology Workshop (SLT),
+2024, pp. 1–8.
+[18] R. Southwell, W. Ward, V. A. Trinh, C. Clevenger, C. Clevenger,
+E. Watts, J. Reitman, S. D’Mello, and J. Whitehill, “Automatic
+speech recognition tuned for child speech in the classroom,” in
+ICASSP 2024-2024 IEEE International Conference on Acoustics,
+Speech and Signal Processing (ICASSP).
+IEEE, 2024, pp. 12 291–
+12 295.
+[19] A. D. Tur, A. Moumen, and M. Ravanelli, “Progres: Prompted
+generative rescoring on asr n-best,” in 2024 IEEE Spoken Language
+Technology Workshop (SLT), 2024, pp. 600–607.
+[20] C. Cucchiarini, J. Driesen, H. Van hamme, and E. Sanders,
+“Recording speech of children, non-natives and elderly people
+for HLT applications: the JASMIN-CGN corpus.” in Proceedings
+of the Sixth International Conference on Language Resources and
+Evaluation (LREC’08).
+Marrakech, Morocco: European Lan-
+guage Resources Association (ELRA), May 2008.
+[21] S. Limonard, C. Cucchiarini, R. van Hout, and H. Strik, “Analyzing
+read aloud speech by primary school pupils: Insights for research
+and development,” in Interspeech 2020, 2020, pp. 3710–3714.
+[22] Y. Qin, Y. Qian, A. Loukina, P. Lange, A. Misra, K. Evanini,
+and T. Lee, “Automatic detection of word-level reading errors
+in non-native english speech based on asr output,” in 2021 12th
+International Symposium on Chinese Spoken Language Processing
+(ISCSLP).
+IEEE, 2021, pp. 1–5.
+[23] L. Cleuren,
+J. Duchateau,
+A. Sips,
+P. Ghesquière,
+and
+H. Van Hamme, “Developing an automatic assessment tool for
+children’s oral reading,” in Interspeech 2006.
+ISCA, Sep. 2006,
+pp. paper 1113–Tue1WeS.1–0.
+[24] L. Cleuren, J. Duchateau, P. Ghesquiere, and H. V. hamme, “Chil-
+dren’s oral reading corpus (chorec): Description and assessment of
+annotator agreement.” in LREC, 2008.
+[25] M. Bartelds and M. Wieling, “Quantifying language variation
+acoustically with few resources,” in Proceedings of the 2022 Con-
+ference of the North American Chapter of the Association for
+Computational Linguistics: Human Language Technologies, 2022,
+pp. 3735–3741.
+[26] D. Saattrup Nielsen, K. Enevoldsen, and P. Schneider-Kamp, “En-
+coder vs Decoder: Comparative Analysis of Encoder and Decoder
+Language Models on Multilingual NLU Tasks,” in Proceedings of
+the Joint 25th Nordic Conference on Computational Linguistics
+and 11th Baltic Conference on Human Language Technologies
+(NoDaLiDa/Baltic-HLT 2025), R. Johansson and S. Stymne, Eds.
+Tallinn, Estonia: University of Tartu Library, Mar. 2025, pp. 561–
+572.
+[27] M. Bain, J. Huh, T. Han, and A. Zisserman, “WhisperX: Time-
+Accurate Speech Transcription of Long-Form Audio,” in Proc.
+Interspeech 2023, 2023, pp. 4489–4493.
+2854
+

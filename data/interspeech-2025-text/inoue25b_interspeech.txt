@@ -1,0 +1,525 @@
+A Silent Speech Decoding System from EEG and EMG with Heterogenous
+Electrode Configurations
+Masakazu Inoue, Motoshige Sato, Kenichi Tomeoka, Nathania Nah, Eri Hatakeyama, Kai
+Arulkumaran, Ilya Horiguchi, Shuntaro Sasai
+Araya Inc., Japan
+{inoue,sato motoshige,tomeoka kenichi,nathania nah,hatakeyama eri,
+kai arulkumaran,horiguchi ilya,sasai shuntaro}@araya.org
+Abstract
+Silent speech decoding, which performs unvocalized
+human speech recognition from electroencephalogra-
+phy/electromyography (EEG/EMG), increases accessibility for
+speech-impaired humans. However, data collection is difficult
+and performed using varying experimental setups, making
+it nontrivial to collect a large, homogeneous dataset. In this
+study we introduce neural networks that can handle EEG/EMG
+with heterogeneous electrode placements and show strong
+performance in silent speech decoding via multi-task training
+on large-scale EEG/EMG datasets. We achieve improved word
+classification accuracy in both healthy participants (95.3%), and
+a speech-impaired patient (54.5%), substantially outperforming
+models trained on single-subject data (70.1% and 13.2%).
+Moreover, our models also show gains in cross-language
+calibration performance. This increase in accuracy suggests
+the feasibility of developing practical silent speech decoding
+systems, particularly for speech-impaired patients.
+Index Terms : silent speech recognition, transfer learning,
+brain-machine interface
+1. Introduction
+Silent speech decoding from electroencephalography (EEG)
+and electromyography (EMG) signals offers a promising com-
+munication solution for individuals with conditions like amy-
+otrophic lateral sclerosis (ALS) or post-laryngectomy status.
+While invasive brain activity measurements have achieved re-
+markable decoding accuracy [1, 2, 3, 4, 5], their widespread
+adoption is hindered by the requirement for cranial surgery.
+Conversely, non-invasive methods such as EEG and EMG
+are more accessible alternatives. Whilst there is considerable re-
+search on EEG-based speech decoding, these approaches have
+not yet achieved practical accuracy levels due to lower signal-
+to-noise ratios and spatial resolution, as compared to invasive
+methods [6, 7, 8, 9]. For individuals with sufficient muscle con-
+trol, EMG-based silent speech decoding has demonstrated ad-
+equate accuracy for silent speech command input and conver-
+sation, using subject-specific trained models [10, 11, 12, 13].
+Considering that patients with neurodegenerative diseases may
+retain some degree of muscle control depending on their dis-
+ease progression, it is practical to explore models that utilize
+EEG and EMG signals to achieve optimal accuracy.
+However, there exists a lack of standardized equipment,
+as there is a variety of EEG headsets available with differing
+numbers of electrodes and variable placements, and EMG elec-
+trodes must be placed manually. While achieving high accu-
+racy in deep learning is known to require substantial amounts
+of data [14, 15, 16], building large EEG datasets specifically
+designed for a particular task is challenging due to these vari-
+ations in electrode placement protocols and measurement de-
+vices. Therefore, developing architectures capable of handling
+diverse electrode arrangements is crucial for building general-
+izable EEG/EMG encoders.
+Recent studies have made significant progress in develop-
+ing generalizable decoders by using EEG data from diverse
+electrode configurations to train deep neural networks (DNNs)
+through self-supervised learning approaches, such as signal re-
+construction [17, 18, 19]. However, the variability in shapes of
+these latents due to different electrode configurations remains,
+making it challenging to train a single model on diverse elec-
+trode configuration data in an end-to-end manner for down-
+stream tasks. This has been addressed by incorporating aver-
+age pooling [20, 21] or implementing subject/electrode-specific
+layers [22, 23] to convert the latents into predefined sizes.
+While these studies demonstrated the utility of handling
+heterogeneous electrode configurations within a single model
+to increase available data for tasks such as motion/imagined
+motion detection, the effectiveness for relatively complex tasks
+such as silent speech decoding remains unclear, as does the ef-
+ficacy of knowledge transfer between healthy individuals and
+patients. Therefore, in this work we investigate four types
+of EEG/EMG tokenizers, including a novel on-the-fly kernel,
+that enable our DNN models to handle data from heteroge-
+neous electrode configurations. We evaluate how training mod-
+els with these tokenizers on EEG/EMG data collected from
+eight healthy participants and a patient with a neurodegenerative
+disease during silent speech, along with additional pretraining
+on large data with heterogeneous electrode configurations and
+tasks, would improve silent speech decoding performance. Our
+results demonstrate higher word classification accuracy com-
+pared to models trained exclusively on individual data. Further-
+more, we validate calibration performance on silent speech data
+for novel subjects, sessions from different days, and on a sep-
+arate EMG dataset in a different language [24], demonstrating
+the value of pretraining on large datasets with heterogeneous
+tasks and electrode placements.
+2. Materials and methods
+2.1. Data acquisition
+In previous work, [16] collected a large EEG and EMG
+dataset recorded while participants spoke, using three types
+of EEG recording devices: eego sports 1, g.Pangolin 2 and
+g.SCARABEO3.
+Using a similar setup, we collected EEG and EMG data
+with the eego sports device from eight healthy participants dur-
+1https://www.ant-neuro.com/products/eego-sports
+2https://www.gtec.at/product/g-pangolin-electrodes/
+3https://www.gtec.at/product/g-scarabeo-eeg-electrodes/
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+5603 10.21437/Interspeech.2025-1183
+
+Figure 1: Our model architecture. To handle heterogeneous electrode configurations, the tokenizer can be selected by inserting with
+one of the following modules: (a) global average pooling, (b) electrode-specific, (c) subject-specific, or (d) on-the-fly kernel.
+ing silent speech and vocalized speech, and one patient during
+silent speech. Due to a progressive neuromuscular disease, the
+patient is unable to perform sufficient muscular movements for
+speech and cannot produce any vocalization due to dependence
+on a ventilator. For healthy participants, based on electrode po-
+sitioning in [24], we recorded the EMG from the cheek, upper
+mouth, lower mouth, chin, and throat. For the patient, the latter
+EMG electrode pair was located below and above the eye in-
+stead of the throat because the electrode could not be attached
+to his throat due to the presence of medical equipment. Par-
+ticipants were instructed to read text presented on a screen ac-
+cording to timing cues. Each healthy participant performed 20
+sessions of word utterances and 2 sessions of sentence utter-
+ances in both vocalized and silent conditions. The patient also
+performed 20 sessions of silent speech word utterances, though
+some sessions were concluded prematurely due to fatigue.
+The vocabulary size for the word reading task was 64
+words, selected by the patient based on daily communication
+needs, and sentence reading sessions consisted of 153 sen-
+tences. All participants are native Japanese speakers and spoke
+Japanese in our experiments. As such, to measure phonetic tran-
+scription accuracy, we use moras, which are Japanese phonetic
+units of speech [25].
+2.2. Model architecture
+We construct a baseline model combining HTNet [26, 20] and
+Conformer [27] as shown in Figure 1 (left). The input signal un-
+dergoes initial processing through a tokenizer that operates on
+temporal and spatial dimensions, reducing the spatial dimension
+to one while converting the signal into EEG and EMG tokens on
+a sample-by-sample basis. These tokens are then batched and
+passed through a temporal positional encoder and are prepended
+with a CLS token before entering an 11-layer Conformer, which
+transforms them into EEG and EMG latents. These latents are
+then utilized by task-specific head modules for inference.
+To accommodate multiple electrode configurations within
+a single model, we implement four alternative tokenization ap-
+proaches to replace the base tokenizer, as shown in Figure 1
+(right): (a) global average pooling tokenizer (GAP) that aver-
+ages across electrode coordinates and compresses the spatial
+dimensions [20, 21]; (b) electrode-specific tokenizer (ES) uti-
+lizing pre-configured electrode-specific linear layers [22]; (c)
+subject-specific tokenizer (SS) utilizing pre-configured subject-
+specific linear layers [23]; and (d) on-the-fly kernel tokenizer
+(OTFK) that transforms electrode dimensions to predefined di-
+mensions adaptively.
+2.3. Electrode/subject-specific linear layers
+Models with the ES/SS tokenizers maintain predetermined
+sets of linear layers corresponding to the number of elec-
+trode/subject configurations, switching between appropriate lin-
+ear layers based on electrode configuration or subject ID to
+transform electrode dimensions into predefined dimensions.
+2.4. On-the-fly kernel
+To handle datasets with heterogeneous electrode configurations
+within a single model, we propose an architecture that internally
+infers the weight of a linear layer (on-the-fly kernel) that trans-
+forms the spatial dimensions of electrode-based inputs to a pre-
+determined number of spatial dimensions, based on electrodes’
+coordinates. GivenC, the total number of EEG and EMG elec-
+trodes, andK, the predetermined size of the spatial dimension,
+the on-the-fly kernel inference module comprises of a positional
+encoder (PE) that embeds the 3D electrode coordinates into K
+dimensions, linear layers for generating query, key, and value
+representations, and a single Transformer layer.
+For the PE, we use radial basis functions (with 9 kernels
+with variancesσ ={ 2k−1
+170 |k∈{ 1,..., 9}}) to flexibly cap-
+ture the spatial information of each electrode location, followed
+by a linear projection [23]. Given the three-dimensional coor-
+dinatesE∈R C×3 forC electrodes, the on-the-fly kernelW is
+computed as follows:
+P∈R C×K = PE(E), (1)
+W′ = softmax
+ FCquery(P )FCkey(P )T
+√
+K
+
+FCvalue(P ),
+(2)
+W∈R C×K = FCproj
+ 
+W′
+, (3)
+where FCquery, FCkey, FCvalue and FCproj are linear layers.
+2.5. Objective functions
+We employ multiple objective functions depending on the avail-
+able confounds. For samples with audio latents, we calculate
+the mean squared error (MSE) loss between the EEG/EMG
+5604
+
+Table 1: Pretraining datasets. For tasks, V+SS indicates paired vocalized/silent speech data, and VS indicates solely vocalized speech.
+The dataset “word” refers to subject-specific splits, and “word all” refers to the aggregation across all subjects.
+Task EEG EMG Sampling Rate Hours Vocab Size Confounds Dataset
+Device Channels Channels word/word all eego all all
+VS [16] g.Pangolin 128 ch 3 ch 1024 Hz 49.1 open audio ✓
+VS [16] g.Pangolin 128 ch 3 ch 1024 Hz 64.2 open audio, text ✓
+VS [16] g.SCARABEO 62 ch 3 ch 1024 Hz 27.7 open audio ✓
+V+SS (word) eego sports 63 ch 5 ch ∗ 2048 Hz 16.1 64 audio, text, timing, word ✓ ✓ ✓
+V+SS (sentence) eego sports 63 ch 5 ch ∗ 2048 Hz 13.6 267 audio, text, timing ✓ ✓
+VS eego sports 63 ch 3 ch 2048 Hz 49.2 open audio ✓ ✓
+∗ EMG electrode placement differs between healthy participants and the patient (see Section 2.1).
+latents and the audio latents. For samples with word labels,
+we compute the cross-entropy loss between the predicted logits
+from the CLS token and the true word labels. For samples with
+transcribed speech text ground truth, we apply the connection-
+ist temporal classification (CTC) loss [28] to the predicted mora
+sequence logits. For samples with ground truth moras for each
+time frame, we calculated the cross-entropy loss between the
+predicted mora logits and the true mora labels at each frame.
+3. Experiments
+3.1. Preprocessing
+EEG data was preprocessed using a 50 Hz notch filter, common
+average reference, and 2-120 Hz bandpass filter, followed by re-
+sampling to 240 Hz. EMG data recorded by bipolar electrodes
+underwent similar preprocessing, except for the common aver-
+age reference. For patient data, an additional 27 Hz notch filter
+was applied to eliminate medical device interference. Audio
+captured from the microphone was downsampled to 16 kHz and
+converted to audio latents using wav2vec2.0 [29].
+3.2. Training on heterogeneous EEG and EMG datasets
+We investigate how increasing the available training data size
+would enhance the robustness of word decoding performance
+for both healthy subjects and patients. Four datasets were em-
+ployed in this study (Table 1):
+• “word”: Single-subject word utterance task data used for
+training the baseline model (1 hour for patient, 1.9 hours for
+each healthy participant)
+• “word all”: all data of word utterance tasks from all subjects
+with two types of electrode configurations (16.1 hours)
+• “eego all”: all data recorded using the eego sports device with
+three types of electrode configurations (76.9 hours)
+• “all”: all data listed in Table 1 with five types of electrode
+configurations (220 hours)
+Each participant’s data from the silent speech (word) task was
+split such that sessions 1-16 were used for training, sessions 17-
+18 for validation, and sessions 19-20 for test, ensuring equal
+word occurrence frequencies across splits.
+Model training was performed using the AdamW optimizer
+[30] for 300 epochs, with a learning rate starting at 3e-4 after
+an 8-epoch warmup period, gradually decreasing using a cosine
+scheduler. Model evaluation was based on word classification
+accuracy (WCA) of the silent speech (word) decoding task.
+All models have∼18.5 million parameters and were trained
+on an NVIDIA H100. Training took 2 hours per split for
+“word”, 12 hours for “word all”, 2 days for “eego all” and 4
+days for the “all” dataset. For samples with an average of 3.3 s,
+the inference speed averaged 57 ms.
+3.3. Calibration for a novel healthy participant and new-
+day patient data
+We investigate the relationship between calibration perfor-
+mance and pretraining dataset size by calibrating models to a
+novel participant and new-day patient data. The models were
+initialized with weights pretrained on the ‘all’, ‘eego-all’, and
+‘word-all’ datasets.
+For the novel healthy participant, we collected 15 sessions
+of EEG, EMG, audio, text, timing, and word data during silent
+speech (word) tasks. We trained 12 models by incrementally
+increasing calibration data from sessions 1 to 12. Session 13
+was used for validation, and sessions 14-15 for test.
+We collected additional patient data over three separate
+days with intervals of at least one week, recording 6 to 7 ses-
+sions per day. We used the first 3 and last 2 sessions for training
+and testing, with remaining session(s) for validation. During
+calibration, we trained our model by incrementally adding new-
+day sessions to the 16 sessions used for pretraining.
+Models were trained using the AdamW optimizer over 100
+epochs, with learning rate starting at 3e-4 after an 8-epoch
+warmup period and decreasing via cosine scheduler. Perfor-
+mance was evaluated using WCA on test data for each day.
+3.4. Calibration on a single-subject EMG English dataset
+We evaluate how our models, pretrained on our “all” dataset,
+could provide benefits across electrode configurations and lan-
+guages, using the dataset collected by Gaddy et al. [24]. This
+dataset contains 19 hours of 8-channel facial EMG record-
+ings from a single English speaker during silent and vocalized
+speech, with a vocabulary size of 9828 words. We utilize all
+samples of 15 seconds or shorter in duration. In our model,
+we replace our Japanese mora prediction head with an English
+phoneme prediction head and employ the CTC loss, along with
+the MSE loss and the dynamic time warping loss [31] between
+EEG/EMG latents and audio latents and constructed phoneme
+sequence decoders from EMG. We trained models with the
+same settings as in Section 3.3. Performance was evaluated us-
+ing phoneme error rate (PER).
+4. Results and discussion
+4.1. Word classification accuracy of models trained on EEG
+and EMG datasets with heterogeneous configurations
+Figure 2 illustrates the relationship between dataset size and
+performance (WCA) for models incorporating different tok-
+enizers. All models, except for the one with GAP, showed
+monotonic improvements with increasing data volume, even un-
+der heterogeneous electrode configurations. This suggests these
+models can effectively utilize electrode-placement-agnostic in-
+5605
+
+Figure 2: Classification accuracy based on dataset size, us-
+ing different tokenizers. Solid lines represent mean accuracy
+of healthy participants (N=8), while dotted lines the patient.
+Table 2: Calibration performance (PER: lower is better) for
+different language and electrode configuration dataset.
+baseline (scratch) GAP ES SS OTFK
+61.5 100 49.5 50.0 55.8
+formation from each dataset. The model incorporating SS
+achieved the highest mean accuracy when trained on the “all”
+dataset, reaching 95.3± 2.6% for healthy controls (95% boot-
+strapped confidence interval) and 54.5% for the patient. These
+accuracies largely surpassed that obtained when training with
+each individual’s data only (baseline):70.1±17.1% for healthy
+controls and 13.2% for the patient. This indicates the existence
+of substantial shared processing across subjects and electrode
+configurations within the model, suggesting that minimal in-
+dividual data may suffice once these are learned. However,
+accuracy for patient data remains notably low (though signifi-
+cantly higher than chance, at 1.6%). This can be attributed to
+two factors: first, the patients’ mouth movements differ from
+those of healthy participants, extending beyond the distribution
+covered by healthy subject data; second, some mouth move-
+ments for different words may be fundamentally indistinguish-
+able through EMG signals.
+4.2. Calibration performance
+Figure 3 shows calibration results for the SS model initialized
+with weights pretrained on the “word all”, “eego all”, and “all”
+datasets. Results are shown for (a) novel participant calibra-
+tion and (b) new-day patient calibration. Models pretrained on
+the “all” dataset demonstrated reasonable zero-shot calibration
+performance (WCA), increasing to over 80% with just a few
+calibration sessions. All pretrained models consistently out-
+performed those trained from random initialization (scratch).
+These findings suggest that training with large datasets enables
+the models to learn processing that are robust to inter-subject
+and day-by-day variations inherent in biological data. How-
+ever, calibration performance remained lower for patient new-
+day data. This can be attributed to insufficient data of patient-
+specific mouth movements in the pretraining data, limiting the
+model’s ability to learn variation-invariant processing.
+Furthermore, apart from when using the GAP tokenizer,
+models pretrained on the “all” dataset and fine-tuned on the
+open dataset of vocalized/silent speech in English demonstrated
+lower PER, as compared to a model trained from scratch
+(Table 2), suggesting that these models have learned some
+language-independent EEG/EMG processing, despite differ-
+(a) Healthy participant
+(b) Patient
+Figure 3: SS model performance on unseen data with calibra-
+tion sessions. Classification accuracy when calibrated for (a)
+a novel healthy participant and (b) new-day patient data. Solid
+lines and the shaded areas indicate the mean performance and
+95% bootstrapped confidence intervals.
+ences in Japanese as a moraic language and English as a syllabic
+language.
+5. Conclusion
+In this study, we construct silent speech decoders for healthy
+participants and a patient with a neurodegenerative disease by
+utilizing EEG and EMG data recorded from multiple partic-
+ipants with varying electrode placements. We demonstrate
+that training on this large-scale dataset enhances silent speech
+decoding accuracy despite heterogeneous electrode configura-
+tions. Notably, our model pretrained on large-scale data from
+healthy participants achieved a substantial improvement in de-
+coding accuracy for the patient, despite the limited amount of
+patient-specific data available, and also demonstrated high cal-
+ibration performance for a novel healthy participant, as well
+as new-day data for the patient. We also demonstrated trans-
+fer learning to a different dataset with a different language.
+Our findings not only expand the practical utility of available
+EEG/EMG data, but also suggest the feasibility of developing
+brain-computer interface systems where pretraining with large-
+scale data enables end users to achieve effective performance
+with minimal individual training data.
+As a limitation, our results on transfer learning are more
+limited in the cross-language setting, which likely would re-
+quire a multilingual pretraining dataset. In addition, due to the
+difficulty of acquiring patient data, we were unable to confirm
+how well our results generalize to other patients. In future work
+we plan to gather more patient data and incorporate language
+models to realize practical silent speech sentence decoding.
+5606
+
+6. References
+[1] F. R. Willett, E. M. Kunz, C. Fan, D. T. Avansino, G. H. Wilson,
+E. Y . Choi, F. Kamdar, M. F. Glasser, L. R. Hochberg, S. Druck-
+mann et al., “A high-performance speech neuroprosthesis,” Na-
+ture, vol. 620, no. 7976, pp. 1031–1036, 2023.
+[2] G. K. Anumanchipalli, J. Chartier, and E. F. Chang, “Speech syn-
+thesis from neural decoding of spoken sentences,” Nature, vol.
+568, no. 7753, pp. 493–498, 2019.
+[3] S. L. Metzger, K. T. Littlejohn, A. B. Silva, D. A. Moses, M. P.
+Seaton, R. Wang, M. E. Dougherty, J. R. Liu, P. Wu, M. A. Berger
+et al., “A high-performance neuroprosthesis for speech decoding
+and avatar control,” Nature, vol. 620, no. 7976, pp. 1037–1046,
+2023.
+[4] N. S. Card, M. Wairagkar, C. Iacobacci, X. Hou, T. Singer-Clark,
+F. R. Willett, E. M. Kunz, C. Fan, M. Vahdati Nia, D. R. Deo
+et al., “An accurate and rapidly calibrating speech neuroprosthe-
+sis,” New England Journal of Medicine, vol. 391, no. 7, pp. 609–
+618, 2024.
+[5] D. A. Moses, S. L. Metzger, J. R. Liu, G. K. Anumanchipalli, J. G.
+Makin, P. F. Sun, J. Chartier, M. E. Dougherty, P. M. Liu, G. M.
+Abrams et al., “Neuroprosthesis for decoding speech in a para-
+lyzed person with anarthria,” New England Journal of Medicine ,
+vol. 385, no. 3, pp. 217–227, 2021.
+[6] A. D ´efossez, C. Caucheteux, J. Rapin, O. Kabeli, and J.-R. King,
+“Decoding speech perception from non-invasive brain record-
+ings,” Nature Machine Intelligence, vol. 5, no. 10, pp. 1097–1107,
+2023.
+[7] S.-H. Lee, M. Lee, and S.-W. Lee, “Eeg representations of spatial
+and temporal features in imagined speech and overt speech,” in
+Pattern Recognition: 5th Asian Conference, ACPR 2019, Auck-
+land, New Zealand, November 26–29, 2019, Revised Selected Pa-
+pers, Part II 5. Springer, 2020, pp. 387–400.
+[8] Y .-E. Lee, S.-H. Lee, S.-H. Kim, and S.-W. Lee, “Towards voice
+reconstruction from eeg during imagined speech,” in Proceedings
+of the AAAI Conference on Artificial Intelligence , vol. 37, no. 5,
+2023, pp. 6030–6038.
+[9] H. Liu, D. Hajialigol, B. Antony, A. Han, and X. Wang,
+“Eeg2text: Open vocabulary eeg-to-text translation with multi-
+view transformer,” in2024 IEEE International Conference on Big
+Data (BigData). Los Alamitos, CA, USA: IEEE Computer So-
+ciety, Dec. 2024, pp. 1824–1833. [Online]. Available: https://doi.
+ieeecomputersociety.org/10.1109/BigData62323.2024.10825980
+[10] G. S. Meltzner, J. T. Heaton, Y . Deng, G. De Luca, S. H. Roy,
+and J. C. Kline, “Silent speech recognition as an alternative com-
+munication device for persons with laryngectomy,” IEEE/ACM
+transactions on audio, speech, and language processing, vol. 25,
+no. 12, pp. 2386–2398, 2017.
+[11] T. Schultz and M. Wand, “Modeling coarticulation in emg-based
+continuous speech recognition,” Speech Communication, vol. 52,
+no. 4, pp. 341–353, 2010.
+[12] Y . Wang, T. Tang, Y . Xu, Y . Bai, L. Yin, G. Li, H. Zhang, H. Liu,
+and Y . Huang, “All-weather, natural silent speech recognition
+via machine-learning-assisted tattoo-like electronics,” npj Flexi-
+ble Electronics, vol. 5, no. 1, p. 20, 2021.
+[13] B. Tyler, W. Guy, E. Reshef, R. W. Francis, and D. Shaul, “A
+cross-modal approach to silent speech with llm-enhanced recog-
+nition,” arXiv preprint arXiv:2403.05583, 2024.
+[14] J. Kaplan, S. McCandlish, T. Henighan, T. B. Brown, B. Chess,
+R. Child, S. Gray, A. Radford, J. Wu, and D. Amodei,
+“Scaling laws for neural language models,” arXiv preprint
+arXiv:2001.08361, 2020.
+[15] J. Ye, J. Collinger, L. Wehbe, and R. Gaunt, “Neural data trans-
+former 2: multi-context pretraining for neural spiking activity,”
+Advances in Neural Information Processing Systems , vol. 36,
+2024.
+[16] M. Sato, K. Tomeoka, I. Horiguchi, K. Arulkumaran, R. Kanai,
+and S. Sasai, “Scaling law in neural data: Non-invasive
+speech decoding with 175 hours of eeg data,” arXiv preprint
+arXiv:2407.07595, 2024.
+[17] Y . Chen, K. Ren, K. Song, Y . Wang, Y . Wang, D. Li, and L. Qiu,
+“Eegformer: Towards transferable and interpretable large-scale
+eeg foundation model,” arXiv preprint arXiv:2401.10278, 2024.
+[18] C. Wang, V . Subramaniam, A. U. Yaari, G. Kreiman,
+B. Katz, I. Cases, and A. Barbu, “BrainBERT: Self-supervised
+representation learning for intracranial recordings,” in The
+Eleventh International Conference on Learning Representations ,
+2023. [Online]. Available: https://openreview.net/forum?id=
+xmcYx reUn6
+[19] W. Jiang, L. Zhao, and B. liang Lu, “Large brain model
+for learning generic representations with tremendous EEG
+data in BCI,” in The Twelfth International Conference on
+Learning Representations , 2024. [Online]. Available: https:
+//openreview.net/forum?id=QzTpTRVtrP
+[20] S. M. Peterson, Z. Steine-Hanson, N. Davis, R. P. Rao, and
+B. W. Brunton, “Generalized neural decoders for transfer learning
+across participants and recording modalities,” Journal of Neural
+Engineering, vol. 18, no. 2, p. 026014, 2021.
+[21] J. Han, X. Wei, and A. A. Faisal, “Eeg decoding for
+datasets with heterogenous electrode configurations using transfer
+learning graph neural networks,” Journal of Neural Engineering,
+vol. 20, no. 6, p. 066027, dec 2023. [Online]. Available:
+https://dx.doi.org/10.1088/1741-2552/ad09ff
+[22] D. Truong, M. A. Khalid, and A. Delorme, “Deep learning ap-
+plied to eeg data with different montages using spatial attention,”
+in 2023 IEEE International Conference on Bioinformatics and
+Biomedicine (BIBM), 2023, pp. 2587–2593.
+[23] G. Mentzelopoulos, E. Chatzipantazis, A. G. Ramayya, M. Hed-
+lund, V . Buch, K. Daniilidis, K. Kording, and F. Vitale, “Neural
+decoding from stereotactic eeg: accounting for electrode variabil-
+ity across subjects,” in The Thirty-eighth Annual Conference on
+Neural Information Processing Systems, 2024.
+[24] D. Gaddy and D. Klein, “Digital voicing of silent speech,” in
+Proceedings of the 2020 Conference on Empirical Methods in
+Natural Language Processing (EMNLP) . Online: Association
+for Computational Linguistics, Nov. 2020, pp. 5521–5530.
+[Online]. Available: https://aclanthology.org/2020.emnlp-main.
+445/
+[25] H. Kubozono, “Mora and syllable,” The handbook of Japanese
+linguistics, pp. 31–61, 2017.
+[26] V . J. Lawhern, A. J. Solon, N. R. Waytowich, S. M. Gordon, C. P.
+Hung, and B. J. Lance, “Eegnet: a compact convolutional neu-
+ral network for eeg-based brain–computer interfaces,” Journal of
+neural engineering, vol. 15, no. 5, p. 056013, 2018.
+[27] A. Gulati, J. Qin, C.-C. Chiu, N. Parmar, Y . Zhang,
+J. Yu, W. Han, S. Wang, Z. Zhang, Y . Wu, and R. Pang,
+“Conformer: Convolution-augmented transformer for speech
+recognition,” in INTERSPEECH, H. Meng, B. Xu, and
+T. F. Zheng, Eds. ISCA, 2020, pp. 5036–5040. [On-
+line]. Available: http://dblp.uni-trier.de/db/conf/interspeech/
+interspeech2020.html#GulatiQCPZYHWZW20
+[28] A. Graves, S. Fern ´andez, F. Gomez, and J. Schmidhuber, “Con-
+nectionist temporal classification: labelling unsegmented se-
+quence data with recurrent neural networks,” in Proceedings of
+the 23rd international conference on Machine learning, 2006, pp.
+369–376.
+[29] A. Baevski, Y . Zhou, A. Mohamed, and M. Auli, “wav2vec
+2.0: A framework for self-supervised learning of speech repre-
+sentations,” Advances in neural information processing systems ,
+vol. 33, pp. 12 449–12 460, 2020.
+[30] I. Loshchilov and F. Hutter, “Decoupled weight de-
+cay regularization,” in International Conference on Learn-
+ing Representations , 2019. [Online]. Available: https:
+//openreview.net/forum?id=Bkg6RiCqY7
+[31] D. Gaddy and D. Klein, “An improved model for voicing silent
+speech,” in Proceedings of the 59th Annual Meeting of the Asso-
+ciation for Computational Linguistics and the 11th International
+Joint Conference on Natural Language Processing (Volume 2:
+Short Papers), 2021, pp. 175–181.
+5607

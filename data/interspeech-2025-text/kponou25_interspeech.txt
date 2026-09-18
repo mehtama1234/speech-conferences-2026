@@ -1,0 +1,688 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+Extending the Fongbe to French Speech Translation Corpus:
+resources, models and benchmark
+D. Fortun´e Kponou1, Salima Mdhaffar2, Fr´ejus A. A. Laleye3, Eug`ene C. Ezin1, Yannick Est`eve2
+1Institut de Math´ematiques et de Sciences Physiques, Dangbo, B´enin
+2LIA, Avignon, France
+3OPSCIDIA, Paris, France
+{fortune.kponou,eugene.ezin}@imsp-uac.org, {salima.mdhaffar,
+yannick.esteve}@univ-avignon.fr, frejus.laleye@opscidia.com
+Abstract
+This paper introduces FFSTC 2, an expanded version of the ex-
+isting Fongbe-to-French speech translation corpus, addressing
+the critical need for resources in African dialects for speech
+recognition and translation tasks. We extended the dataset by
+adding 36 hours of transcribed audio, bringing the total to 61
+hours, thereby enhancing its utility for both automatic speech
+recognition (ASR) and speech translation (ST) in Fongbe, a
+low-resource language. Using corpus, we develop both cas-
+cade and end-to-end speech translation systems. Our models
+employ AfriHuBERT and HuBERT147 as encoders, and NLLB
+and mBART as decoders. We introduce a diacritic-substitution
+technique for both ASR and Machine Translation (MT) which,
+yields a BLEU score of 37.23 compared to 39.60 for the fully
+diacritized configuration. Among the evaluated end-to-end ar-
+chitectures, AfriHuBERT-NLLB with data augmentation attains
+the highest BLEU score of 26.32.
+Index Terms: speech translation, speech recognition, African
+language, low resource language
+1. Introduction
+The creation of high-quality audio datasets for Natural Lan-
+guage Processing (NLP) tasks remains a significant challenge.
+Current efforts to develop speech datasets have predominantly
+focused on widely spoken languages such as English, French,
+and Spanish, leaving dialectal and minority languages largely
+under-represented. As a result, the vast majority of the world’s
+7,000 languages remain underserved, with only a few dozen
+language directions covered in existing speech translation cor-
+pora [1]. This lack of inclusion presents a critical problem, as
+it perpetuates language barriers and limits the accessibility of
+NLP technologies for speakers of less-represented languages.
+In recent years, there has been increasing attention on low-
+resource languages, particularly those spoken in regions such
+as India and Africa. Despite being spoken by millions of peo-
+ple, many of these languages remain severely under-represented
+in terms of linguistic resources. For instance, Africa is home
+to over 2,000 languages [2], yet, as highlighted by [3], only
+around 40 of these languages have been integrated into modern
+language technologies. This stark disparity underscores the sig-
+nificant under-representation of African languages in contem-
+porary NLP research and applications.
+Initiatives such as the Mozilla Common Voice project1 have
+sought to address this gap by providing a platform for collect-
+ing speech data for certain African languages. However, the im-
+pact of such efforts remains limited. This limitation stems from
+the platform’s design, which relies on collecting data through
+1https://commonvoice.mozilla.org
+the reading of written texts. This approach is less effective for
+many African languages, which are primarily oral and have lim-
+ited written resources. Historically, oral traditions [4] have been
+widespread across the continent, which has hindered the devel-
+opment of writing systems and further complicated efforts to
+create comprehensive linguistic datasets.
+While resources Fongbe are limited, some datasets do ex-
+ist in the state of the art. For Fongbe, we have the ALFFA [5]
+dataset for speech recognition, which includes 6 hours of au-
+dio along with transcriptions, and the FFSTC dataset [6], which
+contains 31 hours of Fongbe speech paired with French trans-
+lations.
+Also, corpora like GigaST are pseudo-labeled, dis-
+tinguishing them from fully human-annotated datasets such as
+[7, 8] contained in ALFFA, which contains a few hours of data
+for languages like Amharic, Hausa, Swahili, Wolof.
+In this paper, we present a significant extension of the ex-
+isting Fongbe-to-French speech translation corpus [6]. This ex-
+tension not only adds new parallel data from spoken Fongbe
+to written French but also enables the training of an auto-
+matic speech recognition (ASR) model for Fongbe by provid-
+ing speech recordings with their corresponding transcriptions.
+This dataset will provide an opportunity for research commu-
+nity to test all new SSL models designed for African languages
+[9, 10], especially since no existing SSL model currently in-
+cludes Fongbe in its training data.
+The data described here
+will be used to organize a translation task in IWSLT 20252.
+This paper provides experiments and evaluation for Automatic
+Speech Recognition (ASR) in Fongbe and Speech Translation
+(ST) from Fongbe to French. These experiments aim to as-
+sess the effectiveness of leveraging pre-trained models for low-
+resource language processing, with a focus on a tonal African
+language spoken by 4 million people.
+2. Related work and motivations
+Unlabeled data is far more abundant than labeled data. Self-
+supervised learning (SSL) methods have emerged as a power-
+ful approach to leverage such unlabeled data in machine learn-
+ing, enabling the creation of pre-trained models. A first notable
+example in the domain of speech is the XLSR-53 model [11],
+which is pre-trained on 53 languages data. Studies [12, 13, 14]
+have extensively explored the use of pre-trained speech en-
+coders and text decoders to enhance system performance for the
+speech translation task. These techniques, collectively referred
+to as transfer learning, have demonstrated significant effective-
+ness in improving performance, particularly in low-resource
+settings. By transferring knowledge from high-resource lan-
+guages to low-resource ones, transfer learning provides a ro-
+bust initialization for both encoder and decoder components,
+2International Workshop on Spoken Language Translation
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+4533
+10.21437/Interspeech.2025-1801
+
+thereby significantly contributing to improved translation accu-
+racy. In addition to transfer learning, other approaches have
+been adopted to enhance performance in low-resource speech
+translation, such as synthesizing parallel data [15]. However,
+our work specifically focuses on the transfer learning paradigm,
+leveraging its proven capabilities to address the challenges of
+low-resource language processing.
+Despite the challenges associated with creating speech cor-
+pora for African languages, there has been a notable shift to-
+wards the inclusion of these languages in pre-trained mod-
+els.
+This trend is evident in the progressive integration of
+African languages into state-of-the-art models, such as Hu-
+BERT147 [10], which supports 16 African languages, and its
+variant AfriHuBERT [9], which extends coverage to 39 lan-
+guages.
+Various strategies have been employed to use pre-trained
+models effectively. For instance, some studies [16, 17] utilize
+pre-trained encoders like XLSR-53 as feature extractors or en-
+coders paired with a transformer [18] based decoder. Our exper-
+iments align with this latter, employing HuBERT variants as the
+encoder and using a pre-trained Large Language Model (LLMs)
+transformer based as decoder.
+Although the literature does not provide definitive guidance
+on selecting the most suitable pre-trained speech encoder, [19]
+observed that encoders trained on the same language as the
+source language tend to extract more relevant audio features,
+thereby improving overall performance.
+Given that Fongbe
+is an African language and no pre-trained speech model in-
+cludes it at the time of writing, we hypothesize that using a pre-
+trained encoder trained on other close linguistically African lan-
+guages would yield promising results. To test this hypothesis,
+we conduct training experiments using pre-trained models Hu-
+BERT147 and AfriHuBERT as encoders, combined with pre-
+trained multilingual decoders such as mBART [20] and NLLB
+[21].
+3. Fongbe linguistic features
+Fongbe, a Gbe language spoken primarily in Benin, serves as a
+lingua franca for approximately 40–45% of the Beninese pop-
+ulation [22]. Fongbe plays a significant role in media, being
+widely used in both public and private radio and television pro-
+grams. However, Fongbe tonal nature presents unique chal-
+lenges, particularly in written and translated texts. In linguis-
+tics, tone refers to the use of pitch variations to distinguish
+meaning in spoken language [23]. Lexical tones, in particu-
+lar, help differentiate words that are otherwise phonologically
+identical [24]. These pitch variations, or tonal patterns, are pro-
+duced by changes in the fundamental frequency of a syllable.
+For the written form of Fongbe, mainly based on the Latin al-
+phabet with additional symbols, these tones are typically repre-
+sented using diacritics, which are essential for accurately con-
+veying tonal distinctions in written form. Fongbe primarily fea-
+tures two main tonemes as noted by [25], from which all other
+tones are derived. In Fongbe, each syllable carries a tone, and
+the absence of tone marks can often lead to confusion. Regard-
+ing tones, there are four tones in Fongbe. The low tone ( ` ), the
+high tone ( ´ ), the low-high tone ( ˇ ) and lastly, the mid tone ( -
+) marked by a small horizontal line. The absence of tone is con-
+sidered as the mid tone. Fongbe utilizes an alphabet comprising
+23 consonants and 12 vowels as shown in Table 1.
+Fongbe exhibits a lexicographical structure that is primar-
+ily monosyllabic, disyllabic, and trisyllabic shown in table 2.
+A compatibility study conducted on the combinations of con-
+Table 1: Fongbe consonants and vowels
+Consonants
+Vowels
+b, c, d, d , f, g, gb, h, j,
+a, e, E, i, o , O , u
+k, kp, l, m, n, ny, p , r, s,
+t, v, w, x, y, z
+sonants, vowels, and the four tones revealed the presence of
+376 monosyllabic structures out of 1, 104 meaningful forms.
+This analysis highlights the phonological richness and structural
+diversity of Fongbe, underscoring its significance in linguistic
+studies.
+Table 2: Fongbe syllabic structure
+Structure
+Types
+Examples
+Monosyllabic
+V, CV
+`a, b`a
+Disyllabic
+VCV, CVCV,
+azo, gal´I,
+CVV, VV
+fE`E, `aa
+Trisyllabic
+VCVCV, CVCVCV,
+as`Ol`O, logos`o,
+VCVV, CVCVV
+agoo, k´Ed´E´E
+CVVCV
+jaunta
+4. Data collection process
+We augmented the FFSTC corpus [6] by adding new samples
+selected from a validated set in French, sourced from the Com-
+mon Voice project [26], a Mozilla Foundation initiative. To re-
+duce the human cost, we utilized the Google Translate to gen-
+erate Fongbe translations of the French sentences. These trans-
+lations were then meticulously reviewed and refined by a team
+of linguists to ensure accuracy and linguistic quality. Once val-
+idated, the sentences were uploaded to our custom web applica-
+tion [27] for recording.
+Participants, comprising both male and female speakers,
+were invited to read at least 2, 000 sentences each. The reading
+sessions were conducted in a controlled environment to min-
+imize ambient noise, as Fongbe is a tonal language, and back-
+ground sounds could interfere with the accurate perception of its
+tonal distinctions. To further ensure data quality, we carefully
+selected participants to minimize potential biases arising from
+regional accents. Specifically, we included only native speakers
+of Fongbe, excluding individuals who learned Fongbe as a sec-
+ond language or who speak Fongbe with influences from Mahi
+or Gungbe dialect accents.
+The recorded sentences underwent a rigorous validation
+process by a team of six validators, working in pairs, with
+each sentence validated once. Sentences containing background
+noise (e.g., wind or engine noise) or exhibiting incorrect tone
+patterns were rejected. This meticulous validation process en-
+abled us to successfully add 42, 000 new samples to the existing
+FFSTC corpus.
+The FFSTC corpus originally stemmed from a data compe-
+tition in which multiple participants translated the same French
+sentences directly into Fongbe. This process resulted in du-
+plicate transcripts and nearly identical speech recordings, con-
+tributing to a rich diversity of speech samples. To maximize
+the potential of this variation, we retained these duplicates in
+the training set while ensuring that only unique transcripts were
+included in the validation and test sets. This approach allows fu-
+ture trained models to benefit from the diversity of translations
+while maintaining data integrity during the evaluation process.
+4534
+
+4.1. Statistics of the dataset
+As outlined in the introduction, we conducted experiments in
+both ASR and Speech Translation. For the end-to-end ST task,
+we utilized the entire dataset. While for the ASR and the cas-
+cade ST task, we use only the 36 hours of speech available with
+their transcripts in Fongbe, as described in Table 3.
+Table 3: Dataset statistics
+Experiments
+Split
+Hours
+Sentences
+ASR
+Test
+3.93
+2.5 k
+ASR
+Valid
+3.54
+2.4 k
+ASR
+Train
+29
+19.9 k
+ST
+Test
+5.9
+3.9 k
+ST
+Valid
+6.1
+4.1 k
+ST
+Train
+48
+29.5 k
+5. Experiments and results
+In this section, we present the experimental framework for (1)
+ASR system, (2) cascade ST system and end-to-end ST system.
+5.1. SSL models Description
+The use of pre-trained models, as demonstrated in several stud-
+ies, shows the potential to create efficient recognition or trans-
+lation systems [28] even with limited amounts of data by fine-
+tuning them on downstream tasks. For our experiments, we
+chose to use that method. Among the publicly available pre-
+trained speech encoders, such as XLSR-128 [29], and HuBERT,
+we selected HuBERT [30] variants, specifically HuBERT147
+and AfriHuBERT, specialized to some African languages (but
+not to Fongbe).
+This decision was based on their superior
+performance on downstream tasks, such as Automatic Speech
+Recognition (ASR), as demonstrated in [31].
+HuBERT is closely related to Wav2Vec 2.0 [32]. While
+Wav2Vec 2.0 distinguishes between true latent speech represen-
+tations and the contextualized representations generated by the
+transformer encoder, HuBERT employs a technique similar to
+BERT [33] for speech units. Specifically, HuBERT computes a
+loss over masked speech units, forcing the model to learn high-
+level representations of unmasked inputs to accurately infer the
+targets of the masked ones. This approach has been shown to
+outperform Wav2Vec 2.0 when trained on the same amount of
+data in [30]. Given these advantages, we expected HuBERT147
+and AfriHuBERT to deliver strong performance in our experi-
+ments.
+mBART is a denoising sequence-to-sequence model pre-
+trained on high-resource languages. It uses a Transformer archi-
+tecture to reconstruct texts from noised inputs, where phrases
+are masked and sentences are permuted.
+Known for its ro-
+bustness with noisy data, mBART is particularly well-suited
+in tasks like speech translation, especially for tonal languages
+such as Fongbe. NLLB (No Language Left Behind) is a multi-
+lingual translation model pre-trained on a wide range of lan-
+guages, including several African languages.
+Designed for
+high-quality translation, NLLB aims to bridge the gap between
+high-resource and low-resource languages, making it a strong
+candidate for our translation experiments.
+5.2. ASR experiments
+The first experiment was performed using the original Fongbe
+transcripts, including diacritics, to establish a baseline perfor-
+mance.
+In the second experiment, we removed the diacrit-
+ics from the transcripts to evaluate the impact of diacritic re-
+moval on recognition accuracy. The third experiment involved
+a novel approach of diacritic substitution, where we systemati-
+cally identified monosyllabic words with diacritics and replaced
+them with their base syllables accompanied by a unique numeri-
+cal identifier. We report few examples of the substitution on the
+Table 4. This substitution aimed to modify the representation
+of diacritics while preserving linguistic information, potentially
+improving the model’s ability to generalize across similar pho-
+netic patterns.
+Diacritic
+Replacement
+Diacritic
+Replacement
+´o
+o1
+`o
+o2
+ˇo
+o3
+ˆo
+o4
+´a
+a1
+`a
+a2
+ˇa
+a3
+ˆa
+a4
+´e
+e1
+`e
+e2
+ˇe
+e3
+ˆe
+e4
+Table 4: Mapping of diacritics for o, a, and e to numerical
+representations.
+To conduct the experiments, we trained three different Sen-
+tencePiece [34] tokenizer models at character level using the
+combined training and validation sets for each specific case.
+For the base experiment (with diacritics), the substitution ex-
+periment and the experiment without diacritics the vocabulary
+size are, respectively 62, 44 and 36. This reduction in vocabu-
+lary size for the substitution and third experiment case reflects
+the simplified representation of text when diacritics are either
+removed or replaced, which in turn may influence the model
+efficiency and performance. The three ASR models are end-
+to-end models composed of the AfriHuBERT speech encoder
+followed by three 1024-dim dense layers. They were fine-tuned
+on the ASR training dataset by using the CTC loss function. All
+experiments are run over 50 epochs and results are summarized
+in the Table 5. ASR recipes will be released for reproducibility.
+Table 5: Word Error Rates (%) on the ASR test dataset
+Experiments
+WER
+ASR base
+21.98
+ASR Sub
+22.18
+ASR without diacritics
+17.02
+The ASR model trained without diacritics yields the low-
+est Word Error Rate (WER) of 17.02%, but this WER cannot
+be compared with the two other ones: the lexical confusion is
+drastically decreased since removing the diacritics reduce the
+vocabulary size. Nevertheless, if the automatic transcriptions
+without diacritics are less informative, these results show they
+are more reliable. Although the diacritic substitution approach
+did not outperform the base model, we consider it should be ex-
+perimented within a cascade speech translation system, because
+of a different distribution of ASR errors.
+4535
+
+5.3. Cascade speech translation
+Cascade systems for speech translation consist of two key mod-
+ules: ASR and MT. In our implementation, we used our trained
+ASR models for the transcription module, followed by an end-
+to-end text-to-text MT model based on the fine-tuning the
+NLLB model. Fongbe was included in the NLLB pre-training
+dataset. We fine-tuned it using the Huggingface [35] trainer.
+To ensure a fair comparison, we conducted three separate fine-
+tuning experiments, the first on Fongbe written with diacritics
+and the second without diacritics and the third on substituted
+Fongb´e. We evaluated the cascade model on the same test set
+as the end-to-end model presented in the next section.
+The fine-tuning of NLLB results yielded BLEU scores of
+58.9, 57.56 and 47.39 on manual transcriptions, respectively
+for the models with diacritics, with diacritics substitution and
+without diacritics, on the validation subset of ASR containing
+the Fongbe transcriptions and translations. These results un-
+derscore the importance of diacritics in preserving contextual
+understanding, particularly for tonal languages like Fongbe.
+For the experiment using the ASR with the substitution
+approach, we use a fine-tune the NLLB model on substituted
+Fongb´e text to French. This step ensured that the translation
+module received input with the correct diacritic markings. The
+results of the experiments are summarized in Table 6.
+Table 6: BLEU scores for the cascade systems on the test
+dataset
+Experiments
+BLEU
+ASR base + NLLB
+32.76
+ASR Sub + NLLB
+37.23
+ASR with diacritics + NLLB
+39.60
+The best result in the cascade training was achieved by the
+AfriHuBERT model fine-tuned on ASR with diacritic, reach-
+ing a BLEU score of 39.60. Additionally, we observed that
+the substitution method holds significant potential as it comes
+in the second position with the BLEU score of 37.23. These
+experiments reveal that retaining diacritics is more critical for
+translation of Fongbe than for its recognition, as diacritics pro-
+vide additional linguistic information about segments that goes
+beyond what the base syllables alone can convey. However,
+further studies are needed to fully explore and optimize the sub-
+stitution approach, as it could provide a viable pathway for im-
+proving both efficiency and performance in speech recognition
+and translation tasks.
+5.4. End-to-end Speech translation
+We conduct several experiments dedicated to the end-to-end ap-
+proach. We investigated the use of different combinations of the
+two speech encoders HuBERT-147 and AfriHuBERT with the
+mBART and NLLB decoders .
+All the models were trained on a single V100 32BG GPU
+with a batch size of 2.We utilized the Adam optimizer and ran
+the experiments over 50 epochs. To align the output length of
+the HuBERT encoder with the input dimensions of the mBART
+and NLLB decoders, we employed a feed-forward layer. During
+inference, we applied a beam search with a width of 5 to gen-
+erate translations. To improve our models performance, we ap-
+plied three data augmentation techniques such as speed pertur-
+bation, which slightly speeds up or slows down the audio, fre-
+quency drop, which randomly removes certain frequency bands
+Table 7: BLEU score of end-to-end speech-to-text translation
+models
+Experiments
+Data Aug
+Params
+BLEU
+AfriHuBERT-NLLB
+No
+962.1M
+23.90
+AfriHuBERT-NLLB
+Yes
+-
+26.32
+AfriHuBERT-mBART
+No
+553.8M
+21.13
+AfriHuBERT-mBART
+Yes
+-
+24.30
+and chunk drop, which deletes short segments of the audio sig-
+nal. Since the models based on AfriHuBERT performed better
+than the models based on HuBERT147, we report in Table 7
+only the results reached by using AfriHuBERT as a speech
+encoder. We notice that AfriHuBERT-NLLB achieved better
+BLEU scores with data augmentation.
+6. Conclusion
+This work brings a significant advance for Fongbe speech pro-
+cessing and highlights several avenues of future exploration. By
+extending an existing dataset to 61 hours of high-quality audio
+and aligned text, we offer the research community a unique and
+richer resource to build and evaluate speech technologies for
+Fongbe, a tonal and under-represented language. Our detailed
+experiments in both cascade and end-to-end Speech Translation
+reveal several important insights that can stimulate broader re-
+search in low-resource language technologies.
+Our best cascaded system (automatic speech recognition
+followed by machine translation) achieved a BLEU score of
+39.60. By comparison, the most effective end-to-end model
+reached a lower, yet still encouraging, BLEU score of 26.32
+when enhanced with data augmentation. This performance gap
+is likely due to the models’ handling of tonal information, which
+is only sparsely represented in the SSL speech encoder. Train-
+ing an ASR component specifically on this tonal language al-
+lows the system to capture tonal cues more accurately, thereby
+improving downstream translation quality.
+The expanded Fongbe corpus and our findings open several
+possibilities for further research. First, improvements to dia-
+critic substitution, by potentially using more granular markers
+that capture subtle tonal shifts, could reduce ASR errors while
+preserving key phonological cues for translation. Second, per-
+sonalized or speaker-adaptive speech translation models, possi-
+bly trained to handle specific dialectal variants, may substan-
+tially enhance intelligibility and translation fidelity.
+Finally,
+future self-supervised or multilingual pre-training efforts will
+benefit from explicitly including Fongbe data, leading to more
+robust encoder–decoder architectures for low-resource African
+languages.
+Overall, this work not only delivers the largest corpus of
+Fongbe audio currently available for speech recognition and
+translation, but also highlights data-collection strategies, mod-
+eling setups, and diacritic handling approaches that can be gen-
+eralized to other tonal, underrepresented languages. We release
+our dataset publicly to support further research3.
+3https://huggingface.co/datasets/GbeBenin/FFSTC-2
+4536
+
+7. References
+[1] C. Wang, H. Inaguma, P.-J. Chen, I. Kulikov, Y. Tang, W.-N. Hsu,
+M. Auli, and J. Pino, “Simple and effective unsupervised speech
+translation,” arXiv preprint arXiv:2210.10191, 2022.
+[2] D. Eberhard, G. Simons, and C. Fennig, Ethnologue: Languages
+of the World, 24th Edition, 02 2021.
+[3] I. Adebara and A. . a. Elmadany, “SERENGETI: Massively
+multilingual language models for Africa.”
+ACL, 2023. [Online].
+Available: https://aclanthology.org/2023.findings-acl.97
+[4] M. Bala, “© african literature and orality: A reading of ngugi wa
+thiang’o’s wizard of the crow 2007,” JOURNAL OF ENGLISH
+LANGUAGE AND LITERATURE, vol. 3, 03 2015.
+[5] F. A. A. LAleye, L. Besacier, E. C. Ezin, and C. Motamed, “First
+automatic fongbe continuous speech recognition system: Devel-
+opment of acoustic models and language models.”
+[6] D. F. Kponou, F. A. A. Laleye, and E. C. Ezin, “FFSTC: Fongbe to
+French speech translation corpus,” in LREC-COLING 2024, 2024.
+[7] M. Tachbelie, S. T. Abate, and L. Besacier.
+[8] E. Gauthier, L. Besacier, S. Voisin, M. Melese, and U. P. Elingui,
+“Collecting resources in sub-saharan african languages for auto-
+matic speech recognition: a case study of wolof,” LREC, 2016.
+[9] J. O. Alabi, X. Liu, D. Klakow, and J. Yamagishi, “Afrihubert:
+A self-supervised speech representation model for african
+languages,” 2024. [Online]. Available: https://arxiv.org/abs/2409.
+20201
+[10] M. Z. Boito and V. I. . al,
+“mhubert-147:
+A compact
+multilingual hubert model,” 2024. [Online]. Available:
+https:
+//arxiv.org/abs/2406.06371
+[11] A. Conneau, A. Baevski, R. Collobert, A. Mohamed, and
+M. Auli, “Unsupervised cross-lingual representation learning
+for speech recognition,”
+2020. [Online]. Available:
+https:
+//arxiv.org/abs/2006.13979
+[12] S. Bansal, H. Kamper, K. Livescu, A. Lopez, and S. Gold-
+water, “Pre-training on high-resource speech recognition im-
+proves low-resource speech-to-text translation,” arXiv preprint
+arXiv:1809.01431, 2018.
+[13] X. Li, C. Wang, Y. Tang, C. Tran, Y. Tang, J. Pino, A. Baevski,
+A. Conneau, and M. Auli, “Multilingual speech translation
+with efficient finetuning of pretrained models,” arXiv preprint
+arXiv:2010.12829, 2020.
+[14] M. C. Stoian, S. Bansal, and S. Goldwater, “Analyzing asr pre-
+training for low-resource speech-to-text translation,” in ICASSP
+2020-2020 IEEE International Conference on Acoustics, Speech
+and Signal Processing (ICASSP).
+IEEE, 2020, pp. 7909–7913.
+[15] B. B. Odoom, N. Robinson, E. Rippeth, L. Tavarez-Arce, K. Mur-
+ray, M. Wiesner, P. McNamee, P. Koehn, and K. Duh, “Can syn-
+thetic speech improve end-to-end conversational speech transla-
+tion?” in Proceedings of the 16th Conference of the Association
+for Machine Translation in the Americas (Volume 1: Research
+Track), 2024, pp. 167–177.
+[16] J. Mbuya and A. Anastasopoulos, “GMU systems for the IWSLT
+2023 dialect and low-resource speech translation tasks.” [Online].
+Available: https://aclanthology.org/2023.iwslt-1.24
+[17] M. Zanon Boito and J. . a. Ortega, “ON-TRAC consortium
+systems for the IWSLT 2022 dialect and low-resource speech
+translation tasks.”
+Dublin, Ireland (in-person and online):
+Association for Computational Linguistics. [Online]. Available:
+https://aclanthology.org/2022.iwslt-1.28
+[18] A. Vaswani, N. Shazeer, N. Parmar, J. Uszkoreit, L. Jones, A. N.
+Gomez, L. Kaiser, and I. Polosukhin, “Attention is all you need,”
+2023. [Online]. Available: https://arxiv.org/abs/1706.03762
+[19] D. F. Kponou, F. A. A. Laleye, and E. C. Ezin, “Systematic liter-
+ature review and bibliometric analysis of low-resource speech-to-
+text translation,” K. Arai, Ed.
+Cham: Springer Nature Switzer-
+land, pp. 379–398.
+[20] Y. Liu, J. Gu, N. Goyal, X. Li, S. Edunov, M. Ghazvinine-
+jad, M. Lewis, and L. Zettlemoyer, “Multilingual denoising
+pre-training for neural machine translation,” 2020. [Online].
+Available: https://arxiv.org/abs/2001.08210
+[21] N. Team, M. R. Costa-juss`a, and J. C. . al, “No language
+left behind: Scaling human-centered machine translation,” 2022.
+[Online]. Available: https://arxiv.org/abs/2207.04672
+[22] K. J. Gbaguidi, “Taxinomie et analyse des erreurs linguistiques
+des ´el`eves fonphones en apprentissage de franc¸ais : Pour une
+approche linguistique et pragmatique en didactique des langues,”
+Doctoral dissertation, EDP-UAC, 2009.
+[23] B. Caron, “Tone and intonation,” in Corpus-based Studies of
+Lesser-described Languages. The CorpAfroAs corpus of spoken
+AfroAsiatic languages, 2015.
+[24] Y. Xu, “Understanding tone from the perspective of production
+and perception,” Language and Linguistics, vol. 5, no. 4, pp. 757–
+797, 2004.
+[25] C. B. Gnangu`enon, “Analyse syntaxique et s´emantique de la
+langue ”fn” au b´enin en afrique de l’ouest,” Ph.D. dissertation,
+Universit´e Cergy-Pontoise, France, 2014.
+[26] R. Ardila, M. Branson, K. Davis, M. Henretty, M. Kohler,
+J. Meyer, R. Morais, L. Saunders, F. M. Tyers, and G. Weber,
+“Common voice: A massively-multilingual speech corpus,” 2020.
+[Online]. Available: https://arxiv.org/abs/1912.06670
+[27] K. Fortun´e,
+“Ayihoun.com,”
+2024,
+accessed:
+2024-12-16.
+[Online]. Available: https://ayihoun.com/
+[28] A. Laurent, S. Gahbiche, H. Nguyen, H. Elleuch, F. Bougares,
+A. Thiol, H. Riguidel, S. Mdhaffar, G. Laperri`ere, L. Maison
+et al., “On-trac consortium systems for the iwslt 2023 dialectal
+and low-resource speech translation tasks,” in Proceedings of the
+20th International Conference on Spoken Language Translation
+(IWSLT 2023), 2023, pp. 219–226.
+[29] A. Babu, C. Wang, A. Tjandra, and K. L. . al, “Xls-r: Self-
+supervised cross-lingual speech representation learning at scale,”
+2021. [Online]. Available: https://arxiv.org/abs/2111.09296
+[30] W.-N.
+Hsu,
+B.
+Bolte,
+and
+Y.-H.
+H.
+T.
+.
+al,
+“Hubert:
+Self-supervised
+speech
+representation
+learning
+by
+masked
+prediction of hidden units,” 2021. [Online]. Available: https:
+//arxiv.org/abs/2106.07447
+[31] J. O. Alabi, X. Liu, D. Klakow, and J. Yamagishi, “Afrihubert:
+A self-supervised speech representation model for african
+languages,” 2024. [Online]. Available: https://arxiv.org/abs/2409.
+20201
+[32] A. Baevski, H. Zhou, A. Mohamed, and M. Auli, “wav2vec
+2.0:
+A framework for self-supervised learning of speech
+representations,” 2020. [Online]. Available: https://arxiv.org/abs/
+2006.11477
+[33] J. Devlin, M.-W. Chang, K. Lee, and K. Toutanova, “Bert:
+Pre-training of deep bidirectional transformers for language
+understanding,” 2019. [Online]. Available: https://arxiv.org/abs/
+1810.04805
+[34] T. Kudo, “Sentencepiece: A simple and language independent
+subword tokenizer and detokenizer for neural text processing,”
+arXiv preprint arXiv:1808.06226, 2018.
+[35] S. M. Jain, “Hugging face.”
+Springer, 2022, pp. 51–67.
+4537
+

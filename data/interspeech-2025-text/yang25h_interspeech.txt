@@ -1,0 +1,777 @@
+Audiobox TTA-RAG: Improving Zero-Shot and Few-Shot Text-To-Audio
+with Retrieval-Augmented Generation
+Mu Yang1,†, Bowen Shi2, Matthew Le2, Wei-Ning Hsu2, Andros Tjandra2
+1Center for Robust Speech Systems (CRSS), University of Texas at Dallas, USA
+2Meta AI, USA
+mu.yang@utdallas.edu, androstj@meta.com
+Abstract
+This work focuses on improving Text-To-Audio (TTA) genera-
+tion on zero-shot and few-shot settings (i.e. generating unseen or
+uncommon audio events). Inspired by the success of Retrieval-
+Augmented Generation (RAG) in Large Language Models, we
+propose Audiobox TTA-RAG, a novel retrieval-augmented TTA
+approach based on Audiobox, a flow-matching audio generation
+model. Unlike the vanilla Audiobox TTA solution that generates
+audio conditioned on text only, we extend the TTA process by
+augmenting the conditioning input with both text and retrieved
+audio samples. Our retrieval method does not require the ex-
+ternal database to have labeled audio, offering more practical
+use cases. We show that the proposed model can effectively
+leverage the retrieved audio samples and significantly improve
+zero-shot and few-shot TTA performance, with large margins
+on multiple evaluation metrics, while maintaining the ability to
+generate semantically aligned audio for the in-domain setting.1
+Index Terms: Text-to-audio, Retrieval-augmented generation,
+Flow-matching, Diffusion
+1. Introduction
+Text-to-audio (TTA) synthesis is a task of generating audio given
+a textual description (e.g. bird chirping, car honking, etc.).
+Recently, generative models have significantly advanced the
+field. These include diffusion-based [1, 2, 3, 4, 5, 6, 7, 8] and
+autoregressive audio language model-based methods [9, 10, 11].
+One limitation of the current leading TTA methods is the
+generalization ability to few-shot and zero-shot scenarios. For
+few-shot TTA, as pointed out by [12], TTA models suffer from
+the long-tailed generation problem: due to data scarcity, the TTA
+models struggle to learn the text-to-audio distribution mapping
+for audio events that appear only a few times in the training set.
+For the more challenging zero-shot TTA, i.e. generating unseen
+audio events, the performance further degrades.
+To improve few-shot and zero-shot TTA performance, we
+extend the TTA process with Retrieval-Augmented Generation
+(RAG). RAG, originally proposed in Large Language Models
+(LLM) studies, has emerged as a promising approach to guiding
+LLMs to generate accurate, grounded responses [13, 14]. It aug-
+ments the input prompts by retrieving relevant information from
+external databases and provides the LLMs with more informative
+contexts, enhancing the performance on knowledge-intensive
+tasks [13, 14, 15, 16]. For zero-shot and few-shot TTA tasks, we
+hypothesize that RAG can also benefit TTA by extending the
+†Work done during an internship at Meta.
+1Audio samples are available at https://tta-rag-is25.
+github.io/
+conditioning input with retrieved relevant audio, which serve as
+supplementary “exemplars” contexts to guide the generation.
+We propose Audiobox TTA-RAG, a novel retrieval-
+augmented TTA approach based on Audiobox [1], a state-of-
+the-art audio generation model. In addition to the text descrip-
+tion, the inputs also include audio samples retrieved from an
+external database. Specifically, the retrieved audio samples are
+processed by a novel text-conditioned retrieval audio encoder
+which extracts acoustic information using the text description as
+the query. The final conditioning input for TTA is formed by con-
+catenating the encoder output with the text embedding. Unlike
+the vanilla TTA model where conditioning inputs only contain
+textual modality, the proposed TTA-RAG model provides both
+textual and acoustic modality as the conditioning context, of-
+fering rich and diverse grounding information. During training,
+we retrieve audio samples by performing audio-to-audio (A2A)
+matching to a large audio database using the target audio as
+query. During inference, since the target audio is unavailable, we
+perform text-to-audio (T2A) matching using the text description
+as query. Note that our approach does not require the external
+database to have labeled audio, thus unlocking the potential to
+retrieve “from wild” and offering more practical use cases. To
+evaluate the proposed model, we curated zero-shot and few-shot
+TTA test sets containing unseen or uncommon audio events in
+the training data. Our empirical results show that, training Au-
+diobox TTA-RAG on AudioCaps [17], with AudioSet [18] as
+the retrieval source, we can significantly improve zero-shot and
+few-shot TTA performance, with large margins on multiple eval-
+uation metrics. To summarize, this work makes the following
+contributions:
+• To evaluate zero-shot and few-shot TTA performance, we
+curated evaluation datasets that contain audio events that are
+unseen or uncommon in the training set.
+• We design a novel TTA-RAG model that can effectively re-
+trieve unlabeled audio and significantly improve zero-shot and
+few-shot TTA performance.
+• We retrieve audio using different retrieval methods and dif-
+ferent source databases during training and inference, and
+analyze their effects on the TTA performance.
+2. Related work
+Following the success of RAG on LLM-based text generation,
+RAG has also been extensively studied for text-to-image gener-
+ation [19, 20] or text-image multi-modal generation [21]. For
+audio tasks, only a limited number of prior works have investi-
+gated RAG. Xue et al. [22] applied a retrieval method to select
+text and audio prompts to enhance a prompt-based text-to-speech
+system. RECAP [23] focused on audio captioning. They aug-
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+1243
+10.21437/Interspeech.2025-1032
+
+Input Text
+Cross Attention
+Cross Attention
+Retrieval Audio Encoder
+Transformer layers
+...
+T5
+Encoder
++
+Encodec Feature Extractor
+Audio 2
+Audio K
+Audio 1
+...
+...
+...
+...
++
++
++
++
++
+(Rank Embeddings)
+(Positional Embeddings)
+(Encodec Features)
+Concat along time
+(Retrieved Audio Samples)
+K, V
+K, V
+Q
+Q
+Flow-Matching Model
+(Text Mod. Emb.) (Audio Mod. Emb.)
+Cross Attention
+Q
+...
+Cross Attention
+Q
+Cross Attention
+Q
+K, V
+K, V
+K, V
+(Sampled Noise from Prior)
+Transformer layers
+(Predicted Flow Gradient)
++
++
+(Target Audio)
+(Sampled from
+[0,1])
+(Masked Target Audio)
+Figure 1: The proposed Audiobox TTA-RAG framework. Grey blocks indicate pre-trained and frozen modules. The remaining modules
+are trained from scratch in an end-to-end manner.
+mented the conditioning input to an audio-captioning model
+with top-k captions from an external datastore using the audio
+as query and showed that such a retrieval-augmented captioning
+model has better performance for out-of-domain settings. [24]
+approached speech-based Question Answering using a speech re-
+triever, which retrieves relevant speech passages given a speech
+query. Conditioned on the retrieved audio passages, a speech-
+language model generates text responses, without the need to
+use a separate speech recognition model to transcribe the speech
+query. [25] proposed a retrieval-augmented approach for Anoma-
+lous Sound Detection, where the text caption of an anomalous
+sound, and k text captions of normal sounds are used to prompt
+GPT-4 to describe the difference between the anomalous sound
+and normal sounds.
+Our work is most similar to Re-AudioLDM [12], which
+leveraged both retrieved audio and the corresponding captions
+for TTA generation. Unlike Re-AudioLDM, our approach does
+not use the corresponding captions of the retrieved audio as the
+conditional inputs. The proposed TTA-RAG method does not
+require labeled retrieval sources, enabling us to query larger-
+scale unlabeled databases for more diverse samples.
+3. Method
+3.1. Curating Zero-shot and Few-shot Evaluation Set
+Our model is trained on AudioCaps [17] dataset, which contains
+a subset of audio in AudioSet [18] with human-annotated cap-
+tions. Since our main goal is to evaluate zero-shot and few-shot
+TTA performance, i.e. generating audio events that are unseen or
+uncommon in AudioCaps, we curate the zero-shot and few-shot
+evaluations set from AudioSet. AudioSet provides short text tags
+in a hierarchical ontology from abstract to specific. For example,
+an audio with a coo sound event may have the following tags:
+Animal →Wild animals →Pigeon,dove →Coo. We go through
+AudioSet audio and select those with leaf tags (most specific
+audio events) that do not appear (zero-shot) or appear less than
+3 times (few-shot) in AudioCaps. We ensure that the selected
+audio samples are not included in AudioCaps. Finally, we adopt
+Audio-Flamingo-generated [26] captions as input texts for our
+TTA evaluation. We end up with 5546 and 601 samples for
+zero-shot and few-shot set, respectively.
+3.2. Retrieval method
+Our goal is to retrieve audio samples as the additional context
+for the TTA process. During training, we perform audio-to-
+audio (A2A) retrieval. Specifically, we compute CLAP [27]
+audio embeddings of the target audio and the audio in the source
+database.2 Then we keep the top-k audio samples with the high-
+est embedding cosine similarities to the target audio. During
+inference, since the target audio is not available, we perform text-
+to-audio (T2A) retrieval, i.e. computing the cosine similarity
+between the input text embedding (given by the CLAP text en-
+coder) and source audio embeddings (given by the CLAP audio
+encoder). We investigated using T2A retrieval during training
+and found that the TTA performance is inferior to using A2A
+retrieval (see our analyses in Section 4.2). To avoid information
+leakage, we ensure that the target audio itself is excluded from
+the retrieval source.
+3.3. The Audiobox TTA-RAG Model
+The structure of the proposed Audiobox TTA-RAG is shown
+in Figure 1. Following [1], we feed the K retrieved audio
+samples to a pre-trained Encodec [28] encoder and extract the
+pre-quantization features f1, f2, ..., fK where fi ∈RTi×D, Ti
+denotes the time dimension of the i-th audio sample and D
+denotes the feature dimension. A positional embedding [29]
+pi ∈RTi×D is added individually to fi to encode the temporal
+information within each retrieved audio. Then, a rank embed-
+ding ri ∈RD (broadcasted along the time dimension) is further
+2We use the 630k-audioset-fusion-best checkpoint in https://
+github.com/LAION-AI/CLAP.
+1244
+
+Table 1: TTA performance on zero-shot and few-shot evaluation sets. Retrieval Number denotes the number of retrieved audio samples.
+Retrieval Setting describes the retrieval method (T2A or A2A matching) and retrieval data source (AC - AudioCaps; AS - AudioSet) used
+in training and inference.
+ID
+Evaluation
+Dataset
+Model
+Retrieval
+Number
+Retrieval Setting
+(Training)
+Retrieval Setting
+(Inference)
+IS ↑
+CLAP (%) ↑
+KL ↓
+FAD ↓
+1
+Zero-shot
+Audiobox TTA
+N/A
+N/A
+N/A
+4.95
+20.40
+3.83
+9.31
+2
+Audiobox TTA-RAG
+3
+T2A - AC
+T2A - AS
+5.32
+20.92
+3.80
+8.08
+3
+3
+A2A - AC
+T2A - AS
+5.33
+24.90
+3.49
+8.11
+4
+3
+T2A - AS
+T2A - AS
+5.45
+21.19
+3.74
+8.68
+5
+3
+A2A - AS
+T2A - AS
+5.63
+27.71
+3.02
+7.42
+6
+10
+A2A - AS
+T2A - AS
+5.58
+29.01
+3.08
+8.07
+7
+Few-shot
+Audiobox TTA
+N/A
+N/A
+N/A
+5.87
+23.98
+4.37
+2.70
+8
+Audiobox TTA-RAG
+3
+T2A - AC
+T2A - AS
+6.00
+23.75
+4.51
+2.94
+9
+3
+A2A - AC
+T2A - AS
+5.90
+28.64
+3.91
+2.36
+10
+3
+T2A - AS
+T2A - AS
+5.92
+24.79
+4.22
+2.85
+11
+3
+A2A - AS
+T2A - AS
+6.07
+30.12
+3.94
+2.31
+12
+10
+A2A - AS
+T2A - AS
+6.61
+31.92
+3.63
+2.69
+added to fi. The rank embeddings come from a learnable embed-
+ding matrix with K vectors, each denoting the rank information
+of an audio among all used retrieval samples. The final input to
+the Retrieval Audio Encoder z ∈R(
+PK
+i=1 Ti)×D is constructed
+by concatenating {fi + pi + ri}K
+i=1 along the time dimension.
+The Retrieval Audio Encoder takes two inputs, z and text
+embedding hT from a pre-trained T5-base encoder [30], where
+hT is used as queries to the cross attention layers to extract useful
+information from z. The output of the Retrieval Audio Encoder
+hA is concatenated with hT along time dimension. Two learn-
+able modality embeddings eT and eA (both broadcasted along
+time dimension) are added to hT and hA, respectively, forming
+the conditioning input to the Flow-Matching model. Compared
+to the original Audiobox TTA model [1], the additional hA con-
+tains acoustic information extracted from the retrieved audio
+samples conditioned on the input text. This allows the TTA-
+RAG model to effectively utilize the supplementary information
+to generate the target audio.
+The whole system is trained end-to-end, following the same
+Flow-Matching (FM) objective [31] in Audiobox [1]. Given
+a data sample x1 from the data distribution and a flow step t
+drawn from U[0, 1], a noisy version xt and its derivative vt =
+dxt/dt for a chosen conditional path is constructed. The FM
+model predicts vt given xt and t. During inference, we start
+from a sample x0 drawn from a prior distribution. An ordinary
+differential equation (ODE) solver estimates x1 using x0 and the
+derivatives given by the FM model.
+Specifically, let x1 denote the Encodec pre-quantization
+feature of an audio sample, and t ∼U[0, 1] denote a random
+uniformly sampled time step, with the Optimal Transport condi-
+tional path we construct
+xt = (1 −(1 −σmin)t)x0 + tx1
+(1)
+and
+vt = x1 −(1 −σmin)x0
+(2)
+where x0 is drawn from the prior distribution N(0, I) and σmin
+is a small value (10−5). The Flow-Matching model u minimizes
+Et,x1,x0||u(xt, t) −vt||2
+(3)
+During training, xt is concatenated with the partially or fully
+masked Encodec feature x1. During inference, x1 is set to a
+fully masked (blank) feature.
+4. Experiments
+4.1. Experimental Setup
+Datasets We train our models on the AudioCaps dataset [17],
+following the official train/dev/test splits. The training set con-
+tains 45k+ ~10-second audio samples and corresponding human-
+annotated captions. In addition, we also use AudioSet [18] as
+the retrieval source, which contains 1.8M+ ~10-second audio
+samples.3 Our models are trained on the AudioCaps training set,
+and evaluated on the AudioCaps test set, as well as our curated
+zero-shot and few-shot evaluation sets.
+Implementation Details The retrieval audio encoder consists of
+3 Transformer layers, with 16 heads, model dimension 1024 and
+feed-forward dimension 4096. Other configurations follow [1].
+We train the Audiobox TTA baseline on 16 GPUs, with a batch
+size of 15k tokens per GPU. Our proposed Audiobox TTA-RAG
+models use 3 or 10 retrieval audio samples, trained on 32 GPUs
+with a batch size of 8k and 5k tokens, respectively. All models
+are trained for 150k steps with 5k warm-up steps. We use Adam
+optimizer with a polynomial decay scheduler and a peak learning
+rate of 1e-4.
+Evaluation Metrics Following [12], we consider four evaluation
+metrics: Inception Score (IS), CLAP Score, Kullback-Leibler
+(KL) Divergence, and Frechet Audio Distance (FAD). IS is a
+reference-free measure that assigns higher scores for audio with
+higher variety. CLAP score computes cosine similarity between
+the output audio embedding and input text embedding, measur-
+ing the semantic alignment between audio and text. KL is an
+instance-level metric computing the divergence of the acoustic
+event posterior between the reference and the output. FAD mea-
+sures the distribution-level similarity between reference samples
+and generated samples.
+4.2. Performance on Zero-shot and Few-shot Evaluation Set
+Table 1 shows zero-shot (row 1-6) and few-shot (row 7-12)
+TTA performance for different model configurations. Zero-shot
+and few-shot settings focus on audio events that are unseen or
+uncommon in the AudioCaps training set, thus we only consider
+retrieving from AudioSet during inference. Since AudioSet does
+3The dataset used in this study was filtered to comply with several
+rules and restrictions.
+1245
+
+Table 2: TTA performance on AudioCaps test set. We also compare to the reported results from a RAG-based prior work [12].
+ID
+Model
+Retrieval
+Number
+Retrieval Setting
+(Training)
+Retrieval Setting
+(Inference)
+IS ↑
+CLAP (%) ↑
+KL ↓
+FAD ↓
+1
+AudioLDM-S [12]
+N/A
+N/A
+N/A
+6.48
+26.75
+1.63
+2.31
+2
+Re-AudioLDM-S [12]
+3
+T2T - AC (A+T)
+T2T - AC (A+T)
+7.31
+37.07
+1.27
+1.48
+3
+Re-AudioLDM-S [12]
+10
+T2T - AC (A+T)
+T2T - AC (A+T)
+7.33
+37.15
+1.23
+1.40
+4
+Audiobox TTA
+N/A
+N/A
+N/A
+9.34
+34.21
+1.31
+2.54
+5
+Audiobox TTA-RAG
+3
+T2T - AC (A+T)
+T2T - AC (A+T)
+9.41
+35.06
+1.37
+2.31
+6
+3
+A2A - AS
+T2T - AC
+8.72
+34.61
+1.29
+2.37
+7
+3
+A2A - AS
+T2A - AS
+8.05
+37.73
+1.63
+4.73
+8
+3
+A2A - AS
+T2A - AC
+8.40
+37.37
+1.44
+3.54
+9
+10
+A2A - AS
+T2T - AC
+9.16
+34.71
+1.33
+3.00
+10
+10
+A2A - AS
+T2A - AS
+8.21
+37.76
+1.83
+6.57
+11
+10
+A2A - AS
+T2A - AC
+8.92
+38.13
+1.53
+4.70
+not have human-annotated detailed captions, we perform text-
+to-audio retrieval (T2A - AS). We investigate different retrieval
+methods and data sources used in training.
+Impact of retrieval method Comparing T2A retrieval to A2A
+retrieval from the same data source (e.g. row 4 vs. row 5, row
+10 vs. row 11), we see that in general A2A retrieval outperforms
+T2A retrieval. This indicates that the retrieved audio used in
+training plays a major role in guiding the TTA-RAG model to
+learn how to effectively utilize the additional retrieval context.
+Our proposed TTA-RAG approach relies on a cross-attention-
+based retrieval audio encoder that aims to encode useful acoustic
+information conditioned on text. Intuitively, A2A matching
+retrieves audio samples that are more acoustically similar to the
+target audio. Hence, they may offer stronger supervision signals
+to the retrieval audio encoder, and thus may benefit its training.
+Impact of retrieval source and retrieval number From Table 1,
+we also observe that training on samples retrieved from AudioSet
+outperforms retrieving from AudioCaps (e.g. row 5 vs. row 3,
+row 11 vs. row 9), demonstrating the benefit of more diverse
+retrieved samples. Increasing the retrieval number from 3 to 10
+provides further improvements, especially for CLAP score. With
+RAG, we can significantly improve the TTA basleline by large
+margins on all metrics.
+4.3. Performance on AudioCaps Test Set
+Table 2 shows the TTA performance on the AudioCaps test set.
+We also include Re-AudioLDM [12], a RAG-based TTA model
+into the comparison (rows 1-3). Re-AudioLDM performs text-to-
+text (T2T) retrieval from AudioCaps and uses both the retrieval
+audio and the corresponding text captions as the conditioning
+inputs (denoted as T2T - AC (A+T)). Following the retrieval
+setting of Re-AudioLDM, we train an Audiobox TTA-RAG
+model with both retrieved audio and text (row 5), where we
+concatenate the Encodec features of the retrieved audio and T5-
+base features of their corresponding captions in an interleaving
+manner and feed into the encoder. With this retrieval setting,
+the TTA-RAG model moderately outperforms our TTA baseline
+on IS, CLAP and FAD scores (row 5 vs. row 4). Note that
+our Audiobox TTA baseline is significantly stronger than the
+AudioLDM TTA baseline, and the performance gap is not as
+large as in Re-AudioLDM (row 2 vs. row 1). However, Re-
+AudioLDM retrieves labeled audio and requires both audio and
+their captions as conditional inputs during generation. On the
+other hand, our proposed TTA-RAG approach can retrieve from
+unlabeled audio databases. In addition to the input text, only
+retrieved audio samples are included as conditional inputs. Our
+approach does not require the corresponding captions of the
+retrieved audio as the conditional inputs.
+In Section 4.2, we have seen that zero-shot and few-shot
+TTA performance can be significantly improved using retrieved
+audio. As an in-domain setting, we evaluate the best Audiobox
+TTA-RAG model (i.e. trained with A2A - AS retrieval) on
+AudioCaps test set, with different retrieval configurations at
+inference time (row 6-11). We find that in general there is a
+trade-off between CLAP score and KL and FAD: T2A retrieval
+leads to a significant CLAP score boost, at the cost of higher KL
+and FAD. We argue that a higher KL and FD does not necessarily
+mean bad audio quality. First, the high IS score suggests that the
+output audio is not noisy or silent. Second, KL and FAD measure
+the distribution distance between the target and generated audio.
+With retrieved audio as additional inputs, the output distribution
+can be shifted toward the retrieved audio and away from the
+target audio. One piece of evidence is that T2A - AC retrieval,
+which retrieves from the closer distribution of AudioCaps, leads
+to lower KL and FAD than T2A - AS retrieval. This suggests
+that the quality of retrieved samples is an important contributing
+factor to the output quality. Nevertheless, we argue that our
+proposed TTA-RAG model generates audio that semantically
+aligns with the input text, as shown by the high CLAP scores.
+5. Conclusion
+We have presented Audiobox TTA-RAG, a novel retrieval-
+augmented TTA approach. We showed that trained with the
+additional acoustic conditioning contexts from the A2A retrieval
+samples, Audiobox TTA-RAG significantly outperforms a strong
+TTA baseline in zero-shot and few-shot settings. For the in-
+domain setting, the proposed model can generate audio that is
+highly semantically aligned to the input text, as suggested by
+the significant improvement on CLAP scores. Our proposed
+method can retrieve from unlabeled audio data sources, offering
+more flexibility in practice and enabling large-scale retrieval on
+in-the-wild and unlabeled audio datasets. Through our extensive
+experiment, we demonstrated that our proposed model can ef-
+fectively utilize the retrieved audio samples and benefit practical
+use cases.
+1246
+
+6. References
+[1] A. Vyas, B. Shi, M. Le, A. Tjandra, Y.-C. Wu, B. Guo, J. Zhang,
+X. Zhang, R. Adkins, W. Ngan et al., “Audiobox: Unified au-
+dio generation with natural language prompts,” arXiv preprint
+arXiv:2312.15821, 2023.
+[2] D. Ghosal, N. Majumder, A. Mehrish, and S. Poria, “Text-to-audio
+generation using instruction-tuned llm and latent diffusion model,”
+arXiv preprint arXiv:2304.13731, 2023.
+[3] D. Yang, J. Yu, H. Wang, W. Wang, C. Weng, Y. Zou, and D. Yu,
+“Diffsound: Discrete diffusion model for text-to-sound generation,”
+IEEE/ACM Transactions on Audio, Speech, and Language Pro-
+cessing, vol. 31, pp. 1720–1733, 2023.
+[4] H. Liu, Z. Chen, Y. Yuan, X. Mei, X. Liu, D. Mandic, W. Wang,
+and M. D. Plumbley, “Audioldm: Text-to-audio generation with
+latent diffusion models,” in International Conference on Machine
+Learning.
+PMLR, 2023, pp. 21 450–21 474.
+[5] H. Liu, Y. Yuan, X. Liu, X. Mei, Q. Kong, Q. Tian, Y. Wang,
+W. Wang, Y. Wang, and M. D. Plumbley, “Audioldm 2: Learn-
+ing holistic audio generation with self-supervised pretraining,”
+IEEE/ACM Transactions on Audio, Speech, and Language Pro-
+cessing, 2024.
+[6] R. Huang, J. Huang, D. Yang, Y. Ren, L. Liu, M. Li, Z. Ye, J. Liu,
+X. Yin, and Z. Zhao, “Make-an-audio: Text-to-audio generation
+with prompt-enhanced diffusion models,” in International Confer-
+ence on Machine Learning.
+PMLR, 2023, pp. 13 916–13 932.
+[7] K. Saito, D. Kim, T. Shibuya, C.-H. Lai, Z. Zhong, Y. Takida,
+and Y. Mitsufuji, “Soundctm: Uniting score-based and con-
+sistency models for text-to-sound generation,” arXiv preprint
+arXiv:2405.18503, 2024.
+[8] X. Zhu, W. Tian, X. Wang, L. He, X. Wang, S. Zhao, and L. Xie,
+“Cosyaudio: Improving audio generation with confidence scores
+and synthetic captions,” arXiv preprint arXiv:2501.16761, 2025.
+[9] F. Kreuk, G. Synnaeve, A. Polyak, U. Singer, A. Défossez,
+J. Copet, D. Parikh, Y. Taigman, and Y. Adi, “Audiogen:
+Textually guided audio generation,” in The Eleventh International
+Conference on Learning Representations,
+2023. [Online].
+Available: https://openreview.net/forum?id=CYK7RfcOzQ4
+[10] D. Yang, J. Tian, X. Tan, R. Huang, S. Liu, X. Chang, J. Shi,
+S. Zhao, J. Bian, X. Wu et al., “Uniaudio: An audio founda-
+tion model toward universal audio generation,” arXiv preprint
+arXiv:2310.00704, 2023.
+[11] J. Copet, F. Kreuk, I. Gat, T. Remez, D. Kant, G. Syn-
+naeve,
+Y. Adi,
+and A. Defossez,
+“Simple and control-
+lable music generation,” in Advances in Neural Information
+Processing Systems,
+A. Oh,
+T. Naumann,
+A. Globerson,
+K. Saenko, M. Hardt, and S. Levine, Eds., vol. 36.
+Curran
+Associates, Inc., 2023, pp. 47 704–47 720. [Online]. Avail-
+able: https://proceedings.neurips.cc/paper_files/paper/2023/file/
+94b472a1842cd7c56dcb125fb2765fbd-Paper-Conference.pdf
+[12] Y. Yuan, H. Liu, X. Liu, Q. Huang, M. D. Plumbley, and W. Wang,
+“Retrieval-augmented text-to-audio generation,” in ICASSP 2024-
+2024 IEEE International Conference on Acoustics, Speech and
+Signal Processing (ICASSP).
+IEEE, 2024, pp. 581–585.
+[13] K. Guu, K. Lee, Z. Tung, P. Pasupat, and M. Chang, “Retrieval aug-
+mented language model pre-training,” in International conference
+on machine learning.
+PMLR, 2020, pp. 3929–3938.
+[14] P. Lewis, E. Perez, A. Piktus, F. Petroni, V. Karpukhin, N. Goyal,
+H. Küttler, M. Lewis, W.-t. Yih, T. Rocktäschel et al., “Retrieval-
+augmented generation for knowledge-intensive nlp tasks,” Ad-
+vances in Neural Information Processing Systems, vol. 33, pp.
+9459–9474, 2020.
+[15] A. Asai, M. Gardner, and H. Hajishirzi, “Evidentiality-guided gen-
+eration for knowledge-intensive nlp tasks,” in Proceedings of the
+2022 Conference of the North American Chapter of the Association
+for Computational Linguistics: Human Language Technologies,
+2022, pp. 2226–2243.
+[16] M. Glass, G. Rossiello, M. F. M. Chowdhury, and A. Gliozzo,
+“Robust retrieval augmented generation for zero-shot slot filling,”
+in Proceedings of the 2021 Conference on Empirical Methods in
+Natural Language Processing, 2021, pp. 1939–1949.
+[17] C. D. Kim, B. Kim, H. Lee, and G. Kim, “Audiocaps: Generat-
+ing captions for audios in the wild,” in Proceedings of the 2019
+Conference of the North American Chapter of the Association
+for Computational Linguistics: Human Language Technologies,
+Volume 1 (Long and Short Papers), 2019, pp. 119–132.
+[18] J. F. Gemmeke, D. P. Ellis, D. Freedman, A. Jansen, W. Lawrence,
+R. C. Moore, M. Plakal, and M. Ritter, “Audio set: An ontology
+and human-labeled dataset for audio events,” in 2017 IEEE inter-
+national conference on acoustics, speech and signal processing
+(ICASSP).
+IEEE, 2017, pp. 776–780.
+[19] A. Blattmann, R. Rombach, K. Oktay, J. Müller, and B. Ommer,
+“Retrieval-augmented diffusion models,” Advances in Neural Infor-
+mation Processing Systems, vol. 35, pp. 15 309–15 324, 2022.
+[20] S. Sheynin, O. Ashual, A. Polyak, U. Singer, O. Gafni,
+E. Nachmani,
+and Y. Taigman,
+“kNN-diffusion:
+Image
+generation via large-scale retrieval,” in The Eleventh International
+Conference on Learning Representations,
+2023. [Online].
+Available: https://openreview.net/forum?id=x5mtJD2ovc
+[21] M. Yasunaga, A. Aghajanyan, W. Shi, R. James, J. Leskovec,
+P. Liang, M. Lewis, L. Zettlemoyer, and W.-T. Yih, “Retrieval-
+augmented multimodal language modeling,” in International Con-
+ference on Machine Learning.
+PMLR, 2023, pp. 39 755–39 769.
+[22] J. Xue, Y. Deng, Y. Gao, and Y. Li, “Retrieval augmented genera-
+tion in prompt-based text-to-speech synthesis with context-aware
+contrastive language-audio pretraining,” in Interspeech 2024, 2024,
+pp. 1800–1804.
+[23] S. Ghosh, S. Kumar, C. K. R. Evuru, R. Duraiswami, and
+D. Manocha, “Recap: retrieval-augmented audio captioning,” in
+ICASSP 2024-2024 IEEE International Conference on Acoustics,
+Speech and Signal Processing (ICASSP).
+IEEE, 2024, pp. 1161–
+1165.
+[24] D. J. Min, K. Mundnich, A. Lapastora, E. Soltanmohammadi,
+S. Ronanki, and K. Han, “Speech retrieval-augmented gener-
+ation without automatic speech recognition,” arXiv preprint
+arXiv:2412.16500, 2024.
+[25] R. Ogura, T. Nishida, and Y. Kawaguchi, “Retrieval-augmented
+approach for unsupervised anomalous sound detection and cap-
+tioning without model training,” arXiv preprint arXiv:2410.22056,
+2024.
+[26] Z. Kong, A. Goel, R. Badlani, W. Ping, R. Valle, and B. Catanzaro,
+“Audio flamingo: A novel audio language model with few-shot
+learning and dialogue abilities,” arXiv preprint arXiv:2402.01831,
+2024.
+[27] Y. Wu, K. Chen, T. Zhang, Y. Hui, T. Berg-Kirkpatrick, and S. Dub-
+nov, “Large-scale contrastive language-audio pretraining with fea-
+ture fusion and keyword-to-caption augmentation,” in ICASSP
+2023-2023 IEEE International Conference on Acoustics, Speech
+and Signal Processing (ICASSP).
+IEEE, 2023, pp. 1–5.
+[28] A. Défossez, J. Copet, G. Synnaeve, and Y. Adi, “High fidelity neu-
+ral audio compression,” arXiv preprint arXiv:2210.13438, 2022.
+[29] A. Vaswani, “Attention is all you need,” Advances in Neural Infor-
+mation Processing Systems, 2017.
+[30] C. Raffel, N. Shazeer, A. Roberts, K. Lee, S. Narang, M. Matena,
+Y. Zhou, W. Li, and P. J. Liu, “Exploring the limits of transfer learn-
+ing with a unified text-to-text transformer,” Journal of machine
+learning research, vol. 21, no. 140, pp. 1–67, 2020.
+[31] Y. Lipman, R. T. Q. Chen, H. Ben-Hamu, M. Nickel, and
+M. Le, “Flow matching for generative modeling,” in The
+Eleventh International Conference on Learning Representations,
+2023. [Online]. Available:
+https://openreview.net/forum?id=
+PqvMRDCJT9t
+1247

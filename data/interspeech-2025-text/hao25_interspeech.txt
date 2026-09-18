@@ -1,0 +1,898 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+L3C-DeepMFC: Low-Latency Low-Complexity Deep Marginal Feedback
+Cancellation with Closed-Loop Fine Tuning for Hearing Aids
+Fengyuan Hao1,2, Brian C. J. Moore3, Huiyong Zhang1,2, Xiaodong Li1,2, Chengshi Zheng1,2
+1Laboratory of Noise and Audio Research, Institute of Acoustics, Chinese Academy of Sciences,
+Beijing, China
+2University of Chinese Academy of Sciences, Beijing, China
+3Cambridge Hearing Group, Department of Psychology, University of Cambridge, Cambridge, UK
+cszheng@mail.ioa.ac.cn
+Abstract
+Feedback control in hearing aids mitigates acoustic feed-
+back caused by the coupling between the receiver and micro-
+phone.
+While DNN-based methods have achieved progress,
+they remain computationally intensive with relatively high la-
+tency. This paper introduces L3C-DeepMFC, a low-latency and
+low-complexity time-frequency (T-F) domain method that em-
+ploys complex spectrum mapping to estimate the magnitude and
+phase components of the desired speech. This method inte-
+grates full- and sub-band recurrent modeling to capture spectro-
+temporal patterns and modifies the overlap-add method for low-
+latency processing. Moreover, we utilize closed-loop fine tun-
+ing with dynamically generated feedback mixtures to minimize
+the mismatch between training and estimation.
+Evaluations
+using the AISHELL-3 dataset confirm its competitive perfor-
+mance across various gains, significantly improving the maxi-
+mum stable gain (MSG). Integration with traditional methods
+shows better performance of feedback suppression.
+Index Terms:
+Deep marginal feedback cancellation, low-
+latency, low-complexity, deep learning, hearing aid
+1. Introduction
+Acoustic feedback arises due to the coupling between the re-
+ceiver and microphone in local sound reinforcement systems
+such as hearing aids [1], where an amplified sound reproduced
+by the receiver is unintentionally captured by the microphone
+and subsequently reamplified [2], as illustrated in Fig. 1(a).
+This self-reinforcing phenomenon often leads to an unpleas-
+ant noise known as acoustic howling when the amplified gain
+is greater the maximum stable gain (MSG). Without effec-
+tive feedback control, hearing aids may struggle to provide
+the necessary amplification prescribed by standard fitting meth-
+ods [3, 4], especially for low-level speech. This shortcoming
+negatively affects both speech quality and intelligibility for in-
+dividuals with hearing loss [5].
+One technique for feedback control is frequency shifting
+(FS) [6], which is applied to the microphone signal before am-
+plification and transmission to the receiver. However, while FS
+smooths the closed-loop response in hearing aids, it inevitably
+introduces speech distortions [7], imposing inherent limitations
+on its effectiveness. Beyond the evident applicability of phase-
+modulation techniques, one of the most straightforward strate-
+gies for feedback control is to automatically reduce the gain at
+frequencies where the MSG is lowest [8]. This method requires
+an effective howling detection method to determine these crit-
+ical frequencies. Since howling components typically occur at
+only a few frequencies [9], notch filtering [10] can be intro-
+Chengshi Zheng is the corresponding author.
+Figure 1: (a) Internal structure of signal formulation. (b) Inter-
+nal structure of closed-loop estimation.
+duced to selectively suppress these frequencies, causing only
+limited degradation in speech quality [11]. While the above-
+mentioned methods have led to improved feedback control, they
+achieve only modest increases in MSG [6, 7] and are not effec-
+tive when very high gains are required.
+Adaptive feedback cancellation (AFC) is recognized for
+its theoretical potential to eliminate acoustic feedback com-
+pletely [12, 13]. In practical applications, AFC estimates the
+feedback path to predict and subtract unwanted components in
+the received signal. To mitigate biased estimation caused by the
+high correlation between the receiver and microphone signals,
+various decorrelation techniques, such as addition of a low-level
+noise [14], FS [15] and the prediction error method (PEM) [16],
+have been integrated into AFC. The Neural-AFC [17, 18] and
+NeuralKalmanAHS [19] methods function as DNN-based step-
+size controllers to strike a balance between convergence speed
+and steady-state error, achieving state-of-the-art (SOTA) perfor-
+mance across multiple benchmarks. DeepMFC [20] employs
+complex spectrum mapping [21] to mitigate degradations in
+sound quality that occur for systems with gain only a little be-
+low the MSG. DeepMFC and its extensions [20, 22, 23] treat
+feedback cancellation as an interference suppression task, train-
+ing models in an open-loop manner, while using the pre-trained
+model in closed loop. Despite the significant progress that has
+been achieved by current DNN-based methods, most of these
+methods remain computationally intensive and introduce sig-
+nificant latency, which limits their practical application in low-
+resource systems requiring low latency, such as hearing aids.
+In this paper, we propose a DNN-based time-frequency (T-
+F) domain method termed L3C-DeepMFC for Low-Latency
+Low-Complexity
+Deep
+Marginal
+Feedback
+Cancellation,
+which employs complex spectrum mapping to directly esti-
+mate the magnitude and phase components of feedback-free
+speech. This method incorporates both full- and sub-band re-
+current modeling to effectively capture spectro-temporal pat-
+terns, achieving a significant reduction in computational com-
+plexity while maintaining strong performance. Additionally, the
+overlap-add method has been modified for real-time process-
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+838
+10.21437/Interspeech.2025-1111
+
+Figure 2: Internal structure of L3C-DeepMFC, featuring a speech encoder, full- and sub-band recurrent modeling, and speech decoder.
+ing, resulting in an overall algorithmic latency of only 4 ms
+when ignoring the estimation time. To mitigate discrepancies
+between training and estimation, as observed in DeepMFC [20],
+we implement closed-loop fine tuning and dynamically generate
+paired mixtures with marginal feedback. Experimental evalua-
+tions using the AISHELL-3 [24] dataset confirmed that the pro-
+posed method achieves competitive performance across various
+gain levels and significantly improves the MSG of hearing aids.
+Moreover, integrating the proposed method with AFC further
+enhances overall feedback suppression.
+2. Signal Formulation
+As illustrated in Fig. 1(a), the amplified sound u[t] sent to the
+receiver is inadvertently captured by the microphone and sub-
+jected to repeated amplification. The microphone signal y[t]
+can be mathematically expressed as:
+y[t] = v[t] + u[t] ∗f[t] + n[t],
+(1)
+where, v[t], f[t] and n[t] are the desired speech, feedback path
+and environmental noise, respectively, t denotes the time index,
+and ∗denotes linear convolution. For hearing aids, the amplifi-
+cation process follows the formulation: g[t] = G · δ (t −∆t),
+where G denotes the gain, ∆t denotes the system delay that
+contains both algorithmic delay and hardware intrinsic delay,
+and δ(•) denotes the Dirichlet function. With appropriate sup-
+pression of feedback and noise, the desired receiver signal s[t]
+is s[t] = G · v [t −∆t], which serves as the training target for
+L3C-DeepMFC.
+3. Methodology
+The goal was to employ complex spectrum mapping to directly
+estimate the magnitude and phase components of amplified and
+delayed feedback-free speech in the T-F domain, formulated as:
+(cos ∠ˆS, sin ∠ˆS, log | ˆS|) = G(cos ∠U, sin ∠U, log |U|; Φ),
+(2)
+where ˆS and U are the complex spectra of the estimated speech
+and amplified speech, respectively, | • | and ∠• extract the
+magnitude and phase components of the complex spectrum,
+and G(•; Φ) is a trainable transformation with parameters Φ.
+The internal structure of L3C-DeepMFC is illustrated in Fig. 2.
+Unlike [20], in which two parallel decoders are employed for
+real and imaginary (RI) components, the proposed method in-
+tegrates gain-shape representations [25] to decouple the magni-
+tude and phase components, covering a broader dynamic range.
+Comprising three essential components, the proposed method
+begins with a speech encoder that computes D-dimensional fea-
+ture representations for each T-F unit.
+This is implemented
+through a linear layer, PReLU, and instant layer normaliza-
+tion [26]. After that, an I-layer full- and sub-band recurrent
+module is employed to effectively capture spectro-temporal de-
+pendencies to predict the feedback-free speech. Finally, a linear
+layer acts as the speech decoder, reconstructing the processed
+signal in the T-F domain.
+3.1. T-F Band-Split Modeling
+The full- and sub-band recurrent module extends the speech
+enhancement block from [27] by incorporating the gain-shape
+representation from Eq. (2) as input. Due to the high computa-
+tional complexity of DeepMFC with fully convolutional mod-
+eling [28], which is impractical for low-complexity scenarios,
+we introduce a full- and sub-band recurrent modeling frame-
+work inspired by [29]. As depicted in Fig. 2, this framework
+consists of a sub-band recurrent module and a full-band recur-
+rent module. By progressively refining the speech features, this
+framework facilitates effective feedback control.
+In the sub-band recurrent module, the input features Ri ∈
+RD×T ×F in the ith block are first processed by a linear layer
+to generate a C-dimensional representation. Zero-padding and
+normalization are applied before partitioning the features into
+non-overlapping frequency groups, each with a group size L.
+These resulting features Qi are then split into
+ F
+L
+
+distinct se-
+quences of length T, where ⌈•⌉denotes the ceiling operation.
+To capture the temporal dependencies within each sub-band, a
+single-layer LSTM is introduced as follows:
+Ui[:, :, b] = LSTM (Qi [:, :, b]) ∈RH×T ,
+(3)
+where b ∈
+
+1, · · · ,
+ F
+L
+
+denotes the band index, and H is
+the number of LSTM hidden units. This same LSTM is shared
+across all sub-bands to minimize the number of parameters. Ad-
+justing L allows us to control the number of sub-bands, which
+directly affects computational complexity. Subsequently, a lin-
+ear layer is applied to the LSTM output, and the final output
+Zi ∈RD×T ×F is obtained. Unlike [27], which models band-
+level spectral information, the proposed method simplifies the
+839
+
+Figure 3: (a) Internal structure of low-latency overlap-add
+method. (b) Internal structure of tapered window.
+process by ignoring inter-bands dependencies, leading to a re-
+duction in computational complexity.
+The full-band recurrent module is engineered to capture
+global full-band information, addressing the limitations of pre-
+vious modules that focus on local band-level information. This
+is achieved by computing frame-level features from the T-F fea-
+tures within each frame, followed by the application of a group-
+LSTM (GLSTM) [28] to obtain long-range contextual informa-
+tion, as illustrated in Fig. 2(e). To facilitate efficient streaming-
+estimation processing, only a limited number of the hidden and
+cell states are utilized in the LSTMs, minimizing the buffer size
+requirement and making it more practical for real-time imple-
+mentation. By leveraging iterative information transformation
+through both full- and sub-band modeling, the proposed method
+demonstrates robust performance for systems operating close to
+the limits of stability.
+3.2. Low-Latency Overlap-Add Method
+To reconstruct continuous speech in the time domain, existing
+T-F methods [20, 22, 23] rely on the overlap-add method, where
+the latency is influenced by the window length, posing a chal-
+lenge for low-latency applications like hearing aids. To over-
+come this, we use a tapered window [30] as the analysis window
+wa[t], which helps to reduce discontinuities in the reconstructed
+speech.
+Additionally, we modify the traditional overlap-add
+method to synthesize the signals using only the current and next
+frames, as illustrated in Fig. 3(a). The synthesis procedure is
+described as:
+ˆs[M + (k −1)N + t] = w(1)
+s [t] · ˆsw[t + M −N, k]
++ w(2)
+s [t] · ˆsw[t + M −2N, k + 1],
+(4)
+where t ∈[1, · · · , N], ˆsw denotes frame-wise output speech
+that corresponds to the time-domain representation of
+ˆS,
+w(1)
+s [t] = wa[M −N : M] and w(2)
+s [t] = (wa[1 : N])2 are
+synthesis windows, M and N denote frame size and shift, and
+k denotes the frame index. By adjusting N, the latency of the
+proposed method can be decreased, the total algorithm delay
+being twice the window shift.
+3.3. Closed-Loop Fine Tuning
+DeepMFC [20] is trained using simulated mixtures with
+marginal feedback, but the closed-loop estimation, as illustrated
+in Fig. 1(b), may result in suboptimal performance due to two
+discrepancies between open-loop training and closed-loop esti-
+mation. First, in this closed-loop process, we update the corre-
+sponding frame buffer based on the output of each frame during
+the overlap-add stage. Second, by applying feedback conceal-
+ment, we eliminate acoustic coupling entirely, ensuring that the
+received signal consists only of the feedback signal from the
+Figure 4: Magnitude and phase responses of Set A.
+current frame and the desired speech. To alleviate this, we per-
+form closed-loop fine tuning using a simulated hearing aid sys-
+tem, which leads to a noticeable increase in MSG.
+3.4. Loss Function
+To ensure that L3C-DeepMFC effectively enhances the target
+speech quality, we consider the mean square error (MSE) loss
+for both the complex spectrum and magnitude spectrum [31],
+which leads to improved results using perceptual metrics. The
+final loss function is formulated as follows:
+LMag+RI = 0.5 · LMag( ˆS′, S) + 0.5 · LRI( ˆS′, S),
+(5)
+LMag( ˆS′, S) =
+
+
+
+| ˆS′| −|S|
+
+
+
+2
+F ,
+(6)
+LRI( ˆS′, S) =
+
+
+
+ ˆS′
+r −Sr
+
+
+
+2
+F +
+
+
+
+ ˆS′
+i −Si
+
+
+
+2
+F ,
+(7)
+where ∥•∥F represents the Frobenius norm, and subscripts
+{r, i} denote the RI components. After obtaining time-domain
+feedback-free speech, both ˆS′ and S are compressed complex
+spectra of the estimated speech and target speech, derived using
+the Hanning window [32], which can reduce estimation errors
+due to spectral leakage from the tapered window.
+4. Experimental Setup
+4.1. Dataset Preparation
+For fair comparisons, we evaluated the performance of the pro-
+posed method using simulated hearing aid systems. The clean
+Mandarin speech signals were taken from the AISHELL-3 [24]
+dataset, while environmental noises were taken from the DNS
+Challenge [33] dataset.
+The feedback path simulation fol-
+lowed [20], and both datasets were resampled to 24 kHz. To
+speed up convergence, we first trained the models based on sim-
+ulated mixtures with marginal feedback, followed by fine tuning
+with a larger gain in a closed-loop system. The training mix-
+tures covered signal-to-noise ratios (SNR) from 5 dB to 20 dB.
+During the estimation phase, we simulated 150 mixtures for ob-
+jective evaluation in the simulated hearing aid systems, without
+any background noises. Two benchmarks were used for com-
+parison: Set-A, which included a real measured feedback path,
+with the magnitude and phase response shown in Fig. 4, and
+Set-B, which was randomly sampled from 420 feedback paths
+in [34]. The configurations for estimation were mainly aligned
+with those in [20].
+4.2. Configuration
+By default, we set the window size M to 20 ms, hop size N to
+2 ms and the fast Fourier transform (FFT) size to 480, leading
+to an overall algorithmic latency of 4 ms, as detailed in Sec-
+tion 3.2. For real-time processing, we set I = 3, D = 8,
+C = 8, L = 4, and H = 16. We compressed 8 neighbour-
+ing T-F bins into 4 dimensions to compute frame-level features.
+840
+
+Table 1: Quantitative comparisons with baselines in terms of WB-PESQ and HASQI-V2 based on the AISHELL-3 dataset. The best
+result is highlighted in bold, the second best result is underlined, and “-” indicates system instability in each case.
+Gain Margin (dB)
+WB-PESQ
+HASQI-V2
+-14
+-12
+-10
+-8
+-6
+-4
+-2
+0
+-14
+-12
+-10
+-8
+-6
+-4
+-2
+0
+Set A
+Mixture
+-
+-
+-
+-
+-
+-
+-
+2.88
+-
+-
+-
+-
+-
+-
+-
+0.797
+FS
+-
+-
+-
+-
+-
+-
+-
+1.73
+-
+-
+-
+-
+-
+-
+-
+0.411
+AFC
+-
+-
+-
+3.86
+4.14
+4.26
+4.32
+4.36
+-
+-
+-
+0.770
+0.823
+0.857
+0.880
+0.897
+L3C-DeepMFC
+2.18
+2.35
+2.52
+2.80
+2.96
+3.20
+3.79
+4.08
+0.655
+0.687
+0.702
+0.714
+0.716
+0.757
+0.870
+0.913
+AFC+FS
+-
+1.29
+1.67
+1.92
+2.09
+2.20
+2.27
+2.32
+-
+0.206
+0.437
+0.508
+0.545
+0.563
+0.572
+0.578
+AFC+L3C-DeepMFC
+1.90
+2.62
+3.39
+3.80
+3.96
+4.02
+4.04
+4.04
+0.498
+0.635
+0.751
+0.811
+0.847
+0.870
+0.885
+0.894
+Set B
+Mixture
+-
+-
+-
+-
+-
+-
+-
+2.38
+-
+-
+-
+-
+-
+-
+-
+0.645
+FS
+-
+-
+-
+-
+-
+-
+-
+1.53
+-
+-
+-
+-
+-
+-
+-
+0.393
+AFC
+-
+-
+-
+4.01
+4.07
+4.13
+4.19
+4.26
+-
+-
+-
+0.831
+0.847
+0.862
+0.876
+0.890
+L3C-DeepMFC
+2.28
+2.36
+2.53
+2.79
+3.23
+3.78
+4.01
+4.00
+0.707
+0.710
+0.705
+0.725
+0.800
+0.886
+0.918
+0.924
+AFC+FS
+-
+-
+-
+2.28
+2.32
+2.34
+2.36
+2.37
+-
+-
+-
+0.571
+0.577
+0.580
+0.582
+0.583
+AFC+L3C-DeepMFC
+3.78
+3.89
+3.94
+3.96
+3.97
+3.96
+3.94
+3.90
+0.800
+0.830
+0.849
+0.862
+0.872
+0.878
+0.882
+0.884
+Table 2: Objective results of ablation studies based on Set A of the AISHELL-3 dataset.
+Method
+Latency
+(ms)
+Window in
+Eq. (5)
+Closed-
+Loop
+Param.
+(M)
+MACs
+(G/s)
+Gain Margin (dB)
+WB-PESQ
+HASQI-V2
+-15
+-10
+-5
+0
+5
+-15
+-10
+-5
+0
+5
+DeepMFC [20]
+2.78
+3.14
+3.12
+3.15
+3.12
+0.670
+0.769
+0.785
+0.795
+0.792
+AFC+DeepMFC [20]
+10
+Tapered
+%
+9.83
+4.83
+3.16
+3.14
+3.13
+3.15
+3.12
+0.745
+0.767
+0.784
+0.795
+0.791
+DeepMFC
+4
+Tapered
+%
+9.83
+12.04
+1.54
+1.83
+1.88
+1.93
+2.03
+0.369
+0.518
+0.541
+0.552
+0.564
+AFC+DeepMFC
+1.79
+1.84
+1.88
+1.93
+2.03
+0.468
+0.515
+0.540
+0.552
+0.564
+DeepMFC
+4
+Hanning
+%
+9.83
+12.04
+2.18
+2.96
+3.21
+4.34
+4.29
+0.648
+0.776
+0.767
+0.947
+0.958
+AFC+DeepMFC
+2.13
+3.70
+4.22
+4.27
+4.23
+0.481
+0.773
+0.877
+0.914
+0.925
+L3C-DeepMFC
+4
+Hanning
+"
+0.31
+0.43
+2.06
+2.52
+3.06
+4.08
+3.99
+0.622
+0.702
+0.729
+0.913
+0.934
+AFC+L3C-DeepMFC
+1.64
+3.39
+4.00
+4.04
+3.99
+0.422
+0.751
+0.860
+0.894
+0.903
+The GLSTM had a group size of 2 and 128 hidden units. The
+models were trained using the AdamW optimizer [35] for 50
+epochs, with an initial learning rate of 0.001, which was halved
+if the validation loss did not decrease over 2 consecutive epochs.
+Early stopping was applied after 4 epochs of no improvement.
+5. Results and Discussion
+To facilitate meaningful comparisons, we utilized two widely
+recognized objective metrics: wide-band perceptual evaluation
+of speech quality (WB-PESQ) [36] based on a 16-kHz band-
+width and hearing-aid speech quality index version 2 (HASQI-
+V2) [37] based on a 24-kHz bandwidth and assuming normal
+hearing. Higher values of these metrics correspond to better per-
+formance. We also measured the real-time factor (RTF) based
+on the C++ implementation for reference.
+Additionally, the
+number of multiply-accumulate (MAC) operations required for
+processing a 1-second mixture was evaluated in giga-operations
+per second (G/s), along with the number of trainable parame-
+ters, reported in millions (M).
+To evaluate the performance of the proposed method, we
+compared it with two traditional methods: FS [6] and PEM-
+based AFC [16], as well as combinations of various methods
+with DeepMFC [20]. Table 1 details the quantitative results in
+the simulated hearing aid systems. The gain margin is defined
+as the ratio of MSG to the current system gain [5], more neg-
+ative values indicating a greater benefit in terms of increases
+in MSG. To ensure fair comparison, the latency for all meth-
+ods was set to 4 ms. Although some traditional methods per-
+formed well, the proposed low-latency method achieved satis-
+factory HASQI-V2 metrics across different benchmarks while
+maintaining an exceptionally low computational complexity of
+0.43 G/s. While AFC methods that aim to minimize biased es-
+timation using decorrelation techniques are less effective when
+dealing with large gains, the proposed method maintains sys-
+tem stability even at high gains.
+The integration with AFC
+further improved feedback suppression performance while re-
+ducing residual artifacts that are present in the output of L3C-
+DeepMFC. Ablation studies based on Set A, as detailed in Ta-
+ble 2, reveal several critical points. First, reducing frame shift
+leads to an exponential increase in the computational complex-
+ity of DeepMFC. Second, directly applying a tapered window
+for MSE loss computation results in severe speech distortions
+due to spectral leakage.
+However, by incorporating closed-
+loop fine tuning, the proposed method achieves comparable per-
+formance to DeepMFC while maintaining computational effi-
+ciency, demonstrating its strong potential for feedback suppres-
+sion. The proposed method achieves an RTF of 0.623 and a
+buffer size of 25.9 kilobytes (KB), making it highly suitable for
+resource-limited processing.
+6. Conclusions
+This paper proposes L3C-DeepMFC, a low-latency and low-
+complexity T-F domain method for feedback control. By using
+T-F band-split modeling, it utilizes complex spectrum mapping
+to extract the magnitude and phase components of feedback-
+free speech. Additionally, the overlap-add method for recon-
+struction of the time-domain signal was modified to signifi-
+cantly reduce the algorithmic latency. To address discrepancies
+between training and estimation, we implemented closed-loop
+fine tuning and dynamically generated paired mixtures. Ex-
+perimental evaluations using simulation show that the proposed
+method achieves competitive performance for a wide range of
+gains and significantly improves the MSG of hearing aids. The
+integration with AFC further improves feedback suppression.
+841
+
+7. References
+[1] M. Siqueira and A. Alwan, “Steady-state analysis of continuous
+adaptation in acoustic feedback reduction systems for hearing-
+aids,” IEEE Transactions on Speech and Audio Processing, vol. 8,
+pp. 443–453, 2000.
+[2] T. van Waterschoot and M. Moonen, “Fifty years of acoustic feed-
+back control: State of the art and future challenges,” Proceedings
+of the IEEE, vol. 99, pp. 288–327, 2011.
+[3] G. Keidser, H. Dillon, M. Flax, T. Ching, and S. Brewer, “The
+NAL-NL2 prescription procedure,” Audiology Research, vol. 1,
+pp. 1–3, 2011.
+[4] B. C. J. Moore, B. R. Glasberg, and M. A. Stone, “Development
+of a new method for deriving initial fittings for hearing aids with
+multi-channel compression: CAMEQ2-HF,” International Jour-
+nal of Audiology, vol. 49, pp. 216–227, 2010.
+[5] C. Zheng, C. Xu, M. Wang, X. Li, and B. C. J. Moore, “Evalua-
+tion of deep marginal feedback cancellation for hearing aids using
+speech and music,” Trends in Hearing, vol. 27, pp. 1–19, 2023.
+[6] M. R. Schroeder, “Improvement of acoustic-feedback stability
+by frequency shifting,” The Journal of the Acoustical Society of
+America, vol. 36, pp. 1718–1724, 1964.
+[7] C. Zheng, C. Hofmann, X. Li, and W. Kellermann, “Analysis of
+additional stable gain by frequency shifting for acoustic feedback
+suppression using statistical room acoustics,” IEEE Signal Pro-
+cessing Letters, vol. 23, pp. 159–163, 2016.
+[8] E. T. Patronis, “Electronic detection of acoustic feedback and au-
+tomatic sound system gain control,” Journal of The Audio Engi-
+neering Society, vol. 26, pp. 323–326, 1978.
+[9] T. van Waterschoot and M. Moonen, “Comparative evaluation of
+howling detection criteria in notch-filter-based howling suppres-
+sion,” Journal of The Audio Engineering Society, vol. 58, pp. 923–
+940, 2010.
+[10] J. Foley, “Adaptive periodic noise cancellation for the control of
+acoustic howling,” IEE Colloquium on Adaptive Filters, vol. 1,
+pp. 1–4, 1989.
+[11] B. C. J. Moore and C.-T. Tan, “Perceived naturalness of spectrally
+distorted speech and music,” The Journal of the Acoustical Society
+of America, vol. 114, pp. 408–419, 2003.
+[12] D. Bustamante, T. Worrall, and M. Williamson, “Measurement
+and adaptive suppression of acoustic feedback in hearing aids,” in
+Proc. ICASSP, 1989, pp. 2017–2020.
+[13] J. Kates, “Feedback cancellation in hearing aids: results from a
+computer simulation,” IEEE Transactions on Signal Processing,
+vol. 39, pp. 553–562, 1991.
+[14] G. Schmidt and T. Haulick, “Signal processing for in-car com-
+munication systems,” Signal Processing, vol. 86, pp. 1307–1326,
+2006.
+[15] M. Guo, S. H. Jensen, J. Jensen, and S. L. Grant, “On the use of a
+phase modulation method for decorrelation in acoustic feedback
+cancellation,” in Proc. EUSIPCO, 2012, pp. 2000–2004.
+[16] A. Spriet, I. Proudler, M. Moonen, and J. Wouters, “Adaptive
+feedback cancellation in hearing aids with linear prediction of the
+desired signal,” IEEE Transactions on Signal Processing, vol. 53,
+pp. 3749–3763, 2005.
+[17] B. Soleimani, H. Schepker, and M. Mirbagheri, “Neural-AFC:
+Learning-based step-size control for adaptive feedback cancella-
+tion with closed-loop model training,” in Proc. ICASSP, 2023, pp.
+1–5.
+[18] X. Zhan, F. Hao, X. Li, and C. Zheng, “DeepPEM-AFC: An
+improved prediction-error-method-based adaptive feedback can-
+cellation with deep learning for hearing aids,” in Proc. ICASSP,
+2025, pp. 1–5.
+[19] H. Zhang, Y. Zhang, M. Yu, and D. Yu, “Enhanced acoustic howl-
+ing suppression via hybrid kalman filter and deep learning mod-
+els,” IEEE/ACM Transactions on Audio, Speech, and Language
+Processing, vol. 32, pp. 2828–2840, 2024.
+[20] C. Zheng, M. Wang, X. Li, and B. C. J. Moore, “A deep learning
+solution to the marginal stability problems of acoustic feedback
+systems for hearing aids,” The Journal of the Acoustical Society
+of America, vol. 152, pp. 3616–3634, 2022.
+[21] C. Zheng, H. Zhang, W. Liu, X. Luo, A. Li, X. Li, and B. C. J.
+Moore, “Sixty years of frequency-domain monaural speech en-
+hancement: From traditional to deep learning methods,” Trends in
+Hearing, vol. 27, pp. 1–52, 2023.
+[22] H. Zhang, M. Yu, and D. Yu, “Deep AHS: A deep learning ap-
+proach to acoustic howling suppression,” in Proc. ICASSP, 2023,
+pp. 1–5.
+[23] H. Gan, G. Luo, Y. Luo, and W. Luo, “Howling noise cancella-
+tion in time–frequency domain by deep neural networks,” in Proc.
+ICICT, 2022, pp. 319–332.
+[24] Y. Shi, H. Bu, X. Xu, S. Zhang, and M. Li, “AISHELL-3: A
+multi-speaker mandarin TTS corpus,” in Proc. Interspeech, 2021,
+pp. 2756–2760.
+[25] Y. Luo, J. Yu, H. Chen, R. Gu, and C. Weng, “Gull: A generative
+multifunctional audio codec,” arXiv preprint arXiv:2404.04947,
+2024.
+[26] Y. Luo and N. Mesgarani, “Conv-TasNet:
+Surpassing ideal
+time–frequency magnitude masking for speech separation,”
+IEEE/ACM Transactions on Audio, Speech, and Language Pro-
+cessing, vol. 27, pp. 1256–1266, 2019.
+[27] F. Hao, A. Li, X. Li, and C. Zheng, “DSINet: Towards real-time
+target speaker extraction with dynamic speaker information fu-
+sion,” in Proc. ICASSP, 2025, pp. 1–5.
+[28] K. Tan and D. Wang, “Learning complex spectral mapping with
+gated convolutional recurrent networks for monaural speech en-
+hancement,” IEEE/ACM Transactions on Audio, Speech, and Lan-
+guage Processing, vol. 28, pp. 380–390, 2020.
+[29] Z.-Q. Wang, S. Cornell, S. Choi, Y. Lee, B.-Y. Kim, and S. Watan-
+abe, “Neural speech enhancement with very low algorithmic la-
+tency and complexity via integrated full- and sub-band modeling,”
+in Proc. ICASSP, 2023, pp. 1–5.
+[30] R. Martin, D. Malah, R. V. Cox, and A. J. Accardi, “A noise reduc-
+tion preprocessor for mobile voice communication,” EURASIP
+Journal on Advances in Signal Processing, vol. 1, pp. 1–13, 2004.
+[31] A. Li, W. Liu, C. Zheng, C. Fan, and X. Li, “Two heads are bet-
+ter than one: A two-stage complex spectral mapping approach for
+monaural speech enhancement,” IEEE/ACM Transactions on Au-
+dio, Speech, and Language Processing, vol. 29, pp. 1829–1843,
+2021.
+[32] A. Li, C. Zheng, R. Peng, and X. Li, “On the importance of power
+compression and phase estimation in monaural speech dereverber-
+ation,” JASA Express Letters, vol. 1, pp. 1–6, 2021.
+[33] H. Dubey, A. Aazami, V. Gopal, B. Naderi, S. Braun, R. Cutler,
+A. Ju, M. Zohourian, M. Tang, M. Golestaneh, and R. Aichner,
+“ICASSP 2023 deep noise suppression challenge,” IEEE Open
+Journal of Signal Processing, vol. 5, pp. 725–737, 2024.
+[34] T. Sankowsky-Rothe, M. Blau, H. Schepker, and S. Doclo, “Re-
+ciprocal measurement of acoustic feedback paths in hearing aids,”
+The Journal of the Acoustical Society of America, vol. 138, pp.
+399–404, 2015.
+[35] I. Loshchilov and F. Hutter, “Decoupled weight decay regulariza-
+tion,” in Proc. ICLR, 2019, pp. 1–18.
+[36] A. Rix, J. Beerends, M. Hollier, and A. Hekstra, “Perceptual eval-
+uation of speech quality (PESQ) - a new method for speech quality
+assessment of telephone networks and codecs,” in Proc. ICASSP,
+2001, pp. 749–752.
+[37] J. M. Kates and K. H. Arehart, “The hearing-aid speech quality
+index (HASQI) version 2,” Journal of The Audio Engineering So-
+ciety, vol. 62, pp. 99–117, 2014.
+842
+

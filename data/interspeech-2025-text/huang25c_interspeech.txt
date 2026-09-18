@@ -1,0 +1,634 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+VoiceNoNG: Robust High-Quality Speech Editing Model without Hallucinations
+Sung-Feng Huang1,2, Heng-Cheng Kuo2,3, Zhehuai Chen1, Xuesong Yang1, Pin-Jui Ku1, Ante Juki´c1,
+Chao-Han Huck Yang1, Yu Tsao3, Yu-Chiang Frank Wang1, Hung-yi Lee2, Szu-Wei Fu1
+1Nvidia, Taiwan
+2Natinoal Taiwan University, Taiwan
+3Academia Sinica, Taiwan
+{sungfengh,szuweif}@nvidia.com
+Abstract
+Voicebox and VoiceCraft are the current most representative
+models for non-autoregressive and autoregressive speech editing,
+respectively. Although both of them can generate high-quality
+speech edits, we identify their limitations: Voicebox is not good
+at editing speech with background audio, while VoiceCraft suf-
+fers from the hallucination-like problem. To maintain speech
+quality for varying audio scenarios and address the hallucination
+issue, we introduce VoiceNoNG, which combines the strengths
+of both model frameworks. VoiceNoNG utilizes a latent flow-
+matching framework to model the pre-quantization features of a
+neural codec. The vector quantizer in the neural codec provides
+additional robustness against minor prediction errors from the
+editing model, which enables VoiceNoNG to achieve state-of-
+the-art performance in both objective and subjective evaluations
+under diverse audio conditions. Audio examples and ablations
+can be found on the demo page1 and supplementary material2.
+Index Terms: neural speech editing, flow-matching model,
+speech infilling
+1. Introduction
+In recent years, speech editing technology has rapidly gained
+prominence, offering substantial benefits across various domains.
+This technology enables users to seamlessly modify and en-
+hance audio recordings [1], addressing issues such as slips of
+the tongue, mispronunciations, or transient background noise.
+Consequently, YouTubers and filmmakers can edit their speeches
+without re-recording, significantly boosting productivity and re-
+ducing costs. Below we first introduce recent speech editing
+techniques, and then summarize the contributions of this paper.
+1.1. Speech editing techniques
+In the early stages of speech editing, the process primarily in-
+volved cut-and-paste techniques to replace the speech segments
+that needed to be changed with the target speech segments. How-
+ever, this approach often resulted in unnatural intonation and
+noticeable boundaries. Several works tried to address this issue
+with voice conversion and text-to-speech (TTS) techniques fol-
+lowed by manual manipulations with a user interface to ensure
+natural boundary transitions [2, 3]. Recently, as speech synthe-
+sis technology has become more advanced, methods for speech
+editing have generally been evolved into two main approaches:
+non-autoregressive speech infilling (inpainting) [4, 5, 6, 7, 8, 9],
+and autoregressive causal generation [10, 11, 12]. For the train-
+ing of speech editing models, the models take masked audio
+along with its transcript as input, and the goal is to recover the
+1https://jasonswfu.github.io/NoNG-IS-/
+2https://doi.org/10.5281/zenodo.15567613
+Figure 1: The input and output of speech editing models.
+masked segments. During inference, the segment to be modified
+is simply masked, and the edited speech is generated according
+to the new target transcript. Similar to speech synthesis, the
+sequential dependency of autoregressive generation often results
+in better speech quality, while the parallel generation of non-
+autoregressive speech editing models allows for significantly
+faster inference. An overview of the input and output of current
+speech editing models are shown in Figure 1.
+Among all these speech editing models, Voicebox [6]
+and VoiceCraft [12] are the two most representative non-
+autoregressive and autoregressive models respectively. Voicebox
+is a flow-matching-based generative speech model trained to
+perform speech infilling task by conditioning on both past and
+future audio contexts with text transcript, making Voicebox a
+versatile platform for various speech tasks, including zero-shot
+TTS synthesis, speech editing, transient noise removal, and style
+conversion. Furthermore, its flow-matching framework allows
+it to directly learn to transform noise distributions into audio
+data distributions, leading to more stable training, better gener-
+alization, and faster sample generation compared to traditional
+diffusion-based methods. Therefore, Voicebox outperforms pre-
+vious state-of-the-art models while achieving up to 20 times
+faster performance in zero-shot TTS generation [6].
+On the other hand, VoiceCraft [12] is an autoregressive
+model that fall under the Neural Codec Language Model
+(NCLM) category. NCLMs first convert audio into discrete
+tokens by a neural codec, which allows the model to learn better
+sequential token dependency through a next-token prediction
+task, and the predicted tokens can be further converted to high-
+quality audio using the neural codec decoder. For speech editing,
+the challenge lies in how to condition the causal generation on
+bidirectional context to infill the masked neural speech codec to-
+kens according to the text transcript. VoiceCraft is therefore built
+upon a two-step token rearrangement procedure, comprising a
+causal masking step and a delayed stacking step, to enable au-
+toregressive generation with bidirectional context with efficient
+multi-codebook modeling for high-quality generation.
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+3469
+10.21437/Interspeech.2025-431
+
+1.2. Contributions
+Despite both Voicebox and VoiceCraft are successful in some
+speech editing conditions, we discover that they are not robust
+enough to generate promising speech editing under various sce-
+narios. Therefore, in this paper, we first identify the main reasons
+for their limitations and propose a new SOTA speech editing
+method, VoiceNoNG, which combines their key strengths and
+eliminates those weaknesses. In summary, this paper makes
+several significant contributions:
+1) We identify that the hallucination-like problem makes
+VoiceCraft difficult to follow the target transcription accurately.
+This leads to a higher word error rate (WER), indicating harder
+to follow the target transcription accurately.
+2) We find that Voicebox struggles to generate good edited
+speech with background audio, and we identify the HiFi-GAN
+[13] vocoder might be the main reason for this problem.
+3) We propose VoiceNoNG, a speech editing model that
+owns the key strengths of Voicebox and VoiceCraft, achieving
+SOTA performance in objective and subjective evaluations.
+4) We find that the vector quantizer module in the neural
+codec is crucial for developing a robust speech editing model.
+2. Proposed VoiceNoNG
+A good speech editing model should precisely follow the tar-
+get transcript while ensuring naturalness by maintaining the
+speaker’s characteristics and preserving the background audio
+(e.g., noise, music, etc.) in line with the surrounding context.
+In this section, we first discuss the drawbacks of Voicebox and
+VoiceCraft, and then explain how we address these issues.
+2.1. Issues of Voicebox and VoiceCraft
+In our preliminary experiment, we observe that Voicebox is not
+good at generating speech edits with background audio. We
+suppose there are two reasons. First, Voicebox is trained on Lib-
+riLight [14], which is a clean and large-scale audiobook corpus
+without background. Second, Voicebox utilizes a HiFi-GAN
+vocoder with Mel spectrograms as the audio feature, which has
+shown not generalizing well to various non-speech audio scenar-
+ios such as sound or music [15, 16]. A spectrogram example
+is shown in Figure 2, with audio provided on our demo website
+(section 2 of the website) and comprehensive experiments to
+verify this as presented in Section 3.
+On the other hand, although VoiceCraft can obtain a bet-
+ter subjective preference, its WER is worse than the baseline
+(please refer to Table 4 of [12]). After carefully checking its
+generated speech, we identified that this higher WER is due
+to attention errors (hallucinations), which make it difficult for
+VoiceCraft to accurately follow the target transcription. Specifi-
+cally, when the target transcript is complex (multiple instances
+of the same token), VoiceCraft sometimes generates speech
+with missing or repeated words. Recently, [17] also highlights
+that autoregressive-based TTS models have this kind of attention
+error, which often generates speech with repeating words, miss-
+ing words, and misalignment. An example of attention errors is
+presented in Table 1, with audio samples provided on our demo
+website (section 3 of the website).
+2.2. VoiceNoNG
+To address the aforementioned issues, we propose VoiceNoNG,
+which aims to combine the strengths of both Voicebox and Voice-
+Craft. To avoid hallucination problems and enable the generation
+Table 1: An example of VoiceCraft’s attention errors (hallucina-
+tions) in the RealEdit dataset. Words highlighted in red indicate
+missing or deleted words, while those in blue denote extra or
+inserted words. Parentheses signify simple substitution errors.
+Bolded texts indicate hallucinations (missing or repeated words).
+Ground truth editing target:
+”promise that you will not ask me to borrow +any money from the bank for the
+money of you for mister van brandt she rejoined and i -will accept your help
+gratefully”
+transcript of VoiceCraft’s results :
+”promise that you will not ask me to borrow any money -from the bank for the
+money of you (-for +from) mister van (-brandt she +branch you) rejoined and i
+accept your help gratefully”
+Transcript of Proposed VoiceNoNG:
+”promise that you will not ask me to borrow any money from the bank for the
+money of you for mister van (-brandt +brant) she rejoined and i +will accept your
+help gratefully”
+(a) Original
+(b) Edited by Voicebox
+(c) Edited by VoiceCraft
+(d) Edited by VoiceNoNG
+Figure 2: Issues of Voicebox and VoiceCraft. The original speech
+has noisy background, and the blue blocks indicate the generated
+segments. Voicebox generated loud and fuzzy sound, while Voice-
+Craft generated unwilling silence. Only VoiceNoNG produced
+clear speech with consistent background.
+of speech with background audio, VoiceNoNG utilizes a latent
+flow-matching framework with neural audio codec.
+2.2.1. Utilizing Descript Audio Codec (DAC)
+Inspired by VoiceCraft, which trained their own EnCodec [18]
+as their speech tokenizer, we noticed that there are lots of recent
+works showing great success in generating speech and audio
+with neural audio codecs [16, 11, 12]. Therefore, we adopt
+the Descript Audio Codec (DAC) [19] as the acoustic feature
+for VoiceNoNG, which can be further converted back to audio
+with its paired audio codec decoder. More DAC details will be
+described in section 3.2.
+Besides being trained on a diverse range of audio types and
+sources, another reason for using DAC is its ability to compress
+the features into a discrete latent space through a vector quan-
+tizer (VQ). This provides additional robustness against minor
+prediction errors from the editing model [20]. A small error,
+as long as it is not larger than the token decision boundary, will
+still be mapped to the correct token during VQ. This will be
+verified in Section 3.6.
+2.2.2. Latent flow-matching model
+Flow-matching-based non-autoregressive models [21, 16, 6, 22]
+and NCLM-based autoregressive models [23, 12, 11] are the
+two main model categories of high-quality speech generation
+for various tasks. However, since the hallucination-like problem
+exists for NCLM-based autoregressive speech models, we’re
+more willing to use the Voicebox-like flow-matching framework
+3470
+
+for its controllability and faster inference speed.
+In addition to the original flow-matching loss used in Voice-
+box, we apply a cross-entropy (CE) loss to further enhance our
+model’s codec prediction accuracy after VQ, which is inspired by
+NaturalSpeech 2 [24]. Since the codec token selection is based
+on the distance between the prediction and the candidates in
+the dictionary C, we can formulate this process as a probability
+distribution using the softmax operation. Consequently, the CE
+loss Lce can be calculated as follows:
+Lce = −1
+|M|
+X
+t∈M
+log(
+exp(−||(S(X)t −Zt||2)
+PV
+v=1 exp(−||(S(X)t −Cv||2)
+)
+(1)
+where M represents the masked region, S(.) denotes our speech
+editing model with input features X, Z is the original codec
+token before masking, and V is the size of the dictionary. All
+vectors are L2-normalized before calculation. This loss function
+aims to minimize the distance between the prediction and the
+correct token and maximize the distance to the others.
+3. Experiments
+3.1. Training and testing sets for speech editing
+Unless otherwise noted, we use GigaSpeech as the training cor-
+pus, as its diverse audio conditions enable our model to better per-
+form background-preserving speech editing. For evaluating dif-
+ferent speech editing models, we utilize the RealEdit dataset [12],
+a pioneering benchmark that features 310 manually-crafted ex-
+amples reflecting real-world editing scenarios. This dataset in-
+cludes tuples of original audio, original transcript, and edited
+transcript, meticulously crafted to ensure grammatical correct-
+ness and semantic coherence. RealEdit consists of 100 utterances
+from the LibriTTS dataset [25], 100 from YouTube (sourced
+from the GigaSpeech test set [26]), and 110 from the Spotify
+Podcast dataset [27]. The edits span various types—insertions,
+deletions, and substitutions—across different lengths, from short
+(1-2 words) to long (7-12 words), with single or multiple spans.
+For each speech editing model, we generate edited speech
+for every tuple from the RealEdit dataset and then evaluate these
+generated speeches using the metrics introduced in the following
+subsections. During the objective evaluation, speech was gener-
+ated with five different random seeds, and we reported the mean
+scores along with the standard deviation (shown in parentheses).
+3.2. Speech editing model setup
+Our proposed VoiceNoNG combines the strengths of both Voice-
+box and VoiceCraft, enabling our model to perform background-
+preserving speech edits without the hallucination issues. To ver-
+ify that our modifications lead to the desired improvements, we
+compared our speech editing model with four other models: two
+VoiceCraft models (with sizes 330M and 880M), and two Voice-
+box models (using Mel-spectrograms as the acoustic feature,
+trained on LibriLight and GigaSpeech respectively). The results
+for VoiceCraft are based on the official code. Since no code and
+model checkpoints are available for Voicebox, we reproduced
+the results. Our Voicebox architecture settings are identical to
+those reported in the original paper, which features 330M param-
+eters. For a better comparison, our VoiceNoNG shares the same
+architecture as Voicebox, except for the dimensions of the input
+and output acoustic features are changed according to DAC.
+To delve into more details, DAC comprises three mod-
+ules: an encoder that encodes the input waveform into a fixed-
+dimension vector sequence (pre-quantization feature), a residual
+VQ module that discretizes the encoded representations into to-
+kens, and a decoder that decodes the quantized representations
+(post-quantization feature) back into the waveform. In our ex-
+periments, we use the pre-quantization feature as our acoustic
+feature and apply an extra CE loss calculated against the ground-
+truth token labels to enhance the token prediction accuracy of
+VoiceNoNG. To demonstrate the impact of this setting, we also
+conduct an ablation study to highlight the benefits of modeling
+pre-quantization features and incorporating the CE loss.
+3.3. Objective evaluation for speech intelligibility: WER
+WER is an appropriate metric for evaluating TTS and speech
+editing since it provides a quantitative assessment of how ac-
+curately a system generates speech according to text transcript.
+Table 2 displays the WER results for various speech editing
+models using Whisper-large-v3 [28] as the ASR model. The
+WER is computed by comparing the transcribed text to the target
+transcript provided by the RealEdit datasets.
+As indicated in the table, all flow-matching-based methods
+achieve lower WER than VoiceCraft, which is consistent with the
+findings presented in the VoiceCraft paper [12] and Table 1 that
+this is primarily due to the hallucination problem of VoiceCraft3.
+Additionally, the results demonstrate that when the training cor-
+pus for Voicebox is switched from LibriLight to GigaSpeech,
+the WER decreases across all types of audio sources, and further
+reducing the WER is achieved by changing the acoustic feature
+from Mel-spectrogram to DAC (our proposed VoiceNoNG).
+We also perform an ablation study for VoiceNoNG to il-
+lustrate the advantages of modeling pre-quantization features
+and adding CE loss.
+When VoiceNoNG generates the pre-
+quantization features, it must be further processed through the
+VQ and DAC decoder to reconstruct the waveform, which offers
+additional robustness against prediction errors as noted in Sec-
+tion 2. In contrast, if VoiceNoNG outputs the post-quantization
+features (similar to [24]), only the DAC decoder is required
+for waveform reconstruction, which therefore yields the highest
+WER on average. Incorporating CE loss helps improve the token
+prediction accuracy, thereby also reduces the WER.
+3.4. Objective evaluation for speech quality: SQUIM-(SI-
+SDR)
+To assess the quality of the generated speech, we utilize a non-
+intrusive estimation of the scale-invariant signal-to-distortion
+ratio (SI-SDR), referred to as SQUIM-(SI-SDR) from [29]. The
+results of the estimated quality scores are presented in Table 3. It
+is evident that the SI-SDR for the original speech from LibriTTS
+is higher than that of the speech from YouTube and Spotify. This
+finding corresponds with the characteristics of the datasets, as
+the speech from YouTube and Spotify contains some background
+audio. Although the SI-SDR scores offer less clear information
+regarding the generated speech for YouTube and Spotify, we still
+provide the scores for reference.
+In the case of LibriTTS, we can observe that the speech
+quality produced by VoiceNoNG is the best and closely resem-
+bles the original speech, while the quality score for the speech
+generated by Voicebox is the lowest, likely due to the limitations
+of the Mel-spectrogram and the vocoder used. We also observed
+that if VoiceNoNG utilized post-quantization features as the
+acoustic feature, the SI-SDR would significantly decrease. Fur-
+thermore, the standard deviations for Voicebox (Giga, Mel) and
+post-quantization are considerably larger, which aligns with our
+3More examples can be found in our supplementary material and demo page.
+3471
+
+Table 2: WER evaluation of speech editing on the RealEdit
+dataset. An asterisk (*) indicates the reproduced model.
+WER ↓(%)
+LibriTTS
+YouTube
+Spotify
+Total
+Original
+1.84
+6.13
+5.87
+4.65
+VoiceCraft (330M)
+3.72 (0.13)
+7.41 (0.38)
+4.63 (0.14)
+5.23 (0.16)
+VoiceCraft (830M)
+3.77 (0.41)
+7.36 (0.35)
+5.43 (0.33)
+5.52 (0.19)
+Voicebox* (Libri, Mel)
+3.64 (0.19)
+6.26 (0.19)
+5.45 (0.19)
+5.13 (0.08)
+Voicebox* (Giga, Mel)
+3.48 (0.16)
+6.03 (0.16)
+5.36 (0.13)
+4.97 (0.12)
+VoiceNoNG
+2.82 (0.20)
+5.84 (0.21)
+4.92 (0.21)
+4.54 (0.14)
+VoiceNoNG w/o CE loss
+2.94 (0.23)
+5.81 (0.18)
+5.07 (0.13)
+4.62 (0.09)
+VoiceNoNG w/ post-quant.
+3.16 (0.19)
+5.59 (0.24)
+5.38 (0.22)
+4.73 (0.18)
+Table 3: SQUIM-(SI-SDR) evaluation of speech editing on the
+RealEdit dataset. We highlight the LibriTTS case in bold, as the
+scores for YouTube and Spotify provide less clear insights.
+SI-SDR ↑
+LibriTTS
+YouTube
+Spotify
+Total
+Original
+23.94
+19.55
+19.22
+20.85
+VoiceCraft (330M)
+22.22 (0.08)
+19.97 (0.08)
+20.15 (0.16)
+20.76 (0.04)
+VoiceCraft (830M)
+22.53 (0.07)
+20.04 (0.06)
+20.26 (0.13)
+20.92 (0.08)
+Voicebox* (Libri, Mel)
+19.49 (0.13)
+17.96 (0.16)
+16.32 (0.10)
+17.88 (0.03)
+Voicebox* (Giga, Mel)
+18.10 (0.41)
+16.86 (0.32)
+15.83 (0.17)
+16.90 (0.20)
+VoiceNoNG
+23.15 (0.09)
+19.29 (0.05)
+19.04 (0.08)
+20.44 (0.05)
+VoiceNoNG w/o CE loss
+23.36 (0.09)
+19.30 (0.09)
+18.98 (0.06)
+20.50 (0.04)
+VoiceNoNG w/ Post-quant.
+20.80 (0.26)
+18.28 (0.11)
+17.81 (0.10)
+18.93 (0.05)
+listening experience that these models are less robust and more
+likely to produce varying speech quality across the five random
+seeds. This further validates the advantages of predicting
+pre-quantization features and employing the VQ module to
+correct minor prediction errors.
+3.5. Subjective evaluation
+Figure 3: Subjective scores of different speech editing methods.
+To subjectively evaluate the audio quality of various speech
+editing methods, we conducted a listening test using a 5-point
+scale. Participants listened to audio files, which could either be
+real or edited, and rated them on a scale where 5 represented
+highly natural and unaltered audio, while 1 indicated a strong
+belief that the audio had undergone partial editing (mainly fol-
+lows [12]; please refer to Figure 5 in the supplementary material
+for detailed instructions). 8 original speeches were randomly
+selected from LibriTTS, YouTube, and Spotify, respectively. The
+corresponding edited speeches from VoiceCraft, Voicebox, the
+proposed VoiceNoNG, and VoiceNoNG with post-quantization
+were then chosen, resulting in a total of (8×3)×5 = 120 utterances
+for each listener to evaluate. 15 listeners participated in the study.
+The experimental results are shown in Figure 3, revealing that
+the naturalness of speeches edited by VoiceNoNG and VoiceCraft
+is comparable to that of the original speech (we ask the listeners
+to focus on audio quality while ignoring semantics, grammar,
+etc., therefore the hallucination issue of VoiceCraft may not be
+reflected). In contrast, the performance of VoiceNoNG with post-
+quantization exhibits a significant decline, warranting further
+analysis in the next section.
+3.6. Robustness benefits from VQ module
+Figure 4: Relationship between varying levels of noise added
+to pre-quantization and post-quantization DAC features and the
+PESQ scores of the resulting resynthesized speech.
+As shown in the previous experiments, the performance of
+VoiceNoNG declines when post-quantization features are used
+as learning targets. To validate the advantages of predicting
+pre-quantization features with VQ, we intentionally added Gaus-
+sian noise to these features to simulate the prediction error
+incurred by the editing model. LibriTTS subset from the
+RealEdit dataset was chosen for this experiment. In Figure 4, we
+present the PESQ scores [30] for resynthesized speech generated
+from the noisy DAC features at varying noise levels (the noise
+strength is first normalized based on the dynamic range of the
+input features). This figure illustrates the robustness benefits of
+VQ, showing an approximate improvement of 0.2 PESQ scores
+under moderate noise conditions.
+4. Ethical Impact
+The same capabilities that make speech editing valuable for legit-
+imate purposes can be exploited to create sophisticated Deepfake
+audio [31], posing serious threats to public trust. Therefore, the
+research community is increasingly focused on building robust
+detection systems to identify manipulated speech [32]. Detailed
+experimental setup and results of anti-spoofing are described in
+our supplementary material, which demonstrates that the self-
+supervised pre-trained detector achieves near-perfect (i.e., 97%)
+utterance-level accuracy, even in more challenging conditions
+where non-edited segments are also resynthesized from the DAC.
+5. Conclusion
+In this study, we first examine the limitations of current advanced
+speech editing models. Voicebox produces lower-quality speech
+in the presence of background audio (e.g., noise, music), while
+VoiceCraft struggles to accurately follow text input, a common
+hallucination-like issue with autoregressive models. To address
+these challenges, we introduce VoiceNoNG, which leverages
+the strengths of both models and achieves SOTA performance
+in both objective and subjective evaluations (our demo page
+shows VoiceNoNG can keep the accent and even successfully
+generate background music for movie editing!). We also identify
+the vector quantizer module in the neural codec as crucial for
+achieving a robust speech editing model.
+3472
+
+6. References
+[1] M. Morrison, C. Churchwell, N. Pruyne, and B. Pardo, “Fine-
+grained and interpretable neural speech editing,” in Interspeech,
+September 2024.
+[2] Z. Jin, G. J. Mysore, S. Diverdi, J. Lu, and A. Finkelstein, “Voco:
+Text-based insertion and replacement in audio narration,” ACM
+Transactions on Graphics (TOG), vol. 36, no. 4, pp. 1–13, 2017.
+[3] M. Morrison, L. Rencker, Z. Jin, N. J. Bryan, J.-P. Caceres, and
+B. Pardo, “Context-aware prosody correction for text-based speech
+editing,” in ICASSP 2021-2021 IEEE International Conference on
+Acoustics, Speech and Signal Processing (ICASSP).
+IEEE, 2021,
+pp. 7038–7042.
+[4] Z. Borsos, M. Sharifi, and M. Tagliasacchi, “Speechpainter: Text-
+conditioned speech inpainting,” arXiv preprint arXiv:2202.07273,
+2022.
+[5] H. Bai, R. Zheng, J. Chen, M. Ma, X. Li, and L. Huang, “Aˆ3 t:
+Alignment-aware acoustic and text pretraining for speech synthesis
+and editing,” in International Conference on Machine Learning.
+PMLR, 2022, pp. 1399–1411.
+[6] M. Le, A. Vyas, B. Shi, B. Karrer, L. Sari, R. Moritz,
+M. Williamson, V. Manohar, Y. Adi, J. Mahadeokar et al., “Voice-
+box: Text-guided multilingual universal speech generation at scale,”
+Advances in neural information processing systems, vol. 36, 2024.
+[7] Z. Jiang, Q. Yang, J. Zuo, Z. Ye, R. Huang, Y. Ren, and Z. Zhao,
+“Fluentspeech: Stutter-oriented automatic speech editing with
+context-aware diffusion models,” arXiv preprint arXiv:2305.13612,
+2023.
+[8] A. Alexos and P. Baldi, “Attentionstitch: How attention solves the
+speech editing problem,” arXiv preprint arXiv:2403.04804, 2024.
+[9] G. C. Ruiz, P. Tobing, M. Babianski, R. chander Vipperla, D. Wang,
+R. Shmelkin, G. Coccia, O. Angelini, A. Joly, M. Lajszczak, and
+V. Pollet, “Mapache: Masked parallel transformer for advanced
+speech editing and synthesis,” in ICASSP, 2024.
+[10] D. Tan, L. Deng, Y. T. Yeung, X. Jiang, X. Chen, and T. Lee,
+“Editspeech: A text based speech editing system using partial in-
+ference and bidirectional fusion,” in 2021 IEEE Automatic Speech
+Recognition and Understanding Workshop (ASRU).
+IEEE, 2021,
+pp. 626–633.
+[11] X. Wang, M. Thakker, Z. Chen, N. Kanda, S. E. Eskimez, S. Chen,
+M. Tang, S. Liu, J. Li, and T. Yoshioka, “Speechx: Neural codec
+language model as a versatile speech transformer,” IEEE/ACM
+Transactions on Audio, Speech, and Language Processing, 2024.
+[12] P. Peng, P.-Y. Huang, D. Li, A. Mohamed, and D. Harwath, “Voice-
+craft: Zero-shot speech editing and text-to-speech in the wild,”
+arXiv preprint arXiv:2403.16973, 2024.
+[13] J. Kong, J. Kim, and J. Bae, “Hifi-gan: Generative adversarial
+networks for efficient and high fidelity speech synthesis,” Advances
+in neural information processing systems, vol. 33, pp. 17 022–
+17 033, 2020.
+[14] J. Kahn, M. Riviere, W. Zheng, E. Kharitonov, Q. Xu, P.-E. Mazar´e,
+J. Karadayi, V. Liptchinsky, R. Collobert, C. Fuegen et al., “Libri-
+light: A benchmark for asr with limited or no supervision,” in
+ICASSP 2020-2020 IEEE International Conference on Acoustics,
+Speech and Signal Processing (ICASSP).
+IEEE, 2020, pp. 7669–
+7673.
+[15] S.-g. Lee, W. Ping, B. Ginsburg, B. Catanzaro, and S. Yoon, “Bigv-
+gan: A universal neural vocoder with large-scale training,” arXiv
+preprint arXiv:2206.04658, 2022.
+[16] A. Vyas, B. Shi, M. Le, A. Tjandra, Y.-C. Wu, B. Guo, J. Zhang,
+X. Zhang, R. Adkins, W. Ngan et al., “Audiobox: Unified au-
+dio generation with natural language prompts,” arXiv preprint
+arXiv:2312.15821, 2023.
+[17] P. Neekhara, S. Hussain, S. Ghosh, J. Li, R. Valle, R. Badlani,
+and B. Ginsburg, “Improving robustness of llm-based speech
+synthesis by learning monotonic alignment,” arXiv preprint
+arXiv:2406.17957, 2024.
+[18] A. D´efossez, J. Copet, G. Synnaeve, and Y. Adi, “High fidelity neu-
+ral audio compression,” arXiv preprint arXiv:2210.13438, 2022.
+[19] R. Kumar, P. Seetharaman, A. Luebs, I. Kumar, and K. Kumar,
+“High-fidelity audio compression with improved rvqgan,” Advances
+in Neural Information Processing Systems, vol. 36, 2024.
+[20] S.-W. Fu, K.-H. Hung, Y. Tsao, and Y.-C. F. Wang, “Self-
+supervised speech quality estimation and enhancement using only
+clean speech,” ICLR, 2024.
+[21] A. H. Liu, M. Le, A. Vyas, B. Shi, A. Tjandra, and W.-N. Hsu,
+“Generative pre-training for speech with flow matching,” arXiv
+preprint arXiv:2310.16338, 2023.
+[22] P.-J. Ku, A. H. Liu, R. Korostik, S.-F. Huang, S.-W. Fu, and
+A. Juki´c, “Generative speech foundation model pretraining for
+high-quality speech extraction and restoration,” arXiv preprint
+arXiv:2409.16117, 2024.
+[23] C. Wang, S. Chen, Y. Wu, Z. Zhang, L. Zhou, S. Liu, Z. Chen,
+Y. Liu, H. Wang, J. Li et al., “Neural codec language mod-
+els are zero-shot text to speech synthesizers,” arXiv preprint
+arXiv:2301.02111, 2023.
+[24] K. Shen, Z. Ju, X. Tan, Y. Liu, Y. Leng, L. He, T. Qin, S. Zhao,
+and J. Bian, “Naturalspeech 2: Latent diffusion models are natural
+and zero-shot speech and singing synthesizers,” arXiv preprint
+arXiv:2304.09116, 2023.
+[25] H. Zen, V. Dang, R. Clark, Y. Zhang, R. J. Weiss, Y. Jia, Z. Chen,
+and Y. Wu, “Libritts: A corpus derived from librispeech for text-
+to-speech,” arXiv preprint arXiv:1904.02882, 2019.
+[26] G. Chen, S. Chai, G. Wang, J. Du, W.-Q. Zhang, C. Weng, D. Su,
+D. Povey, J. Trmal, J. Zhang et al., “Gigaspeech: An evolving,
+multi-domain asr corpus with 10,000 hours of transcribed audio,”
+arXiv preprint arXiv:2106.06909, 2021.
+[27] A. Clifton, S. Reddy, Y. Yu, A. Pappu, R. Rezapour, H. Bonab,
+M. Eskevich, G. Jones, J. Karlgren, B. Carterette et al., “100,000
+podcasts: A spoken english document corpus,” in Proceedings of
+the 28th International Conference on Computational Linguistics,
+2020, pp. 5903–5917.
+[28] A. Radford, J. W. Kim, T. Xu, G. Brockman, C. McLeavey, and
+I. Sutskever, “Robust speech recognition via large-scale weak
+supervision,” in International conference on machine learning.
+PMLR, 2023, pp. 28 492–28 518.
+[29] A. Kumar, K. Tan, Z. Ni, P. Manocha, X. Zhang, E. Hender-
+son, and B. Xu, “Torchaudio-squim: Reference-less speech qual-
+ity and intelligibility measures in torchaudio,” arXiv preprint
+arXiv:2304.01448, 2023.
+[30] A. W. Rix, J. G. Beerends, M. P. Hollier, and A. P. Hekstra, “Percep-
+tual evaluation of speech quality (pesq)-a new method for speech
+quality assessment of telephone networks and codecs,” in 2001
+IEEE international conference on acoustics, speech, and signal
+processing. Proceedings (Cat. No. 01CH37221), vol. 2.
+IEEE,
+2001, pp. 749–752.
+[31] NBC News. (2024, Feb) “why AI-generated audio is so hard
+to detect”. [Online]. Available: https://www-nbcnews-com.cdn.
+ampproject.org/c/s/www.nbcnews.com/news/amp/rcna136634
+[32] S.-F. Huang, H.-C. Kuo, Z. Chen, X. Yang, C.-H. H. Yang, Y. Tsao,
+Y.-C. F. Wang, H.-y. Lee, and S.-W. Fu, “Detecting the unde-
+tectable: Assessing the efficacy of current spoof detection methods
+against seamless speech edits,” in 2024 IEEE Spoken Language
+Technology Workshop (SLT).
+IEEE, 2024, pp. 652–659.
+3473
+

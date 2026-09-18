@@ -1,0 +1,984 @@
+Towards High-Quality LLM-Based Data for French Spontaneous Speech
+Simplification: an Exo-Refinement Approach
+Luc´ıa Ormaechea1,2, Nikos Tsourakis1, Pierrette Bouillon1, Benjamin Lecouteux2, Didier Schwab2
+1Department of Translation Technology, University of Geneva, Switzerland
+2Univ. Grenoble Alpes, CNRS, Grenoble INP, LIG, France
+{firstName.lastName}@unige.ch, {firstName.lastName}@univ-grenoble-alpes.fr
+Abstract
+This study explores the synthetic data generation capabilities
+of LLMs for French spontaneous speech simplification (S3), a
+low-resource NLP task. We introduce the exo-refinement ap-
+proach, which builds on the self-reflect workflow but differs by
+using separate models for generation and evaluation. To address
+the limitations of single-model refinement, it integrates external
+feedback from distinct LLMs as judges, refining outputs based
+on 3 task-specific dimensions. Comparing expert-based simpli-
+fications from gold transcriptions to LLM synthetic outputs, re-
+sults show that mistral-large outperforms all benchmarked mod-
+els, including the MUSS baseline, and mistral-small achieves
+competitive performance with few refinements. SARI results
+confirm that iterations improve simplicity gain without compro-
+mising semantic meaning, as shown by COMET scores. These
+findings support exo-refinement as a scalable method for syn-
+thetic data generation and future S3 model development.
+Index Terms: speech simplification, synthetic data generation,
+large language models
+1. Introduction
+The generative capabilities of the latest LLMs present a promis-
+ing avenue for NLP tasks where parallel data is scarce. This has
+driven research on LLMs as text generation artifacts and have
+spurred papers exploring prompt engineering techniques [1, 2]
+and workflows for generating and evaluating synthetic data [3,
+4, 5, 6]. These efforts aim to develop methods to produce syn-
+thetic data that closely mirrors real-world data in terms of rep-
+resentativity, trustworthiness and diversity.
+This paper benchmarks various state-of-the-art LLMs
+through a data creation pipeline exploring diverse prompting
+strategies.
+These are integrated into an iterative generation-
+evaluation workflow to identify the most effective data creation
+setup for a low-resource NLP task1: spontaneous speech simpli-
+fication (S3) for French. S3 aims at reducing the linguistic com-
+plexity of an utterance while preserving its original meaning
+and grammaticality [7], thus making spontaneous transcripts
+more accessible for several target audiences (e.g., people with
+cognitive impairments, non-native speakers, etc.), but also pro-
+viding an intermediate representation in NLP pipelines involv-
+ing speech, such as subtitle [8] or pictograph translation [9].
+To address the challenges of generating high-quality
+synthetic simplifications, we build upon the self-refinement
+generation-evaluation workflow and propose an approach where
+the tasks of generation and evaluation are handled by separate
+models, which we coin as exo-refinement. This approach en-
+ables the infusion of feedback from a distinct LLM evaluator
+1Code and prompts are provided in the following repository:
+https://github.com/lormaechea/interspeech-2025.
+into the LLM generator, addressing the limitations of relying
+on a single model for both roles [10]. Our goal is to examine
+how successive iterations within an exo-refinement approach in-
+fluence the quality of the generated candidate simplifications,
+either aligning them more closely to human-crafted versions
+or rather causing a decline in quality. Identifying the optimal
+configuration (in terms of model pair, generation strategy and
+number of iterations) may allow us to scale our data generation
+workflow and produce a high-quality large-scale synthetic set.
+Our contributions are as follows: i) we introduce a varia-
+tion of the self-refinement workflow, termed exo-refinement, to
+generate synthetic simplified outputs from gold transcripts; ii)
+we release a small-scale set of paired spontaneous transcripts
+with 4 expert-based simplifications; and iii) we present the first
+dedicated solution to automate S3, which far outperforms state-
+of-the-art text simplification models when applied to speech.
+2. Related work
+2.1. Spontaneous speech and simplification
+S3 is an emerging task and draws inspiration from a well-
+established NLP field, i.e., text simplification (TS). TS has been
+widely studied across various written domains such as news ar-
+ticles, Wiki-based content and healthcare documents [11, 12].
+Much like its written-centric counterpart, S3 seeks to re-
+duce linguistic complexity while retaining the original mean-
+ing and grammaticality. However, most studies have focused
+on English, leaving simplification under-explored in other lan-
+guages like French, where sentence-level simplification remains
+sparsely studied [13, 14].
+CLS
+je
+CLS
+je
+VRB
+être
+PRE
+en
+NOM
+voiture
+CLS
+je
+VRB
+être
+PRE
+en
+NOM
+voiture
+PRE
+pour
+VNF
+aller
+VNF
+faire
+DET
+son
+NOM
+courses
+PRE
+pour
+VNF
+sortir
+DET
+le
+NOM
+soir
+INT
+euh
+PRE
+pour
+ADJ
+autre
+NOM
+chose
+je   je   suis   en   voiture  je   suis  en   voiture  pour aller   faire  mes  courses  pour  sortir  le   soir  euh   pour  autre  chose
+Figure 1: An utterance extracted from the CEFC corpus [15],
+comprising its lemmas, POS tags and syntactic information.
+While S3 may seem like a mere change in input modality
+with respect to TS, complexity manifests differently in speech,
+which varies from written language in ways that extend the
+transmission mode, impacting lexical, syntactic and morpho-
+logical aspects [16, 17]. Unlike written texts, which are planned
+and finalized, spoken texts are an ongoing (and thus unfin-
+ished) process. Spontaneous utterances diverge from the sen-
+tence structure typical of a written modality, since the discourse
+thread is less reliant on complete sentences due to cognitive
+constraints in real-time production. Instead, speech unfolds in
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+4038
+10.21437/Interspeech.2025-452
+
+smaller units (or syntactic windows), which are appended one
+after the other as it progresses. This leads to disfluent traces like
+revisions, false starts or reformulations, complicating transcript
+comprehension and requiring careful treatment during simplifi-
+cation. Real-time construction also impacts information pack-
+aging [18], modifying canonical theme-rheme order and em-
+phasis procedures, as seen in French with cleft constructions
+or dislocated subjects [19]. On-the-fly processing elongates ut-
+terances [20] due to performance phenomena that trigger con-
+catenations of elements with a paradigmatic relationship along
+the syntagmatic axis [21]. This is evident in Figure 1, where
+paradigmatic supplements weigh down the sentence and hin-
+der its comprehension. Also, context is crucial in simplifying
+spontaneous speech, given its dialogic nature. Thus, meaning
+is often not confined to the segment level but derives from the
+shared interaction between speakers, making the simplification
+process eventually dependent on prior context.
+2.2. LLM-based synthetic data generation
+Recent research highlights LLMs as an efficient and practical
+tool for generating synthetic data to train AI models, especially
+when human-crafted data is pauce. This is due to two features:
+i) extensive pre-training [22], which equips them with factual
+and linguistic knowledge to produce coherent human-like text;
+and ii) instruction-following capabilities, which confer models a
+wide adaptability over textual generation, making them suitable
+for domain-specific data generation [23, 24], even with limited
+or no task-specific seed exemplars [25].
+LLMs provide extensive customization by allowing users
+to create and specify attributes in prompts through natural lan-
+guage instructions. However, LLMs lack controllability over
+outputs, due to their inherent non-determinism and the biases
+learned during pre-training.
+This can lead to skewed syn-
+thetic datasets [10, 26], factual inaccuracies (i.e., hallucina-
+tions) which can ultimately lessen their reliability in generating
+trustworthy data. Diversity also poses challenges, given that a
+low one may result in highly monotonous outputs that fail to
+capture the varied nature of real-world data [22], while a high
+one can lower accuracy and factual correctness, compromising
+the trustworthiness of the outputs [5]. Balancing these factors
+is crucial, as both extremes risk degrading downstream model
+performance and potentially lead to model collapse2.
+This underscores the need to distinguish high-quality exam-
+ples from repetitive ones. While human assessment remains the
+gold standard, it is notoriously costly in terms of time and bud-
+get [27]. This has opened the door to a new paradigm: LLM-
+assisted evaluation, where machines assess outputs, providing a
+scalable approach to approximate human preferences [28]. Re-
+cent literature presents contrasting views. Optimists see LLM-
+assisted evaluation as a fast and inexpensive surrogate for hu-
+man assessment [29], highlighting LLMs’ ability to refine out-
+puts through self-refinement, with models being able to rectify
+errors and produce improved outputs based on their own feed-
+back [3, 4]. Skeptics, however, warn about LLMs’ assessment
+capacities, given their tendency to exhibit biases, often related
+to specific positions or verbosity [28]. Suboptimality can also
+be caused by self-bias, leading to overfitting [30], failure to cor-
+rect mistakes [31] and data diversity harm, especially in smaller
+models [10]. This suggests the need to integrate external feed-
+back into these workflows to mitigate the impact of such effects.
+2See: https://arxiv.org/abs/2305.17493.
+3. Data
+3.1. CEFC speech dataset
+S3 remains an underexplored task, compromising the availabil-
+ity of parallel data. In order to evaluate the quality of LLM-
+based simplifications, we resorted to CEFC (Corpus d’ ´Etude du
+Franc¸ais Contemporain), a reference corpus for contemporary
+French spontaneous speech [15], and gathered representative
+spontaneous utterances. CEFC contains ≈270 hours of acoustic
+data from ≈2, 500 speakers across diverse contexts (e.g., lec-
+tures, medical consultations, everyday life interactions, among
+others). Dialogues are distributed across 12 subcorpora and are
+segmented into audio clips, each representing a conversation.
+3.2. Expert-based simplifications from spontaneous speech
+The CEFC corpus includes sentence-aligned segments with au-
+dio and morphosyntactic annotations, but lacks ground truth
+simplifications.
+To address this, we launched a simplifica-
+tion campaign involving 4 expert translators, all native French
+speakers with backgrounds in translation studies and current po-
+sitions in the same field. To manage the large source corpus
+and the high cost of obtaining large-scale manual simplifica-
+tions, we extracted a small representative subset of CEFC us-
+ing proportional allocation sampling. The population, namely
+CEFC, was divided into 12 distinct strata, each corresponding
+to a subcorpus. From each stratum, we extracted 10 consec-
+utive segments from 2 conversations, resulting in a set of 240
+gold transcripts (12 strata × 2 conversations × 10 segments) to
+be simplified by the enlisted professionals (see Table 1).
+Table 1: Data overview of the obtained expert simplifications.
+# references
+# simplifications
+# sentences
+240
+960
+# tokens
+3, 163
+10, 083
+# types
+810
+1, 107
+The simplification task was hosted on the LimeSurvey plat-
+form. Prior to participation, all individuals received a consent
+form outlining the purpose and handling of the data collected.
+They were asked to provide simpler equivalents for each of the
+240 input sentences. In the prompt, which contained detailed
+instructions, we emphasized that the simplifications should be
+suitable for a non-native-speaking audience. The sampled sen-
+tences were presented in sets of 10, each corresponding to a dis-
+tinct source conversation. Given the interactive aspect of spon-
+taneous speech, we considered the presence of prior context to
+be beneficial for eventually disambiguating the next segments.
+4. Method
+4.1. Model specialization through exo-refinement
+Our approach, coined exo-refinement, builds on the self-
+refinement paradigm with a key modification: the generation
+and evaluation tasks are conducted by distinct models. This
+variation allows us to explore the potential of incorporating ex-
+ternal feedback in the form of a separate model with advanced
+reasoning capabilities, addressing issues in prior research that
+arise from the use of a single LLM for all roles [10, 28]. We in-
+vestigate whether an iterative generation-evaluation loop, inte-
+grating an LLM-assisted evaluation, approximates human intu-
+ition and leads to progressively closer alignments with human-
+crafted simplifications or, conversely, degrades prior outputs.
+4039
+
+We thus propose a model specialization of the two above-
+mentioned tasks:
+1. Generation, which involves both the initial generation and
+the further refinements, based on the feedback provided by
+the evaluation (or judge) LLMs. Generation LLMs were in-
+structed to create outputs using various prompting strategies.
+2. Evaluation, which involves 3 independent judges that assess
+3 core dimensions of simplified texts, with a top evaluator
+reviewing their scores and making a final decision to accept
+or reject the proposed simplification.
+Table 2: LLMs used for generation and evaluation, including
+their model size (number of parameters) when available.
+LLM family
+Role
+Model
+Size
+Mistral
+Generators
+open-mistral-7b
+7B
+open-mistral-nemo-2407
+12B
+mistral-small-2409
+22B
+mistral-large-2407
+123B
+Judge
+open-mixtral-8x7b
+47B
+OpenAI
+Generators
+gpt-3.5-turbo-0125
+<unk>
+gpt-4o-2024-08-06
+<unk>
+Judge
+gpt-4o-mini-2024-07-18
+<unk>
+To achieve this, we utilize two LLM families (namely Mis-
+tral, mostly open-source, and OpenAI, proprietary). As shown
+in Table 2, we employ various instruction-following models for
+generation while keeping the LLM-as-a-judge static. In both
+LLM clusters, evaluation is performed by an LLM with ad-
+vanced reasoning capabilities (open-mixtral-8x7b and gpt-4o-
+mini). However, they are ranked in a relatively lower level with
+respect to more recently released LLMs within the same cluster
+(e.g., gpt-4o and mistral-large), which are used as generators.
+All experiments conducted used the respective APIs of Mistral
+and OpenAI.
+4.2. LLMs as generators
+Instruction-tuning enables LLMs to generalize to new tasks us-
+ing natural language prompts. However, given the novelty of the
+examined task, we hypothesized that instructions alone might
+not suffice to convey its nuances.
+We thus explored several
+prompting techniques to extend the range of candidate simpli-
+fications for each input. To generate French outputs with mul-
+tilingual LLMs, we used English prompting templates, as re-
+cent studies [32, 33] show English prompts paired with non-
+English examples yield better performance, which likely stems
+from Anglocentric data representation during pre-training. The
+prompts designed3 were: i) zero-shot, where only the task
+context and generation instructions are provided; ii) one-shot
+and iii) few-shot, where one or several task-specific demonstra-
+tions are used to implicitly inject human guidance [22] into the
+prompt; iv) multi-step, which couples multiple steps, each de-
+pendent on the previous output, guiding the model through the
+specificity of the task [34]; v) chain-of-thought, where human-
+created rationales encourage the model to break down reasoning
+into a sequence of steps that lead to a conclusion; vi) chain-
+of-thought with self consistency, which generates multiple rea-
+soning paths for the same query to select the most consistent
+answer [35]; and vii) tree-of-thought, which explores multiple
+reasoning pathways simultaneously [2], enabling the model to
+evaluate different approaches in parallel in order to make a final
+decision.
+3All generation prompts followed the same hyperparameter setup:
+temperature was set to 0.2, max new tokens to 256 and top p
+to 0.9. The other hyperparameters remained at their default values.
+Algorithm 1 Iterative generation-evaluation approach.
+Require: conversation, models {G, J}, prompts {pgen, psimp,
+pmean, pgram, pref, ptop}
+1: for sentence x ∈conversation; do
+2:
+for iteration i ∈[0, 4]; do
+3:
+yi, hi = G(pgen(x, hi−1))
+▷Initial generation
+4:
+si = J(psimp(x, yi))
+▷Starts evaluation
+5:
+mi = J(pmean(x, yi))
+6:
+gi = J(pgram(yi))
+7:
+topi = J(ptop(x, yi, si, mi, gi))
+8:
+if topi = 0; then
+▷yi is accepted
+9:
+return yi; break
+10:
+else
+▷yi is rejected
+11:
+append topi to fbi
+12:
+append si to fbi if si̸ = 3
+13:
+append mi to fbi if mi̸ = 3
+14:
+append gi to fbi if gi̸ = 0
+15:
+yi, hi = G(pref(x, yi, fbi, hi))
+16:
+end if
+17:
+end for
+18:
+return yi
+19: end for
+20: hi = list()
+▷Reset history
+4.3. LLMs as judges
+As discussed earlier, we defined 3 independent LLM-based
+judges to assess 3 classic dimensions of simplified texts using a
+criteria-based evaluation, namely:
+• Simplicity gain and meaning preservation, which were evalu-
+ated using a 3-point Likert scale (1 being the worst and 3 be-
+ing the best), and were conceived as ranking tasks. The eval-
+uation was conducted in a reference-guided manner: compar-
+ing the simplified outputs against the original utterances.
+• Grammaticality, which was treated as a reference-free clas-
+sification task, and assessed using a binary label: 1 for non-
+grammatical and 0 for grammatical.
+For the evaluation templates, we used a uniform structure:
+i) we first provided the judge LLM with a task description; ii)
+we later defined each score value; and iii) we outlined the out-
+put template, including a numerical score and its reasoning. The
+decision to proceed to a new refinement is made by a top evalu-
+ator, who after reviewing the reasoned scores from the judges,
+provided a final judgment to accept or reject the simplification.
+4.4. Generation-evaluation approach
+We integrated the above-mentioned templates into the gener-
+ation and judge models, forming a generation-evaluation loop
+(see Alg. 1).
+For each 10-sentence conversation, 7 prompt-
+ing strategies (pgen
+4) were used to produce simplifications (yi)
+from each input (x). G denotes the generation model and J the
+evaluation model, which initializes 3 templates: psimp, pmean
+and pgram. The refinement template is pref, and ptop repre-
+sents the top evaluator. As discussed in Section 2.1, sponta-
+neous speech is intrinsically conversational, making it poten-
+tially highly context-dependent. To address this, we stored the
+history (hi) of prompt-response interactions with G for disam-
+biguation or clarification. The history window, limited to 100
+entries (10 utterances × 5 iterations × 2 user-machine interac-
+tions), was reset after each new conversation. No history was
+stored for the judges, to ensure an isolated LLM-assisted eval-
+uation. The goal was to maintain an objective judgment, and
+avoid any eventual distortion on the assessment caused by the
+J model assigning weight to the previous context. Based on the
+scores and feedback from the 3 judges, which were then sent
+4For clarity purposes, we used pgen as a global identifier for:
+{pzero, pone, pfew, pmstep, pcot, pcotself, ptot}.
+4040
+
+0
+50
+100
+150
+200
+250
+300
+350
+400
+Average count
+gpt-3.5-turbo
+gpt-4o
+mistral-7b
+mistral-nemo
+mistral-large
+mistral-small
+Model
+Average output per iteration across models
+Iteration
+1
+2
+3
+4
+5
+1it
+2it
+3it
+4it
+5it
+Iteration
+88
+89
+90
+91
+92
+93
+94
+95
+96
+COMET Score
+COMET scores over iterations
+Model
+mistral-7b
+mistral-nemo
+mistral-small
+mistral-large
+gpt-3.5-turbo
+gpt-4o
+1
+2
+3
+4
+5
+Iteration
+gpt-3.5-turbomean_score
+gpt-3.5-turbosimp_score
+gpt-4omean_score
+gpt-4osimp_score
+mistral-7bmean_score
+mistral-7bsimp_score
+mistral-largemean_score
+mistral-largesimp_score
+mistral-nemomean_score
+mistral-nemosimp_score
+mistral-smallmean_score
+mistral-smallsimp_score
+Model
+1.93
+2.02
+1.97
+1.99
+2.15
+1.73
+1.55
+1.64
+1.55
+1.85
+1.86
+2.18
+1.94
+2.15
+2.01
+1.81
+1.70
+1.51
+1.74
+1.64
+1.62
+1.68
+1.54
+1.64
+1.68
+1.98
+1.89
+1.73
+1.93
+1.85
+2.34
+2.27
+2.22
+2.62
+2.32
+2.56
+2.49
+2.42
+2.74
+2.49
+2.00
+1.94
+2.14
+2.00
+2.12
+2.46
+2.29
+2.49
+2.43
+2.47
+2.14
+2.11
+2.65
+2.23
+2.38
+2.52
+2.35
+2.80
+2.38
+2.69
+Average simplicity gain and meaning preservation score by iteration and model
+1.6
+1.8
+2.0
+2.2
+2.4
+2.6
+2.8
+0-shot
+1-shot
+cot
+cot-self
+few-shot
+m-step
+tot
+Strategy
+0
+10
+20
+30
+40
+50
+60
+70
+80
+90
+Score
+55.85
+54.59
+54.39
+54.50
+54.38
+55.43
+55.32
+52.44
+47.67
+49.45
+49.68
+48.49
+50.32
+50.66
+92.48
+92.75
+92.52
+92.51
+92.58
+93.18
+92.83
+Performance of strategies across metrics
+Metric
+SARI
+BLEU
+COMET
+Figure 2: Number of outputs obtained per model, COMET results, judge LLMs’ scores and results obtained per prompting strategy.
+to the top evaluator, two scenarios can arise. The first scenario
+occurs when the top evaluator deems that the output should be
+rejected. In this case, the corresponding feedback (fbi), along
+with that from any of the 3 judges assigning a suboptimal score,
+is collected and sent for regeneration (see l. 10–15 in Alg. 1).
+This process will continue until the results align with an accep-
+tance response from the top evaluator, or until the maximum of
+5 iterations is reached. The second scenario arises when the top
+evaluator gives a positive review of the reasoned scores from the
+3 judges and accepts the output, at which point the refinement
+process for that sentence stops (see l. 8-9 in Alg. 1).
+4.5. Compared methods
+S3 lacks task-specific resources that enable its automation us-
+ing existing models. Consequently, we made use of MUSS [13]
+as a baseline, the latest reproducible model for sentence-level
+French TS. MUSS is an unsupervised TS model trained on para-
+phrasing data, using controllable parameters to adjust length
+and lexical attributes. We used it in inference mode to produce
+candidate simplifications from the 240 input utterances.
+5. Results and discussion
+In this section, we analyze candidate simplifications generated
+from the exo-refinement approach and compare them to the col-
+lected expert simplifications using SARI, BLEU5 and COMET6
+metrics. To this respect, if a candidate simplification is accepted
+before the 5-iteration limit, the last output is copied into the next
+ones. This ensures scores are compared using the same number
+of outputs across all iterations.
+Table 3 shows the best results obtained for the 3 metrics
+across all model configurations.
+As observed, mistral-large
+stands out as the best performing model, achieving the high-
+est SARI score in the fourth iteration and the highest BLEU
+score in the first one, while also accomplishing it with one of
+the lowest number of generated outputs, second only to mistral-
+small (see the leftmost plot of Figure 2). Additionally, it falls
+only 0.1 points behind the leading model (i.e., gpt-4o) in terms
+of COMET. In light of these results, we also see that the pro-
+posed approach consistently surpasses the established baseline
+by several points, with the sole exception of open-mistral-7b,
+whose best SARI result remains below MUSS. Furthermore,
+SARI consistently boosts after the initial generation, highlight-
+ing the value of an iterative approach for the task at hand.
+In contrast, Table 3 reveals the opposite trend for BLEU:
+the highest scores are obtained in the first iteration, followed by
+a slight decline in subsequent ones. This indicates that the out-
+puts generated in later cycles diverge lexically from the initial
+guess, resulting in reduced surface overlap. This pattern reflects
+the acknowledged inverse SARI-BLEU relationship: as sim-
+plicity gain increases, meaning preservation tends to decrease.
+5We used the HF implementation for both SARI and BLEU metrics.
+6Model used: Unbabel/XCOMET-XL.
+Table 3: Extracted best SARI, BLEU and COMET results for
+each model configuration, including iteration and prompt used.
+model
+SARI (it)
+gain
+prompt
+BLEU (it)
+gain
+prompt
+COMET (it)
+prompt
+MUSS
+50.75
+–
+–
+41.66
+–
+–
+64.58
+–
+open-mistral-7b
+49.46 (2)
++1.26
+m-step
+45.50 (1)
++3.69
+tot
+90.78 (5)
+m-step
+open-mistral-nemo
+54.59 (5)
++0.26
+0-shot
+47.86 (1)
++1.98
+0-shot
+93.44 (2)
+m-step
+mistral-small-2409
+58.47 (2)
++0.66
+0-shot
+56.80 (1)
++1.31
+0-shot
+93.92 (5)
+m-step
+mistral-large-2407
+60.22 (4)
++0.52
+1-shot
+60.89 (1)
++1.88
+0-shot
+94.19 (3)
+1-shot
+gpt-3.5-turbo-0125
+58.45 (5)
++1.72
+tot
+56.14 (5)
++0.62
+0-shot
+93.74 (3)
+tot
+gpt-4o-2024-08-06
+58.59 (2)
++1.76
+0-shot
+55.08 (1)
++1.13
+0-shot
+94.29 (1)
+m-step
+However, as shown in the second plot in Figure 2, COMET re-
+mains consistently stable across all iterations, indicating that
+while lexical surface changes, the underlying semantic mean-
+ing remains intact. This reinforces the idea that an iterative
+exo-refinement approach contributes to the generation of more
+suited outputs for S3. We also analyzed the performance of the
+judge LLMs for simplicity gain and meaning retention on sen-
+tences that reached the maximum of iterations (see yellow slices
+in the leftmost plot of Figure 2), which correspond to the most
+challenging cases for the proposed framework. The heatmap in
+Figure 2 illustrates the average score for each dimension across
+iterations. Consistently, mistral-small and mistral-large showed
+superior performance within their model family: a positive in-
+dication of their effectiveness on challenging inputs. However,
+further investigation is required to contrast these results with
+OpenAI models, which use a different LLM-as-a-judge, and
+criteria applied may be stricter or more lenient as applicable.
+Regarding the last plot in Figure 2, it is interesting to note that,
+despite our intention to explore a diverse range of prompting
+strategies, the default zero-shot template mostly delivered the
+best performance in terms of SARI and BLEU.
+6. Conclusions
+In this paper, we present an iterative generation-evaluation ap-
+proach to examine the simplification capabilities of a set of Ope-
+nAI and Mistral LLMs. Outputs were compared to expert sim-
+plifications, and results showed that mistral-large outperformed
+all other models tested, including the MUSS baseline. More-
+over, mistral-small required the fewest refinements and reached
+very competitive performance compared to the other LLMs.
+Techniques such as zero-shot and multi-step yielded the highest
+results in terms of SARI, BLEU and COMET, demonstrating
+the potential to scale this approach for large-scale data genera-
+tion and the further development of an S3 downstream model.
+We acknowledge several limitations in this study.
+We
+benchmarked only a subset of recent LLMs, and experiments
+used gold transcriptions rather than speech signals. As further
+work, we plan to integrate this approach with an ASR system.
+Also, experiments were conducted on a small corpus, given the
+limited S3 resources and the need to balance workload with
+quality in the expert simplification task. Finally, while auto-
+matic scores indirectly correlate with human correctness via
+ground-truth simplifications, LLM-as-a-judge scores may re-
+quire human calibration for a more comprehensive assessment.
+4041
+
+7. Acknowledgements
+This work is part of the PROPICTO project, funded by the
+Swiss National Science Foundation (N°197864) and the French
+National Research Agency (ANR-20-CE93-0005).
+8. References
+[1] T. B. Brown et al., “Language models are few-shot learn-
+ers,” in Advances in Neural Information Processing Systems,
+H. Larochelle et al., Eds., vol. 33, 2020, pp. 1877–1901. [Online].
+Available: https://api.semanticscholar.org/CorpusID:218971783
+[2] S. Yao et al., “Tree of thoughts: Deliberate problem solving with
+large language models,” in International Conference on Neural
+Information Processing Systems,
+2023. [Online]. Available:
+https://dl.acm.org/doi/abs/10.5555/3666122.3666639
+[3] A. Madaan et al., “SELF-REFINE: iterative refinement with
+self-feedback,” in Advances in Neural Information Processing
+Systems, 2023. [Online]. Available: https://api.semanticscholar.
+org/CorpusID:257900871
+[4] N. Shinn et al., “Reflexion:
+Language agents with verbal
+reinforcement learning,” in International Conference on Neural
+Information Processing Systems,
+2023. [Online]. Available:
+https://dl.acm.org/doi/10.5555/3666122.3666499
+[5] J.
+Chung
+et
+al.,
+“Increasing
+diversity
+while
+maintaining
+accuracy: Text data generation with large language models and
+human interventions,” in Annual Meeting of ACL, A. Rogers
+et al., Eds., 2023, pp. 575–593. [Online]. Available:
+https:
+//aclanthology.org/2023.acl-long.34
+[6] Y. Liu et al., “Calibrating LLM-based evaluator,” in LREC-
+COLING, 2024, pp. 2638–2656. [Online]. Available:
+https:
+//aclanthology.org/2024.lrec-main.237
+[7] C. Horn et al., “Learning a lexical simplifier using Wikipedia,” in
+Annual Meeting of ACL, K. Toutanova and H. Wu, Eds., 2014, pp.
+458–463. [Online]. Available: https://aclanthology.org/P14-2075
+[8] S. Mehta et al.,
+“Simplify-then-translate:
+Automatic pre-
+processing
+for
+black-box
+translation,”
+in
+AAAI
+Confer-
+ence on Artificial Intelligence,
+2020. [Online]. Available:
+https://ojs.aaai.org/index.php/AAAI/article/view/6369
+[9] C. Macaire et al., “A multimodal French corpus of aligned
+speech, text, and pictogram sequences for speech-to-pictogram
+machine translation,” in LREC-COLING, 2024, pp. 839–849.
+[Online]. Available: https://aclanthology.org/2024.lrec-main.76
+[10] W. Xu et al., “Pride and prejudice: LLM amplifies self-bias
+in self-refinement,” in Annual Meeting of ACL, 2024, pp.
+15 474–15 492. [Online]. Available:
+https://aclanthology.org/
+2024.acl-long.826
+[11] ——, “Problems in current text simplification research: New
+data can help,” Transactions of ACL, vol. 3, pp. 283–297, 2015.
+[Online]. Available: https://direct.mit.edu/tacl/article/43283
+[12] X. Zhang and M. Lapata, “Sentence simplification with deep
+reinforcement learning,” in EMNLP, 2017, pp. 584–594. [Online].
+Available: https://aclanthology.org/D17-1062
+[13] L. Martin et al., “MUSS: Multilingual unsupervised sentence
+simplification by mining paraphrases,” in LREC, 2022, pp.
+1651–1664. [Online]. Available: https://aclanthology.org/2022.
+lrec-1.176
+[14] L. Ormaechea and N. Tsourakis, “Automatic text simplification
+for French:
+Model fine-tuning for simplicity assessment and
+simpler text generation,” IJST, vol. 27, p. 957–976, 2024.
+[Online]. Available:
+https://link.springer.com/article/10.1007/
+s10772-024-10146-0
+[15] C. Benzitoun et al., “Le projet ORF´EO : un corpus d’´etudes
+pour le franc¸ais contemporain,” Corpus nº 15, pp. 91–114, 2016.
+[Online]. Available: https://journals.openedition.org/corpus/2936
+[16] A. Caines et al., “Parsing transcripts of speech,” in Workshop
+on Speech-Centric Natural Language Processing, N. Ruiz and
+S. Bangalore, Eds., 2017, pp. 27–36. [Online]. Available:
+https://aclanthology.org/W17-4604
+[17] L. Ormaechea et al.,
+“Simplification strategies in French
+spontaneous speech,” in Proceedings of the DeTermIt Workshop
+@ LREC-COLING, 2024, pp. 90–102. [Online]. Available:
+https://aclanthology.org/2024.determit-1.9/
+[18] M. A. K. Halliday, Spoken and written language.
+Oxford Uni-
+versity Press, 1985.
+[19] C. Blanche-Benveniste, Approches de la langue parl´ee en
+franc¸ais.
+Ophrys, 1997.
+[20] T. Bazillon et al., “La parole spontan´ee :
+transcription et
+traitement,” in TAL, B. Laks and N. Nguyen, Eds., vol. 49,
+2008, pp. 47–76. [Online]. Available: https://aclanthology.org/
+2008.tal-3.3
+[21] D. Luzzati, “Rh´etorique et description de l’oral,” VERBA, vol. 25,
+pp. 7–30, 1998.
+[22] L. Long et al., “On LLMs-driven synthetic data generation,
+curation, and evaluation: A survey,” in Findings of ACL, L.-W.
+Ku et al., Eds., 2024, pp. 11 065–11 082. [Online]. Available:
+https://aclanthology.org/2024.findings-acl.658
+[23] O. Honovich et al., “Unnatural instructions: Tuning language
+models with (almost) no human labor,” in Annual Meeting of
+ACL, A. Rogers et al., Eds., 2023, pp. 14 409–14 428. [Online].
+Available: https://aclanthology.org/2023.acl-long.806
+[24] Y. Wang et al., “Self-Instruct:
+Aligning language models
+with self-generated instructions,” in Annual Meeting of ACL,
+A. Rogers et al., Eds., 2023, pp. 13 484–13 508. [Online].
+Available: https://aclanthology.org/2023.acl-long.754
+[25] A. Rebmann et al., “Evaluating the ability of LLMs to solve
+semantics-aware process mining tasks,” International Conference
+on Process Mining, pp. 9–16, 2024.
+[26] D. Shanley et al., “Getting real about synthetic data ethics,”
+EMBO reports, vol. 25, no. 5, pp. 2152–2155, 2024.
+[27] S. Shankar et al., “Who validates the validators? aligning LLM-
+assisted evaluation of LLM outputs with human preferences,”
+in Annual ACM Symposium on User Interface Software and
+Technology, 2024. [Online]. Available: https://doi.org/10.1145/
+3654777.3676450
+[28] L. Zheng et al., “Judging LLM-as-a-judge with MT-bench and
+Chatbot Arena,” in Advances in Neural Information Processing
+Systems, vol. 36, 2023, pp. 46 595–46 623. [Online]. Available:
+https://dl.acm.org/doi/10.5555/3666122.3668142
+[29] F. Gilardi et al., “ChatGPT outperforms crowd workers for
+text-annotation tasks,” Proceedings of the National Academy
+of Sciences,
+vol. 120,
+no. 30,
+2023. [Online]. Available:
+http://dx.doi.org/10.1073/pnas.2305016120
+[30] Y.
+Liu
+et
+al.,
+“G-Eval:
+NLG
+Evaluation
+using
+GPT-4
+with Better Human Alignment,”
+in EMNLP, H. Bouamor
+et
+al.,
+Eds.,
+2023,
+pp.
+2511–2522.
+[Online].
+Available:
+https://aclanthology.org/2023.emnlp-main.153
+[31] J. Huang et al., “Large language models cannot self-correct
+reasoning
+yet,”
+in
+International
+Conference
+on
+Learning
+Representations, 2024. [Online]. Available: https://iclr.cc/virtual/
+2024/poster/18956
+[32] F. Shi et al., “Language models are multilingual chain-of-
+thought reasoners,” in International Conference on Learning
+Representations, 2023. [Online]. Available: https://iclr.cc/virtual/
+2023/poster/10960
+[33] B. Zhang et al., “Prompting large language model for machine
+translation:
+A case study,” in International Conference on
+Machine Learning, 2023, pp. 41 092–41 110. [Online]. Available:
+https://dl.acm.org/doi/abs/10.5555/3618408.3620130
+[34] P. Liu et al., “Pre-train, prompt, and predict:
+A systematic
+survey of prompting methods in natural language processing,”
+ACM Comput. Surv., vol. 55, no. 9, 2023. [Online]. Available:
+https://doi.org/10.1145/3560815
+[35] X. Wang et al., “Self-consistency improves chain of thought
+reasoning in language models,” in International Conference
+on Learning Representations, 2023. [Online]. Available: https:
+//iclr.cc/virtual/2023/poster/11718
+4042

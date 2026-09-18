@@ -1,0 +1,624 @@
+PhonemeFake: Redefining Deepfake Realism with Language-Driven
+Segmental Manipulation and Adaptive Bilevel Detection
+Oguzhan Baser1∗, A. Ege Tanriverdi1∗, Sriram Vishwanath1,2, Sandeep Chinchali1
+1Department of Electrical and Computer Engineering, The University of Texas at Austin, USA
+2Department of Electrical and Computer Engineering, Georgia Institute of Technology, USA
+oguzhanbaser@utexas.edu
+Abstract
+Deepfake (DF) attacks pose a growing threat as generative mod-
+els become increasingly advanced. However, our study reveals
+that existing DF datasets fail to deceive human perception, un-
+like real DF attacks that influence public discourse. It high-
+lights the need for more realistic DF attack vectors. We intro-
+duce PhonemeFake (PF), a DF attack that manipulates critical
+speech segments using language reasoning, significantly reduc-
+ing human perception by up to 42% and benchmark accuracies
+by up to 94%. We release an easy-to-use PF dataset on Hug-
+gingFace and open-source bilevel DF segment detection model
+that adaptively prioritizes compute on manipulated regions. Our
+extensive experiments across three known DF datasets reveal
+that our detection model reduces EER by 91% while achieving
+up to 90% speed-up, with minimal compute overhead and pre-
+cise localization beyond existing models as a scalable solution.
+Index Terms: segmental deepfake, language reasoning, bilevel
+model, human perception, gating decision
+1. Introduction
+Advancements in generative models have revolutionized the
+creation of synthetic content, enabling models to produce highly
+realistic audio, videos, and texts. Recent results, such as
+SORA’s ability to generate high-fidelity photorealistic videos
+from text prompts, or GPT-like language models (LM) produc-
+ing human-like conversations that are mostly indistinguishable
+from real interactions, highlight the capabilities of such tech-
+nologies [1, 2]. Although promising for applications such as
+creative media and virtual simulations [3], it increases the risk
+of misuse. Sophisticated deepfake (DF) attacks now exploit
+subtle manipulations to deceive systems and humans alike, from
+segmental changes in audio to altered video frames [4, 5]. Such
+developments expose critical vulnerabilities in existing detec-
+tion mechanisms that often struggle to keep up with the grow-
+ing complexity of generative models. Even beyond audio and
+video, missing subtle time-series forgeries (e.g., in EEG) has se-
+vere consequences [6]. To effectively address these challenges,
+there is an urgent need for more comprehensive benchmarks
+and detection models that can reliably distinguish real from syn-
+thetic content, even in the face of highly refined DFs [7, 8].
+Despite significant advancements in DF detection, existing
+datasets and models fall short of addressing the complexities of
+real-world attacks. Current datasets predominantly feature syn-
+thetic content generated entirely from scratch, where the entire
+media (e.g., video, audio) is either completely original or en-
+tirely manipulated. While these datasets and the DF detection
+models trained with them achieve moderate success, they fail
+*The first two authors have equal contribution.
+Figure 1: What would be a more realistic DF attack and how
+does language reasoning help DF synthesis? Our pipeline
+for generating segmentally manipulated DF audio samples in-
+tegrates LM reasoning to emulate plausible and realistic DF
+attacks. Starting from a bon-a-fide audio recording, the tran-
+scription and timing are extracted using Whisper, and a specific
+target word or phrase is identified for manipulation with an LM.
+The manipulation process employs one of three strategies: in-
+version, where a word is replaced with its antonym; insertion,
+where a negating or altering phrase is added; and deletion,
+where a critical word is omitted. These modifications are then
+synthesized using a TTS model to generate the manipulated ut-
+terance. The resulting DF retains the original flow, making de-
+tection challenging while reflecting real attack scenarios.
+to replicate and detect the nuanced nature of real-world DF at-
+tacks. For example, a realistic attack may involve altering only
+the critical segments of a speech while leaving the surrounding
+content intact. This limitation is further evident in Fig. 2 as
+it highlights that humans can reliably identify DFs in existing
+datasets but struggle significantly when faced with our dataset
+that introduces only segmental manipulations in critical utter-
+ances. Moreover, existing detection models are often biased
+towards predicting content as original when the initial segments
+appear authentic, reflecting a systemic lack of high-resolution
+detection capabilities for fine-grained manipulations. This bias
+arises from the training data, which disproportionately features
+media that is either fully original or fully synthesized. As a
+result, these models cannot effectively capture and localize sub-
+tle manipulations within a partially altered dataset, leading to
+lower accuracy in detecting realistic DF scenarios. Addressing
+these challenges requires a shift towards more representative
+datasets and detection models capable of handling localized,
+fine-grained manipulations, thereby bridging the gap between
+controlled research settings and real-world applications.
+We observe that the state-of-the-art (SoTA) DF detection
+models rely on datasets where the entirety of each sample is
+either fully synthetic or fully original [8, 9, 10]. This approach
+overlooks targeted real-world DF attacks, manipulating only the
+most crucial segments of a sample while leaving the rest intact.
+Consequently, existing models struggle to identify these fine-
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+5333 10.21437/Interspeech.2025-2583
+grained manipulations, as they are optimized to detect global
+inconsistencies rather than localized alterations. Our key tech-
+nical insight is in natural language and human communication,
+critical information is often concentrated in specific segments of
+a sentence or speech. For example, in a sentence, the words or
+phrases that carry high semantic or contextual weight are more
+likely to be the targets of DF manipulations. Based on this,
+we hypothesize that prioritizing the analysis of these critical
+segments can improve detection efficiency and accuracy. This
+focus aligns with how real-world attackers are likely to craft
+manipulations, targeting the most impactful segments to max-
+imize deception while minimizing detectable alterations. To
+address these concerns, we present a segmentally manipulated
+dataset and a search-then-infer detection model to target critical
+regions, enhancing DF detection accuracy and efficiency.
+Literature Review: Existing audio DF detection methods rely on
+ML-based classification [9, 10, 11, 12, 13, 14] or feature-level
+manipulations [8, 15] (e.g., signatures, watermarking) but over-
+look semantic cues and language reasoning. While recent works
+use LM embeddings for robustness [16, 17, 18], they assume
+binary utterance-level classification, failing to detect segmen-
+tal manipulations. PhonemeFake bridges this gap by explicitly
+targeting localized, semantically driven deepfake alterations. In
+the light of prior work, our contributions are three-fold:
+• New Attack Vector: We introduce a novel segmental DF at-
+tack vector that manipulates (e.g., inversion, deletion, and
+insertion) critical audio segments while preserving the sur-
+rounding content, better reflecting real-world attacks.
+• New DF Dataset: We develop, PhonemeFake (PF), an easy-
+to-use, dataset 1 tailored for segmentally manipulated audio.
+This dataset significantly reduces the performance of the cur-
+rent SoTA detection models, highlighting their limitations.
+• Fast DF Detection Model : We release a fine-grained de-
+tection method 2, PhonemeFakeDetect (PFD), optimized for
+segmental manipulations, achieving up to 90% speedup over
+existing SoTA while reducing the error rate by up to 91%.
+2. Method
+Our method comprises two key components: a generation
+pipeline that constructs a segmental DF audio dataset and
+a multi-level DF detection model designed to provide high-
+resolution timestamps for manipulation occurrences, as shown
+in Fig. 1 and Fig. 3, respectively.
+2.1. PFD: A Multi-Level Segmental DF Analysis Model
+Our method operates on two temporal resolutions, optimiz-
+ing both computational efficiency and detection accuracy. The
+Low-Frequency (LF) stream processes the audio signal in
+large temporal windows, capturing broad contextual and tem-
+poral information. It serves as a preliminary lightweight filter,
+identifying regions of interest (ROIs) while maintaining low
+computational overhead. The high frequency (HF) stream
+performs a detailed frame-by-frame analysis of the audio signal
+within the identified ROIs. Leveraging a more computationally
+intensive model, it extracts high-resolution features to scrutinize
+localized segments for subtle manipulations.This dual-stream
+approach balances global context awareness with localized pre-
+1https://huggingface.co/datasets/phonemefake/
+PhonemeFakeV2
+2https://github.com/UTAustin-SwarmLab/
+PhonemeFake
+Figure 2: Do Current DF Datasets Deceive Humans? Percep-
+tion accuracy on 93 samples from 78 participants shows Phone-
+meFake is harder to detect than existing DF datasets.
+cision, leveraging a dynamic gating mechanism to selectively
+activate the expensive HF stream only when necessary.
+2.1.1. LF Stream: Rough Analysis for ROIs
+The input audio signal is divided into T coarse temporal win-
+dows, each of size ∆T . For each window t∈{ 1,...,T }, the
+LF stream extracts low-dimensional features ulf
+t ∈ Rdlf using
+a lightweight convolutional encoder. These features are then
+processed by an LF-LSTM network denoted as:
+hlf
+t, clf
+t = LSTM(lf)(ulf
+t, hlf
+t−1, clf
+t−1;θlf), (1)
+where hlf
+t and clf
+t represent the hidden and cell states of the LF
+LSTM at timet. The prediction for LF frame t is computed as
+ˆyt =σ(W lf hlf
+t ) whereW lf is a projection for LF predictions.
+The LF-LSTM output serves as a preliminary filter, iden-
+tifying ROIs where manipulations are likely. These ROIs are
+passed to the gating mechanism to decide whether the HF
+stream should be engaged for further analysis.
+2.1.2. Gating: Dynamic Activation of the HF Stream
+The gating mechanism determines whether a detailed HF analy-
+sis is necessary for a given windowt. It takes the LF featureulf
+t ,
+the LF-LSTM state hlf
+t , the HF-LSTM state from the previous
+step hhf
+t−1 and computes gating decision bt as:
+gt =θg[ulf
+t, hlf
+t−1, hhf
+t−1], (2)
+whereθg is a learnable projection matrix and [·] denotes con-
+catenation. gt is a binary decision sampled from Bernoulli dis-
+tribution parametrized byθg, as shown by:
+gt =
+(
+1 if HF analysis is required,
+0 otherwise. (3)
+However, it is not differentiable through the argmax func-
+tion. Using Gumbel-Softmax [19, 20] we approximate the dis-
+crete gating decision gt to a differentiable random variableGt.
+For binary prediction setting ( K = 2 ), where class proba-
+bilities are proportional to gk, sampling from the categorical
+distribution is Gt = argmaxk
+ 
+loggk
+t +Nk
+t
+
+where Nk =
+− log(− log(Uk)) is Gumbel noise, andUk∼ Uniform(0, 1).
+This enables discrete sampling. However, argmax is nondiffer-
+entiable, making it unsuitable for backpropagation. To resolve
+it, the Gumbel-Softmax relaxation approximates the sampling
+with a differentiable softmax, shown as:
+Gi
+t = exp
+ 
+(loggi
+t +Ni
+t )/µ
+
+PK
+j=1 exp
+ 
+(loggj
+t +Nj
+t )/µ
+, i ∈{ 0, 1}.
+5334
+The temperatureµ >0 controls the distribution sharpness. As
+µ → 0, the output approximates the argmax’s discreteness,
+while largerµ allows smoother and more exploratory decisions.
+2.1.3. HF Stream: Fine Resolution DF Detection
+WhenG0
+t = 1 , the HF Stream extracts high-dimensional fea-
+tures uhf
+τ ∈ Rdhf using a compute-intensive LSTM. Unlike LF-
+stream, HF-stream is processed in higher resolution stepsT′ of
+size ∆T′ = ∆T
+T ′ . These fine features obtained from the narrow
+windowτ, concatenated with the LF features, are processed by
+the HF-LSTM to capture local temporal dynamics:
+h′hf
+τ , c′hf
+τ = LSTM(hf)([uhf
+τ , ulf
+t ], hhf
+τ−1, chf
+τ−1;θhf). (4)
+IfG1
+t = 1, the old HF-LSTM state is spread without an update
+to keep the temporal context (hhf
+τ = hhf
+τ−1, chf
+τ = chf
+τ−1), as in:
+hhf
+t = Gt
+
+h′hf
+T ′
+hhf
+t−1
+
+, chf
+t = Gt
+
+c′hf
+T ′
+chf
+t−1
+
+(5)
+We use hhf
+t to predict the high-resolution frame τ by ˆyτ =
+σ(W hf hhf
+τ ), where W hf is a learnable projection and σ(·) is
+the sigmoid. The binary ˆyt indicates whether the frame is real.
+2.1.4. Training Procedure
+The model is trained to optimize both detection accuracy and
+computational efficiency using a composite loss functionL. For
+each broad window, it sums the binary cross-entropy loss for
+both LF and HF classifications along with a fine-usage penalty
+scaled by mixture factorλ to limit HF activations, given as:
+Lt =
+
+G0
+t G1
+t
+
+"
+λ−PT ′
+τ=1
+h
+yτ ln(ˆyτ ) + (1−yτ ) ln(1− ˆyτ )
+i
+−
+ 
+yt ln(ˆyt) + (1−yt) ln(1− ˆyt)
+
+#
+,
+(6)
+whereyt,yτ is the ground-truth label for framet,τ andλ con-
+trols the tradeoff between accuracy and efficiency. Then, the
+loss for each broad window is minimized as:
+min
+{θg,θlf,θhf,W lf,W hf}
+Egt∼Bernoulli(gt;θg)
+(x,y)∼Dtrain
+[Lt]. (7)
+This optimizes detection, with the Bernoulli term adaptively
+triggering HF analysis only in suspected regions for efficiency.
+This bilevel strategy reduces the model’s complexity from
+O (T·T′·CHF) to O (T·CLF +p·T·T′·CHF), where
+CHF and CLF denote the complexities of the HF and LF
+streams, respectively, and p (tuned by λ) is the HF activation
+probability (approximately 0.1 in our experiments).
+Why do we prefer LSTMs over transformers?
+Our DF detection aims to localize subtle and segment-level ma-
+nipulations. LSTMs inherently operate on temporal order and
+capture local dependencies, crucial for detecting fine-grained
+manipulations, whereas transformers compute global pairwise
+interactions, not necessary for our task, at a higher overhead.
+Also, ours worst-case complexity is O(TT′), whereas trans-
+formers incur O((TT′)2) due to self-attention [21]. Lastly,
+LSTMs’ inherent sequential processing naturally complements
+our bilevel framework’s gating mechanism.
+2.2. PhonemeFake DF Generation
+We design our synthesis pipeline to create realistic DFs lever-
+aging LM reasoning, as described in Fig. 1. Let the in-
+put audio be x(t), with its corresponding transcription w =
+Figure 3: How can we efficiently detect fine-grained DF ma-
+nipulations? Our bilevel detection model first uses an LF
+stream to identify RoI, then selectively activates an HF stream
+via Gumbel-Softmax gating for fine-grained analysis, ensuring
+high accuracy and resolution with minimal compute overhead.
+{w1,w 2,...,w N}, wherewi denotes thei-th word, andti the
+timestamp. We manipulate the utterance ¯x(t) by modifying the
+target segments ofx(t) followed by synthesis and fading.
+We extract audio x(t)’s transcription w and word-level tim-
+ing t ={t1,t 2,...,t N} using the transcription model ψ by
+(w,t ) = ψ(x;θψ) [22, 23]. Then, we identify the most se-
+mantically critical word w∗∈w by prompting the LM Γ as
+w∗ = Γ(.,w ;θL). Let fi(·) denote the manipulation function
+operating in three modes i∈{ 1, 2, 3}: (1) Inversion: Replace
+w∗ with its antonym w′, yielding f1(w∗) = w′. (2) Insertion:
+Add a phrasew† aroundw∗, such thatf2(w∗) ={w†,w∗}. (3)
+Deletion: Removew∗, resulting in :f2(w∗) =∅. The manipu-
+lated transcription ¯w becomes ¯w ={w\w∗}∪ fi(w∗). Next,
+the TTS model ϕ synthesizes the manipulated segment fi(w∗)
+into audio ¯x∗ =ϕ(x,fi(w∗);θϕ). To refine synthesized audio
+and ensure natural transitions, we apply a post-processing func-
+tionP(·), which handles tasks such as silence trimming and
+fade-in/out transitions in audio as ¯x(t) =P(x(t), ¯x∗,t ).
+The resulting manipulated audio ¯x(t) integrates subtle, local-
+ized manipulations while maintaining the natural prosody and
+flow of the original audio. This pipeline generates DFs that re-
+flect semantically plausible and temporally coherent real-world
+attacks while remaining challenging for detection models.
+3. Experimental Setup
+Here, we outline the data, baselines, training, and test settings.
+Datasets: We evaluate our approach on three datasets. Wave-
+Fake (WF) [24] contains over 100,000 synthetic speech sam-
+ples generated using six TTS models, offering a controlled
+benchmark focused on synthesis variations but it lacks real-
+world variability. In-the-Wild Audio DF (ITW) [25] captures
+DFs from real-world sources, introducing variations in record-
+ing conditions and background noise to assess the detection
+model generalization. ASVspoof21 (ASV) [26], part of the
+ASVspoof challenge, serves as a standardized benchmark for
+DF detection in speaker verification. SpoofCeleb (SC) [27]
+features 800+ speakers and diverse TTS/VC attacks sourced
+from online media, offering ITW cases. All consist of full DFs,
+which are largely trivial for human perception, as shown in Fig.
+2. Unlike those, HAD [4] benchmarks partial DFs via manual
+tampering yet its forgeries sound robotic. We offer a language-
+5335
+Table 1: DF Samples Synthesized from The Benchmarks
+Datasets WF ITW ASV21 PF (Ours)
+Samples 11,201 15,333 16,361 42,895
+Duration (h) 22.37 19.06 16.47 57.91
+driven pipeline for semantically coherent manipulations.
+Detection Models: We benchmark our approach against three
+SoTA DF detection models. SASV2 [9] learns a unified
+embedding space for speaker verification and spoof detec-
+tion via multi-stage contrastive learning and copy synthesis-
+augmented data. SCL [10] improves generalization by treat-
+ing re-synthesized DFs as hard negatives and applying bal-
+anced contrastive learning for robustness against unseen at-
+tacks. AASIST [28] uses spectro-temporal graph attention
+on raw waveforms, achieving strong ASVspoof performance
+without handcrafted features. RawBMamba RM [14] lever-
+ages a bidirectional state-space model to capture short- and
+long-range dependencies , combining SincNet-based convolu-
+tions with Mamba blocks for feature extraction. However, all
+process full utterances globally, lacking thetemporal resolution
+to detect localized segmental manipulations. While RM is the
+closest to our approach, it inefficiently processes the full in-
+put without selective refinement. In contrast, our bilevel model
+adaptively focuses on the critical regions, achieving efficient
+and precise detection. As no public models exist for audio
+forgery detection, we finetune a multi-modal forgery localizer,
+MMA [29], to audio with blank images for a fair comparison.
+Hyperparameters: We compute PFD’s LF stream over 1s win-
+dows for 64 mel bins and HF over 10ms for 128 mel bins, yield-
+ing a fine factor of 100. We model the LF and HF streams
+with 4-layer and 64-layer LSTMs (128 hidden size), respec-
+tively. The gating mechanism is regulated with a penalty factor
+λ = 0.1 to limit unnecessary HF activations, balancing accu-
+racy and efficiency. We use Gumbel-Softmax with µ = 1 for
+smooth gradient flow over gating. We employ Adam (lr=10−5)
+with a scheduler, stopping after 20 epochs of no improvement in
+the validation loss. We run all on an 8x NVIDIA A100 cluster.
+Evaluation: All baselines were pretrained on ASV and fine-
+tuned on PF, ensuring equal exposure to our data. We retain
+originals as negatives to enforce subtle manipulation detection.
+We assess the methods using Equal Error Rate (EER) [30].
+4. Results
+Now, we analyze PF’s impact on human and SoTA perception.
+Do Existing DF Datasets Truly Deceive Human Perception?
+To assess the perceptual detectability of DF speech, we con-
+ducted a user study with 78 participants spanning ages 6 to 55.
+Each participant evaluated around 93 samples of bon-a-fide,
+spoofed, and PF-variant speech from benchmark datasets. The
+results in Fig. 2 reveal that existing DF datasets, particularly
+ITW and ASV21, are easily distinguishable by human listeners,
+suggesting that they do not accurately represent realistic
+DF attacks capable of deceiving the public . In contrast, our
+PF variants significantly reduced human detection accuracy
+consistently in the datasets by up to 42%, while PF critically
+altered the intended meaning , demonstrating a much stronger
+similarity to real DF threats.
+How Extensive and Realistic Is the PhonemeFake Dataset?
+We generate DFs using the synthesis pipeline described in
+Sec. 2.2, leveraging bon-a-fide samples from the ASV21, ITW,
+Table 2: Detection Performance in EER % (↓) across Datasets
+and Their PF Variants Denoting Segmenal Fakes.
+ASV21 ITW WF
+Model Base PF Base PF Base PF
+SASV2 27.67 54.57 17.91 55.11 8.18 10.19
+RM 15.65 43.92 12.44 62.86 33.14 94.96
+SCL 2.63 21.37 4.51 22.79 1.79 23.11
+PFD 7.46 10.99 9.62 12.15 5.29 9.31
+and WF datasets. Our approach incorporates language-based
+manipulations, producing 57.91 hours of synthesized DFs in
+42,895 samples. This process extends DF audio datasets such
+as ITW by 273% as shown in Table 1, significantly increasing
+the diversity and realism of DF manipulations. Unlike fully
+synthesized DFs, our segmental approach maintains the origi-
+nal speaker’s identity and prosody, ensuring the manipulations
+remain subtle yet semantically impactful . PF 87% likely
+attacks the top BERT-attended word in a sentence.
+Can SoTA Detection Models Withstand Subtle Deceptive DFs?
+Table 2 presents the EER of SoTA DF detection models across
+the benchmark datasets and their segmental variations. We
+observe a consistent increase in EER by up to 12.9 times
+when models are evaluated on our PF dataset, indicating their
+vulnerability to subtle yet semantically impactful manipulations
+that retain the speaker’s identity while altering the meaning.
+How Does Our Bilevel Approach Fix This?
+Compared to SoTA models, our bilevel detection method
+demonstrates robust performance with EER reduction of up
+to 91%, with only an increase of up to 0.76 times in EER
+when transitioning from the original to the PF variants. This
+stems from our adaptive hierarchical processing, where the LF
+stream identifies RoI, allowing the HF stream to focus compute
+on fine-grained manipulations. Prioritizing key segments over
+full utterances improves precision while maintaining efficiency.
+This provides a scalable and reliable framework for identifying
+realistic, segmentally manipulated DFs . We observe that the
+HF stream is activated only 10% of the time during inference,
+proving the efficiency of the gating. Notably, the gate tends
+to activate precisely at the start and end of the manipulated
+segments, while remaining off in the middle . Besides, LM at-
+tention is highly concentrated on altered segments, confirming
+that our method effectively captures the linguistic and acoustic
+inconsistencies introduced by DF modifications. Experimental
+extensions with SC, HAD, AASIST, and MMA are in the repo.
+5. Conclusion
+We introduce a novel segmental DF attack vector, Phoneme-
+Fake, reducing human and ML detection accuracy by up to
+94%. Our human perception survey highlights that existing DFs
+are easily recognizable, whereas our manipulations produce
+more deceptive and realistic DF speech. To facilitate further re-
+search, we release a comprehensive and user-friendly dataset
+on Hugging Face, summing up to 57.91 hours. Also, we open-
+source a computationally efficient bilevel detection frame-
+work, capable of high-resolution timing prediction, achieving
+up to 90% speed-up in inference while reducing detection EER
+by 91% across multiple datasets. Future improvements include
+integrating LM attention into the gating to refine the DF timing,
+extending PF with more samples and cross-lingual attacks.
+5336
+6. Acknowledgments
+This work was supported in part by the National Science Foun-
+dation grants under No. 2148186 and No. 2133481. Any opin-
+ions, findings, and conclusions or recommendations expressed
+in this material are those of the authors and do not necessarily
+reflect the views of the National Science Foundation.
+7. References
+[1] Z. Xing, Q. Feng, H. Chen, Q. Dai, H. Hu, H. Xu, Z. Wu, and Y .-
+G. Jiang, “A survey on video diffusion models,”ACM Computing
+Surveys, vol. 57, no. 2, pp. 1–42, 2024.
+[2] T. Brown, B. Mann, N. Ryder, M. Subbiah, J. D. Kaplan, P. Dhari-
+wal, A. Neelakantan, P. Shyam, G. Sastry, A. Askell et al., “Lan-
+guage models are few-shot learners,” Advances in Neural Infor-
+mation Processing Systems, vol. 33, pp. 1877–1901, 2020.
+[3] N. Anantrasirichai and D. Bull, “Artificial intelligence in the cre-
+ative industries: a review,” Artificial intelligence review, vol. 55,
+no. 1, pp. 589–656, 2022.
+[4] J. Yi, Y . Bai, J. Tao, H. Ma, Z. Tian, C. Wang, T. Wang, and
+R. Fu, “Half-truth: A partially fake audio detection dataset,” in
+Interspeech 2021, 2021, pp. 1654–1658.
+[5] R. Zhang, H. Wang, M. Du, H. Liu, Y . Zhou, and Q. Zeng, “Um-
+maformer: A universal multimodal-adaptive transformer frame-
+work for temporal forgery localization,” inProceedings of the 31st
+ACM International Conference on Multimedia , 2023, pp. 8749–
+8759.
+[6] O. Baser, M. Yavuz, K. Ugurlu, F. Onat, and B. U. Demirel, “Au-
+tomatic detection of the spike-and-wave discharges in absence
+epilepsy for humans and rats using deep learning,” Biomedical
+Signal Processing and Control, vol. 76, p. 103726, 2022.
+[7] Z. Yan, Y . Zhang, X. Yuan, S. Lyu, and B. Wu, “Deepfakebench:
+A comprehensive benchmark of deepfake detection,”Advances in
+Neural Information Processing Systems, vol. 36, pp. 4534–4565,
+2023.
+[8] O. Baser, K. Kale, and S. P. Chinchali, “Securespectra: Safeguard-
+ing digital identity from deep fake threats via intelligent signa-
+tures,” in Proc. Interspeech 2024, 2024, pp. 1115–1119.
+[9] S. H. Mun, H. jin Shim, H. Tak, X. Wang, X. Liu, M. Sahidul-
+lah, M. Jeong, M. H. Han, M. Todisco, K. A. Lee, J. Yamag-
+ishi, N. Evans, T. Kinnunen, N. S. Kim, and J. weon Jung, “To-
+wards single integrated spoofing-aware speaker verification em-
+beddings,” in Interspeech 2023, 2023, pp. 3989–3993.
+[10] T.-P. Doan, L. Nguyen-Vu, K. Hong, and S. Jung, “Balance, mul-
+tiple augmentation, and re-synthesis: A triad training strategy for
+enhanced audio deepfake detection,” in Proc. Interspeech 2024 ,
+2024, pp. 2105–2109.
+[11] C. Wang, J. Yi, J. Tao, C. Y . Zhang, S. Zhang, and X. Chen, “De-
+tection of cross-dataset fake audio based on prosodic and pronun-
+ciation features,” in Interspeech 2023, 2023, pp. 3844–3848.
+[12] J. W. Lee, E. Kim, J. Koo, and K. Lee, “Representation selective
+self-distillation and wav2vec 2.0 feature exploration for spoof-
+aware speaker verification,” inInterspeech 2022, 2022, pp. 2898–
+2902.
+[13] Y . Xie, H. Cheng, Y . Wang, and L. Ye, “Learning a self-
+supervised domain-invariant feature representation for general-
+ized audio deepfake detection,” in Interspeech 2023, 2023, pp.
+2808–2812.
+[14] Y . Chen, J. Yi, J. Xue, C. Wang, X. Zhang, S. Dong, S. Zeng,
+J. Tao, Z. Lv, and C. Fan, “Rawbmamba: End-to-end bidirectional
+state space model for audio deepfake detection,” in Interspeech
+2024, 2024, pp. 2720–2724.
+[15] Y . Zhao, B. Liu, M. Ding, B. Liu, T. Zhu, and X. Yu, “Proac-
+tive deepfake defence via identity watermarking,” in Proceedings
+of the IEEE/CVF winter conference on applications of computer
+vision, 2023, pp. 4602–4611.
+[16] Y . Lu, Y . Xie, R. Fu, Z. Wen, J. Tao, Z. Wang, X. Qi, X. Liu, Y . Li,
+Y . Liu, X. Wang, and S. Shi, “Codecfake: An initial dataset for
+detecting llm-based deepfake audio,” in Interspeech 2024, 2024,
+pp. 1390–1394.
+[17] P. Kawa, M. Plata, M. Czuba, P. Szyma ´nski, and P. Syga, “Im-
+proved deepfake detection using whisper features,” inInterspeech
+2023, 2023, pp. 4009–4013.
+[18] K. Kale, H. Esfahanizadeh, N. Elias, O. Baser, M. M ´edard, and
+S. Vishwanath, “Texshape: Information theoretic sentence em-
+bedding for language models,” in 2024 IEEE International Sym-
+posium on Information Theory (ISIT) . IEEE, 2024, pp. 2038–
+2043.
+[19] C. J. Maddison, A. Mnih, and Y . W. Teh, “The concrete distri-
+bution: A continuous relaxation of discrete random variables,” in
+International Conference on Learning Representations, 2022.
+[20] T. Hazan and T. Jaakkola, “On the partition function and random
+maximum a-posteriori perturbations,” in Proceedings of the 29th
+International Coference on International Conference on Machine
+Learning, 2012, pp. 1667–1674.
+[21] A. Vaswani, N. Shazeer, N. Parmar, J. Uszkoreit, L. Jones, A. N.
+Gomez, Ł. Kaiser, and I. Polosukhin, “Attention is all you need,”
+Advances in neural information processing systems, vol. 30, 2017.
+[22] A. Radford, J. W. Kim, T. Xu, G. Brockman, C. McLeavey, and
+I. Sutskever, “Robust speech recognition via large-scale weak
+supervision,” in International conference on machine learning .
+PMLR, 2023, pp. 28 492–28 518.
+[23] A. Baevski, Y . Zhou, A. Mohamed, and M. Auli, “wav2vec
+2.0: A framework for self-supervised learning of speech repre-
+sentations,” Advances in neural information processing systems ,
+vol. 33, pp. 12 449–12 460, 2020.
+[24] J. Frank and L. Sch ¨onherr, “Wavefake: A data set to facilitate
+audio deepfake detection,” in Thirty-fifth Conference on Neural
+Information Processing Systems Datasets and Benchmarks Track
+(Round 2).
+[25] N. M ¨uller, P. Czempin, F. Diekmann, A. Froghyar, and
+K. B¨ottinger, “Does audio deepfake detection generalize?” in In-
+terspeech 2022, 2022, pp. 2783–2787.
+[26] X. Liu, X. Wang, M. Sahidullah, J. Patino, H. Delgado, T. Kin-
+nunen, M. Todisco, J. Yamagishi, N. Evans, A. Nautsch et al. ,
+“Asvspoof 2021: Towards spoofed and deepfake speech detection
+in the wild,”IEEE/ACM Transactions on Audio, Speech, and Lan-
+guage Processing, vol. 31, pp. 2507–2522, 2023.
+[27] J.-w. Jung, Y . Wu, X. Wang, J.-H. Kim, S. Maiti, Y . Matsunaga,
+H.-j. Shim, J. Tian, N. Evans, J. S. Chung et al. , “Spoofceleb:
+Speech deepfake detection and sasv in the wild,”IEEE Open Jour-
+nal of Signal Processing, 2025.
+[28] J.-w. Jung, H.-S. Heo, H. Tak, H.-j. Shim, J. S. Chung, B.-J. Lee,
+H.-J. Yu, and N. Evans, “Aasist: Audio anti-spoofing using in-
+tegrated spectro-temporal graph attention networks,” in ICASSP
+2022-2022 IEEE international conference on acoustics, speech
+and signal processing (ICASSP). IEEE, 2022, pp. 6367–6371.
+[29] R. Zhang, H. Wang, M. Du, H. Liu, Y . Zhou, and Q. Zeng, “Um-
+maformer: A universal multimodal-adaptive transformer frame-
+work for temporal forgery localization,” inProceedings of the 31st
+ACM International Conference on Multimedia , 2023, pp. 8749–
+8759.
+[30] G. R. Doddington, M. A. Przybocki, A. F. Martin, and D. A.
+Reynolds, “The nist speaker recognition evaluation–overview,
+methodology, systems, results, perspective,” Speech communica-
+tion, vol. 31, no. 2-3, pp. 225–254, 2000.
+5337

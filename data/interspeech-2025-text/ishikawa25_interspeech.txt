@@ -1,0 +1,954 @@
+Language-Guided Contrastive Audio-Visual Masked Autoencoder
+with Automatically Generated Audio-Visual-Text Triplets from Videos
+Yuchi Ishikawa1,2, Shota Nakada1, Hokuto Munakata1, Kazuhiro Saito1, Tatsuya Komatsu1,
+Yoshimitsu Aoki2
+1LY Corporation, Japan
+2Keio University, Japan
+yuchi.ishikawa@lycorp.co.jp, aoki@elec.keio.ac.jp
+Abstract
+In this paper, we propose Language-Guided Contrastive Audio-
+Visual Masked Autoencoders (LG-CAV-MAE) to improve
+audio-visual representation learning. LG-CAV-MAE integrates
+a pretrained text encoder into contrastive audio-visual masked
+autoencoders, enabling the model to learn across audio, visual
+and text modalities. To train LG-CAV-MAE, we introduce an
+automatic method to generate audio-visual-text triplets from un-
+labeled videos. We first generate frame-level captions using an
+image captioning model and then apply CLAP-based filtering
+to ensure strong alignment between audio and captions. This
+approach yields high-quality audio-visual-text triplets without
+requiring manual annotations. We evaluate LG-CAV-MAE on
+audio-visual retrieval tasks, as well as an audio-visual classifi-
+cation task. Our method significantly outperforms existing ap-
+proaches, achieving up to a 5.6% improvement in recall@10
+for retrieval tasks and a 3.2% improvement for the classifica-
+tion task.
+Index Terms: audio-visual retrieval, audio-visual classifica-
+tion, contrastive learning, dataset generation
+1. Introduction
+Understanding the relationship between audio and visual
+modalities is crucial for various applications, including video
+content analysis and autonomous systems.
+Existing meth-
+ods [1, 2, 3] have sought to learn correspondences between au-
+ditory and visual signals through self-supervised audio-visual
+learning, achieving high performance on classification and re-
+trieval tasks.
+Multimodal learning typically requires large amounts of
+paired data, which can be costly to collect. In terms of audio-
+visual pairs, videos are a relatively easy source, as they typically
+contain both auditory and visual modalities. To date, a vari-
+ety of audio-visual datasets, including AudioSet [4], Kinetics-
+Sound [5], VGGSound [6], and ACAV100M[7], have been re-
+leased.
+However, from a quality standpoint, audio data often con-
+tains significant noise (e.g., off-screen sounds, background mu-
+sic), making it challenging to collect audio-visual data with
+clear alignment. Consequently, existing state-of-the-art audio-
+visual learning methods, such as CAV-MAE [1], still struggle to
+accurately capture fine-grained audio-visual correspondences.
+To address this challenge, [8] has proposed DETECLAP, an
+extension of CAV-MAE. DETECLAP is a learning framework
+that, in addition to training a contrastive audio-visual masked
+autoencoder, incorporates an auxiliary task of predicting object
+labels detected within videos. This framework enables learning
+audio-visual representations that focus on fine-grained objects
+rather than coarse object categories. However, DETECLAP re-
+Existing Audio-Visual-Text Dataset
+visually
+aligned 
+audio
+Our Proposed Triplet Generation
+BGM
+off-screen
+sound
+Audio
+Vision
+Text
+sometimes unavailable
+not well aligned
+visually
+aligned 
+audio
+Vision
+Generation
+Text
+Scoring
+well aligned
+Figure 1: Existing audio-visual-text data vs. our generated
+triplets. (left) Existing datasets often lack strong alignment be-
+tween audio and vision or have missing text. (right) Our pro-
+posed triplet generation method is based on the idea that if a
+caption generated from a video describes the audio accurately,
+the audio and visual components are also likely to correspond.
+Therefore, this method can generate well-aligned triplets.
+lies heavily on predefined object labels, which limits its ability
+to learn correspondences for objects not defined by those labels
+or nuances beyond object-level features (e.g. intense vs. gentle
+guitar performance).
+In this paper, we propose Language-Guided CAV-MAE
+(LG-CAV-MAE), a simple yet effective framework for enhanc-
+ing audio-visual representations. LG-CAV-MAE extends CAV-
+MAE by leveraging a pretrained text encoder to incorporate
+contrastive losses for audio-visual-text triplets. This framework
+enables the learning of more detailed audio-visual feature rep-
+resentations without relying on predefined object labels, as re-
+quired by DETECLAP.
+Although training LG-CAV-MAE requires audio-visual-
+text triplets, most of existing datasets [10, 11, 12, 6, 7] do
+not provide textual descriptions nor do they offer well-aligned
+audio-visual pairs, primarily due to background music and off-
+screen sounds (the left part of Fig. 1). Therefore, these datasets
+are not suitable for our LG-CAV-MAE.
+To address this problem, we further propose a method for
+automatically generating captions from unlabeled videos and
+filtering out those that are not descriptive on the underlying
+audio (the right part of Fig. 1).
+This framework automati-
+cally constructs audio-visual-text triplets used for our LG-CAV-
+MAE training. Our approach is based on the hypothesis that
+if a caption generated from a video describes the audio ac-
+curately, the audio and visual components are also likely to
+correspond.
+Specifically, we first sample frames from unla-
+beled videos and employ an image captioning model to gen-
+erate captions for each frame. We then compute the similar-
+ity between these generated captions and the original video’s
+audio using CLAP [9], selecting instances with high similar-
+ity as audio-visual-text triplets. This procedure allows us to
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+2605
+10.21437/Interspeech.2025-1054
+
+[CLS] Token
+Visual
+Encoder
+Audio
+Encoder
+Text
+Encoder
+a man is playing
+an accordion
+Tokenization
+Masking
+Tokenization
+Masking
+Tokenization
+Cross-modal Encoder
+visual
+audio
+text
+Mean
+Mean
+Cross-modal Decoder
+𝐿!
+𝐿"#!
+𝐿$%& + 𝐿'%&
+(a) Overview of our LG-CAV-MAE).
+Unlabeled
+Video/Audio Data
+Image
+Captioning
+Model
+CLAP
+Scoring
+Noisy
+Audio-Visual-Text
+Triplets
+Audio-Visual-Text
+Triplets
+Best Frame Caption:
+a man playing
+a saxophone in a room.
+CLAP-based
+filtering
+Triplet
+generation
+video
+audio
+Caption 1:
+a man playing a saxophone
+in a room
+…
+Caption N:
+a man playing a saxophone
+in a room with a piano
+(b) Our proposed audio-visual-text triplet generation process.
+Figure 2: (a) The upper part illustrates the training process of the contrastive audio-visual masked autoencoder (CAV-MAE) [1]. The
+lower part shows how we introduce additional audio-text and visual-text contrastive losses using a pretrained text encoder, extending
+CAV-MAE to a tri-modal framework (LG-CAV-MAE). (b) For LG-CAV-MAE training, we propose to automatically generate audio-
+visual-text triplets from unlabeled videos using an image caption models and CLAP [9].
+construct datasets with robust audio-visual alignment without
+explicitly comparing audio-visual correspondence as in exist-
+ing methods [7, 13]. Note that, unlike in [14, 15, 16, 17], our
+method does not require metadata or tags associated with audio
+or videos.
+In our experiments, using our automatic data generation
+method, we build audio-visual-text triplets from two existing
+video datasets, VGGSound [6] and Kinetics700 [18]. We then
+train LG-CAV-MAE with these generated triplets and evaluate
+the model on audio-to-visual retrieval, visual-to-audio retrieval,
+and audio-visual classification tasks. LG-CAV-MAE achieves
+performance surpassing that of existing methods without incur-
+ring any additional annotation costs.
+2. Proposed Method
+In this paper, we propose Language-Guided CAV-MAE (LG-
+CAV-MAE) which is built upon CAV-MAE to enhance audio-
+visual representations. We also propose to automatically gener-
+ate audio-visual-text triplets from unlabeled videos, which are
+subsequently used for training LG-CAV-MAE. In the follow-
+ing sections, we first provide an overview of CAV-MAE, then
+explain our extension of it. Finally, we detail our method for
+automatically generating audio-visual-text triplets from videos.
+2.1. Preliminary: CAV-MAE
+CAV-MAE [1] is a powerful self-supervised learning frame-
+work designed to learn audio-visual representations (see the up-
+per part of Fig. 2a). Let D = {(Xa, Xv)} be a dataset consist-
+ing of paired audio and visual samples, where Xa ∈RTa×F
+is an audio log mel spectrogram with Ta time steps and F fre-
+quency bins, and Xv ∈RH×W ×C is a single video frame of
+height H, width W, and C channels. CAV-MAE aims to learn
+audio-visual representations by reconstructing masked regions
+in each modality and aligning audio and visual representations
+in a shared embedding space.
+In CAV-MAE training, we first randomly mask a subset of
+tokens for both the visual frame and the audio spectrogram. For
+the visual input, we patchify Xv and select a subset of patches
+indexed by Ωv. We create a binary mask Mv whose entries are
+0 for masked patches and 1 otherwise, and obtain the masked
+version eXv = Mv ⊙Xv. Similarly, we split the audio spec-
+trogram into patches and choose a subset indexed by Ωa to
+mask. Let Ma be the corresponding binary mask; we then have
+eXa = Ma ⊙Xa.
+Next, each encoder takes the corresponding masked input.
+The visual encoder processes eXv and produces a latent repre-
+sentation v = VisualEncoder( eXv) ∈Rd where d is the di-
+mensionality of the embedding dimension. The audio encoder
+receives e
+Xa and outputs a = AudioEncoder( eXa) ∈Rd.
+Then, v and a are fed into the cross-modal encoder to yield
+the following three outputs.
+¯v = MeanPool(CrossModalEncoder(v)) ∈Rd
+(1)
+¯a = MeanPool(CrossModalEncoder(a)) ∈Rd
+(2)
+z = CrossModalEncoder([v, a])
+(3)
+For contrastive learning, we define the contrastive loss Lc
+using the formulation proposed in [19].
+Lc = ContrastiveLoss(¯a+, ¯v+, ¯a−, ¯v−)
+(4)
+where ¯a+, ¯v+, ¯a−, ¯v−denote the positive/negative audio-visual
+pairs in the mini-batch.
+For the reconstruction task, we pad z with trainable masked
+tokens at their original positions to form zpad, and feed it into
+the cross-modal decoder as follows:
+[ ˆXa, ˆXv] = CrossModalDecoder(zpad)
+(5)
+Xa and Xv are the reconstructed audio and frame, respectively.
+We then compute the reconstruction loss Lrec using the mean
+square error as follows:
+Lrec =
+1
+|Ωv|
+X
+i∈Ωv
+|Xv
+i −ˆXv
+i |2 +
+1
+|Ωa|
+X
+j∈Ωa
+|Xa
+j −ˆXa
+j |2 (6)
+The final training objective is
+L = Lrec + λ1Lc
+(7)
+where λ1 balances the reconstruction and contrastive terms.
+2606
+
+Table 1: The impact of λ2. Here, LG-CAV-MAE is trained on
+the generated triples from VGGSound using BLIP2.
+λ2
+VGGSound
+AudioSet20K
+R@1
+R@5
+R@10
+R@1
+R@5
+R@10
+Audio-to-Visual Retrieval
+0.001
+13.9
+36.8
+47.3
+7.6
+19.1
+26.0
+0.005
+14.6
+37.2
+48.3
+7.4
+18.7
+25.4
+0.01
+17.7
+41.2
+52.2
+8.3
+20.8
+29.8
+0.05
+14.4
+36.6
+47.3
+6.9
+18.7
+25.9
+0.1
+12.0
+35.1
+45.9
+6.5
+17.7
+24.2
+Visual-to-Audio Retrieval
+0.001
+16.2
+41.8
+51.8
+7.4
+20.5
+28.3
+0.005
+14.6
+37.2
+48.3
+7.7
+20.0
+28.1
+0.01
+18.1
+43.9
+54.5
+8.3
+20.8
+29.8
+0.05
+16.6
+40.5
+50.5
+6.9
+18.7
+25.9
+0.1
+14.5
+38.4
+48.9
+6.5
+17.7
+24.2
+2.2. LG-CAV-MAE
+While CAV-MAE achieves high performance in audio-visual
+understanding tasks, it still struggles to capture detailed audio-
+visual correspondence [8]. To learn more fine-grained audio-
+visual representation, we propose a simple yet effective frame-
+work, Language-Guided CAV-MAE (LG-CAV-MAE). LG-
+CAV-MAE is a tri-modal contrastive learning approach and
+incorporates audio-text and visual-text contrastive losses into
+CAV-MAE (Fig. 2a). Let D = {(Xa, Xv, Xt)} be a dataset of
+audio-visual-text triplets. In addition to the CAV-MAE training
+process, we feed the text Xt into a pretrained text encoder and
+obtain the sentence-level embedding ¯t as follows:
+¯t = TextEncoder(Xt)) ∈Rd
+(8)
+We then apply the InfoNCE loss [20] for the audio-text and
+visual-text pairs in the triplets as follows:
+La2t = InfoNCE
+ ¯a+, ¯t+, ¯a−, ¯t−
+(9)
+Lv2t = InfoNCE
+ ¯v+, ¯t+, ¯v−, ¯t−
+(10)
+The final training objective for LG-CAV-MAE is given by
+L = Lrec + λ1Lc + λ2(La2t + Lv2t)
+(11)
+where λ2 controls the contribution of the audio-text and visual-
+text contrastive losses.
+2.3. Automatic Audio-Visual-Text Triplet Generation
+Training LG-CAV-MAE requires high-quality audio-visual-text
+triplets. Although there are many datasets containing audio-
+visual-text triplets [10, 11, 12], most of them do not offer well-
+aligned audio-visual pairs. To address this problem, we propose
+an automatic method for constructing audio-visual-text triplets
+from unlabeled videos (as shown in Fig. 2b). This method en-
+sures high-quality alignment among the three modalities while
+eliminating the need for manual annotations. The triplet gener-
+ation process consists of the following steps:
+Video Frame Captioning: Given an unlabeled video that con-
+tains an audio track, we extract frames and apply an image
+captioning model to generate captions. This produces multi-
+ple candidate captions corresponding to different frames. In our
+experiments, we generate captions for frames per second. As an
+image encoder, we validate BLIP2 [21] and LLaVa1.5 [22].
+Audio-Visual Alignment Scoring and Caption Selection: We
+pair the original video audio with each generated frame cap-
+tion. To assess the alignment between audio and text, we em-
+ploy CLAP [9] to compute the semantic similarity between the
+Table 2: Effects of caption models on our triplet generation.
+Here, we train LG-CAV-MAE on VGGSound.
+Model
+VGGSound
+AudioSet20K
+R@1
+R@5
+R@10
+R@1
+R@5
+R@10
+Audio-to-Visual Retrieval
+BLIP2
+17.7
+41.2
+52.2
+8.3
+20.8
+29.8
+LLaVa1.5
+17.3
+39.3
+50.9
+8.6
+20.6
+28.9
+Visual-to-Audio Retrieval
+BLIP2
+18.1
+43.9
+54.5
+8.3
+20.8
+29.8
+LLaVa1.5
+18.3
+42.1
+52.6
+8.7
+22.3
+30.3
+audio and each caption. Among the generated captions, the one
+with the highest CLAP score is selected as the most represen-
+tative textual description of the audio-visual content. We then
+combine the selected caption with the corresponding video and
+audio to form an audio-visual-text triplet.
+Filtering Triplets: Although this process can yield audio-
+visual-text triplets, there may still be noisy or weakly aligned
+samples. To remove them, we compute the CLAP scores for
+all generated triplets and select the top k% of samples with
+the highest scores, where k is chosen from {50, 30, 10} in our
+experiments. Through empirical evaluation, we compare these
+three thresholds to determine which offers the best balance for
+training LG-CAV-MAE.
+3. Experiments
+3.1. Experimental settings
+To evaluate the efficacy of our LG-CAV-MAE and the automatic
+generation of audio-visual-text triplets, we pretrain LG-CAV-
+MAE with the generated audio-visual-text triplets and assess
+its performance on audio-to-visual and visual-to-audio retrieval
+tasks, as well as on audio-visual classification.
+Dataset:
+For data generation and pretraining, we use VG-
+GSound [6] and Kinetics700 [18].
+VGGSound is a large-
+scale audio-visual dataset containing 200k videos. Kinetics700
+consists of 650k videos spanning 700 human action classes.
+Although VGGSound provides relatively well-aligned audio-
+visual pairs, Kinetics700 contains some audio noise, leading to
+lower-quality audio-visual pairs. We apply our data generation
+framework to Kinetics700 and show how effectively our frame-
+work filter out such noisy samples. Note that we do not employ
+AudioSet [4] for pre-training, as was done in [1], because we
+do not have access to the full AudioSet dataset.
+Evaluation Metrics:
+For evaluation on audio-to-visual and
+visual-to-audio retrieval tasks, we use AudioSet20k [4], along
+with VGGSound. Following previous works [1, 8], we report
+recall@K (R@K) for K = {1, 5, 10}, which measures the pro-
+portion of correctly retrieved items within the top K results.
+For the audio-visual classification task,
+we use Au-
+dioSet20k, which includes 517 category labels, and VG-
+GSound, which contains 309 category labels.
+While Au-
+dioSet20k is designed for multi-label classification, VGGSound
+serves as a benchmark for multi-class classification.
+In this
+experiment, we finetune the pretrained model using the labels
+and report mean average precision (mAP) for AudioSet20k and
+classification accuracy for VGGSound.
+Implementation details.
+Our experimental setting is mostly
+aligned with that of [8]. We set the frame size H × W as
+224 × 224, the time steps of the audio spectrogram Ta as
+1024, and the frequency bins F as 128. For training, we use
+Adam [25] as the optimizer, with a learning rate of 0.0005.
+2607
+
+Table 3: Perfromance of LG-CAV-MAE trained on the gener-
+ated triplets from VGGSound (VS) and Kinetics700 (K). The
+numbers in parentheses show the proportion of triplets selected
+through CLAP filtering.
+Dataset
+VGGSound
+AudioSet20K
+R@1
+R@5
+R@10
+R@1
+R@5
+R@10
+Audio-to-Visual Retrieval
+K (10%)
+4.4
+11.8
+17.4
+4.4
+11.8
+17.4
+K (30%)
+5.4
+16.4
+21.3
+3.5
+9.9
+15.1
+K (50%)
+6.0
+16.6
+23.5
+4.1
+11.1
+16.9
+K
+8.2
+21.0
+28.0
+8.0
+17.1
+23.2
+VS
+17.7
+41.2
+52.2
+8.3
+20.8
+29.8
+VS + K (10%)
+18.3
+41.5
+52.8
+9.9
+24.0
+31.4
+VS + K (30%)
+18.9
+43.3
+54.5
+10.6
+25.9
+35.4
+VS + K (50%)
+18.0
+41.7
+53.0
+10.8
+24.5
+33.1
+Visual-to-Audio Retrieval
+K (10%)
+3.1
+10.3
+15.2
+3.1
+10.3
+15.2
+K (30%)
+4.9
+14.2
+19.8
+2.4
+8.6
+11.9
+K (50%)
+5.7
+15.1
+21.5
+3.8
+9.8
+14.2
+K
+7.4
+19.1
+25.5
+6.1
+13.7
+19.0
+VS
+18.1
+43.9
+54.5
+8.3
+20.8
+29.8
+VS + K (10%)
+20.6
+44.6
+56.2
+9.8
+23.8
+32.8
+VS + K (30%)
+20.8
+46.3
+56.5
+11.3
+26.0
+34.0
+VS + K (50%)
+18.8
+45.0
+55.0
+11.0
+25.7
+33.6
+Table 4: Effectiveness of CLAP filtering in our triplet gener-
+ation. Here, VS = VGGSound, K = Kinetics700, and ”rand.
+30%” indicates that 30% of the data was randomly selected.
+Dataset
+VGGSound
+AudioSet20K
+R@1
+R@5
+R@10
+R@1
+R@5
+R@10
+Audio-to-Visual Retrieval
+VS
+17.7
+41.2
+52.2
+8.3
+20.8
+29.8
++ K (30%)
+18.9
+43.3
+54.5
+10.6
+25.9
+35.4
++ K (rand. 30%)
+17.9
+41.6
+53.6
+10.0
+24.1
+31.7
+Visual-to-Audio Retrieval
+VS
+18.1
+43.9
+54.5
+8.3
+20.8
+29.8
++ K (30%)
+20.8
+46.3
+56.5
+11.3
+26.0
+34.0
++ K (rand. 30%)
+19.7
+44.9
+55.8
+9.9
+25.8
+32.8
+As the pretrained text encoder, we use the 2023 version of
+CLAP [9].
+Since the embedding dimension differs between
+CLAP and LG-CAV-MAE, we feed the audio and visual em-
+beddings into a two-layer MLP to match the dimensionality.
+3.2. Results
+Ablation Studies: Tab. 1 investigates the impact of λ2. Sim-
+ilarly to λ1 in the CAV-MAE loss, we found that a relatively
+small contrastive loss weight of 0.01 is preferable. Hence, we
+fix λ2 = 0.01 for subsequent experiments.
+Tab. 2 compares performance when using different cap-
+tioning models in our triplet generation framework. Although
+LLaVa1.5 is a better captioning model than BLIP2, it did not
+improve performance in our approach. Therefore, we use capi-
+tion generated by BLIP2 in all subsequent experiments.
+Tab. 3 compares the performance of LG-CAV-MAE trained
+on combined triplets from two different datasets. When the
+model is trained on both VGGSound and Kinetics, its perfor-
+mance is superior to that trained solely on Kinetics700 or VG-
+GSound.
+The results also indicate that the amount of data
+greatly influences performance when using Kinetics700.
+In
+contrast, when the model is trained on both Kinetics700 and
+VGGSound, simply using more Kinetics700 samples does not
+necessarily yield better results.
+By combining the top 30%
+of Kinetics700 triplets with VGGSound, we achieve an im-
+provement of more than 2% compared to that trained with VG-
+GSound alone. From this point forward, when using Kinet-
+ics700 for our framework, we choose the top 30% of triplets.
+Table 5: Comparison with existing methods on audio-to-visual
+and visual-to-audio retrieval tasks. All models are trained on
+VGGSound except for Ours (+K 30%), which is trained on VG-
+GSound plus the top 30% of Kinetics700 triplets selected by
+CLAP scores. Note that, since the original CAV-MAE [1] was
+trained on AudioSet, our results are not directly comparable to
+those reported in the original paper.
+Method
+VGGSound
+AudioSet20K
+R@1
+R@5
+R@10
+R@1
+R@5
+R@10
+Audio-to-Visual Retrieval
+CAV-MAE [1]
+15.1
+36.6
+48.0
+7.4
+18.4
+25.7
+DETECLAP [8]
+15.2
+39.2
+49.5
+7.9
+20.4
+27.7
+Ours
+17.7
+41.2
+52.2
+8.3
+20.8
+29.8
+Ours (+K 30%)
+18.9
+43.3
+54.5
+10.6
+25.9
+35.4
+Visual-to-Audio Retrieval
+CAV-MAE [1]
+15.7
+39.6
+50.5
+7.4
+20.0
+28.9
+DETECLAP [8]
+17.4
+43.0
+51.7
+8.2
+22.1
+29.7
+Ours
+18.1
+43.9
+54.5
+8.3
+20.8
+29.8
+Ours (+K 30%)
+20.8
+46.3
+56.5
+11.3
+26.0
+34.0
+Table 6: Audio-visual classification performance comparison
+on the VGGSound and AudioSet20K datasets.
+Method
+VGGSound
+AudioSet20K
+Accuracy
+mAP
+AudioSlowFast [23]
+52.5
+-
+Audio-MAE [24]
+-
+37.0
+CAV-MAE [1]
+58.9
+38.4
+DETECLAP [8]
+59.5
+39.6
+LG-CAV-MAE (VS)
+59.2
+41.1
+LG-CAV-MAE (VS + K 30%)
+60.1
+42.8
+Table 4 highlights how effective CLAP filtering is com-
+pared to random sampling. As shown, combining VGGSound
+with randomly sampled data yields smaller performance gains
+than when using CLAP filtering. This suggests that CLAP fil-
+tering effectively removes noisy audio-text pairs, thereby im-
+proving the overall quality of audio-visual-text triplets.
+Comparison with Existing Methods: Tab. 5 presents the per-
+formance comparison for audio-to-visual and visual-to-audio
+retrieval tasks. Our LG-CAV-MAE achieves improvements of
++2.7% and +2.8% in R@10, respectively, over existing meth-
+ods. Furthermore, by incorporating Kinetics700, we gain up to
+an additional 5.6% and 5% improvement in audio-to-visual and
+visual-to-audio retrieval, compared to the existing methods.
+Tab. 6 compares the performance for audio-visual classifi-
+cation. Though the performance gain on VGGSound is limited,
+our framework achieves +3.2% improvement on AudioSet20K.
+4. Conclusion
+In this paper, we proposed LG-CAV-MAE, a tri-modal ex-
+tension of CAV-MAE that incorporates audio-text and visual-
+text contrastive losses.
+To address the limited availability
+of high-quality audio-visual-text data, we introduced an auto-
+matic method for generating audio-visual-text triplets from un-
+labeled videos via image captioning and CLAP alignment scor-
+ing. Our experiments demonstrate that filtering these triplets
+using CLAP effectively removes noisy audio-text pairs, with
+the top 30% samples from Kinetics700 providing significant
+performance gains when combined with VGGSound. As a re-
+sult, LG-CAV-MAE outperforms existing audio-visual learning
+approaches, showing substantial improvements on both audio-
+visual retrieval tasks and audio-visual classification.
+2608
+
+5. References
+[1] Y. Gong, A. Rouditchenko, A. H. Liu, D. Harwath, L. Karlinsky,
+H. Kuehne, and J. Glass, “Contrastive audio-visual masked au-
+toencoder,” arXiv preprint arXiv:2210.07839, 2022.
+[2] P.-Y. Huang, V. Sharma, H. Xu, C. Ryali, Y. Li, S.-W. Li,
+G. Ghosh, J. Malik, C. Feichtenhofer et al., “Mavil: Masked
+audio-video learners,” Advances in Neural Information Process-
+ing Systems, vol. 36, 2024.
+[3] M.-I. Georgescu, E. Fonseca, R. T. Ionescu, M. Lucic, C. Schmid,
+and A. Arnab, “Audiovisual masked autoencoders,” in Proceed-
+ings of the IEEE/CVF International Conference on Computer Vi-
+sion, 2023, pp. 16 144–16 154.
+[4] J. F. Gemmeke, D. P. Ellis, D. Freedman, A. Jansen, W. Lawrence,
+R. C. Moore, M. Plakal, and M. Ritter, “Audio set: An ontology
+and human-labeled dataset for audio events,” in 2017 IEEE inter-
+national conference on acoustics, speech and signal processing
+(ICASSP).
+IEEE, 2017, pp. 776–780.
+[5] W. Kay, J. Carreira, K. Simonyan, B. Zhang, C. Hillier,
+S. Vijayanarasimhan, F. Viola, T. Green, T. Back, P. Natsev
+et al., “The kinetics human action video dataset,” arXiv preprint
+arXiv:1705.06950, 2017.
+[6] H. Chen, W. Xie, A. Vedaldi, and A. Zisserman, “Vggsound: A
+large-scale audio-visual dataset,” in ICASSP 2020-2020 IEEE In-
+ternational Conference on Acoustics, Speech and Signal Process-
+ing (ICASSP).
+IEEE, 2020, pp. 721–725.
+[7] S. Lee, J. Chung, Y. Yu, G. Kim, T. Breuel, G. Chechik, and
+Y. Song, “Acav100m: Automatic curation of large-scale datasets
+for audio-visual video representation learning,” in Proceedings
+of the IEEE/CVF International Conference on Computer Vision,
+2021, pp. 10 274–10 284.
+[8] S. Nakada, T. Nishimura, H. Munakata, M. Kondo, and T. Ko-
+matsu, “Deteclap: Enhancing audio-visual representation learning
+with object information,” arXiv preprint arXiv:2409.11729, 2024.
+[9] B. Elizalde, S. Deshmukh, M. Al Ismail, and H. Wang, “Clap
+learning audio concepts from natural language supervision,” in
+ICASSP 2023-2023 IEEE International Conference on Acoustics,
+Speech and Signal Processing (ICASSP).
+IEEE, 2023, pp. 1–5.
+[10] R. Krishna, K. Hata, F. Ren, L. Fei-Fei, and J. Carlos Niebles,
+“Dense-captioning events in videos,” in Proceedings of the IEEE
+international conference on computer vision, 2017, pp. 706–715.
+[11] A. Miech, D. Zhukov, J.-B. Alayrac, M. Tapaswi, I. Laptev,
+and J. Sivic, “Howto100m: Learning a text-video embedding by
+watching hundred million narrated video clips,” in Proceedings
+of the IEEE/CVF International Conference on Computer Vision,
+2019, pp. 2630–2640.
+[12] X. Wang, J. Wu, J. Chen, L. Li, Y.-F. Wang, and W. Y. Wang,
+“Vatex: A large-scale, high-quality multilingual dataset for video-
+and-language research,” in Proceedings of the IEEE/CVF interna-
+tional conference on computer vision, 2019, pp. 4581–4591.
+[13] X. Cheng, Z. Zhang, Z. Wang, M. Fang, R. Huang, S. Zheng,
+R. Hu, B. Jionghao, T. Jin, and Z. Zhao, “Avset-10m: An open
+large-scale audio-visual dataset with high correspondence,” 2024.
+[14] I. Mart´ın-Morat´o, A. Mesaros, T. Heittola, T. Virtanen, M. Cobos,
+and F. J. Ferri, “Sound event envelope estimation in polyphonic
+mixtures,” in ICASSP 2019-2019 IEEE International Conference
+on Acoustics, Speech and Signal Processing (ICASSP).
+IEEE,
+2019, pp. 935–939.
+[15] X. Mei, C. Meng, H. Liu, Q. Kong, T. Ko, C. Zhao, M. D. Plumb-
+ley, Y. Zou, and W. Wang, “Wavcaps: A chatgpt-assisted weakly-
+labelled audio captioning dataset for audio-language multimodal
+research,” IEEE/ACM Transactions on Audio, Speech, and Lan-
+guage Processing, 2024.
+[16] S. Doh, K. Choi, J. Lee, and J. Nam, “Lp-musiccaps: Llm-based
+pseudo music captioning,” arXiv preprint arXiv:2307.16372,
+2023.
+[17] Y. Yuan, D. Jia, X. Zhuang, Y. Chen, Z. Liu, Z. Chen, Y. Wang,
+Y. Wang, X. Liu, X. Kang et al., “Sound-vecaps: Improving
+audio generation with visual enhanced captions,” arXiv preprint
+arXiv:2407.04416, 2024.
+[18] J. Carreira, E. Noland, C. Hillier, and A. Zisserman, “A short
+note on the kinetics-700 human action dataset,” arXiv preprint
+arXiv:1907.06987, 2019.
+[19] T. Chen, S. Kornblith, M. Norouzi, and G. Hinton, “A simple
+framework for contrastive learning of visual representations,” in
+International conference on machine learning.
+PMLR, 2020,
+pp. 1597–1607.
+[20] A. v. d. Oord, Y. Li, and O. Vinyals, “Representation learning with
+contrastive predictive coding,” arXiv preprint arXiv:1807.03748,
+2018.
+[21] J. Li, D. Li, S. Savarese, and S. Hoi, “Blip-2: Bootstrapping
+language-image pre-training with frozen image encoders and
+large language models,” in International conference on machine
+learning.
+PMLR, 2023, pp. 19 730–19 742.
+[22] H. Liu, C. Li, Y. Li, and Y. J. Lee, “Improved baselines with visual
+instruction tuning,” in Proceedings of the IEEE/CVF Conference
+on Computer Vision and Pattern Recognition, 2024, pp. 26 296–
+26 306.
+[23] F. Xiao, Y. J. Lee, K. Grauman, J. Malik, and C. Feichtenhofer,
+“Audiovisual slowfast networks for video recognition,” arXiv
+preprint arXiv:2001.08740, 2020.
+[24] P.-Y. Huang, H. Xu, J. Li, A. Baevski, M. Auli, W. Galuba,
+F. Metze, and C. Feichtenhofer, “Masked autoencoders that lis-
+ten,” Advances in Neural Information Processing Systems, vol. 35,
+pp. 28 708–28 720, 2022.
+[25] D. P. Kingma and J. Ba, “Adam:
+A method for stochastic
+optimization,” in 3rd International Conference on Learning
+Representations, ICLR 2015, San Diego, CA, USA, May 7-9,
+2015, Conference Track Proceedings, Y. Bengio and Y. LeCun,
+Eds., 2015. [Online]. Available: http://arxiv.org/abs/1412.6980
+2609

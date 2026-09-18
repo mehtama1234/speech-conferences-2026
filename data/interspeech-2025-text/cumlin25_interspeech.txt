@@ -1,0 +1,460 @@
+Multivariate Probabilistic Assessment of Speech Quality
+Fredrik Cumlin1, Xinyu Liang2, Victor Ungureanu3, Chandan K.A. Reddy3, Christian Sch¨uldt3,
+Saikat Chatterjee1
+1Department of Information Science and Engineering, KTH Royal Institute of Technology, Sweden
+2HCLTech, Sweden
+3Google LLC, USA
+{fcumlin, sach}@kth.se, hopeliang@icloud.com, {ungureanu, chandanka, cschuldt }@google.com
+Abstract
+The mean opinion score (MOS) is a standard metric for as-
+sessing speech quality, but its singular focus fails to identify
+specific distortions when low scores are observed. The NISQA
+dataset addresses this limitation by providing ratings across four
+additional dimensions: noisiness, coloration, discontinuity, and
+loudness, alongside MOS. In this paper, we extend the explored
+univariate MOS estimation to a multivariate framework by mod-
+eling these dimensions jointly using a multivariate Gaussian
+distribution. Our approach utilizes Cholesky decomposition to
+predict covariances without imposing restrictive assumptions,
+and extends probabilistic affine transformations to a multivari-
+ate context. Experimental results show that our model performs
+on par with state-of-the-art methods in point estimation, while
+uniquely providing uncertainty and correlation estimates across
+speech quality dimensions. This enables better diagnosis of
+poor speech quality and inform targeted improvements.
+Index Terms: speech quality assessment, uncertainty estima-
+tion, non-intrusive, deep neural networks, Bayesian learning
+1. Introduction
+Speech quality assessment (SQA) is the task of assessing the
+speech quality of speech clips. Subjective SQA is done by let-
+ting several raters rate the quality of the speech clip based on an
+ordinal scale such as the mean-opinion-score (MOS) scale [1].
+Subjective SQA is considered the paramount method for eval-
+uating speech quality, but is hindered by cost and time require-
+ments. Automating the assessment framework with objective
+methods is thus desirable.
+The objective non-intrusive SQA task is to estimate the
+quality of a distorted speech clip without a reference signal.
+Several deep neural network (DNN)-based methods have been
+developed recently for this task. Most provide a point esti-
+mate for the speech quality, and three recent works, DeePMOS-
+N , DeePMOS-B and DNSMOS Pro [2–4], predict a one-
+dimensional posterior distribution for deeper insights.
+Following the probabilistic works, our objective is to pre-
+dict a multivariate posterior distribution in the multivariate
+speech quality assessment task, where several speech quality
+labels are given to the speech clips. An example includes the
+ITU-T P.835 subjective assessment framework [5], where three
+quality values are given measuring the overall quality, the back-
+ground noise quality, and the speech signal quality. A multi-
+variate distribution can help assess causes for degradation with
+quantified correlations, which can help find preventative mea-
+sures to improve the overall speech quality.
+Based on the MOSNet architecture [6], several objective
+non-intrusive DNN-based end-to-end methods have been de-
+veloped. The architectural design can be described by a con-
+volutional neural network (CNN) followed by a bi-directional
+long short-term memory (BLSTM). Examples include LDNet
+and LaMOSNet [7, 8]. DNSMOS and DNSMOS Pro use an-
+other design where a global maximum pooling layer was used
+for temporal considerations [4, 9].
+Recently, more interest has been given to self-supervised
+learning (SSL) techniques due to improved performance and ro-
+bustness over end-to-end methods. Examples include UTMOS,
+ZevoMOS, and LE-SSL-MOS [10–12]. Herein, a pre-trained
+feature extractor, such as Hubert and Wav2vec2.0 [13, 14], is
+used to extract relevant features. A head is then trained using
+the features as input to target MOS. Experiments provide evi-
+dence of improved generalization ability [15], but at the expense
+of much increased computational cost.
+The abovementioned methods are only trained to predict a
+distribution or point estimate of a scalar value of MOS. DNS-
+MOS (p835 variant) [16], NISQA [17], and Conformer [18]
+have extended the 1-dimensional case to multidimensional qual-
+ity prediction. All methods predict point estimates.
+Our contributions: In this work we have designed a learn-
+ing algorithm that predicts posterior multivariate Gaussian dis-
+tribution of quality given a speech clip when several speech
+quality aspects are considered. The contributions are as follows:
+• We design an architecture that models a proper multivariate
+Gaussian posterior, using the Cholesky decomposition.
+• We generalize the maximum likelihood training framework
+of [2,4], from 1-dimensional Gaussian distributions to multi-
+variate thereof.
+• We generalize the affine transformation for training unbiased
+probabilistic estimators in [4] to vector-valued probabilistic
+predictions.
+In this study we are not restricted by computational cost
+hence we can leverage the work of SSL-based approaches. In
+particular, we use a pre-trained feature extractor and train a pre-
+diction head that predicts a multivariate Gaussian distribution.
+2. Method
+2.1. Problem formulation
+Letx denote the features of a speech clip. For each speech
+clip, five quality scores are given to quantify five different
+quality aspects, denoted by y = ( y1,...,y 5). A multivari-
+ate (non-intrusive) speech quality dataset is given by D =
+{(xnyn)}N
+n=1, whereN is the total number of speech clips.
+Instead of modeling the point estimate y, we estimate the
+multivariate posterior of the MOS for the speech clip x. This
+means we are interested in
+pψψψ(y|x), (1)
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+5413 10.21437/Interspeech.2025-518
+Figure 1: Overview of the architecture.
+whereψψψ are the parameters of the posterior distribution. Fol-
+lowing DNSMOS Pro [4], we model the posterior as a Gaus-
+sian motivated by the analytical tractability. Since there are five
+quality labels, we will model the posterior with a multivariate
+Gaussian distribution. This means the problem is to estimate
+ψψψ(x) = (µ(x), Λ(x)), sincepψψψ(y|x) =N (y;µ(x), Λ(x)).
+Consider a DNN as a regression function fθθθ(x), with pa-
+rametersθθθ, that maps to the Gaussian parametersψψψ(x); as
+ψψψ(x) =fθθθ(x). (2)
+We can train fθθθ in a maximum-likelihood manner using the
+datasetD. The optimization problem formulation is given by
+arg max
+θθθ
+log
+NY
+n=1
+pψψψ(yn|xn) =N (yn;ψψψ(xn) =fθθθ(xn)). (3)
+2.2. Architecture
+Following the work of [15], we use a pre-trained feature extrac-
+tor, and attach a trainable regressor. Architectural considera-
+tions are made to predict a proper covariance matrix. An affine
+transformation is applied to the output by generalizing the work
+of [4]. A schematic overview of the architecture is given in
+Figure 1. It consists of five components: Feature Extractor,
+Encoder, Head, Cholesky Transform, and Affine Transform.
+We adopt wav2vec 2.0 [14] as the feature extractor, select-
+ing layer 12 based on a preliminary study. A two-layer encoder
+processes the extracted features using 1D convolutions with a
+kernel size of 5, ReLU activations, layer normalization, max
+pooling of size 5, and dropout of 0.3. The head consists of a
+flattening layer followed by three dense layers with ReLU ac-
+tivations, outputting a 20-dimensional vector for predicting a
+multivariate Gaussian distribution.
+2.2.1. Cholesky Transform
+A proper covariance matrix in a multivariate Gaussian distribu-
+tion satisfies two properties: (1) it is symmetric, and (2) it is
+positive semi-definite; that is, for anyz∈ Rn,zT Λ(x)z≥ 0.
+To the end of predicting a proper multivariate Gaussian distribu-
+tion, we do a transformation of the output of the head. We call
+this transformation the Cholesky transfrom, since it is based on
+the Cholesky decomposition explained below.
+The 20 values from the head are distributed following:
+• Five values for the mean vector µ∈ R5.
+• Fifteen values to construct a lower triangular matrix L ∈
+R5×5.
+By the Cholesky decomposition [19], a matrix Λ is sym-
+metric and positive definite if and only if it can be factorized
+as Λ = LLT , where L is a lower triangular matrix with posi-
+tive diagonal elements. Subsequently, we define the predicted
+covariance matrix as
+Λ = Softplusdiag(L)Softplusdiag(LT ), (4)
+where Softplusdiag is the Softplus operation,x7→ln(1 +ex),
+applied only on the diagonal elements.
+Cholesky’s decomposition ensures that Λ is a proper co-
+variance matrix, and that the mappingL→ Λ given by Eq. 4 is
+surjective in the non-trivial case.
+2.2.2. Affine Transform
+The output of the Cholesky transformation,µ(x) and Λ(x), is
+further processed by an affine transformation. The transforma-
+tion is given by
+(ˆµ(x), ˆΛ(x)) = (Aµ(x) +b,A Λ(x)AT ), (5)
+where A = 2 I (I is the unit 5× 5 matrix) and b =
+(3, 3, 3, 3, 3).
+This transformation transforms the quality labels onto the
+scale [−1, 1], which removes training bias in the optimization
+problem formulation [4]. Note that a multivariate Gaussian dis-
+tribution under an affine transform remains to be a multivariate
+Gaussian distribution.
+Output Distribution: To conclude, the model outputs pa-
+rameters of a 5-dimensional multivariate Gaussian distribution:
+N (ˆµ(x), ˆΛ(x)), (6)
+where ˆµ(x) is the mean vector and ˆΛ(x) is the covariance ma-
+trix.
+2.3. Training
+Consider a speech quality dataset D ={(xnyn)}N
+n=1, where
+xn is the features of speech clipn andyn is the 5-dimensional
+quality score vector of the speech clip. Training is done on the
+dataset to maximize the log-likelihood given in (3). Abbreviate
+ˆµn = ˆµ(xn) and ˆΛn = ˆΛ(xn). Since yn is modeled by a
+Gaussian, we have
+pψψψ(yn|xn) =
+exp
+n
+− 1
+2(yn− ˆµn)T ˆΛ−1
+n (yn− ˆµn)
+o
+q
+|ˆΛn|(2π)5
+(7)
+wherefθθθ(xn) = (ˆµn, ˆΛn).
+To maximize the likelihood, we use the Gaussian negative
+log-likelihood (GNLL) loss to train our model:
+arg min
+θθθ
+NX
+n=1
+1
+2
+h
+log|ˆΛn| + (yn− ˆµn)T ˆΛ−1
+n (yn− ˆµn)
+i
+.
+(8)
+5414
+Table 1: Performance on NISQA VAL SIM dataset. For our experiments, the average of 10 runs is reported, with error margins being
+one standard deviation of the runs.
+MOS NOI COL DIS LOUD
+Model RMSE PCC RMSE PCC RMSE PCC RMSE PCC RMSE PCC
+Not simulated. Results quoted from literature.
+NISQA2 [18] 0.532 0 .898 0.496 0 .871 0.581 0 .835 0.619 0 .823 0.533 0 .807
+NISQA59 [17] 0.523 0 .897 0.497 0 .862 0.572 0 .809 0.606 0 .823 0.523 0 .797
+Conformer w/ Attn [18] 0.458 0 .927 0.477 0 .878 0.523 0 .860 0.496 0 .881 0.527 0 .799
+Simulated in our experiments. 10 runs each.
+MultiGauss 0.505±0.01 0.922±0.00 0.506±0.02 0.880±0.00 0.532±0.02 0.859±0.00 0.549±0.03 0.876±0.00 0.544±0.02 0.728±0.02
+MultiGauss indep 0.500±0.01 0.923±0.00 0.503±0.01 0.879±0.00 0.527±0.02 0.858±0.00 0.539±0.02 0.877±0.00 0.548±0.03 0.797±0.00
+MultiGauss MSE 0.490±0.02 0.922±0.00 0.506±0.02 0.878±0.00 0.521±0.01 0.858±0.00 0.528±0.02 0.877±0.00 0.535±0.02 0.794±0.00
+Table 2: Performance on NISQA VAL LIVE dataset. For our experiments, the average of10 runs is reported, with error margins being
+one standard deviation of the runs.
+MOS NOI COL DIS LOUD
+Model RMSE PCC RMSE PCC RMSE PCC RMSE PCC RMSE PCC
+Not simulated. Results quoted from literature.
+NISQA2 [18] 0.456 0 .804 0.524 0 .706 0.511 0 .532 0.607 0 .562 0.528 0 .707
+NISQA59 [17] 0.401 0 .822 0.550 0 .723 0.454 0 .566 0.604 0 .542 0.492 0 .728
+Conformer w/ Attn [18] 0.378 0 .861 0.477 0 .761 0.484 0 .519 0.555 0 .618 0.496 0 .718
+Simulated in our experiments. 10 runs each.
+MultiGauss 0.434±0.03 0.864±0.01 0.510±0.02 0.743±0.01 0.492±0.02 0.567±0.02 0.578±0.03 0.618±0.02 0.532±0.02 0.728±0.02
+MultiGauss indep 0.430±0.02 0.865±0.01 0.524±0.01 0.728±0.02 0.495±0.03 0.568±0.02 0.567±0.02 0.618±0.01 0.549±0.04 0.719±0.02
+MultiGauss MSE 0.446±0.02 0.855±0.01 0.528±0.02 0.726±0.01 0.528±0.02 0.541±0.02 0.572±0.04 0.624±0.01 0.539±0.04 0.722±0.01
+2.4. Inference
+At the time of inference, the model naturally predicts a mul-
+tivariate Gaussian distribution of the quality scores given a
+speech clip; for each speech clip feature xn, it predicts
+pψψψ(yn|xn) =N (yn; ˆµ(xn), ˆΛ(xn)).
+For point estimate, we use the maximum likelihood estima-
+tor ofyn, given by
+ˆyn = max
+yn
+p(yn|ˆµ(xn), ˆΛ(xn)) = ˆµ(xn). (9)
+3. Experiments
+3.1. Datasets
+We use the NISQA Corpus [17] for both training
+and evaluation, which includes two training datasets
+(NISQA TRAIN SIM, NISQA TRAIN LIVE), two validation
+datasets (NISQA V ALSIM, NISQA V ALLIVE), and three
+test datasets (NISQA TEST LIVETALK, NISQA TEST P501,
+NISQA TEST FOR). Each speech clip is rated on five quality
+aspects: overall quality (MOS), noisiness (NOI), coloration
+(COL), discontinuity (DIS), and loudness (LOUD), with scores
+ranging from 1 to 5.
+NISQA TRAIN SIM consists of 10,000 English speech
+clips with five ratings per clip for each of the five rating dimen-
+sions, where clean signals are distorted post-recording using ad-
+ditive Gaussian noise, codec artifacts, bandpass filtering, and
+more. NISQA TRAIN LIVE contains 1,020 English speech
+clips with five ratings per clip for each of the five rating dimen-
+sions, recorded from live telephone and Skype calls with real
+distortions. The combined training set comprises 11,020 clips.
+For validation, NISQA V ALSIM includes 2,500 speech
+clips with five ratings per clip for each of the five rating di-
+mensions, generated similarly to NISQA TRAIN SIM, while
+NISQA V ALLIVE contains 200 speech clips with five ratings
+per clip for each of the five rating dimensions, recorded under
+live conditions akin to NISQA TRAIN LIVE.
+The test datasets contain diverse languages and conditions.
+NISQA TEST LIVETALK has 232 German speech clips with
+24 ratings per clip for each of the five rating dimensions,
+recorded via smartphones and laptops with real-world distor-
+tions. NISQA TEST FOR comprises 240 Australian English
+speech clips with approximately 39 ratings per clip for each of
+the five rating dimensions, featuring simulated and live V oIP
+distortions (WhatsApp, Zoom, Google Meet, etc.). Similarly,
+NISQA TEST P501 consists of 240 British English speech
+clips with about 28 ratings per clip for each of the five rating
+dimensions, following the same setup as NISQA TEST FOR.
+3.2. Experimental designs
+We train three variants of the proposed model, referred to as
+MultiGauss. The first variant predicts a full five-dimensional
+Gaussian distribution without output restrictions. The second,
+MultiGauss indep , assumes statistical independence among
+the five quality values, predicting only ten parameters (five
+means and five variances). The third, MultiGauss MSE, pre-
+dicts only five point estimates using mean-square-error loss in-
+stead of a probabilistic distribution.
+3.3. Results
+We train all models for 30 epochs using the Adam optimizer
+with a learning rate of 10−4, with moving average parameters
+β1 = 0.9, β2 = 0.999 [20]. All signals are downsampled
+to 16 kHz and repetitively padded to 8 s, before processing by
+wav2vec 2.0. We compare with NISQA2 [18], NISQA59 [17],
+and Conformer [18]. The source code is available at: https:
+//github.com/fcumlin/MultiGauss.
+The performance results on validation data are shown in
+Table 1 and 2. First, MultiGauss is on par with NISQA2 and
+Conformer. Secondly, the use of a multivariate Gaussian ap-
+proach does not inherently degrade performance; on certain di-
+mensions, the probabilistic method outperforms the MultiGauss
+MSE, leading to improved results.
+5415
+Table 3: Average PCC and RMSE across 5 dimensions for each of 5 different datasets. For our experiments, the average of 10 runs is
+reported, with error margins being one standard deviation of the runs.
+NISQA V ALSIM NISQA V ALLIVE NISQA TEST LIVETALK NISQA TEST FOR NISQA TEST P501
+Model RMSE PCC RMSE PCC RMSE PCC RMSE PCC RMSE PCC
+Not simulated. Results quoted from literature.
+NISQA2 [18] 0.550 0 .865 0.525 0 .662 0.829 0 .684 0.451 0 .865 0.542 0 .881
+NISQA59 [17] 0.545 0 .838 0.500 0 .676 0.725 0 .702 0.528 0 .866 0.409 0 .877
+Conformer w/ Attn [18] 0.496 0 .869 0.478 0 .695 0.609 0 .795 0.385 0 .888 0.543 0 .884
+Simulated in our experiments. 10 runs each.
+MultiGauss 0.527±0.02 0.867±0.00 0.509±0.03 0.704±0.01 0.502±0.03 0.834±0.01 0.458±0.02 0.829±0.01 0.511±0.03 0.862±0.01
+MultiGauss indep 0.523±0.02 0.867±0.00 0.513±0.03 0.700±0.01 0.488±0.03 0.847±0.01 0.452±0.02 0.827±0.01 0.512±0.02 0.859±0.01
+MultiGauss MSE 0.516±0.02 0.866±0.00 0.523±0.03 0.694±0.01 0.487±0.03 0.845±0.01 0.457±0.03 0.821±0.01 0.523±0.03 0.854±0.01
+(a) Sample 1
+ (b) Sample 2
+Figure 2: Contour plots of the marginal distributions over MOS
+and NOI.
+Figure 3: Scatter plot of the MOS and NOI labels on the
+NISQA VAL SIM dataset. The correlation values are the pre-
+dicted correlation values by the MultiGauss model.
+Furthermore, the MultiGauss model demonstrates consis-
+tent performance, with low standard deviation across evaluation
+metrics and quality dimensions, indicating the robustness of its
+architecture and optimization objective.
+As a generalizability test, we also make inferences on the
+three out-of-distribution NISQA datasets. The results are shown
+in Table 3. As can be seen, the model and variants show high
+generalizability.
+3.3.1. Importance of affine transformation
+To assess the impact of the affine transformation, we train
+MultiGauss with and without it. As shown in Table 4, the trans-
+formation significantly reduces RMSE, while having no effect
+on correlation performance. This aligns with findings in [4],
+where the transformation was shown to mitigate training bias.
+Table 4: MultiGauss with and without affine transformation.
+NISQA V ALSIM NISQA V ALLIVE
+Model RMSE PCC RMSE PCC
+w/ affine 0.527±0.02 0.867±0.00 0.509±0.03 0.704±0.01
+w/o affine 0.864±0.06 0.866±0.00 0.765±0.06 0.706±0.01
+3.3.2. Multivariate prediction
+Due to limited raters, validating multivariate predictions with
+methods like bootstrapping is difficult. Instead, we will visual-
+ize some results.
+Fig. 2 shows contour plots of predicted marginal distribu-
+tions for MOS and NOI. First, for poor-quality samples (Fig.
+2a), low covariance between the two dimensions suggests that
+improving noise may not significantly increase overall qual-
+ity. Instead, other quality degradations contribute to the poor
+quality. Second, for low NOI but relatively good overall qual-
+ity (Fig. 2b), the overall quality is highly sensitive to noise
+changes, indicating that reducing noise can significantly im-
+prove quality.
+Fig. 3 shows a scatter plot of MOS and NOI labels, with the
+color gradient representing the predicted correlation between
+them. The plot reveals a notable pattern: when the speech signal
+exhibits a poor NOI value, lower than the MOS, the correlation
+between the two is predicted to be high. This suggests that noise
+has a significant impact on the perceived quality of the speech
+signal. Conversely, for signals with a high NOI value but rela-
+tively poor overall quality, the correlation is low. This indicates
+that other factors beyond noise are influencing the overall qual-
+ity, implying that efforts to reduce noise alone may not substan-
+tially improve the perceived quality of these signals.
+4. Conclusion
+We have proposed a novel approach to probabilistic non-
+intrusive speech quality assessment by predicting a multivariate
+Gaussian distribution of speech quality scores. Our method gen-
+eralizes existing maximum likelihood frameworks and affine
+transformations to a multivariate context. We have made archi-
+tectural considerations to predict a proper Gaussian distribution,
+by employing the Cholesky decomposition. The proposed mod-
+els show stable training and on-par performance with contem-
+porary works, but with the benefit of providing a multivariate
+posterior distribution of the speech quality.
+5. References
+[1] W. Lin, D. Tao, J. Kacprzyk, Z. Li, E. Izquierdo, and H. Wang,
+Multimedia Analysis, Processing and Communications . New
+5416
+York: Springer Publishing, 2011.
+[2] X. Liang, F. Cumlin, C. Sch ¨uldt, and S. Chatterjee, “Deepmos:
+Deep posterior mean-opinion-score of speech,” in Interspeech
+2023. ISCA, Aug 2023.
+[3] X. Liang, F. Cumlin, V . Ungureanu, C. K. Reddy, C. Sch¨uldt, and
+S. Chatterjee, “Deepmos-b: Deep posterior mean-opinion-score
+using beta distribution,” in 2024 32nd European Signal Process-
+ing Conference (EUSIPCO). IEEE, 2024, pp. 416–420.
+[4] F. Cumlin, X. Liang, V . Ungureanu, C. KA Reddy, C. Sch¨uldt, and
+S. Chatterjee, “Dnsmos pro: A reduced-size dnn for probabilistic
+mos of speech,” in Proc. Interspeech 2024, 2024, pp. 4818–4822.
+[5] I.-T. R. P.835, “Subjective test methodology for evaluating speech
+communication systems that include noise suppression algo-
+rithm.” 2003.
+[6] C.-C. Lo, S.-W. Fu, W.-C. Huang, X. Wang, J. Yamagishi,
+Y . Tsao, and H.-m. Wang, “MOSNet: Deep learning-based ob-
+jective assessment for voice conversion,” in Interspeech 2019, 09
+2019, pp. 1541–1545.
+[7] W.-C. Huang, E. Cooper, J. Yamagishi, and T. Toda, “LDNet:
+Unified listener dependent modeling in MOS prediction for syn-
+thetic speech,” in ICASSP 2022 - 2022 IEEE International Con-
+ference on Acoustics, Speech and Signal Processing (ICASSP) ,
+2022.
+[8] F. Cumlin, C. Sch ¨uldt, and S. Chatterjee, “Latent-based neural net
+for non-intrusive speech quality assessment,” in 2023 33th Eu-
+ropean Signal Processing Conference (EUSIPCO), ser. European
+Signal Processing Conference, sep 2023, pp. 36–40.
+[9] C. Reddy, V . Gopal, and R. Cutler, “DNSMOS: A non-intrusive
+perceptual objective speech quality metric to evaluate noise sup-
+pressors,” in IEEE International Conference on Acoustics, Speech
+and Signal Processing, ICASSP 2021, Toronto, ON, Canada, June
+6-11, 2021, 06 2021.
+[10] T. Saeki, D. Xin, W. Nakata, T. Koriyama, S. Takamichi, and
+H. Saruwatari, “Utmos: Utokyo-sarulab system for voicemos
+challenge 2022,” in Proc. Interspeech 2022, 09 2022, pp. 4521–
+4525.
+[11] A. Stan, “The ZevoMOS entry to V oiceMOS Challenge
+2022,” in Proc. Interspeech 2022 , 2022, pp. 4516–4520.
+[Online]. Available: https://www.isca-speech.org/archive/pdfs/
+interspeech 2022/stan22 interspeech.pdf
+[12] Z. Qi, X. Hu, W. Zhou, S. Li, H. Wu, J. Lu, and X. Xu, “Le-ssl-
+mos: Self-supervised learning mos prediction with listener en-
+hancement,” in 2023 IEEE International Conference on Multime-
+dia and Expo (ICME). IEEE, 2023.
+[13] W.-N. Hsu, B. Bolte, Y .-H. H. Tsai, K. Lakhotia, R. Salakhutdi-
+nov, and A. Mohamed, “Hubert: Self-supervised speech represen-
+tation learning by masked prediction of hidden units,”IEEE/ACM
+transactions on audio, speech, and language processing, vol. 29,
+pp. 3451–3460, 2021.
+[14] A. Baevski, Y . Zhou, A. Mohamed, and M. Auli, “wav2vec
+2.0: A framework for self-supervised learning of speech repre-
+sentations,” Advances in neural information processing systems ,
+vol. 33, pp. 12 449–12 460, 2020.
+[15] E. Cooper, W.-C. Huang, T. Toda, and J. Yamagishi, “Generaliza-
+tion ability of mos prediction networks,” in ICASSP 2022-2022
+IEEE International Conference on Acoustics, Speech and Signal
+Processing (ICASSP). IEEE, 2022, pp. 8442–8446.
+[16] C. K. Reddy, V . Gopal, and R. Cutler, “Dnsmos p. 835: A
+non-intrusive perceptual objective speech quality metric to eval-
+uate noise suppressors,” in ICASSP 2022-2022 IEEE Interna-
+tional Conference on Acoustics, Speech and Signal Processing
+(ICASSP). IEEE, 2022, pp. 886–890.
+[17] G. Mittag, B. Naderi, A. Chehadi, and S. M ¨oller, “NISQA:
+A deep CNN-self-attention model for multidimensional speech
+quality prediction with crowdsourced datasets,” in Interspeech
+2021. ISCA, Aug 2021.
+[18] B. T. Ta, M. T. Le, N. M. Le, and V . H. Do, “Probing speech
+quality information in asr systems,” in Proceedings of INTER-
+SPEECH, 2023, pp. 541–545.
+[19] D. S. Wicaksono and W. Marquardt, “Reformulation strategies for
+eigenvalue optimization using sylvester’s criterion and cholesky
+decomposition,” in Computer Aided Chemical Engineering. El-
+sevier, 2013, vol. 32, pp. 487–492.
+[20] D. P. Kingma and J. Ba, “Adam: A method for stochastic opti-
+mization,” arXiv preprint arXiv:1412.6980, 2014.
+5417

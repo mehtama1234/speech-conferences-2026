@@ -1,0 +1,1041 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+You Are What You Say: Exploiting Linguistic Content for
+VoicePrivacy Attacks
+¨Unal Ege Gaznepoglu1, Anna Leschanowsky2, Ahmad Aloradi3, Prachi Singh2, Daniel Tenbrinck3,
+Emanu¨el A. P. Habets1, Nils Peters4
+1International Audio Laboratories Erlangen, FAU Erlangen-N¨urnberg, Germany
+2Fraunhofer Institute for Integrated Circuits (IIS), Erlangen, Germany
+3Department of Data Science, FAU Erlangen-N¨urnberg, Germany
+4Department of Electrical and Electronics Engineering, Trinity College Dublin, Ireland
+ege.gaznepoglu@audiolabs-erlangen.de
+Abstract
+Speaker anonymization systems hide the identity of speakers
+while preserving other information such as linguistic content
+and emotions.
+To evaluate their privacy beneﬁts, attacks in
+the form of automatic speaker veriﬁcation (ASV) systems are
+employed. In this study, we assess the impact of intra-speaker
+linguistic content similarity in the attacker training and evalua-
+tion datasets, by adapting BERT, a language model, as an ASV
+system. On the VoicePrivacy Attacker Challenge datasets, our
+method achieves a mean equal error rate (EER) of 35%, with
+certain speakers attaining EERs as low as 2%, based solely on
+the textual content of their utterances. Our explainability study
+reveals that the system decisions are linked to semantically
+similar keywords within utterances, stemming from how Lib-
+riSpeech is curated. Our study suggests reworking the VoicePri-
+vacy datasets to ensure a fair and unbiased evaluation and chal-
+lenge the reliance on global EER for privacy evaluations.
+Index Terms: voice privacy, speaker anonymization, auto-
+mated speaker veriﬁcation, language models, explainable AI
+1. Introduction
+The ﬁeld of speaker anonymization has emerged in response to
+the risks associated with advances in speech-processing tech-
+nology, such as the inadvertent disclosure of personal informa-
+tion (e.g., age, health) when using cloud-enabled voice inter-
+faces [1]. Speaker anonymization systems protect the speaker’s
+identity while preserving important information for downstream
+tasks such as automatic speech recognition (ASR) and emotion
+recognition [2]. Recently, a VoicePrivacy Attacker Challenge
+[3] was held for the ﬁrst time. Its aim is to develop techniques to
+compromise the privacy of speakers that have been processed by
+seven anonymization systems. These include the top three base-
+line systems from the Voice Privacy Challenge (VPC) 2024: B3,
+B4, B5, and the top four participant-submitted systems.
+Works on both anonymization [4]–[6] and attacks to
+anonymization systems zhang˙attacking˙2024, [7], [8] use the
+publicly provided VPC datasets and evaluation protocols. These
+protocols consist of attacks based on automatic speaker veri-
+ﬁcation (ASV) systems for privacy evaluation. As shown in
+Fig. 1, in ignorant and lazy-informed attack models, a pre-
+trained ASVeval is used, while the semi-informed attack model
+uses an ASVanon
+eval trained on anonymized data. The unprotected
+case serves as a reference. ASVeval and ASVanon
+eval are based on
+ECAPA-TDNN [9], and more information can be found in the
+challenge evaluation plan [3].
+The speaker embeddings ex-
+tracted by these systems are used for enrollment and trial on cor-
+responding libri-dev and libri-test utterances, using
+ASVeval
+Enroll
+Trial
+EER
+(original) enroll utt.
+(original) trial utt.
+(a) Unprotected case
+ASVeval
+Enroll
+Trial
+Anon.
+EER
+(original) enroll utt.
+(original) trial utt.
+(b) Ignorant attack model
+ASVeval
+Enroll
+Anon (a).
+Trial Anon (b).
+EER
+(original) enroll utt.
+(original) trial utt.
+(c) Lazy-informed attack model
+ASVanon
+eval
+Enroll
+Anon (a).
+Trial Anon (b).
+(trained on anon.
+utterances)
+EER
+(original) enroll utt.
+(original) trial utt.
+(d) Semi-informed attack model
+Figure 1: VPC attack models deﬁne how much information is
+available to an attacker [10].
+cosine similarity as a similarity measure. Finally, equal error
+rate (EER) is calculated for male and female speakers. Lower
+EERs correspond to a better de-anonymization and hence a suc-
+cessful attack.
+The literature on the analysis of attacker ASV scores is
+rather limited. The Zero Evidence Biometric Recognition As-
+sessment (ZEBRA) framework provides worst-case privacy dis-
+closure for an individual per anonymization system but no
+disaggregated scores on a speaker-level [11], [12].
+In [13],
+Williams et al.
+explored speaker-level distributions of ASV
+scores obtained through ignorant and lazy-informed attack
+models by identifying subpopulations with distinct behaviors,
+using the methodology ﬁrst introduced in [14]. In [15] the au-
+thors used an ignorant attack model on anonymized pathologi-
+cal speech while evaluating the beneﬁt of speaker anonymiza-
+tion for vulnerable subgroups.
+They found the standard de-
+viation of EERs across healthy speakers to be very low, e.g.,
+32.26% ± 0.31, for the DSP-based anonymization system [16].
+To the best of our knowledge, this study is the ﬁrst to ana-
+lyze semi-informed attacker scores on a speaker level to address
+the following questions: How does speaker-level performance
+vary for semi-informed attacks applied to various systems, and
+are there any identiﬁable patterns in the ASV score distributions
+that can be exploited?
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+4238
+10.21437/Interspeech.2025-681
+
+1462
+1673
+1988
+1993
+2035
+2277
+2412
+3536
+5338
+5895
+6313
+6319
+6345
+84
+8842
+−0.2
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+score
+16.07
+11.03
+54.88
+19.07
+25.05
+31.96
+16.79
+22.84
+38.40
+19.90
+12.74
+29.78
+45.01
+30.14
+57.07
+Semi-informed attack on B3
+Avg. EER: 27.92% ± 3.35
+1462
+1673
+1988
+1993
+2035
+2277
+2412
+3536
+5338
+5895
+6313
+6319
+6345
+84
+8842
+37.18
+12.54
+50.26
+34.51
+29.44
+40.85
+22.01
+32.89
+31.52
+31.15
+37.26
+21.14
+43.14
+62.22
+18.14
+Semi-informed attack on B4
+Avg. EER: 32.78% ± 2.84
+1462
+1673
+1988
+1993
+2035
+2277
+2412
+3536
+5338
+5895
+6313
+6319
+6345
+84
+8842
+gender = f
+30.25
+15.65
+41.73
+40.46
+41.65
+29.74
+9.52
+36.35
+35.83
+41.98
+28.11
+29.78
+40.85
+73.22
+30.12
+Semi-informed attack on B5
+Avg. EER: 33.47% ± 2.73
+1272
+174
+2428
+251
+2803
+2902
+3752
+5536
+5694
+6241
+6295
+652
+7976
+8297
+enrol spk
+−0.2
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+score
+23.84
+27.60
+23.58
+26.07
+5.88
+2.23
+31.80
+12.70
+35.96
+21.32
+15.75
+10.22
+26.86
+22.12
+Avg. EER: 20.42% ± 2.62
+1272
+174
+2428
+251
+2803
+2902
+3752
+5536
+5694
+6241
+6295
+652
+7976
+8297
+enrol spk
+35.37
+27.71
+34.83
+36.74
+17.76
+23.65
+42.81
+21.72
+37.07
+35.38
+37.54
+18.79
+25.44
+19.82
+Avg. EER: 29.62% ± 2.24
+1272
+174
+2428
+251
+2803
+2902
+3752
+5536
+5694
+6241
+6295
+652
+7976
+8297
+enrol spk
+gender = m
+36.03
+34.20
+47.82
+30.58
+18.52
+27.78
+36.74
+33.22
+39.40
+23.41
+43.26
+17.69
+32.89
+20.15
+Avg. EER: 31.55% ± 2.45
+positive
+negative
+Figure 2: Speaker-level breakdown of ASVanon
+eval (ECAPA-TDNN) scores on the libri-dev dataset. The top row shows female speakers,
+while the bottom row shows male speakers. Columns correspond to the attacked anonymization system. Bar plots denote the cosine
+similarity score distributions, where light green bars indicate the positive pairs (enrollment and trial speakers matching) and orange
+bars indicate the negative pairs (different enrollment and trial speakers). Red lines denote the threshold where the difference between
+Type 1 and Type 2 errors are minimal for each speaker, and the corresponding EERs (in %) are shown by the red text.
+2. Semi-informed attack: status quo
+This section presents an analysis of the ASVanon
+eval scores on the
+speaker level. The anonymization systems to be attacked are
+chosen such that their architectures and intermediate represen-
+tations are diverse. B3 performs any-to-any voice conversion
+via an ASR-TTS pipeline, where a Wasserstein GAN generates
+a target pseudo-identity [4]. In contrast, B4 [5] and B5 [6] per-
+form any-to-few voice conversion to real speakers. We have
+run the VPC 2024 codebase1 without modiﬁcation to obtain
+anonymized utterances and the corresponding ASVanon
+eval scores.
+The scores, as well as the speaker-level thresholds and the
+corresponding EERs are visualized in Fig. 2 for several vari-
+ables. We observe a notable variability in the EERs across dif-
+ferent speakers for each system, some going as low as 2% yet
+the mean EERs are between 20% and 35%. Although for per-
+fect anonymization a 50% EER is sufﬁcient [17], some speaker-
+system pairs attain EERs greater than 50%, e.g., speaker 84
+exhibits 62% EER when anonymized with B4 and 73% when
+anonymized with B5. Higher than necessary EERs attained by
+some speakers may obfuscate others with low EERs when aver-
+aged, giving a false sense of privacy. Therefore, when comput-
+ing mean EERs, we propose clipping speaker EERs exceeding
+50% such that they fall into the interval [0%, 50%], using
+f(x) = min(50, x).
+(1)
+Closer inspection of Fig. 2 reveals an odd behavior: none of
+the considered systems can effectively anonymize some speak-
+ers (1673 and 652), shown by the EER values less than
+20%.
+This is quite counter-intuitive, given that the consid-
+ered anonymization systems have very different architectures.
+What could have caused these speakers to be de-anonymized
+by ASVanon
+eval in all considered cases?
+1https://github.com/Voice-Privacy-Challenge/
+Voice-Privacy-Challenge-2024/
+Table 1: Training hyperparameters
+Hyperparameter
+Value
+Num. epochs
+20
+Batch size
+256
+Optimizer
+AdamW, lr: 1×10−4
+lr scheduler
+LinearWithWarmup
+Train-validation split
+90%, 10%
+AAM parameters
+Margin: 0.2, Scale: 30
+Dropout probability
+0.1
+3. Proposed text-based attack
+Consistent de-anonymization of speciﬁc speakers suggests the
+existence of persistent features that are invariant to different
+anonymization strategies. Upon manual inspection, we found
+that the texts read by speakers 1673 and 652 were on spe-
+ciﬁc and unique topics, and some words recurring across their
+utterances. So, ASVanon
+eval could be exploiting the intra-speaker
+linguistic content similarity in LibriSpeech. If true, this would
+confound the evaluations, because the anonymization systems
+are expected to preserve the linguistic content.
+To test the feasibility of this hypothesis, we built a novel
+system that imitates ASVanon
+eval , but operating only on textual
+content. We use this ’text-based attack’ on the ground truth
+transcriptions, i.e., the information that an ideal anonymiza-
+tion system would preserve. Our attack is based on the Hug-
+gingFace implementation [18] of BERTBASE, ﬁrst introduced by
+[19]. Fig. 3 outlines the training, enrollment, and trial phases,
+which are designed to be as similar as possible to ASVanon
+eval , and
+to align with the VPC evaluation protocol. In particular, the
+balance between the batch size, the embedding dimensional-
+ity and the loss hyperparameters are crucial.
+We utilize the
+class BertForSequenceClassification, which com-
+prises the BERT architecture and a pooling layer selecting the
+output token corresponding to the [CLS] input token. Then, a
+4239
+
+Input text
+Tokenizer
+Encoding
+Positional
+⊕
+Pooler
+(B, L, 768)
+(B, 1, 192)
+Classiﬁer
+(B, 1, 921)
+Speaker logits
+LayerNorm
+Dropout
+(12 x)
+BERT Layer
+AAM-Softmax
+Penultimate
+(B, 1, 768)
+BertForSequenceClassification
+(a) Training
+Enrolment utt.
+Tokenizer
+Encoding
+Positional
+⊕
+Pooler
+(Nenroll utt, L, 768)
+(Nenroll utt, 1, 768)
+Penultimate
+(Nenroll utt, 1, 192)
+LayerNorm
+Dropout
+(12 x)
+BERT Layer
+Input text
+Average
+(1, 1, 192)
+Enrolment embedding
+L2Norm
+(for each enrollment speaker)
+(compute utt. embeddings independently)
+(spk. level)
+(b) Enrollment
+Trial utt.
+Tokenizer
+Encoding
+Positional
+⊕
+Pooler
+(1, L, 768)
+(1, 1, 768)
+LayerNorm
+Dropout
+(12 x)
+BERT Layer
+Input text
+(for each trial utterance)
+(Nenroll spk, 1, 192)
+Enrollment embeddings (spk. level)
+Penultimate
+(1, 1, 192)
+Cosine
+Similarity
+(c) Trial
+Figure 3: Training, enrollment, and trial phases of our system.
+linear layer (called Penultimate) reduces the 768-dimensional
+hidden representation to 192 dimensions to ensure additive an-
+gular margin (AAM) interacts with the embeddings in a simi-
+lar fashion to ASVanon
+eval . Then, the classiﬁer, a linear layer with
+L2-normalized weights and no bias, computes the logits us-
+ing the embeddings after L2 normalizing them. Pre-existing
+dropout layers are kept, but the newly added layers do not use
+any dropout.
+We initialize our network with the checkpoint available on-
+line2, and we use normal initialization for new layers. Then,
+we ﬁne-tune on train-clean-360, using Speechbrain’s
+implementation [20] of AAM softmax loss [21], and setting
+the involved hyperparameters as summarized in Table 1. The
+training-validation split is performed such that both subsets
+contain utterances from each speaker and each session (called
+spk-diverse-sess in the VPC 2024 codebase). During
+training, we track the loss and the classiﬁcation accuracy on
+the hold-out validation split.
+We reserve libri-dev and
+libri-test for evaluation purposes.
+After six epochs of
+training, the validation accuracy converges to 54%, while the
+validation loss starts to increase. We interpret this as the model
+starting to overﬁt, and to avoid that, we use the checkpoint after
+six training epochs for evaluations in the upcoming sections.
+During our experiments, we noticed that the L2 norms of
+the utterance-level embeddings differ, even though the network
+encodes information exclusively via the direction of the embed-
+dings. Therefore, unlike VPC 2024 ASVanon
+eval , our text-based
+attack normalizes the utterance-level enrollment vectors to unit
+length (see Fig. 3b). This is to facilitate equal contribution of
+each utterance towards the speaker-level enrollment vector. The
+source code to reproduce our work will be released at 3.
+2https://huggingface.co/google-bert/
+bert-base-uncased
+3https://doi.org/10.5281/zenodo.15526086
+1462
+1673
+1988
+1993
+2035
+2277
+2412
+3536
+5338
+5895
+6313
+6319
+6345
+84
+8842
+−0.2
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+score
+gender = f
+28.05
+1.60
+46.04
+48.23
+44.57
+25.08
+37.56
+55.03
+38.60
+22.81
+16.42
+41.26
+22.45
+46.84
+35.66
+Text-based attack on text labels
+Avg. EER: 33.68% ± 3.59
+1272
+174
+2428
+251
+2803
+2902
+3752
+5536
+5694
+6241
+6295
+652
+7976
+8297
+enrol spk
+−0.2
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+score
+gender = m
+53.44
+48.70
+31.66
+55.12
+40.85
+37.22
+31.91
+17.59
+23.75
+43.52
+45.09
+16.81
+56.03
+21.14
+Avg. EER: 36.30% ± 3.34
+negative
+positive
+Figure 4: Score distributions of our attack on libri-dev.
+121
+1221
+1284
+1580
+1995
+237
+2961
+3570
+4446
+4970
+4992
+5142
+5683
+6829
+8463
+8555
+10
+20
+30
+40
+50
+EER
+gender = f
+1089
+1320
+260
+2830
+4077
+5105
+61
+6930
+7021
+7127
+7176
+8224
+908
+enrol spk
+10
+20
+30
+40
+50
+EER
+gender = m
+ASVanon
+eval , B3
+ASVanon
+eval , B4
+ASVanon
+eval , B5
+Text-Based
+Figure 5:
+Radar plots comparing our text-based attack to
+ASVanon
+eval on libri-test dataset. Spokes indicate enrollment
+speaker IDs; circular axes show corresponding speaker EERs
+4. Results and discussion
+Fig. 4 shows the score distributions of our text-based attack;
+please refer to Fig. 2 for comparison and interpretation. On av-
+erage, our attack achieves an EER of 33.68% for female speak-
+ers and 36.30% for male speakers, performing only slightly
+worse than ASVanon
+eval despite the limited available information.
+Turning to speaker-level performance, speakers 1673 and
+652, the ones that were identiﬁed in Sec. 2, achieved EERs of
+4240
+
+1.60% and 16.81%, respectively, indicating that their anonymity
+was in fact compromised by the text-based attack. In Fig. 5, we
+include a radar plot to visualize how our attack compares to
+ASVanon
+eval on libri-test subset. There, our attack achieved
+an EER of 4.10% and 11.86% for speakers 3570 and 2830.
+Also, we found that L2-normalizing utterance-level embed-
+dings for enrollment slightly improved the performance of our
+system, reducing the mean EER by 0.39 and 0.32 percentage
+points for female and male speakers, respectively. We think the
+effects of normalization are worth exploring for ASVanon
+eval .
+Explainability analysis
+We use transformers-interpret [22], [23], a Python
+package, to get insight into our model decisions. Speciﬁcally,
+we apply Layer Integrated Gradients [24] to the cosine similar-
+ities in reference to EER thresholds (see Fig. 4). We selected
+ﬁve random trial utterances for three speakers, and used the
+corresponding speaker-level embedding for enrollment. The re-
+sulting attribution scores and word importance scores are visu-
+alized in Fig. 6 for two successfully attacked speakers (1673
+and 652) and one failed attack (7976). Overall, the success-
+ful attacks are linked to semantically similar keywords, such
+as religious terms for speaker 1673 (church, Vatican, heretics,
+...), and culinary terms for speaker 652 (meat, salad, casserole,
+...). In contrast, for speaker 7976, while some utterances with
+military terms (regiment, ofﬁcer, ...) were recognized, many ut-
+terances did not have these, so the attack failed (EER: 50.11%).
+Discussion
+Existence of speakers for which the text-based attack is suc-
+cessful suggests that the dataset has exploitable intra-speaker
+linguistic content similarity. This ﬁnding is particularly sig-
+niﬁcant as our model achieves comparable veriﬁcation perfor-
+mance to ASVanon
+eval despite only having access to the text in
+libri-test, while ASVanon
+eval using the anonymized speech.
+Beyond global EER values, our text-based attack and
+ASVanon
+eval show different behaviors at the speaker level. For cer-
+tain speakers, e.g., 6829 in libri-test, we have observed
+that the text-based attack failed, but ASVanon
+eval has been success-
+ful. The other case is, e.g., 1284 or 2830 in libri-test,
+where we see that the text-based attack was successful, but (at
+least some) anonymization systems still managed to attain de-
+cent EERs. Besides, the EERs vary for successful and failed
+attacks, such as our text-based attack achieves 1.60% EER for
+speaker 1673 but the semi-informed attacks on B3, B4 and B5
+attain 11.03%, 12.54% and 15.65%, respectively.
+Several factors can explain these variations. First, the suc-
+cess of ASVanon
+eval in cases where our text-based attack failed may
+be attributed to the additional information available in speech
+signals, such as speaking rate and fundamental frequency.
+Conversely, our text-based attack’s occasional superior per-
+formance is likely due to its more sophisticated linguistic un-
+derstanding, enabled by using a pre-trained BERT model. No-
+tably, attempts to train our attack without pre-trained BERT
+weights failed to converge. Similarly, our initial experiments
+using classic NLP methods such as TD-IDF and CountVec-
+torizer also failed, even after preprocessing to remove overly
+common words. In contrast, ASVanon
+eval , powered by ECAPA-
+TDNN, is unlikely to learn and utilize semantic similarity of
+the thematic words to the extent of the text-based attack. Sec-
+ond factor is the possible changes in linguistic content caused
+by the anonymization process, e.g., speech degradation leading
+to increased word error rates. We think investigating the effects
+of anonymization on linguistic content would constitute an in-
+True
+Label
+Predicted
+Label
+Attr.
+Label
+Attr.
+Score
+Word Importance
+1
+1 (0.55)
+1
+2.25
+[CLS] at these b ##las ##ph ##em ##ous sounds the pillars of the sanctuary 
+were shaken [SEP] 
+1
+1 (0.54)
+1
+1.35
+[CLS] but in this awful moment of the danger of the church their vow was 
+superseded by a more sublime and ind ##is ##pen ##sable duty [SEP] 
+1
+0 (0.47)
+0
+-0.73
+[CLS] return to your provinces and may your private virtues repair the 
+mischief and scandal of your meeting [SEP] 
+1
+1 (0.57)
+1
+1.77
+[CLS] ex ##ter ##minate with me the here ##tics and with you i will ex ##ter 
+##minate the persians [SEP] 
+1
+1 (0.52)
+1
+1.53
+[CLS] but the vatican received with open arms the messengers of egypt [SEP]
+(a) Speaker 1673
+True
+Label
+Predicted
+Label
+Attr.
+Label
+Attr.
+Score
+Word Importance
+1
+1 (0.64)
+1
+4.64
+[CLS] then take it out of the roast ##ing pan and put it into a cass ##ero ##le after 
+sp ##rin ##kling it with two ounce ##s of 昀氀our [SEP] 
+1
+1 (0.55)
+1
+3.15
+[CLS] we 昀椀nally got him to select the one prized above all others and this is what 
+chef sc ##hei ##ler gave us [SEP] 
+1
+1 (0.63)
+1
+4.65
+[CLS] ce ##ler ##y and nut salad cut enough ce ##ler ##y 昀椀ne to measure two cups
+add one cup of 昀椀nely shredded or shaved cabbage and one and one half cups of 
+walnut meat ##s broken in small pieces but not chopped [SEP] 
+1
+1 (0.59)
+1
+3.00
+[CLS] cha ##bl ##is a white burgundy dry and of agree ##able aroma [SEP] 
+1
+1 (0.59)
+1
+2.07
+[CLS] when done take the meat out of the sauce [SEP] 
+(b) Speaker 652
+True
+Label
+Predicted
+Label
+Attr.
+Label
+Attr.
+Score
+Word Importance
+1
+1 (0.50)
+1
+1.83
+[CLS] gr ##eth ##el began to cry but it was all useless for the old witch 
+made her do as she wanted [SEP] 
+1
+1 (0.63)
+1
+1.73
+[CLS] go back to the regiment he said smiling all will be needed [SEP] 
+1
+0 (0.50)
+0
+1.75
+[CLS] how can we feed our children when we have no more than we can 
+eat ourselves [SEP] 
+1
+0 (0.49)
+0
+1.62
+[CLS] long ago there lived a merchant who had three daughters [SEP] 
+1
+1 (0.66)
+1
+2.90
+[CLS] 昀椀fteen o昀케cers of our little half regiment were dead or wounded 
+[SEP] 
+(c) Speaker 7976
+Figure 6: Explainability study results. Tokens that contribute
+positively to a model decision are highlighted in green, and red
+stands for negative contributions. The intensity of the highlight
+signiﬁes the strength. Attribution score is the sum of all word
+importance scores, used as a measure of conﬁdence. The char-
+acters ’##’ occur when a word is represented by multiple tokens
+to show that surrounding tokens are part of the same word.
+teresting follow-up study. Nevertheless, our ﬁndings highlight
+an important vulnerability: speakers can be recognized through
+their corresponding text, and the risk of attackers exploiting this
+grows as their architectures become more advanced.
+5. Conclusion
+In this work, we explored the speaker-level behavior of ASVanon
+eval
+on speaker anonymization systems. In our analysis, we identi-
+ﬁed that reporting global EERs, which is a common practice in
+evaluating ASV systems for speaker veriﬁcation, can obfuscate
+the shortcomings of speaker anonymization systems by overes-
+timating their effectiveness. To tackle this issue, we proposed
+reporting average EER after clipping speaker-level EERs ex-
+ceeding 50%. Furthermore, we identiﬁed some speakers in the
+evaluation datasets, whose anonymity were repeatedly compro-
+mised. To investigate if VPC speakers can be identiﬁed solely
+by their linguistic content, we repurposed BERT as an ASV
+model. Our system achieves EERs less than 20% for 4 / 29
+enrolled speakers in libri-dev subset and 6 / 29 enrolled
+speakers in libri-test, showing that the linguistic content
+similarity in the utterances of these speakers is sufﬁcient to ver-
+ify their identities. Our explainability analysis suggests model
+decisions are inﬂuenced by thematically similar keywords, such
+as culinary or religious terms. Further work is needed to de-
+velop clean datasets for VPC attack training and evaluations and
+to quantify how much attacks in the literature exploit this.
+4241
+
+6. Acknowledgements
+This work is partially supported by the German Ministry of
+Science and Technology (BMBF) under grant agreement No.
+01IS24072A (COMFORT).
+7. References
+[1]
+N. Tomashenko et al., “Introducing the VoicePrivacy Ini-
+tiative,” in Proc. Interspeech Conf., 2020.
+[2]
+P. Champion et al., 3rd VoicePrivacy Challenge Eval-
+uation Plan (Version 2.1), 2024. [Online]. Available:
+https : / / www . voiceprivacychallenge .
+org / vp2024 / docs / VoicePrivacy _ 2024 _
+Eval_Plan_v2.1.pdf.
+[3]
+N. Tomashenko, X. Miao, E. Vincent, J. Yamagishi, and
+N. Evans,
+The First VoicePrivacy Attacker Challenge
+evaluation plan (version 2.2), 2024. [Online]. Available:
+https : / / www . voiceprivacychallenge .
+org/attacker/docs/Attacker_Challenge_
+Eval_Plan.pdf.
+[4]
+S. Meyer, F. Lux, J. Koch, P. Denisov, P. Tilli, and N. T.
+Vu, “Prosody Is Not Identity: A Speaker Anonymiza-
+tion Approach Using Prosody Cloning,” in Proc. IEEE
+Intl. Conf. on Acoustics, Speech and Signal Processing
+(ICASSP), 2023.
+[5]
+M. Panariello, F. Nespoli, M. Todisco, and N. Evans,
+“Speaker Anonymization Using Neural Audio Codec
+Language Models,” in Proc. IEEE Intl. Conf. on Acous-
+tics, Speech and Signal Processing (ICASSP), 2024.
+[6]
+P. Champion,
+“Anonymizing Speech: Evaluating and
+Designing Speaker Anonymization Techniques,”
+PhD
+thesis, Universite de Lorraine, 2024.
+[7]
+P. Champion, T. Thebaud, G. Le Lan, A. Larcher, and
+D. Jouvet, “On the Invertibility of a Voice Privacy Sys-
+tem Using Embedding Alignment,” in Proc. IEEE Auto-
+matic Speech Recognition and Understanding Workshop
+(ASRU), 2021.
+[8]
+P. Champion, D. Jouvet, and A. Larcher, “Evaluating X-
+Vector-Based Speaker Anonymization under White-Box
+Assessment,” in Proc. Speech and Computers, 2021.
+[9]
+B. Desplanques, J. Thienpondt, and K. Demuynck,
+“ECAPA-TDNN: Emphasized Channel Attention, Prop-
+agation and Aggregation in TDNN Based Speaker Veri-
+ﬁcation,” in Proc. Interspeech Conf., 2020.
+[10]
+B. M. Lal Srivastava, N. Vauquier, M. Sahidullah, A.
+Bellet, M. Tommasi, and E. Vincent, “Evaluating Voice
+Conversion-Based Privacy Protection against Informed
+Attackers,”
+in Proc. IEEE Intl. Conf. on Acoustics,
+Speech and Signal Processing (ICASSP), 2020.
+[11]
+A. Nautsch et al.,
+“The Privacy ZEBRA: Zero Evi-
+dence Biometric Recognition Assessment,” in Proc. In-
+terspeech Conf., 2020.
+[12]
+P.-G. No´e, “Representing evidence for attribute privacy:
+Bayesian updating, compositional evidence and calibra-
+tion,” PhD thesis, Universit´e d’Avignon, 2023.
+[13]
+J. Williams, K. Pizzi, N. Tomashenko, and S. Das,
+“Anonymizing Speaker Voices: Easy to Imitate, Difﬁcult
+to Recognize?” In Proc. IEEE Intl. Conf. on Acoustics,
+Speech and Signal Processing (ICASSP), 2024.
+[14]
+G. Doddington, W. Liggett, A. Martin, M. Przybocki,
+and D. A. Reynolds, “SHEEP, GOATS, LAMBS and
+WOLVES: A statistical analysis of speaker performance
+in the NIST 1998 speaker recognition evaluation,”
+in
+Proc. Intl. Conf. on Spoken Lang. Processing (ICSLP),
+1998.
+[15]
+S. Tayebi Arasteh et al., “Addressing challenges in
+speaker anonymization to maintain utility while ensur-
+ing privacy of pathological speech,” Nature Communi-
+cations Medicine, vol. 4, no. 1, 2024.
+[16]
+J. Patino, N. Tomashenko, M. Todisco, A. Nautsch, and
+N. Evans, “Speaker anonymisation using the McAdams
+coefﬁcient,” in Proc. Interspeech Conf., 2021.
+[17]
+M. Panariello et al., “The VoicePrivacy 2022 Chal-
+lenge: Progress and Perspectives in Voice Anonymisa-
+tion,”
+IEEE/ACM Trans. on Audio, Speech, and Lan-
+guage Processing (TASLP), vol. 32, 2024.
+[18]
+T. Wolf et al., “Transformers: State-of-the-Art Natural
+Language Processing,” in Proc. Conf. Empirical Meth-
+ods in Natural Language Processing: System Demon-
+strations, Q. Liu and D. Schlangen, Eds., 2020.
+[19]
+J. Devlin, M.-W. Chang, K. Lee, and K. Toutanova,
+“BERT: Pre-training of Deep Bidirectional Transform-
+ers for Language Understanding,” in Proc. Conf. North
+American Chapter of the Association for Computational
+Linguistics: Human Language Technologies (NAACL-
+HLT), 2019.
+[20]
+M. Ravanelli et al., “Open-Source Conversational AI
+with SpeechBrain 1.0,”
+Journal of Machine Learning
+Research (JMLR), vol. 25, no. 333, 2024.
+[21]
+X. Xiang, S. Wang, H. Huang, Y. Qian, and K. Yu, “Mar-
+gin Matters: Towards More Discriminative Deep Neural
+Network Embeddings for Speaker Recognition,” in Proc.
+Asia-Paciﬁc Signal and Information Processing Associ-
+ation (APSIPA) Annual Summit and Conf., 2019.
+[22]
+C. Pierse,
+Transformers-Interpret,
+2021.
+[Online].
+Available: https://github.com/cdpierse/
+transformers-interpret.
+[23]
+Y. Zhu et al.,
+“Using natural language processing on
+free-text clinical notes to identify patients with long-term
+COVID effects,” in Proc. ACM Intl. Conf. on Bioinfor-
+matics, Computational Biology and Health Informatics
+(BCB), 2022.
+[24]
+M. Sundararajan, A. Taly, and Q. Yan, “Axiomatic At-
+tribution for Deep Networks,”
+in Proc. Intl. Conf. on
+Machine Learning (ICML), 2017.
+4242
+

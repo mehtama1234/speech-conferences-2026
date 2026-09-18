@@ -1,0 +1,546 @@
+Deep-Simplex Multichannel Speech Separation
+Tzlil Avidan, Bracha Laufer-Goldshtein
+School of Electrical and Computer Engineering, Tel Aviv University, Israel
+tzlilavidan@mail.tau.ac.il, blaufer@tauex.tau.ac.il
+Abstract
+Numerous methods exist for sound source separation, lever-
+aging either classical signal processing or deep learning
+approaches. While deep-learning-based models often outper-
+form conventional methods, they require large training datasets
+and struggle to generalize to new settings. To address this,
+we propose Deep-Simplex, a deep prior-based method that
+reconstructs the probability simplex of speaker activity over
+time. This global activity probability guides the estimation
+of a local mask per frequency, identifying the dominant
+speaker in each time-frequency (TF) bin. We then use this
+mask for both spatial and spectral separation. Experimental
+results demonstrate that Deep-Simplex outperforms competing
+baselines in different reverberation conditions.
+Index Terms: source separation, simplex, deep prior
+1. Introduction
+Sound source separation is widely used in audio processing,
+music production, and speech enhancement [1]. Over the years,
+various approaches have been developed to tackle this problem,
+ranging from classical signal processing methods to modern
+deep learning techniques. Classical sound source separation
+methods exploit properties of audio signals such as sparsity,
+continuity, and harmonic structure. Notable approaches include
+nonnegative matrix factorization (NMF) [2, 3] and independent
+component analysis (ICA) [4, 5], which do not require training
+data are typically based on well-understood mathematical
+models. However, they often require careful parameter tuning
+or initialization and may exhibit limited performance on
+complex, real-world audio mixtures.
+In recent years, modern deep learning techniques have
+revolutionized the field of sound source separation, achiev-
+ing state-of-the-art performance [6], with models based on
+CNNs [7], RNNs [8], and Transformers [9]. These models
+learn complex patterns from data but require large datasets of
+paired mixtures and their corresponding sources under various
+acoustic conditions. To reduce data requirements, unsuper-
+vised methods have been developed to learn directly from
+mixtures without isolated sources, including single channel
+approaches [10, 11] approaches, as well as recent multichannel
+extensions [12, 13, 14, 15]. However, both supervised and
+unsupervised approaches may lack interpretability compared
+to classical methods and often cannot generalize well to unseen
+settings, different from those encountered during training.
+In this paper, we introduce Deep-Simplex, a novel approach
+for multi-microphone sound source separation that integrates
+a deep prior-based method [16] with simplex-based speech
+source separation [17, 18]. The key idea is to decompose a
+temporal correlation matrix, representing relationships between
+time frames, into a low-dimensional simplex that captures the
+global probability of speaker activity over time. A TF mask is
+then constructed by identifying the dominant speaker in each TF
+bin, leveraging local relations within each frequency bin while
+using the global probabilities as soft labels. However, the origi-
+nal simplex separation method assumes the existence of frames
+dominated by a single speaker, corresponding to the simplex
+vertices. This may not hold under heavy overlap or reverber-
+ation, leading to distorted simplex geometry and poor vertex
+recovery. To overcome this challenge, we propose a deep neural
+network (DNN) to learn the global probabilities directly from
+the correlation matrix, inspired by the deep image prior frame-
+work [16], which requires no pretraining. Likewise, our method
+operates without external training data, optimizing the model
+solely on the test mixture. The full pipeline is illustrated in
+Fig. 1. Our approach leverages the flexibility of neural networks
+while retaining the structure and interpretability of the simplex-
+based formulations. Our results demonstrate that Deep-Simplex
+enhances global probability estimation and leads to superior
+source separation performance compared to baselines.
+2. Method
+2.1. Preliminaries
+Consider a mixture of J sound sources, recorded by M mi-
+crophones. Assuming a short-time Fourier transform (STFT)
+representation over t ∈ {1,...,T } time- frames and f ∈
+{1,...,F } frequency bins, the received signal in the mth mi-
+crophone, is given by
+Xm(t,f ) =
+JX
+j=1
+Am
+j (f )Sj(t,f ) =
+JX
+j=1
+Hm
+j (f )X 1
+j (t,f ) (1)
+whereSj(t,f ) is the jth source signal, Am
+j (f ) is the acoustic
+transfer function (ATF) relating the jth source and the
+mth microphone, Hm
+j (f ) =
+Am
+j (f )
+A1
+j (f ) is the relative transfer
+function (RTF) between the mth microphone and the first
+microphone, and Xm
+j (t,f ) = Am
+j (f )Sj(t,f ) is the j-th
+source signal measured by themth microphone.
+Let Rm(t,f ) = Xm(t,f )
+X1(t,f ) denote the ratio between the
+measured signal in the mth microphone w.r.t. the first
+microphone. Assuming speech sparsity in the STFT do-
+main [17, 18], this ratio corresponds to the RTF of the dom-
+inant speaker, i.e., Rm(t,f ) ≈ Hm
+G(t,f )(f ), where G(t,f )
+denotes the dominant speaker at the (t,f )-th bin. We as-
+sume that G(t,f ) has a categorical distribution G(t,f ) ∼
+Categorical(p1(t),p 2(t),...,p J (t)), with pj(t) denoting the
+probability of activity of thej-th speaker at framet. Identifying
+G(t,f ) is of key importance in solving the source separation
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+1463 10.21437/Interspeech.2025-844
+
+Figure 1: Illustration of the proposed Deep-Simplex method. We first compute microphone ratio values and construct the correlation
+matrixfW across time frames. A model is then trained to decomposefW intobP, yielding the global speaker activity probabilities over
+time. These global probabilities are then used to estimate a local speaker assignment map, which is exploited to separate the mixture.
+problem, as it enables both the estimation of a beamformer for
+spatial separation and the construction of a mask for spectral
+separation.
+The simplex separation method [17, 18] addresses this
+problem through a two-stage process. First, it estimates the
+global probabilities of speaker activity over time, pj(t). Then,
+it determines the local speaker dominance in individual TF
+bins, G(t,f ). The following sections provide a detailed
+explanation of both stages.
+2.2. Global probabilities
+The goal is to estimate the global frame-wise activity probabil-
+ities p(t) = [ p1(t),...,p J (t)]T , which lie in the standard J-
+dimensional probability simplex. This is achieved through the
+following key steps: (1) compute per-frame features; (2) con-
+struct a correlation matrix across frames; (3) recover a simplex
+from the eigenvectors of the correlation matrix; (4) identify the
+simplex vertices corresponding to frames dominated by a single
+speaker; and (5) transform the eigenvector simplex into a prob-
+ability simplex using the identified vertices. In our proposed
+Deep-Simplex method we replace steps (3)-(5) with a DNN that
+directly learns the global probabilities from the correlation ma-
+trix. We now elaborate on each step and our modifications.
+We first compute a real-valued feature vector per frame
+rglob(t) ∈ R2(M−1)F by aggregating the real and imaginary
+parts of the microphone ratios {Rm(t,f )}m,t,f . Based on
+these features we compute the temporal correlation matrixW∈
+RT×T with elements given by Wtt′ = 1
+F E{r⊤
+glob(t)rglob(t′)}.
+The core idea of the simplex method lies in the following de-
+composition of W in terms of the global probabilities:
+W≈ PP⊤ (2)
+where P is a T× J probability matrix with Ptj = pj(t).
+Note that there is a slight discrepancy between the diagonal
+elements of W which equal 1 (assuming that the feature
+vectors are normalized to unit-norm) and the diagonal elements
+of PP⊤ that equal PJ
+j=1p2
+j (t). As follows by this decom-
+position, the rank of W equals that of P, which corresponds
+to the number of speakers J. In practice, W is estimated
+as fWtt′ ≈ 1
+F r⊤
+glob(t)rglob(t′), using the same statistical
+assumptions described in [17, 18].
+The eigenvalue decomposition of the estimated correlation
+matrix fW = UΛU⊤ yields an orthonormal matrix U con-
+taining its eigenvectors{uj}T
+j=1 and a diagonal matrix Λ con-
+taining its eigenvalues{λj}T
+j=1. We extract and sort the first
+J eigenvectors, and for each time-frame t define the vectors
+ν(t) = [ u1(t),...,u J (t)]⊤. These vectors ν(t) span a ro-
+tated and scaled simplex referred to asU-simplex, whoseJ ver-
+tices correspond to single-speaker-dominant frames. To recover
+the source probabilities per time-frame p(t), we first identify
+J vertices{ν(tj)}J
+j=1 using the successive projection algo-
+rithm (SPA) [19]. Then we construct the back-transformation
+matrix from the identified vertices ˆQ = [ ν(t1),..., ν(tJ )]⊤,
+and transform ν(t) back to the standard probability by ˆp(t) =
+ˆQ−1ν(t).
+If the speakers exhibit significant overlap, the extracted
+simplex may lack well-defined vertices, as illustrated in Fig. 2.
+SPA relies on the assumption that certain frames are dominated
+by a single speaker, identifying these frames by detecting the
+simplex vertices. Specifically, the first vertex is selected as the
+frame with the maximum norm, while the second is chosen
+as the one farthest from the first. The remaining vertices
+are iteratively identified by maximizing their projection onto
+the orthogonal complement of the subspace spanned by the
+previously selected vertices. However, if no single-speaker
+frames exist for each source, SPA fails to accurately recover
+the true probabilities.
+Instead, we propose using a DNN to directly map the
+input correlation matrix fW to the corresponding activity
+probabilities for the given test mixture, without requiring prior
+training. Specifically, we learn a model fθ, parameterized by
+θ, which takes the matrix fW as input and outputs the global
+probabilities, i.e. bP = fθ(fW). The model parameters θ
+are optimized in an unsupervised manner by minimizing the
+discrepancy between fW and bPbP⊤, as implied by Eq. (2).
+Since W and PP⊤ differ in their diagonal elements, we
+enforce equality by setting these elements to 1:
+cWij =
+(
+[bPbP⊤]ij, ifi̸=j
+1, ifi =j (3)
+We then define the loss function, inspired by [20] and struc-
+turally related to deep clustering [21], which matches an
+embedding similarity matrix to supervised labels per frequency.
+In contrast, we align our model output to a correlation matrix
+derived directly from the input, without supervision:
+L =λ1||fW−cW∥2
+F
++λ2
+TX
+t=1
+||fWt||2 arccos
+ 
+fW⊤
+t cWt
+||fWt||2||cWt||2
+!
+(4)
+where fWt denotes the t-th column of fW,∥·∥ F is matrix
+Frobenius norm, and λ1,λ 2 are loss weighting coefficients.
+The first term in Eq. (4) minimizes reconstruction error using
+element-wise squared loss, while the second term aligns the
+matrix columns. This promotes a structured probability matrix
+that preserves the mixture’s underlying correlations. Notably,
+this loss function requires no supervised information and is
+optimized independently for each test example.
+2.3. Model Architecture
+Our network for estimating the global speaker probabilities
+draws an inspiration from architectures used in hyperspectral
+1464
+
+(a) Complete P-simplex
+ (b) Incomplete P-simplex
+(c) Complete U-simplex
+ (d) Incomplete U-simplex
+Figure 2: Two cases of the simplex mapping (J = 3 ): (a)+(c)
+complete and (b)+(d) incomplete. First row shows the true
+probabilities, and the second row shows the firstJ eigenvectors.
+Red points correspond to the vertices detected by SPA.
+unmixing [20, 22] and deep clustering [23]. The input corre-
+lation matrix is treated as a sequence of T time-frames, each
+represented by a T -dimensional vector. These are transformed
+into a sequence of T probability vectors over J speakers,
+capturing speakers’ activity probability over time. The archi-
+tecture, shown in Fig. 3, consists of the following components:
+1. Multi-Head Attention: Captures long-range temporal de-
+pendencies via self-attention applied to theT×T input, refin-
+ing the representation of each frame by incorporating global
+temporal context.
+2. Two Bidirectional LSTM (BLSTM) Layers: Bidirectional
+LSTMs encode temporal context in both forward and
+backward directions, producing an output of sizeT×H.
+3. Conv1D Encoder Block: Applies 1D convolutions along
+the time axis, treatingT as the sequence dimension andH as
+channels. Each layer uses LayerNorm and LeakyReLU for
+stability and nonlinearity. The feature dimension is gradually
+reduced, and two skip connections are included to preserve
+information flow and mitigate vanishing gradients.
+4. Fully Connected Layer: A dense layer enables interaction
+across all channel dimensions, transforming the encoded fea-
+tures into aT×J matrix of frame-wise speaker probabilities.
+5. Softmax Layer: Enforces valid probabilities by normalizing
+each row (frame) to sum to one.
+2.4. Local Mask
+We exploit the estimated global probabilities to recover the
+dominant source in each frequency bin. We define the local
+per-frequency ratio vector rloc(t,f ) ∈ R2M aggregating real
+and imaginary ratio values{Rm(t,f )}m across microphones.
+The index of the dominant component in each TF bin is
+chosen by combining the relations between the local mappings
+with the global probabilities p(t). For each frame, the assign-
+ment is determined based on the following weighted nearest-
+neighbor rule:
+ˆG(t,f ) = arg max
+j∈1,...,J
+1
+πj
+TX
+t′=1
+ωtt′ (f )·pj(t′) (5)
+where the weightωtt′ (f ) = exp{−∥rloc(t,f )− rloc(t′,f )∥2
+2}
+measures the similarity between frames t and t′, with closer
+embeddings rloc(t,f ) and rloc(t′,f ) receiving higher influence.
+The normalization term πj = PT
+t=1pj(t) ensures proper
+class weighting. Notably, aligning local decisions with the
+same global probability p(t) mitigates permutation ambiguity
+across frequencies—a common issue in separation methods
+that perform clustering per frequency [24].
+2.5. Separation
+We perform separation by combining spatial filtering with spec-
+tral masking. For each speaker, we compute the spatial covari-
+ance matrix at each frequency using TF bins whereˆG(t,f ) = j,
+and estimate the corresponding RTF as the principal eigenvec-
+tor of this matrix, normalized with respect to the first micro-
+phone [1]. The RTFs are then used to construct a linearly con-
+strained minimum variance (LCMV) beamformer per speaker
+(frequency index omitted): Bj = H(HHH)−1qj, where the
+jth column of H is the estimated RTF of thejth speaker and qj
+is a selection vector with 1 at thejth entry. As a post-processing
+step, we apply the estimated mask:
+ˆXj(t,f ) = 1 ˆG(t,f )=j· ˆXB
+j (t,f )+γ·1 ˆG(t,f )̸=j· ˆXB
+j (t,f ), (6)
+where ˆXB
+j (t,f ) = BH
+j (f )X(t,f ) is the beamformer output,
+X(t,f ) = [ X 1(t,f ),...,X M (t,f )]⊤ is the multichannel
+mixture, andγ is an attenuation factor.
+3. Experiments
+3.1. Dataset
+We simulated 6× 6× 2.4 m3 rooms with reverberation times of
+300 ms or 600 ms 1. We used a uniform linear array ofM = 4
+microphones, centered at [3, 3, 1.5] m, with 30 cm distance be-
+tween adjacent microphones. We generated mixtures of J = 3
+speakers, with source positions randomly sampled on a half-
+circle at a 2 m distance from the array center, ensuring a mini-
+mum angular separation of30◦ between speakers. Speech utter-
+ances were drawn from the Librispeech dev-set [25]. For each
+speaker, 4− 5 recordings were concatenated to form a continu-
+ous 20 s long signals, thus speakers have close to100% overlap.
+The signals were processed using an STFT with 1024 frequency
+bins and 75% frame overlap. The global probability estimation
+network requires approximately 29 s per 20 s mixture on a
+single NVIDIA RTX 6000 Ada GPU. Our code is available at2.
+3.2. Model and Training Settings
+The correlation matrix is computed based on ratio vectors in the
+frequency range of1000–2000 Hz. The model hyperparameters
+are detailed in Table 1. We train the model for200 epochs (one-
+sample iterations), using the Adam optimizer with a learning
+rate of 1e−5 and β1 = 0.5, β2 = 0.99. The loss function
+hyperparameters used in Eq. (4) are λ1 = 1000 andλ2 = 1 to
+align scales. We useγ = 0.3 for spectral mask attenuation.
+1https://pypi.org/project/rir-generator/
+2https://github.com/tzlilavi/deep-simplex
+1465
+
+Figure 3: Architecture of the proposed probability network for predicting activity probabilities based on an input correlation matrix.
+Table 1: Layerwise Summary of Network Blocks
+Layer Composition In Out Hyperparams
+1 Multi-Head Attention T×T T ×T n heads = 8
+2 BiLSTM Layer 1 T×T T × (H1× 2) H1 =L
+3 BiLSTM Layer 2 ( ×4) T× (H1× 2) T× (H2× 2) H2 =T/ 2
+4 Conv1D, LN, LeakyReLU T×T T ×T/ 2 kernel = 3,pad = 1
+5 Conv1D, LN, LeakyReLU T×T/ 2 T×T/ 4 kernel = 3,pad = 1
+6 Conv1D, LN, LeakyReLU T×T/ 4 T×T/ 8 kernel = 3,pad = 1
+7 Conv1D, LN, LeakyReLU T×T/ 8 T×T/ 16 kernel = 3,pad = 1
+8 Skip Connection Conv1D T×T T ×T/ 4 kernel = 3,pad = 1
+9 Skip Connection Conv1D T×T/ 4 T×T/ 16 kernel = 3,pad = 1
+10 Fully Connected T×T/ 16 T×J -
+11 Softmax T×J T ×J -
+(a) 1st Speaker
+ (b) 2nd Speaker
+ (c) 3rd Speaker
+Figure 4: Comparison of global probabilities computed for the
+example in Fig. 2 using the Ideal baseline, Standard Simplex
+and Deep-Simplex. The average SI-SDR scores for this example
+are - Ideal: 8.24 dB, Deep: 6.15 dB, and Standard:−5.42 dB.
+3.3. Baselines and Evaluation
+We compare Deep-Simplex to the Standard Simplex [18] and
+a conventional approach based on independent vector analysis
+(IV A), using the TorchIV A toolkit3. We also evaluate an ideal
+baseline using the same procedure described in Sec. 2.5, but
+with an ideal mask computed from the individual source signals.
+We first compare Deep-Simplex and the Standard Simplex
+in terms of global probability prediction and mask estimation.
+For global probability prediction, we use the mean squared
+error (MSE) between the true and estimated probabilities.
+For mask estimation, error is defined as the percentage of TF
+bins assigned to the wrong speaker. The true probabilities are
+derived from the ideal mask, based on the proportion of TF bins
+dominated by each speaker. Additionally, we evaluate the sep-
+aration performance across all baselines using SI-SDR, PESQ,
+and STOI metrics. Results are averaged over 30 random mix-
+tures, with both mean scores and standard deviations reported.
+3.4. Results
+Probability prediction and mask estimation. Table 2 summa-
+rizes the errors in global probability prediction and local mask
+estimation. Our results show that Deep-Simplex outperforms
+the Standard Simplex in global probability estimation, which
+in turn enhances local mask estimation. This improvement is
+evident in both lower mean error values and reduced standard
+deviation, and it remains consistent for moderate and high
+reverberation levels. As illustrated in Figs. 2 and 4, when the
+simplex structure is incomplete, the SPA algorithm fails to re-
+cover the vertex of at least one speaker. This failure significantly
+3https://github.com/fakufaku/torchiva
+Table 2: Performance comparison in terms of global probability
+and local mask estimation.
+Method Global MSE Mask Err
+Reverberation Time - 300 ms
+Standard Simplex 0.026 ± 0.026 0.330 ± 0.103
+Deep-Simplex 0.020 ± 0.008 0.317 ± 0.081
+Reverberation Time - 600 ms
+Standard Simplex 0.025 ± 0.027 0.339 ± 0.101
+Deep-Simplex 0.018 ± 0.007 0.319 ± 0.079
+Table 3: Separation Performance in terms of SI-SDR(dB),
+PESQ, and STOI(%).
+Method SI-SDR (dB) STOI PESQ
+Reverberation Time - 300ms
+IV A 1.4 ±4.1 0.622 ±0.085 1.75 ±0.297
+Standard Simplex 5.3 ±4.8 0.795 ±0.095 2.45 ±0.311
+Deep-Simplex 6.4 ±2.4 0.821 ±0.035 2.53 ±0.158
+Ideal Mask 8.6 ±2.0 0.851 ±0.030 2.68 ±0.177
+Reverberation Time - 600 ms
+IV A -0.1 ±3.8 0.592 ±0.076 1.67 ±0.224
+Standard Simplex 4.8 ±4.5 0.783 ±0.089 2.38 ±0.273
+Deep-Simplex 5.9 ±2.4 0.806 ±0.038 2.45 ±0.165
+Ideal Mask 7.6 ±2.1 0.836 ±0.032 2.58 ±0.191
+degrades the performance leading to inaccurate probability
+estimations and poor mask reconstructions. In contrast, Deep-
+Simplex presents robust performance across these challenging
+cases, offering a more reliable probability prediction.
+Separation Performance. Table 3 compares the sepa-
+ration performance across all methods. It can be seen that
+Deep-Simplex outperforms the baselines at both reverberation
+levels, achieving higher scores. Moreover, these results
+confirm that the improvement in global probability estimation
+contributes to enhanced separation performance with lower
+variance compared to the Standard Simplex approach.
+4. Conclusions
+In this paper, we propose a deep learning model for estimating
+the global probability of speaker activity over time from a
+single multi-microphone recording. The model decomposes
+the correlation matrix between time frames into a low-rank
+approximation that captures speaker activity probabilities
+within a simplex. These estimated probabilities are then used
+to derive a local mask for the dominant speaker in each TF bin,
+enabling source separation. Our results show that the proposed
+method improves global probability estimation over the
+standard simplex approach and achieves superior performance
+compared to competing baselines across reverberation levels.
+1466
+
+5. Acknowledgments
+This work was supported by the Israeli Ministry of Innovation,
+Science and Technology (Grant No.1001818518).
+6. References
+[1] S. Gannot, E. Vincent, S. Markovich-Golan, and A. Ozerov, “A
+consolidated perspective on Multimicrophone speech enhance-
+ment and Source Separation,” IEEE/ACM Transactions on Audio,
+Speech, and Language Processing , vol. 25, no. 4, pp. 692–730,
+2017.
+[2] T. Virtanen, “Monaural sound source separation by Nonnegative
+Matrix Factorization with temporal continuity and sparseness cri-
+teria,” IEEE Transactions on Audio, Speech, and Language Pro-
+cessing, vol. 15, no. 3, pp. 1066–1074, 2007.
+[3] A. Ozerov and C. F ´evotte, “Multichannel nonnegative matrix fac-
+torization in convolutive mixtures for audio source separation,”
+IEEE Transactions on Audio, Speech, and Language Processing,
+vol. 18, no. 3, pp. 550–563, 2009.
+[4] H. Buchner, R. Aichner, and W. Kellermann, “TRINICON: A
+versatile framework for multichannel blind signal processing,” in
+2004 IEEE international conference on acoustics, speech, and
+signal processing, vol. 3. IEEE, 2004, pp. iii–889.
+[5] H. Sawada, N. Ono, H. Kameoka, D. Kitamura, and
+H. Saruwatari, “A review of blind source separation methods:
+two converging routes to ILRMA originating from ICA and
+NMF,” APSIPA Transactions on Signal and Information Process-
+ing, vol. 8, p. e12, 2019.
+[6] D. Wang and J. Chen, “Supervised speech separation based on
+deep learning: An overview,” IEEE/ACM transactions on audio,
+speech, and language processing, vol. 26, no. 10, pp. 1702–1726,
+2018.
+[7] Y . Luo and N. Mesgarani, “Conv-TasNet: Surpassing ideal time–
+frequency magnitude masking for speech separation,”IEEE/ACM
+transactions on audio, speech, and language processing, vol. 27,
+no. 8, pp. 1256–1266, 2019.
+[8] Y . Luo, Z. Chen, and T. Yoshioka, “Dual-Path RNN: Efficient long
+sequence modeling for time-domain single-channel speech sepa-
+ration,” in IEEE International Conference on Acoustics, Speech
+and Signal Processing (ICASSP), 2020, pp. 46–50.
+[9] C. Subakan, M. Ravanelli, S. Cornell, M. Bronzi, and J. Zhong,
+“Attention is all you need in speech separation,” in IEEE Inter-
+national Conference on Acoustics, Speech and Signal Processing
+(ICASSP), 2021, pp. 21–25.
+[10] S. Wisdom, H. Erdogan, J. R. Hershey et al., “Unsupervised sound
+separation using mixture invariant training,” in Proc. NeurIPS,
+2020.
+[11] K. Schulze-Forster, G. Richard, L. Kelley, C. S. Doire, and
+R. Badeau, “Unsupervised music source separation using differ-
+entiable parametric source models,” IEEE/ACM Transactions on
+Audio, Speech, and Language Processing, vol. 31, pp. 1276–1289,
+2023.
+[12] Z.-Q. Wang and S. Watanabe, “UNSSOR: Unsupervised neu-
+ral speech separation by leveraging over-determined training
+mixtures,” Advances in Neural Information Processing Systems ,
+vol. 36, 2024.
+[13] K. Saijo and R. Scheibler, “Spatial loss for unsupervised multi-
+channel source separation,” in Proc. Interspeech, 2022, pp. 166–
+170.
+[14] K. Han, F. Zhang, and P. Smaragdis, “Unsupervised multi-channel
+separation and adaptation,” in Proc. ICASSP, 2024, pp. 1–5.
+[15] Y . Bando, Y . Koizumi, and T. Nakatani, “Neural fast full-rank
+spatial covariance analysis for blind source separation,” in Proc.
+EUSIPCO, 2023, pp. 1–5.
+[16] D. Ulyanov, A. Vedaldi, and V . Lempitsky, “Deep image prior,”
+in Proceedings of the IEEE Conference on Computer Vision and
+Pattern Recognition (CVPR), 2018, pp. 9446–9454.
+[17] B. Laufer-Goldshtein, R. Talmon, and S. Gannot, “Source count-
+ing and separation based on simplex analysis,”IEEE Transactions
+on Signal Processing, vol. 66, no. 24, pp. 6458–6473, 2018.
+[18] ——, “Global and local simplex representations for multichannel
+source separation,” IEEE/ACM Transactions on Audio, Speech,
+and Language Processing, vol. 28, pp. 914–928, 2020.
+[19] M. C. U. Ara ´ujo, T. C. B. Saldanha, R. K. H. Galvao,
+T. Yoneyama, H. C. Chame, and V . Visani, “The successive pro-
+jections algorithm for variable selection in spectroscopic mul-
+ticomponent analysis,” Chemometrics and intelligent laboratory
+systems, vol. 57, no. 2, pp. 65–73, 2001.
+[20] P. Ghosh, S. K. Roy, B. Koirala, B. Rasti, and P. Scheunders, “Hy-
+perspectral unmixing using transformer network,” IEEE Transac-
+tions on Geoscience and Remote Sensing , vol. 60, pp. 516–527,
+2022.
+[21] J. R. Hershey, Z. Chen, J. Le Roux, and S. Watanabe, “Deep clus-
+tering: Discriminative embeddings for segmentation and separa-
+tion,” in Proc. ICASSP, 2016, pp. 31–35.
+[22] B. Rasti, B. Koirala, P. Scheunders, and J. Chanussot, “MiSiCNet:
+Minimum simplex convolutional network for deep hyperspectral
+unmixing,” IEEE Transactions on Geoscience and Remote Sens-
+ing, vol. 60, pp. 1–10, 2022.
+[23] Z.-Q. Wang, J. Le Roux, and J. R. Hershey, “Multi-channel deep
+clustering: Discriminative spectral and spatial embeddings for
+speaker-independent speech separation,” in Proc. IEEE Interna-
+tional Conference on Acoustics, Speech and Signal Processing
+(ICASSP). IEEE, 2018, pp. 1–5.
+[24] H. Sawada, S. Araki, and S. Makino, “Underdetermined convolu-
+tive blind source separation via frequency bin-wise clustering and
+permutation alignment,” IEEE Transactions on Audio, Speech,
+and Language Processing, vol. 19, no. 3, pp. 516–527, 2010.
+[25] V . Panayotov, G. Chen, D. Povey, and S. Khudanpur, “Lib-
+riSpeech: An ASR corpus based on public domain audio books,”
+in Proceedings of the IEEE International Conference on Acous-
+tics, Speech and Signal Processing (ICASSP) . IEEE, 2015, pp.
+5206–5210.
+1467

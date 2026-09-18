@@ -1,0 +1,865 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+Simultaneous Masked and Unmasked Decoding with
+Speculative Decoding Masking for Fast ASR without Accuracy Loss
+Koji Okabe1, Hitoshi Yamamoto1
+1Data Science Laboratories, NEC Corporation, Japan
+k-okabe@nec.com, h-yamamo@nec.com
+Abstract
+In this paper, we introduce two methods, Simultaneous
+Masked and Unmasked Decoding (SMUD) and speculative de-
+coding masking, into Partially autoregressive (PAR) decoding.
+These methods achieve the same recognition accuracy as Au-
+toregressive (AR) decoding while maintaining higher compu-
+tational efficiency than AR in Automatic Speech Recognition
+(ASR). SMUD and speculative decoding masking can accu-
+rately identify hypotheses where decoder score computation can
+be omitted. By omitting these computations, they achieve faster
+processing while obtaining the same search results as AR de-
+coding.
+In TED-LIUM2 evaluations, SMUD with speculative de-
+coding masking achieved a WER of 7.3% and an RTF of 0.41,
+as compared to AR’s WER of 7.3% and RTF of 0.59, showcas-
+ing the method’s ability to maintain the same high accuracy as
+AR while enhancing computational efficiency.
+Index Terms: Automatic speech recognition (ASR), partially
+autoregressive (PAR) decoding, speculative decoding, beam
+search, CTC-decoder joint decoding
+1. Introduction
+In recent years, high-accuracy ASR using Transformer-based
+encoder-decoder models which employ Autoregressive (AR)
+decoding, has become feasible [1, 2, 3, 4, 5].
+While AR
+decoding is highly accurate, it suffers from the issue of ex-
+tended processing times caused by iterative decoder processing.
+As a consequence, Non-autoregressive (NAR) decoding meth-
+ods [6, 7, 8, 9, 10, 11, 12] have been proposed to address this
+issue. Although NAR methods do offer faster processing, they
+have not yet achieved accuracy comparable to that of AR meth-
+ods [13]. In many ASR applications, high recognition accuracy
+is required, leading to the continued use of highly accurate AR
+in many ASR engines, including Whisper [3]. Given this back-
+ground, there is a demand for faster search methods than AR
+that do not compromise its accuracy.
+To bridge this gap, Partially Autoregressive (PAR) decod-
+ing [14] has been proposed to integrate the benefits of AR’s
+accuracy and NAR’s speed. This method generates preliminary
+recognition results using CTC greedy search and employs AR
+decoding only in regions with low CTC posterior probabilities.
+While PAR decoding is faster than AR decoding and more ac-
+curate than NAR decoding, it still suffers from poor accuracy as
+compared to AR decoding.
+In this paper, we have identified the primary causes for the
+poor accuracy of PAR when compared to AR: early search ter-
+mination, inability to use CTC prefix scores, and low mask
+prediction accuracy. To resolve these issues and achieve fast
+decoding while maintaining the accuracy of AR, we introduce
+two methods into PAR: Simultaneous Masked and Unmasked
+Decoding (SMUD) and speculative decoding masking.
+SMUD has two key characteristics. The first is that while
+searching for hypotheses within the masked region, it simul-
+taneously calculates decoder scores for both the hypotheses
+within the masked region and those considered to have exited
+it to outside the masked region. By comparing these scores,
+SMUD can accurately determine whether the search within the
+mask can be terminated. The second characteristic is that, re-
+gardless of whether a hypothesis is inside or outside the mask, it
+always calculates CTC prefix scores, enabling highly accurate
+CTC-decoder joint decoding. These characteristics help main-
+tain the high recognition accuracy of AR. Furthermore, spec-
+ulative decoding masking enhances mask prediction accuracy
+by utilizing decoder outputs in addition to CTC greedy search
+results for predicting the mask. Specifically, the entire prelimi-
+nary recognition result from the CTC greedy search is fed into
+the decoder at once, and positions in the input tokens are fur-
+ther masked where the output tokens differ from them. This
+approach continues to enable fast mask generation, as it pro-
+cesses the entire recognition result in one batch. By combining
+these methods, we achieve fast inference speeds without accu-
+racy degradation as compared to AR decoding.
+2. Preliminary
+2.1. AR with CTC-decoder joint decoding
+Autoregressive (AR) decoding predicts tokens one by one, us-
+ing the previously predicted token sequence as decoder input to
+predict the next token iteratively, as shown in Figure 1 (a). This
+method involves using beam search to predict the next token for
+the top B hypotheses, and it is widely recognized as one of the
+most accurate search methods in ASR, including Whisper [3].
+Further, [15, 16] have proposed a method that combines the
+CTC prefix score with the neural network decoder score in AR
+decoding. The CTC prefix score is the log value of the CTC pre-
+fix probability, which is defined as the cumulative probability of
+all token sequences that have the current hypothesis as their pre-
+fix. By using both scores together, higher recognition accuracy
+can be achieved, further enhancing the advantages of AR. For
+example, OWSM [4, 5] utilizes this joint-decoding technique.
+However, to obtain the recognition result of L tokens using
+AR, it is necessary to iteratively input the intermediate recog-
+nition results into the decoder L times, resulting in slower pro-
+cessing. This slowdown occurs not only due to increased com-
+putational complexity but also because each time an input is fed,
+CPU cache misses occur, requiring the neural network’s weight
+parameters to be read from memory.
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+634
+10.21437/Interspeech.2025-382
+
+
+
+
+
+
+	
+
+	
+
+
+
+
+
+
+	
+	
+
+
+
+
+
+
+	
+
+	
+
+
+
+
+
+
+  	
+	
+
+
+
+
+
+	
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+	
+
+
+
+
+
+	
+	
+
+
+
+
+
+
+	
+
+	
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+	
+
+
+	
+	
+
+
+
+
+
+
+	
+
+	
+
+
+
+
+
+
+	
+
+ 	
+
+
+
+(a) Autoregressive (AR)
+(b) Partially autoregressive (PAR)
+(c) PAR involving early search termination
+Figure 1: (a) Autoregressive (AR) with CTC-decoder joint decoding, high-accuracy but slow due to iterative decoder processing;
+(b) Partially autoregressive (PAR), faster with fewer iterative decoder processing only for masked regions; (c) Example of early search
+termination in PAR, leading to deletion errors.
+2.2. Partially autoregressive decoding
+Partially autoregressive (PAR) decoding [14], as illustrated in
+Figure 1 (b), initially obtains a preliminary recognition result
+(ˆygCTC) using fast CTC greedy search (gCTC) in an NAR man-
+ner. Afterward, tokens with CTC probabilities lower than Pthres
+are masked with mask tokens (#), resulting in the masked to-
+ken sequence ˆymask, where only these masked tokens are re-
+predicted using high accuracy AR decoding. By partially em-
+ploying AR decoding, re-predicted segments maintain the high
+recognition accuracy of AR decoding, without the large degra-
+dation seen in NAR methods [13]. Moreover, computational
+cost is reduced as compared to full AR decoding because the
+computationally expensive iterative decoder processing is only
+applied to the masked regions and skipped for the unmasked
+regions.
+However, despite these advantages, PAR has three issues
+that lead to degraded accuracy compared to AR:
+1. Early search termination: The termination criteria of beam
+search in masked regions are based on the appearance of to-
+kens following the mask (post-mask tokens). Beam search
+may terminate early if the same tokens as the post-mask to-
+kens appear within the mask regions. This issue will be dis-
+cussed in detail later, on the basis of an example.
+2. Inability to use CTC prefix scores: PAR cannot utilize CTC
+prefix scores, which were used in AR to enhance recognition
+accuracy, because CTC prefix scores cannot be computed
+solely within the mask. They need to be calculated sequen-
+tially from the beginning of the input, including regions out-
+side the mask. In PAR, which limits its search to within the
+mask, it is not possible to compute CTC prefix scores.
+3. Low mask prediction accuracy:
+Since CTC does not
+achieve as high recognition accuracy as the decoder, the mask
+prediction accuracy using CTC probabilities is insufficient.
+If the incorrectly predicted tokens by gCTC are output with
+a higher probability than Pthres and are not masked, these in-
+correct tokens remain in ˆymask, leading to recognition errors.
+To address the issue of early search termination, consider
+an example shown in Figure 1 (c) where the correct transcrip-
+tion, using character-based tokens, for a given utterance is s e
+a
+c u c u m b e r. Suppose that the tokens c u c are
+masked due to their low CTC probabilities, and as a result, the
+masked token sequence ˆymask becomes s e a
+# # # u m b
+e r. If we define a post-mask token as a token that immediately
+follows the masked region, in this example, the post-mask token
+would be u. Thus, the appearance of u would trigger the hy-
+pothesis search termination criteria during beam search. When
+performing beam search within the masked region, c might be
+selected as the first token in the mask region, followed by u as
+the next token. Since the post-mask token u appears, the search
+terminates early, and the recognition result for the mask region,
+which would correctly be c u c, instead becomes c. As a re-
+sult, the overall recognition output is s e a
+c u m b e r.
+Thus, early search termination can lead to deletion errors.
+3. Simultaneous masked and unmasked
+decoding
+In this section, we propose Simultaneous Masked and Un-
+masked Decoding (SMUD), a method based on PAR. From the
+block diagram of PAR in Figure 1 (b), SMUD enhances it by
+modifying the search termination criteria and utilizing CTC pre-
+fix scores. This approach addresses two accuracy degradation
+issues of PAR, specifically early search termination and the in-
+ability to use CTC prefix scores, and achieves recognition accu-
+racy comparable to AR.
+The following explains the algorithm of SMUD using Fig-
+ure 2, demonstrating how it realizes precise search termination
+for masked regions. As in the previous section, we use the ex-
+ample where the correct transcription for a given utterance is s
+e a
+c u c u m b e r, while the masked token sequence
+ˆymask is s e a
+# # # u m b e r.
+Step 1 The process in this step is the same as in PAR. For the
+first unmasked segment, <sos> s e a
+, the decoder
+score calculation is omitted. For the first masked seg-
+ment, AR decoding with beam search is started. The
+hypotheses searched within this masked segment are re-
+ferred to as the mask hypotheses (Hin).
+Step 2 During beam search, suppose a hypothesis becomes
+<sos> s e a
+c u, and the post-mask token appears
+635
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+	
+
+
+
+
+
+
+	
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+	
+
+
+
+
+
+
+
+
+
+ 
+
+
+
+
+
+ 
+!
+
+
+
+
+
+"#"$%
+"#"$%&
+
+
+Figure 2: Simultaneous masked and unmasked decoding, which
+avoids early search termination and enables CTC-decoder joint
+decoding (with a beam size of 2).
+(in this example, u). Unlike PAR, SMUD considers two
+possibilities: the token u might truly be the post-mask
+token appearing immediately after the mask, or the same
+token as the post-mask token might have appeared in the
+middle of the mask. To address the possibility that it is a
+token appearing in the middle of the mask, the mask hy-
+pothesis is retained as is. On the other hand, to consider
+the possibility that it is a post-mask token appearing af-
+ter the mask, we generate an unmask hypothesis (Hout),
+which is considered to have exited the mask while hav-
+ing the exact same token sequence.
+Step 3 Continue the beam search for Hin. Simultaneously, for
+Hout, extend the hypothesis by assuming that the next
+unmasked tokens appear according to ˆymask, such as u m
+b e r in the example. In this step, calculate the decoder
+scores for both Hin and Hout.
+Step 4 Steps 2 and 3 are repeated. During this repetition, a new
+unmask hypothesis is generated for s e a
+c u c u.
+The beam search for Hin is conducted for M tokens
+(M = 5 in this example), pruning any mask hypothe-
+sis that does not reach a post-mask token at this point.
+In this example, the two mask hypotheses in Hin, s e
+a
+c u c u m and s e a
+c u c a n are pruned.
+Finally, if there are multiple unmask hypotheses in Hout,
+the scores are compared, retaining only the hypothesis
+with the highest score. In this example, the hypothe-
+sis with the correct recognition result, s e a
+c u c
+u m, has a higher score than s e a
+c u m b e, and
+thus the former hypothesis is retained.
+The SMUD algorithm compares the scores of multiple hy-
+potheses where the post-mask token appears at different po-
+sitions and retains the most likely hypothesis.
+As a result,
+early search termination is avoided, enabling SMUD to main-
+tain recognition accuracy equivalent to that of AR decoding.
+Furthermore, by computing the scores as described below,
+
+		
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+			
+		
+
+
+
+
+
+
+
+
+
+		
+		
+
+
+
+
+
+
+
+
+
+		
+	
+ 
+		 
+
+
+		
+Figure 3: Speculative decoding masking, which provides a more
+accurate mask prediction by utilizing the decoder.
+SMUD is able to employ CTC-decoder joint decoding. For the
+hypothesis hi at position i, the score Si to be added to the cu-
+mulative score is calculated as follows:
+Si =
+(
+αSctc,i
+if ∀hi, hi ∈Hout,
+αSctc,i + (1 −α)Sdecoder,i
+otherwise.
+(1)
+In essence, if all hypotheses at position i are unmask hypothe-
+ses, Hout, which corresponds to a column where all boxes are
+white in Figure 2, the decoder score computation is skipped,
+and only the CTC prefix score Sctc,i is calculated. Otherwise,
+if there is even one mask hypothesis, Hin, both the CTC pre-
+fix score Sctc,i and the decoder score Sdecoder,i are computed,
+enabling CTC-decoder joint decoding. This approach enables
+the use of highly accurate CTC-decoder joint decoding for the
+re-prediction of masked regions, thereby maintaining the high
+accuracy of AR decoding. Additionally, since the decoder score
+is not computed for regions where all hypotheses are Hout, con-
+sistent with PAR, the search process is faster than that of AR
+decoding. In the case of CPU decoding, the computational cost
+of CTC prefix scores is relatively small compared to that of
+computing decoder scores [16], allowing SMUD to maintain
+its speed even without skipping the calculation of CTC prefix
+scores for unmasked regions.
+4. Speculative decoding masking
+We propose speculative decoding masking (SDmask), which
+provides a more accurate mask prediction than using only
+gCTC. Since gCTC has lower recognition accuracy, it often out-
+puts incorrect tokens with high probability, resulting in incor-
+rect unmasked tokens. Therefore, we also utilize a more accu-
+rate decoder for mask prediction as well. However, to maintain
+speed, we calculate the decoder scores using a NAR approach.
+Below is a detailed explanation of the process. As shown
+in Figure 3, speculative decoding masking involves inputting
+the entire token sequence ˆygCTC obtained from gCTC into the
+decoder at once, predicting the subsequent tokens across the
+entire sequence, and obtaining ˆydecoder. Similar to speculative
+decoding, a technique known for speeding up large language
+models (LLM) inference [17], this method can predict the entire
+sequence of L tokens in a single input pass, making it more
+cache-efficient and keeping the masking process fast.
+Next, ˆygCTC and ˆydecoder are compared, and the differing to-
+kens are replaced with mask tokens. Additionally, as in the con-
+636
+
+Table 1: CER or WER(%). Values in each column represent CER or WER for dev/test sets. For LS-100, values represent WER for
+dev clean/dev other/test clean/test other. SMUD with SDmask achieves recognition accuracy comparable to AR.
+Method
+CTC weight
+SDmask
+AISHELL-1
+JSUT
+LS-100
+TED-LIUM2
+AR
+0.3
+4.2 / 4.5
+11.6 / 13.3
+6.3 / 16.9 / 6.5 / 17.1
+7.3 / 7.2
+PAR [14]
+0.0
+4.4 / 4.7
+11.9 / 13.3
+6.4 / 17.1 / 6.6 / 17.4
+7.6 / 7.3
+SMUD
+0.3
+4.2 / 4.5
+11.6 / 13.2
+6.4 / 17.1 / 6.6 / 17.4
+7.4 / 7.2
+SMUD
+0.3
+✓
+4.2 / 4.5
+11.6 / 13.2
+6.3 / 16.9 / 6.5 / 17.2
+7.3 / 7.2
+Table 2: Real-time factors (RTFs). SMUD with SDmask is faster than AR.
+Method
+CTC weight
+SDmask
+AISHELL-1
+JSUT
+LS-100
+TED-LIUM2
+AR
+0.3
+0.67
+0.67
+0.47
+0.59
+PAR [14]
+0.0
+0.57
+0.47
+0.33
+0.32
+SMUD
+0.3
+0.60
+0.53
+0.39
+0.40
+SMUD
+0.3
+✓
+0.61
+0.55
+0.40
+0.41
+ventional method, parts of the sequence where the gCTC prob-
+ability is lower than Pthres are also masked. By combining these
+two types of mask predictions, more accurate mask predictions
+are achieved.
+5. Experiments
+5.1. Experimental setup
+We used four E-Branchformer models [2, 18] that were used
+in the experiments conducted in [14].
+The E-Branchformer
+models were pre-trained on the following datasets and are pub-
+licly available on the HuggingFace hub: AISHELL-11, JSUT2,
+LibriSpeech-100h (LS-100)3, TED-LIUM24. All models were
+trained and evaluated using the ESPnet toolkit [19].
+Common settings for AR decoding, PAR decoding, and
+SMUD include a beam size of 5, and no external language
+model, with inference conducted on a CPU (Xeon Gold 6230R).
+The CTC weight was 0.3 for AR and SMUD, 0.0 for PAR. In
+common with both PAR and SMUD, Pthres was set to 0.95, and
+the maximum search length M was set to 5. Additionally, fur-
+ther experiments were conducted by combining SMUD with
+speculative decoding masking.
+For this study, we used several datasets for evaluation,
+similarly to what is described in [14]. Specifically, we used
+LibriSpeech [20] and TED-LIUM2 [21] as English datasets,
+JSUT [22] as a Japanese dataset, and AISHELL-1 [23] as a
+Mandarin dataset.
+We followed the evaluation metrics described in [14] as
+well. We evaluated accuracy using the word error rate (WER)
+or character error rate (CER) depending on the dataset. Specif-
+ically, we used CER for the AISHELL-1 and JSUT evaluation
+sets, and WER for English evaluation sets. The real-time factor
+(RTF) was used to measure inference speed. For the RTF, we
+took the mean of all evaluation sets.
+5.2. Results
+Experimental results for CER and WER are presented in Ta-
+ble 1, and RTF values are shown in Table 2.
+It can be observed that PAR achieves smaller RTFs than
+does AR, but at the cost of increased recognition error due to the
+1https://huggingface.co/pyf98/aishell e branchformer
+2https://huggingface.co/pyf98/jsut e branchformer
+3https://huggingface.co/pyf98/librispeech 100 e branchformer
+4https://huggingface.co/pyf98/tedlium2 e branchformer
+issues identified in this paper. For example, on TED-LIUM2,
+the RTF decreases from 0.59 to 0.32, while the WER on the dev
+set increases from 7.3% to 7.6%.
+On the other hand, SMUD employing CTC-decoder joint
+decoding and precise search termination exhibits only slight
+degradation in recognition error compared to AR. For instance,
+the WER on the TED-LIUM2 dev set is 7.4%. Although the
+RTF for SMUD is 0.40, which is higher than PAR’s 0.32 due to
+the calculation of CTC prefix scores, it still achieves a speedup
+over AR’s 0.59.
+Moreover, combining SMUD with speculative decoding
+masks further reduces accuracy degradation, achieving recog-
+nition accuracy nearly identical to that of AR. For example, the
+WER on the TED-LIUM2 dev set is 7.3%. The additional pro-
+cessing time introduced by speculative decoding masks is min-
+imal, resulting in only a slight increase in RTF. TED-LIUM2,
+for instance, shows an RTF of 0.41, which is significantly faster
+than AR’s 0.59.
+From the above results, it can be concluded that combin-
+ing SMUD with speculative decoding masking achieves slightly
+lower speed than PAR but with improved recognition accuracy
+over PAR. More importantly, it delivers recognition accuracy
+comparable to AR while being faster than AR.
+6. Conclusion
+In this study, we have introduced Simultaneous Masked and
+Unmasked Decoding (SMUD) into fast PAR decoding to main-
+tain the high accuracy of AR decoding. SMUD enables precise
+search termination and CTC-decoder joint decoding to address
+the accuracy degradation in PAR while preserving its speed ad-
+vantage over AR. Additionally, we have proposed the specula-
+tive decoding masking to enhance mask prediction and further
+address the accuracy degradation of PAR.
+Our experimental results confirm the effectiveness of
+SMUD and speculative decoding masking. Unlike PAR decod-
+ing, which exhibits noticeable degradation in recognition ac-
+curacy, SMUD maintains high recognition accuracy with sig-
+nificantly better computational efficiency than AR. Specifically,
+in TED-LIUM2 evaluations, SMUD with speculative decoding
+masking achieved a WER of 7.3% and an RTF of 0.41, as com-
+pared to AR’s WER of 7.3% and RTF of 0.59. This demon-
+strates that SMUD, combined with speculative decoding mask-
+ing, offers a faster method than traditional AR decoding with
+nearly no degradation in accuracy.
+637
+
+7. References
+[1] A. Gulati, J. Qin, C.-C. Chiu, N. Parmar, Y. Zhang, J. Yu,
+W. Han, S. Wang, Z. Zhang, Y. Wu, and R. Pang, “Conformer:
+Convolution-augmented Transformer for Speech Recognition,” in
+Proc. Interspeech 2020, 2020, pp. 5036–5040.
+[2] K. Kim, F. Wu, Y. Peng, J. Pan, P. Sridhar, K. J. Han, and
+S. Watanabe, “E-branchformer:
+Branchformer with enhanced
+merging for speech recognition,” in 2022 IEEE Spoken Language
+Technology Workshop (SLT).
+IEEE, 2023, pp. 84–91.
+[3] A. Radford, J. W. Kim, T. Xu, G. Brockman, C. McLeavey, and
+I. Sutskever, “Robust speech recognition via large-scale weak
+supervision,” in International conference on machine learning.
+PMLR, 2023, pp. 28 492–28 518.
+[4] Y. Peng, J. Tian, B. Yan, D. Berrebbi, X. Chang, X. Li, J. Shi,
+S. Arora, W. Chen, R. Sharma et al., “Reproducing whisper-style
+training using an open-source toolkit and publicly available data,”
+in 2023 IEEE Automatic Speech Recognition and Understanding
+Workshop (ASRU).
+IEEE, 2023, pp. 1–8.
+[5] Y. Peng, J. Tian, W. Chen, S. Arora, B. Yan, Y. Sudo, M. Shakeel,
+K. Choi, J. Shi, X. Chang, J. weon Jung, and S. Watanabe, “Owsm
+v3.1: Better and faster open whisper-style speech models based on
+e-branchformer,” in Interspeech 2024, 2024, pp. 352–356.
+[6] Y. Higuchi, S. Watanabe, N. Chen, T. Ogawa, and T. Kobayashi,
+“Mask CTC: Non-Autoregressive End-to-End ASR with CTC and
+Mask Predict,” in Proc. Interspeech 2020, 2020, pp. 3655–3659.
+[7] Y. Higuchi,
+H. Inaguma,
+S. Watanabe,
+T. Ogawa,
+and
+T. Kobayashi, “Improved mask-ctc for non-autoregressive end-to-
+end asr,” in ICASSP 2021-2021 IEEE International Conference
+on Acoustics, Speech and Signal Processing (ICASSP).
+IEEE,
+2021, pp. 8363–8367.
+[8] J. Lee and S. Watanabe, “Intermediate loss regularization for ctc-
+based speech recognition,” in ICASSP 2021-2021 IEEE Interna-
+tional Conference on Acoustics, Speech and Signal Processing
+(ICASSP).
+IEEE, 2021, pp. 6224–6228.
+[9] J. Nozaki and T. Komatsu, “Relaxing the conditional indepen-
+dence assumption of ctc-based asr by conditioning on interme-
+diate predictions,” in Interspeech 2021, 2021, pp. 3735–3739.
+[10] R. Fan, W. Chu, P. Chang, and J. Xiao, “Cass-nat: Ctc alignment-
+based single step non-autoregressive transformer for speech
+recognition,” in ICASSP 2021 - 2021 IEEE International Confer-
+ence on Acoustics, Speech and Signal Processing (ICASSP), 2021,
+pp. 5889–5893.
+[11] Y. Bai, J. Yi, J. Tao, Z. Tian, Z. Wen, and S. Zhang, “Fast end-to-
+end speech recognition via non-autoregressive models and cross-
+modal knowledge transferring from bert,” IEEE/ACM Transac-
+tions on Audio, Speech, and Language Processing, vol. 29, pp.
+1897–1911, 2021.
+[12] Z. Gao, S. Zhang, I. McLoughlin, and Z. Yan, “Paraformer: Fast
+and accurate parallel transformer for non-autoregressive end-to-
+end speech recognition,” in Interspeech 2022, 2022, pp. 2063–
+2067.
+[13] Y. Higuchi, N. Chen, Y. Fujita, H. Inaguma, T. Komatsu, J. Lee,
+J. Nozaki, T. Wang, and S. Watanabe, “A comparative study on
+non-autoregressive modelings for speech-to-text generation,” in
+2021 IEEE Automatic Speech Recognition and Understanding
+Workshop (ASRU).
+IEEE, 2021, pp. 47–54.
+[14] M. Someki, N. Eng, Y. Higuchi, and S. Watanabe, “Segment-level
+vectorized beam search based on partially autoregressive infer-
+ence,” in 2023 IEEE Automatic Speech Recognition and Under-
+standing Workshop (ASRU).
+IEEE, 2023, pp. 1–8.
+[15] S. Watanabe, T. Hori, S. Kim, J. R. Hershey, and T. Hayashi, “Hy-
+brid ctc/attention architecture for end-to-end speech recognition,”
+IEEE Journal of Selected Topics in Signal Processing, vol. 11,
+no. 8, pp. 1240–1253, 2017.
+[16] H. Seki, T. Hori, S. Watanabe, N. Moritz, and J. L. Roux, “Vec-
+torized Beam Search for CTC-Attention-Based Speech Recogni-
+tion,” in Proc. Interspeech 2019, 2019, pp. 3825–3829.
+[17] Y. Leviathan, M. Kalman, and Y. Matias, “Fast inference from
+transformers via speculative decoding,” in International Confer-
+ence on Machine Learning.
+PMLR, 2023, pp. 19 274–19 286.
+[18] Y. Peng, K. Kim, F. Wu, B. Yan, S. Arora, W. Chen, J. Tang,
+S. Shon, P. Sridhar, and S. Watanabe, “A Comparative Study on E-
+Branchformer vs Conformer in Speech Recognition, Translation,
+and Understanding Tasks,” in Proc. INTERSPEECH 2023, 2023,
+pp. 2208–2212.
+[19] S. Watanabe, T. Hori, S. Karita, T. Hayashi, J. Nishitoba,
+Y. Unno, N. Enrique Yalta Soplin, J. Heymann, M. Wiesner,
+N. Chen, A. Renduchintala, and T. Ochiai, “ESPnet: End-to-end
+speech processing toolkit,” in Proceedings of Interspeech, 2018,
+pp. 2207–2211. [Online]. Available: http://dx.doi.org/10.21437/
+Interspeech.2018-1456
+[20] V. Panayotov, G. Chen, D. Povey, and S. Khudanpur, “Lib-
+rispeech: an asr corpus based on public domain audio books,”
+in 2015 IEEE international conference on acoustics, speech and
+signal processing (ICASSP).
+IEEE, 2015, pp. 5206–5210.
+[21] A. Rousseau, P. Del´eglise, Y. Esteve et al., “Enhancing the ted-
+lium corpus with selected data for language modeling and more
+ted talks.” in LREC, 2014, pp. 3935–3939.
+[22] R. Sonobe, S. Takamichi, and H. Saruwatari, “Jsut corpus: free
+large-scale japanese speech corpus for end-to-end speech synthe-
+sis,” arXiv preprint arXiv:1711.00354, 2017.
+[23] H. Bu, J. Du, X. Na, B. Wu, and H. Zheng, “Aishell-1: An open-
+source mandarin speech corpus and a speech recognition base-
+line,” in 2017 20th conference of the oriental chapter of the inter-
+national coordinating committee on speech databases and speech
+I/O systems and assessment (O-COCOSDA).
+IEEE, 2017, pp.
+1–5.
+638
+

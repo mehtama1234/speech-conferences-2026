@@ -1,0 +1,568 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+A Neural Codec Approach for Noise-Robust Bandwidth Expansion
+Xi Liu1, Mu Yang1, Szu-Jui Chen1, John H.L. Hansen1
+1Center for Robust Speech Systems (CRSS), The University of Texas at Dallas, USA
+Xi.Liu@utdallas.edu, Mu.Yang@utdallas.edu, Szu-Jui.Chen@utdallas.edu,
+john.hansen@utdallas.edu
+Abstract
+Neural audio codec technology has recently attracted sig-
+nificant attention in various speech processing tasks due to its
+efficient quantized latent features. In this work, we introduce
+a novel approach that leverages a pre-trained neural codec net-
+work to perform both speech denoising and bandwidth expan-
+sion simultaneously. Specifically, we design a conformer-based
+deep neural network to predict clean codebook indices, which
+are then used by the pre-trained audio codec model to generate
+enhanced and bandwidth-expanded audio. We investigated sev-
+eral strategies for generating the clean indices and compared
+our approach with state-of-the-art methods on the Valentini-
+Botinhao noisy test set. Experimental results demonstrate that
+our method achieves performance comparable to leading ap-
+proaches in noise-robust bandwidth expansion tasks while of-
+fering promising improvements in the quality and intelligibility
+of narrow-band signals. Audio samples are available.1
+Index Terms: speech enhancement, bandwidth expansion, neu-
+ral codec
+1. Introduction
+Audio bandwidth expansion (BWE), also known as audio super-
+resolution, is a technique designed to restore or generate the
+high-frequency components of an audio signal that have been
+lost or were never recorded, typically in narrow-band record-
+ings (such as traditional telephone speech). The primary goal
+is to enhance the perceived quality and naturalness of the voice
+by extending its effective frequency range. Narrow-band au-
+dio generally covers frequencies up to about 3.4 kHz, and the
+absence of higher-frequency information can make the voice
+sound muffled and less intelligible. In addition, many histor-
+ical recordings suffer from background noise that further de-
+grades speech quality. In this work, we propose a noise-robust
+bandwidth expansion approach that not only recovers the miss-
+ing high-frequency content but also effectively suppresses back-
+ground noise.
+Early BWE methods employed signal processing algo-
+rithms such as linear predictive coding (LPC)[1] or rule-based
+spectral mapping[2] to restore the high frequency details. How-
+ever, these approaches rely on linear or heuristic models that
+are not well-equipped to capture the complex, nonlinear rela-
+tionships present in natural speech, often resulting in subopti-
+mal reconstruction of the high-frequency components. Recent
+approaches leverage deep neural networks (DNNs) to achieve
+remarkable performance due to their powerful nonlinear mod-
+eling capabilities.
+1Audio samples: https://winkee520.github.io/NRBWE/
+DNN-based bandwidth expansion (BWE) approaches can
+be broadly classified into three categories: methods operating
+in the Mel-spectrum domain, those working in the linear spec-
+tral domain, and those applied directly in the waveform domain.
+Mel-spectrum domain methods [3, 4, 5] aim to reconstruct the
+Mel-scale spectrum of wide-band or full-band speech and then
+convert the enhanced Mel-spectrum into an audio waveform us-
+ing a neural vocoder [6]. These methods are computationally
+efficient because of using fewer frequency features compared
+to processing all frequency bins. However, the Mel-scale repre-
+sentation has lower frequency resolution in the high-frequency
+range, which inevitably leads to a loss of fine details. Further-
+more, since the Mel-spectrum only captures amplitude infor-
+mation without phase components, these approaches are less
+effective in low signal-to-noise ratio (SNR) conditions, often re-
+sulting in speech distortion and artifacts in the high-frequency
+bands. To address these issues, SWiBE [7] and AERO [8] uti-
+lize the complex spectrum as the input feature to better recon-
+struct high-frequency components. Specifically, AERO incor-
+porates Generative Adversarial Networks (GANs) to generate
+higher-quality speech, while SWiBE employs a stochastic De-
+noising Diffusion Process (DDP) to achieve notable improve-
+ments. On the other hand, [9] proposed a waveform-domain
+approach for BWE using a DDP model, and Lin et al. [10] de-
+signed a two-stage network that jointly processes narrow-band
+signals in both the frequency and time domains.
+In contrast to methods that use spectral or waveform fea-
+tures, Genhancer [11] leverages quantized latent representa-
+tions produced by a Neural Audio Codec (NAC) for generative
+speech enhancement. Specifically, it predicts clean codebook
+indices from noisy ones using MaskGIT and a language model
+(LM). NAC [12, 13, 14] compresses audio into discrete tokens
+through residual vector quantization (RVQ) and an encoder-
+decoder architecture, achieving a high compression rate without
+losing critical audio information. This technique has also been
+successfully applied to language model-based speech synthesis
+tasks such as Text-To-Speech (TTS) [15, 16].
+Inspired by previous work, we propose a novel approach for
+noise-robust bandwidth expansion. Our method employs a sep-
+arate model that uses continuous embeddings as input features
+to predict clean discrete tokens (i.e. clean codebook indices).
+These estimated tokens are then used by a pre-trained Neural
+Audio Codec (NAC) to generate the clean audio waveform. The
+main contributions of this paper are as follows: 1) We present
+a NAC based method on noise-robust bandwidth expansion. 2)
+We conduct a comprehensive study on the performance of clean
+token prediction using different types of embeddings and train-
+ing strategies.
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+4083
+10.21437/Interspeech.2025-2438
+
+Figure 1: System overview of the proposed system. The system contains 2 parts: Descript Audio Codec (DAC) and clean token
+predictor. DAC is consisted of DAC Encoder, Residual Vector quantization (RVQ) and DAC Decoder, and clean token predictor has
+multiple Conformer layers and Multi-head linear layers.
+2. Method
+2.1. Method Overview
+The system overview is presented in Figure 1. In this work, we
+focus on recovering a clean, high-resolution (HR) speech signal
+(sampled at 16 kHz) from a low-resolution (LR) speech signal
+(sampled at 8 kHz) that is degraded by background noise. To
+achieve this, we employ a pre-trained Descript Audio Codec
+(DAC)[14] as our audio waveform generator, which operates on
+16 kHz audio. We propose a simple, Conformer-based clean to-
+ken predictor [17] to generate predicted clean tokens (i.e., clean
+codebook indices). These predicted tokens are then used to pro-
+duce quantized embeddings that are fed into the DAC Decoder
+to synthesize the reconstructed HR audio.
+2.1.1. Descript Audio Codec
+DAC is a high-fidelity audio compression model that converts
+audio waveforms to low-bitrate discrete tokens while preserving
+critical speech quality. Audio codecs are typically used for ef-
+ficient signal transmission, but recently researchers discovered
+that the discrete token is more efficient than continuous latent
+representations on various downstream tasks such as language
+modeling and speech synthesis. Like other neural audio codec
+approaches, DAC comprises three major components: an En-
+coder module, a Residual Vector Quantization (RVQ) module,
+and a Decoder module.
+The Encoder consists of a series of 1D convolutional layers
+that downscale the waveform to a lower rate, while the Decoder
+is trained to reconstruct the original audio from quantized em-
+beddings. The core of DAC is the RVQ module, which is made
+up of N vector quantization processing block corresponding to
+N different codebooks. Similar to VQ-VAE [18], RVQ is a
+multi-stage process that iteratively quantizes the original signal
+and its residual error, with each stage refining the approxima-
+tion. By breaking the quantization task into smaller, successive
+approximations, RVQ strikes a balance between compression
+rate and signal fidelity.
+Because the convolutional encoder-decoder model directly
+processes waveforms, it may struggle to capture fine frequency
+details, particularly in the high-frequency range. To address
+this, DAC employs multi-scale STFT discriminators and a Mel-
+scale loss to alleviate aliasing artifacts and frequency-domain
+distortions, potentially making it well-suited for bandwidth ex-
+pansion tasks. In this work, we use the discrete tokens from N
+Figure 2: Spectrogram of using different number of codebooks.
+(a) only uses the first codebook of RVQ for decoding; (b) present
+result of using 3 more residual codebooks; (c)shows result of
+using 8 codebooks; (d) is the target
+different codebooks as the training targets, enabling the clean
+token predictor module to generate approximate clean tokens
+from low-pass filtered noisy input.
+2.1.2. Parallel clean token prediction
+Considering the hierarchical structure of RVQ, the model quan-
+tizes and generates audio in a coarse-to-fine manner, as il-
+lustrated in Figure 2. As the number of residual codebooks
+increases, the reconstructed speech—encompassing content,
+speaker identity, and harmonic structure—becomes progres-
+sively more recognizable and intelligible. Consequently, some
+speech synthesis methods based on speech language models
+(SLMs) [15, 16] adopt an auto-regressive (AR) approach to pre-
+dict target tokens, since each subsequent residual token strongly
+depends on the current one. In contrast, our approach predicts
+the clean token in a parallel manner without relying on any SLM
+or textual information. We believe that, given sufficient prior
+knowledge, the model can learn the hierarchical structure effec-
+tively. Our clean token predictor consists of two components: A
+multi-layer Conformer block comprising M Conformer layers
+4084
+
+and A multi-head linear block with N heads (equal to the num-
+ber of codebooks), with a ReLU activation function between
+each linear layer. The model is trained using cross-entropy loss
+to predict the target token probabilities, which is defined as:
+Lcross-entropy = −1
+S
+S
+X
+i=1
+C
+X
+c=1
+yi,c log ˆyi,c,
+(1)
+Here, S denotes the number of samples, C represents the num-
+ber of classes(which, in this context, equals the codebook size),
+yi,c is the target codebook index and ˆyi,c is the predicted prob-
+ability that sample i belongs to class c. TThe final predicted
+clean token is obtained by applying the argmax function along
+the class dimension.
+To identify the optimal input features for our predictor,
+we experimented with both pre-quantized embeddings and the
+quantized embeddings generated by DAC at various stages (see
+Figure 1). In addition to using a standard parallel prediction ap-
+proach, we implemented a progressive training strategy. In this
+progressive approach, we solely train the model to predict first
+codebook index for 10 epochs, then train to predict codebooks
+indices through 1 to 4 for an additional 10 epochs, and grad-
+ually cover all codebooks. This training approach aligns with
+the coarse-to-fine structure of RVQ, leveraging the insight that
+the first codebook plays a crucial role in shaping overall per-
+formance. Detailed training setup and comparative results are
+discussed in Sections 3 and 4.
+3. Experiments
+3.1. Dataset
+3.1.1. DNS-challenge wide-band dataset
+The DNS-challenge[19] dataset has been widely used for var-
+ious DNN-based speech enhancement tasks and noise-robust
+speech technology. The clean speech training set is about 760
+hours and contains over 10k speakers and 11 different lan-
+guages. The noise dataset is collected from several resources
+and has total 181 hours and 150 classes. In this study, we only
+use DNS-challenge wide-band dataset for training, it contains
+about 160 hours high quality read speech in English and 50
+hours noise clips.
+3.1.2. Valentini-Botinhao dataset
+The Valentini-Botinhao dataset[20] is another popular dataset
+for speech processing tasks under noise conditions. This En-
+glish corpus comprising 28 speakers for training and 2 speakers
+for testing. The training set features 40 distinct noisy condi-
+tions, while the test set includes recordings under 20 additional
+noisy conditions. Since the original audio is sampled at 48 kHz,
+we down-sampled it to 16 kHz for this task. In our experiments,
+we use only the noisy test set to evaluate speech quality im-
+provements.
+3.2. Experimental setup
+We use a pre-trained DAC network2 trained on clean speech and
+music data at a 16 kHz sampling rate, which compresses a one-
+second audio clip into 50 frames. The total number of code-
+books N used in RVQ is 12. Our clean token prediction model
+incorporates a Conformer block implemented in PyTorch, con-
+sisting of 8 layers with 8 attention heads. The depthwise convo-
+lution within the Conformer block uses a kernel size of 15, and
+2https://github.com/descriptinc/descript-audio-codec
+the feedforward network is configured with 1024 hidden dimen-
+sions. The model features a multi-head linear block composed
+of two linear layers separated by a ReLU nonlinear activation
+function and followed by a LayerNorm layer. The final linear
+layer projects the 1024-dimensional hidden state into a 12*1024
+output, yielding 12 separate predictions with 1024 classes each.
+During training, a dropout rate of 0.1 is applied, and the model
+is optimized using the AdamW optimizer with an initial learn-
+ing rate of 0.0003. All layer weights are initialized using the
+Xavier initializer.
+To achieve noise-robust bandwidth expansion, we adopt a
+two-stage training strategy. In the first stage, the predictor is
+pre-trained solely on the noise suppression task. In the second
+stage, it is fine-tuned on a joint task that combines noise sup-
+pression with bandwidth expansion. Although the training tar-
+get remains the same across both stages, the input data differs:
+during stage one, the input is only corrupted by background
+noise; during stage two, the noisy input is downsampled to 8
+kHz and then upsampled back to 16 kHz using sinc interpola-
+tion. Additionally, paired training data is synthesized on the fly
+during each training iteration. In every training loop, we gener-
+ate 24,000 clips with 2 seconds duration, and the signal-to-noise
+ratio (SNR) of the synthesized noisy data is randomly sampled
+from -5 dB to 20 dB. The progressive training method described
+in Section 2.1.2 is structured as follows: Epochs 1–10: Train
+the model to predict codebook 1; Epochs 11–20: Extand train-
+ing to predict codebooks 1–4; Epochs 21–30: Extend prediction
+to codebooks 1–6; Epochs 31–40: Further train on codebooks
+1–8; Remaining epochs: Train the model to predict all code-
+books (1–12).
+3.3. Evaluation Metrics
+To evaluate the speech quality improvement, we use 2 pop-
+ularly used metrics for this task:
+DNSMOS[21] and Log-
+Spectrum Distance(LSD). DNSMOS is a non-intrusive DNN-
+based speech quality assessment designed for speech enhance-
+ment task, particularly for denoising task. It has 3 scores to
+assess the speech quality: CSIG evaluates How natural and
+clear the speech sounds, CBAK can tell How intrusive the back-
+ground noise is, and COVL is a combination of CSIG and
+CBAK. Log-Spectral Distance (LSD) is a also widely used ob-
+jective metric especially for bandwidth expansion. It measures
+the similarity between predicted and target speech signals in the
+log-spectral domain. The formula of LSD is defined as:
+LSD =
+v
+u
+u
+t 1
+K
+K
+X
+k=1
+[log Senh(k) −log Sclean(k)]2
+(2)
+Where, K is the number of frequency bins; Senh(k) is the power
+spectral magnitude of the enhanced signal at frequency bin k
+and Sclean(k) is the power spectral magnitude of the reference
+signal at frequency bin k.
+4. Results and Analysis
+4.1. Baseline comparison
+To evaluate the performance of our approach, we compared
+it with several noise-robust BWE methods. Table 1 presents
+the speech quality objective evaluation results on the Valentini-
+Botinhao noisy test set. The results indicate that our method
+achieves higher DNSMOS Overall and Background Noise
+scores compared to other state-of-the-art methods. While our
+4085
+
+Table 1: DNSMOS and LSD results of Noise-robust BWE mod-
+els on Valentini-Botinhao noisy test set downsampled to 8KHZ
+Method
+CSIG ↑
+CBAK ↑
+COVL ↑
+LSD ↓
+UEE [22]
+2.27
+2.39
+2.17
+2.72
+MTL MBE [23]
+2.64
+3.21
+2.46
+2.29
+EP-WUN [24]
+3.50
+2.94
+2.86
+1.23
+I-DTLN+ [25]
+2.63
+2.87
+2.18
+1.54
+NU-Wav2 [9]
+3.11
+2.67
+2.46
+1.13
+SDNet [26]
+3.29
+3.32
+2.92
+1.16
+Proposed
+3.28
+4.08
+3.04
+1.54
+Table 2: Comparison results of different training strategy on
+Valentini-Botinhao noisy test set
+Method
+CSIG ↑
+CBAK ↑
+COVL ↑
+LSD ↓
+Clean
+3.51
+4.04
+3.21
+-
+Quantized
+3.22
+4.07
+2.98
+1.63
+End2End
+2.99
+4.02
+2.77
+1.75
+Progressive
+3.17
+4.06
+2.94
+1.61
+Proposed
+3.28
+4.08
+3.04
+1.54
+approach is generally competitive, it appears to aggressively
+suppress background noise, which can negatively impact the
+speech component in low signal-to-noise scenarios. This can
+explain why our method shows a notably higher background
+noise score alongside a lower signal score.
+Figure 4 presents a comparison of spectrograms, demon-
+strating that the proposed method effectively restores the speech
+structure that is heavily masked by ambient noise. It outper-
+forms the non-generative approaches, such as CSFNet[27].
+4.2. Training strategy comparison
+We investigated several training strategies using the same model
+architecture to examine the impact of different input features
+and training methods on performance. Table 2 compares three
+approaches:
+• Quantized: In this approach, we use quantized embeddings
+as the input feature to predict clean tokens.
+• End2End Here, we forgo the two-stage training method
+(where the model is first pre-trained on a denoising task)
+and instead directly use downsampled noisy speech to pre-
+dict high-resolution clean speech tokens.
+• Progressive: In this method, we still use pre-quantized em-
+beddings and a two-stage training strategy; however, the
+model is trained progressively, as described in Section 3.2.
+According to Table 2, model performance significantly
+drops when the two-stage training method is omitted. This in-
+dicates that jointly training noise suppression and bandwidth
+expansion using a simple prediction model is more challenging
+and may struggle to converge to an optimal solution. In other
+words, It also implys pre-training on noise suppression provides
+a solid foundation for extending the model’s ability to perform
+bandwidth expansion. Because theoretically, bandwidth expan-
+sion rely on a relative clean speech component in low frequency
+range. Another key observation is that pre-quantized (or con-
+tinuous) embeddings outperform quantized embeddings for the
+speech enhancement task in our work. This suggests that, al-
+Figure 3: Comparison of token prediction accuracy(%). Code-
+book1 represents the first codebook index prediction accuracy.
+Figure 4: Spectrograms comparison for restoring speech.
+though the neural codec performs well in signal reconstruc-
+tion, some information is still lost during the compression pro-
+cess. As a result, using continuous embeddings as input features
+makes it easier for the model to predict clean tokens. Unexpect-
+edly, the progressive training method did not outperform regular
+parallel prediction training. This suggests that our prediction
+model may benefit from predicting all tokens simultaneously.
+Figure 3 shows a bar graph of token prediction accuracy for
+each codebook using different training strategies. A joint anal-
+ysis of Table 2 and Figure 3 reveals that the accuracy results are
+highly correlated with the objective evaluation metrics. In addi-
+tion, quantized embeddings yield higher accuracy than our pro-
+posed method in all codebooks except codebook 1, confirming
+that codebook 1 plays a dominant role in speech reconstruction.
+5. Conclusion
+In this paper, we propose a neural codec approach for noise-
+robust bandwidth expansion that recovers high-resolution audio
+from low-resolution input under noisy conditions. Our experi-
+mental results demonstrate that our method outperforms other
+state-of-the-art techniques. Furthermore, our study on training
+strategies shows that a noise suppression pre-training process
+significantly benefits the bandwidth expansion task in noisy en-
+vironments. Moreover, token prediction accuracy further con-
+firms that the first codebook is the most critical component in
+neural codec-based speech generation. Future research will fo-
+cus on incorporating semantic tokens to further enhance speech
+quality and mitigate speech suppression in low SNR scenarios.
+4086
+
+6. Acknowledgments
+This work was supported in part by NSF CCRI: Community Re-
+source Project under Grant 2016725 and in part by University
+of Texas at Dallas – Distinguished University Chair in Telecom-
+munications Engineering held by J.H.L. Hansen.
+7. References
+[1] H. Yasukawa, “Restoration of wide band signal from telephone
+speech using linear prediction error processing,” in 4th Interna-
+tional Conference on Spoken Language Processing (ICSLP 1996),
+1996, pp. 901–904.
+[2] M. Dietz, L. G. Liljeryd, K. Kj¨orling, and O. Kunz, “Spectral
+band replication, a novel approach in audio coding,” Journal of
+The Audio Engineering Society 112, 2002.
+[3] H. Liu, X. Liu, Q. Kong, Q. Tian, Y. Zhao, D. Wang, C. Huang,
+and Y. Wang, “Voicefixer: A unified framework for high-fidelity
+speech restoration,” in Interspeech 2022, 2022, pp. 4232–4236.
+[4] H. Liu, K. Chen, Q. Tian, W. Wang, and M. D. Plumbley, “Au-
+diosr: Versatile audio super-resolution at scale,” in ICASSP 2024
+- 2024 IEEE International Conference on Acoustics, Speech and
+Signal Processing (ICASSP), 2024, pp. 1076–1080.
+[5] H. Liu, W. Choi, X. Liu, Q. Kong, Q. Tian, and D. Wang, “Neu-
+ral vocoder is all you need for speech super-resolution,” in Inter-
+speech 2022, 2022, pp. 4227–4231.
+[6] J. Kong, J. Kim, and J. Bae, “Hifi-gan: generative adversarial net-
+works for efficient and high fidelity speech synthesis,” in Proceed-
+ings of the 34th International Conference on Neural Information
+Processing Systems, ser. NIPS ’20. Red Hook, NY, USA: Curran
+Associates Inc., 2020.
+[7] Y.-T. Lin, S. G. Upadhyay, B.-H. Su, and C.-C. Lee, “Swibe: A
+parameterized stochastic diffusion process for noise-robust band-
+width expansion,” in Interspeech 2024, 2024, pp. 2265–2269.
+[8] M. Mandel, O. Tal, and Y. Adi, “Aero: Audio super resolution
+in the spectral domain,” in ICASSP 2023 - 2023 IEEE Interna-
+tional Conference on Acoustics, Speech and Signal Processing
+(ICASSP), 2023, pp. 1–5.
+[9] S. Han and J. Lee, “Nu-wave 2: A general neural audio up-
+sampling model for various sampling rates,” in Interspeech 2022,
+2022, pp. 4401–4405.
+[10] J. Lin, Y. Wang, K. Kalgaonkar, G. Keren, D. Zhang, and C. Fue-
+gen, “A two-stage approach to speech bandwidth extension,” in
+Interspeech 2021, 2021, pp. 1689–1693.
+[11] H. Yang, J. Su, M. Kim, and Z. Jin, “Genhancer: High-fidelity
+speech enhancement via generative modeling on discrete codec
+tokens,” in Interspeech 2024, 2024, pp. 1170–1174.
+[12] N.
+Zeghidour,
+A.
+Luebs,
+A.
+Omran,
+J.
+Skoglund,
+and
+M. Tagliasacchi, “Soundstream:
+An end-to-end neural audio
+codec,” 2021. [Online]. Available:
+https://arxiv.org/abs/2107.
+03312
+[13] A. D´efossez, J. Copet, G. Synnaeve, and Y. Adi, “High
+fidelity neural audio compression,” 2022. [Online]. Available:
+https://arxiv.org/abs/2210.13438
+[14] R. Kumar, P. Seetharaman, A. Luebs, I. Kumar, and K. Kumar,
+“High-fidelity audio compression with improved RVQGAN,”
+in Thirty-seventh Conference on Neural Information Processing
+Systems,
+2023. [Online]. Available:
+https://openreview.net/
+forum?id=qjnl1QUnFA
+[15] C. Wang, S. Chen, Y. Wu, Z. Zhang, L. Zhou, S. Liu, Z. Chen,
+Y. Liu, H. Wang, J. Li, L. He, S. Zhao, and F. Wei, “Neural codec
+language models are zero-shot text to speech synthesizers,” 2023.
+[Online]. Available: https://arxiv.org/abs/2301.02111
+[16] Z. Borsos, M. Sharifi, D. Vincent, E. Kharitonov, N. Zeghidour,
+and M. Tagliasacchi, “Soundstorm:
+Efficient parallel audio
+generation,” 2024. [Online]. Available: https://openreview.net/
+forum?id=KknWbD5j95
+[17] A. Gulati, J. Qin, C.-C. Chiu, N. Parmar, Y. Zhang, J. Yu,
+W. Han, S. Wang, Z. Zhang, Y. Wu, and R. Pang, “Conformer:
+Convolution-augmented transformer for speech recognition,”
+2020. [Online]. Available: https://arxiv.org/abs/2005.08100
+[18] A. van den Oord, O. Vinyals, and K. Kavukcuoglu, “Neural
+discrete representation learning,” 2018. [Online]. Available:
+https://arxiv.org/abs/1711.00937
+[19] C. K. A. Reddy, H. Dubey, V. Gopal, R. Cutler, S. Braun, H. Gam-
+per, R. Aichner, and S. Srinivasan, “Icassp 2021 deep noise sup-
+pression challenge,” in IEEE ICASSP, 2021, pp. 6623–6627.
+[20] C. Valentini-Botinhao et al., “Noisy speech database for training
+speech enhancement algorithms and tts models,” University of Ed-
+inburgh. School of Informatics. Centre for Speech Technology Re-
+search (CSTR), 2017.
+[21] C. K. Reddy, V. Gopal, and R. Cutler, “Dnsmos: A non-intrusive
+perceptual objective speech quality metric to evaluate noise sup-
+pressors,” IEEE ICASSP, pp. 6493–6497, 2021.
+[22] B. Liu, J. Tao, and Y. Zheng, “A novel unified framework for
+speech enhancement and bandwidth extension based on jointly
+trained neural networks,” in 2018 11th International Symposium
+on Chinese Spoken Language Processing (ISCSLP), 2018, pp. 11–
+15.
+[23] N. Hou, C. Xu, J. T. Zhou, E. S. Chng, and H. Li, “Multi-task
+learning for end-to-end noise-robust bandwidth extension,” in In-
+terspeech 2020, 2020, pp. 4069–4073.
+[24] Y.-T. Lin, B.-H. Su, C.-H. Lin, S.-C. Kuo, J.-S. R. Jang, and C.-C.
+Lee, “Noise-robust bandwidth expansion for 8k speech record-
+ings,” in Interspeech 2023, 2023, pp. 5107–5111.
+[25] C.-W. Chen, W.-C. Wang, Y.-Y. Ou, and J.-F. Wang, “Deep learn-
+ing audio super resolution and noise cancellation system for low
+sampling rate noise environment,” in 2022 10th International
+Conference on Orange Technology (ICOT), 2022, pp. 1–5.
+[26] J. Yang, H. Liu, L. Gan, Y. Zhou, X. Li, J. Jia, and J. Yao, “Sdnet:
+Noise-robust bandwidth extension under flexible sampling rates,”
+in 2024 Asia Pacific Signal and Information Processing Associ-
+ation Annual Summit and Conference (APSIPA ASC), 2024, pp.
+1–6.
+[27] X. Liu and J. H. Hansen, “Dnn-based monaural speech enhance-
+ment using alternate analysis windows for phase and magnitude
+modification,” in Interspeech 2024, 2024, pp. 1705–1709.
+4087
+

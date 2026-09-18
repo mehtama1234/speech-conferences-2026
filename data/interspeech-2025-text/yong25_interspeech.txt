@@ -1,0 +1,724 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+Effects of Speaker Count, Duration, and Accent Diversity on Zero-Shot Accent
+Robustness in Low-Resource ASR
+Zheng-Xin Yong1,∗, Vineel Pratap2, Michael Auli†, Jean Maillard2
+1Department of Computer Science, Brown University, United States
+2Meta FAIR, United States
+contact.yong@brown.edu, jeanm@meta.com
+Abstract
+To build an automatic speech recognition (ASR) system
+that can serve everyone in the world, the ASR needs to be ro-
+bust to a wide range of accents including unseen accents. We
+systematically study how three different variables in training
+data—the number of speakers, the audio duration per each indi-
+vidual speaker, and the diversity of accents—affect ASR robust-
+ness towards unseen accents in a low-resource training regime.
+We observe that for a fixed number of ASR training hours, it
+is more beneficial to increase the number of speakers (which
+means each speaker contributes less) than the number of hours
+contributed per speaker. We also observe that more speakers
+enables ASR performance gains from scaling number of hours.
+Surprisingly, we observe minimal benefits to prioritizing speak-
+ers with different accents when the number of speakers is con-
+trolled. Our work suggests that practitioners should prioritize
+increasing the speaker count in ASR training data composition
+for new languages.
+Index Terms:
+speech recognition, accented speech, low-
+resource setting
+1. Introduction
+Automatic speech recognition (ASR) systems have become an
+integral part of our daily lives, powering virtual assistants, tran-
+scription services, and accessibility tools [1]. However, these
+systems often exhibit significant performance disparities across
+different accents, potentially excluding or poorly serving large
+segments of the global population [2, 3]. While recent advances
+have improved overall ASR accuracy, the challenge of accent
+robustness remains a critical barrier to developing truly inclu-
+sive speech technology.
+To address this challenge, we need a systematic under-
+standing of how different aspects of training data collection
+and composition affect ASR systems’ ability to handle accent
+variation, particularly for accents not represented in the training
+data. Specifically, our research question is as follows: how does
+scaling each of the three dimensions—number of speak-
+ers, number of hours per speaker, and accent diversity—in
+training data in a low-resource setting affect ASR perfor-
+mance on accents outside the training distribution? This is
+also known as zero-shot accent robustness evaluation [4]. We
+experiment with three languages that have high-quality datasets
+with accent information readily labeled, namely English, Span-
+ish and Mandarin Chinese, and our work covers both L1/L2 ac-
+cents (for English) as well as regional accents (for Spanish and
+Mandarin Chinese).
+∗Work done during internship at Meta.
+†Work done while at Meta.
+Our results offer several novel actionable insights for build-
+ing ASR systems robust to out-of-distribution accents. First,
+for a fixed budget of training hours, models trained with more
+speakers (but less data per speaker) consistently outperform
+those trained with fewer speakers (but more data per speaker).
+Furthermore, having more speakers enables better utilization of
+additional training hours. Surprisingly, in low-resource settings,
+increasing accent diversity in training data yields minimal bene-
+fits when controlling for the total number of speakers and hours.
+This suggests that accent coverage may be less critical than pre-
+viously thought for zero-shot accent generalization.
+2. Related Work
+ASR systems have been found to exhibit bias towards certain
+accents. For instance, prior work discovered substantial word
+error rate (WER) differences between transcribing L1 (first
+language speaker) and L2 (second language speaker) English
+speech [5, 6]. Regional accent biases, where ASR performance
+for certain regional dialects or accents is significantly better, are
+also observed for certain L1 varieties of English [7] and other
+languages such as Brazilian Portuguese [8], Dutch [9], Modern
+Standard Arabic [10], and Mandarin Chinese [11].
+Prior work on reducing accent bias primarily focuses on
+improving ASR training by augmenting existing data, such as
+data augmentation via perturbation [12, 13] and voice-cloning
+[14, 15], or through novel ASR training methods such as
+domain-adversarial training [16, 9], learnable accent-specific
+codebooks [17], and multi-task learning [18, 19]. Nonetheless,
+little attention has been given to investigate how the training
+data composition affects bias against out-of-distribution accents
+in the first place.
+One relevant work in this direction studies how different
+data partitions affect transfer learning of L1 English accent to
+L2 accents (and vice versa) [20], but critical factors, such as
+number of speakers and the training hour contribution per each
+speaker, were not controlled in their setup. Another relevant
+work approaches ASR by studying the effects of number of
+hours and speakers in pretraining and ASR training data [21]
+but this prior work focuses only on the general English ASR
+performance. In contrast, our work focuses on transfer learning
+for accents, and we further include in our study an additional
+factor of accent variety during training.
+3. Experimental Setup
+Our work explores how (1) number of speakers, (2) audio du-
+ration per speaker and (3) explicit accent diversity in training
+data affect ASR performance on accents outside of the training
+distribution. Primarily, our work focuses on the low-resource
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+1148
+10.21437/Interspeech.2025-2351
+
+Table 1: Information about accent distribution for our zero-shot accent robustness study. We bold the accents used when we vary the
+number of speakers (Section 3.1.1) and speaker duration (Section 3.1.2). These accents are the dominant accent, whereas the accents
+in parentheses (+ ...) are the additional accents when we vary accent diversity during training (Section 3.1.3).
+Languages
+Accent Split
+Seen Accents (Training/Validation)
+Out-Of-Distribution Accents (Test)
+English
+L1/L2
+American, (+ Irish, British, Canadian,
+New Zealand)
+Hindi, Korean, Mandarin, Spanish, Ara-
+bic and Vietnamese (6)
+Spanish
+regional
+Mexico, (+ Central America, Caribe, Ri-
+oplatense, Andean-Pacific)
+South-center Spain,
+Canary Islands,
+South-peninsular
+Spain,
+North-
+peninsular Spain (4)
+Mandarin Chinese
+regional
+An Hui, (+ Ning Xia, Shang Hai, Guang
+Xi, Guang Dong)
+Chong Qing, Gan Su, He Nan, Jiang Su,
+Jiang Xi, Shan Xi, Si Chuan (7)
+training regime, as our goal is to provide recommendations to
+practitioners about which of the three variables to prioritize dur-
+ing ASR data collection for new languages.
+For English (eng), we investigate non-native accent robust-
+ness, by training our models on L1 accents and evaluating on
+L2 accents in a zero-shot fashion. For Simplified Mandarin
+Chinese (zho) and Spanish (spa), we study regional accent
+robustness by splitting our training data based on regional ac-
+cent information and evaluating on out-of-distribution regional
+accents. Table 1 shows the split of accents.
+3.1. Training Data and Setup
+In the following, we describe three different experimental se-
+tups, each exploring how varying speaker count (Section 3.1.1),
+speaker duration (Section 3.1.2), and accent diversity (Sec-
+tion 3.1.3), affects ASR zero-shot accent robustness.
+3.1.1. Number of Speakers
+For eng, we first identify American speakers in the English
+training split of Multilingual LibriSpeech [22] using LibriVox’s
+Accent Table [23]. For spa, we obtain recordings by speak-
+ers from Mexico from the training split of the Common Voice
+Corpus 19.0 [24] using the provided metadata. For zho, we
+use MAGICDATA [25], which consists of thousands of speak-
+ers from different accent areas in China, and identify speakers
+originating from the An Hui province. These are the accents
+learned during training.
+For a fixed total hours of audio duration T, we vary the
+number of speakers N to compose the training data.1 For spa
+and zho, we experiment with up to N = 25 different speakers,
+whereas for eng we use up to N = 15 different speakers. We
+repeat the same experiments on different T: for eng and spa,
+we use T = {5, 10, 15} whereas for zho, the dataset charac-
+teristics limit our evaluation to T = {5, 11.25}.
+3.1.2. Number of Training Hours Per Speaker
+We use the same training data sources following Section 3.1.1.
+Here, we fix N and then vary the per-speaker speaking duration
+t instead. All N speakers contribute the exact same t duration
+of audios in the training data; therefore, the total training audio
+duration T is N × t. For eng and spa, we vary t up to 60
+minutes; for zho, we use up to t = 45 minutes (due to con-
+straints in the original data). For all three languages, we control
+N = {5, 10, 15} randomly selected speakers.
+1We randomly select from a set of speakers in which each speaks at
+least T
+N hours.
+We further experiment with single-speaker training setup,
+where we only use a single speaker and scale their per-speaker
+duration up to 40 hours. Here, the speaker’s speaking dura-
+tion makes up the entire audio training hours. We only experi-
+ment with eng as eng training dataset contains eight American
+speakers each of whom spoke more 40 hours.
+3.1.3. Accent Diversity
+The ASR training data distribution is generally dominated by
+one (or very few) accent(s). For instance, in the GLOBE dataset
+[26] that provides accent label information for audio samples
+in the English Common Voice corpus [24], nearly 70% of the
+training data are labeled as “United States English”, closely fol-
+lowed by around 25% of “England English”. These two accents
+alone already make up nearly 95% of the English training data.
+Therefore, our experiments for studying the effects of accent
+diversity mimics this uneven distribution–––it contains a domi-
+nant accent where majority speakers share a single accent.
+We fix both N speakers and their per-speaker duration t,
+and we vary the total number of unique accents K in the training
+data. Note that for the setups in Section 3.1.1 and Section 3.1.2
+we have K = 1, because all speakers share the same accent.
+We increment K by first randomly choosing a unique additional
+accent from Table 1 and then randomly sampling one speaker
+with the accent to replace one of the dominant accent speakers.
+In other words, when K > 1, we would have K −1 speakers
+of unique additional accents. For instance, if we set K = 3
+and N = 20 for English training data, it means that we have
+18 American speakers and 2 speakers of different accents (e.g.,
+Irish and England accents).
+For all languages, we vary up to K = 5 different accents
+in training. For eng, we have N = 20 speakers each speaking
+for t = 60 minutes (totaling 20 hours of ASR training data).
+For spa and zho, due to data constraint, we use (N = 15
+speakers, t = 60 minutes) and (N = 15 speakers, t = 45
+minutes) respectively.
+3.1.4. Model Training
+Since we work on accents in multilingual settings, we use the
+multilingual pretrained MMS model with 300 million param-
+eters [27] as our base model for ASR training.
+We follow
+the same ASR training code and hyperparameter configura-
+tions open-sourced by [27]. We construct a one-hour validation
+dataset to choose the best checkpoint for ASR, and we train all
+ASR models to convergence. For result robustness, we train
+three different models using different random subsets of speak-
+ers wherever possible; otherwise (in scenarios where all possi-
+ble speakers are already included), we train with different seeds.
+1149
+
+1
+2
+5
+10
+15
+Number of Speakers
+12.5
+15.0
+17.5
+20.0
+22.5
+CER
+eng
+Topline
+5 hours
+10 hours
+20 hours
+2
+5
+10
+15
+20
+25
+Number of Speakers
+5
+6
+7
+8
+9
+spa
+Topline
+5 hours
+10 hours
+15 hours
+10
+15
+20
+25
+Number of Speakers
+16
+18
+20
+22
+zho
+Topline
+5 hours
+11.25 hours
+Figure 1: Effects of increasing the number of speakers on out-of-distribution accent ASR performance measured by CER (lower CER
+means better ASR). For each line, while we increase number of speakers, we kept the training data at a fixed total duration (hours) as
+shown in the legends.
+Table 2: Effects of number of speakers and speaking duration on CER of out-of-distribution accents while keeping the total duration
+of the training data (# speakers × speaker duration) constant. Color shading is used to highlight that we should prioritize increasing
+speaker count over speaker duration to improve ASR zero-shot accent robustness.
+Languages
+Total Duration (min)
+# Speakers
+Speaker Duration (min)
+CER (↓)
+English (eng)
+300
+5
+60
+17.3 ± 0.3
+300
+10
+30
+15.9 ± 0.1
+300
+15
+20
+15.7 ± 0.1
+Spanish (spa)
+300
+5
+60
+7.8 ± 0.4
+300
+10
+30
+7.5 ± 0.1
+300
+15
+20
+7.2 ± 0.1
+Mandarin Chinese (zho)
+150
+5
+30
+60.3 ± 5.8
+150
+10
+15
+51.6 ± 3.2
+150
+15
+10
+39.9 ± 1.9
+3.2. Evaluation Setup
+We evaluate zero-shot accent robustness using L2-ARCTIC
+datasets [28] for eng, MAGICDATA [25] for zho, and Com-
+monVoice Corpus 19.0 [24] for spa. For eng, L2-ARCTIC
+contain 24 non-native speakers of English with a total of six
+different accents, and we describe the statistics for L2-ARCTIC
+in the following paragraph that characterizes toplines. Our zho
+test data consist of 43 speakers and 28.1 hours of total audio du-
+ration, whereas our spa consists of 647 speakers and 2.3 hours
+of data. For zho and spa, we select the test data according
+to Table 1 using the annotated regional accent labels in the test
+splits of MAGICDATA and CommonVoice.
+In our work, we report the topline results, where the ASR
+models are trained on speakers with test accents. In other words,
+toplines are trained with the best possible data as the test accents
+are in-distribution. For eng, since L2-ARCTIC has four speak-
+ers for each non-native accents, we randomly select one speaker
+from each non-native accents to build our eng test data. This
+test set consists of around 3.2 hours of audio data in total. The
+rest of the L2-ARCTIC data are used to train the English topline
+model. For zho and spa, we take 11.25 hours and 15 hours of
+data labeled with test accents from the train splits of MAGIC-
+DATA and CommonVoice respectively.
+In addition, we evaluate the eng single-speaker setup (de-
+scribed in Section 3.1.2) on the entire L1-ARCTIC dataset [29],
+which comprises around 4500 utterances from L1 American
+English speakers, and the entire eng test split of FLEURS [30].
+We refer readers to the cited sources for data distribution details.
+We report the Character Error Rate (CER) for all of our
+5
+10
+20
+30
+40
+Speaking Duration (hours)
+5
+10
+15
+20
+CER
+15.5
+6.1
+20.7
+14.9
+5.6
+20.6
+13.7
+4.6
+19.7
+13.5
+4.5
+20.2
+13.3
+4.4
+19.9
+L2-ARCTIC
+FLEURS
+L1-ARCTIC
+Figure 2: English CER result on three different evaluation
+datasets in the single-speaker training setup, where the ASR
+training data consist of only one speaker.
+experiments.2 The lower the CER, the better the ASR perfor-
+mance. We also report standard deviations from different train-
+ing runs as mentioned in Section 3.1.4.
+4. Results and Discussion
+We find that more speakers and more training hours improve
+ASR performance on out-of-distribution accents. In Figure 1,
+2We observe strong correlation between CER and Word Error Rate
+(WER) (r = 0.92) in our evaluation, so we report CER only for brevity.
+1150
+
+5 10
+20
+30
+60
+Speaking Duration per Speaker (minutes)
+12
+14
+16
+18
+CER
+eng
+5 10
+20
+30
+60
+Speaking Duration per Speaker (minutes)
+6
+8
+10
+spa
+5
+10
+15
+20
+30
+45
+Speaking Duration per Speaker (minutes)
+20
+40
+60
+80
+zho
+Topline
+5 speakers
+10 speakers
+15 speakers
+Figure 3: Effects of increasing speaker duration of each speaker on out-of-distribution accent ASR performance.
+1 accent
+2 accents
+3 accents
+4 accents
+5 accents
+6
+8
+10
+12
+14
+16
+18
+CER
+17.62
+6.91
+18.22
+6.46
+17.99
+6.27
+17.91
+6.46
+18.55
+6.46
+17.31
+17.25
+16.60
+16.73
+16.83
+zho
+eng
+spa
+Figure 4: Effects of accent diversity, which refers to the to-
+tal number of unique accents, on ASR performance for out-of-
+distribution accents.
+we see that increasing the number of speakers while keeping
+the total training data size fixed consistently improves ASR per-
+formance (lower CER) on out-of-distribution accents across all
+three languages. For eng, expanding from 1 to 15 speakers
+reduces CER from 19.8% to 15.6% with 5 total audio training
+hours. Similar improvements are observed for spa (8.7% to
+7.4% CER) and zho (23.1% to 21.3% CER). Notably, for eng
+and spa, the performance gains are pronounced in the initial
+increase of speakers (for instance, 2 to 15 speakers in Span-
+ish) before starting to plateau, suggesting that even a modest
+increase in speaker diversity can substantially improve ASR ac-
+cent robustness.
+Figure 1 further demonstrates that the benefits of increased
+speaker count are amplified when combined with more total
+training hours. At higher speaker count for eng and spa, mod-
+els trained with more hours (e.g., 20 hours for eng, shown in
+green) consistently outperform those trained with fewer hours
+(e.g., 5 hours, shown in blue).
+Furthermore, for spa, the
+gap between different hour conditions widens as the number
+of speakers increases. For zho, doubling the training hours sig-
+nificantly closes the ASR performance gap with the topline.
+We observe that increasing the number of speakers is pre-
+ferred over increasing speaking duration per speaker when we
+have a fixed total training hours.
+Table 2 shows that when
+the total audio duration of the training data is kept constant,
+more speakers result in better ASR performance compared to
+more speaking per speaker. Most notably, for zho, tripling the
+speaker count from 5 to 15 drops CER from 60.3 to 39.9.
+Figure 2 demonstrates the results from single-speaker ex-
+perimental setup, where we scale up the audio duration of eng
+training data comprising one speaker only. For FLEURS and
+L1-ARCTIC, where the test accent is in-distribution, we ob-
+serve a consistent decline in CER as speaking duration in-
+creases. In contrast, for L2-ARCTIC, where the non-native ac-
+cents are outside the training distribution, the CER remains at
+around 20%. The results further suggest that, without sufficient
+speaker diversity, scaling up training data helps ASR for seen
+accents but not for unseen accents.
+Figure 3 shows that increasing the speaking duration per
+speaker, which leads to increased total training hours, improves
+ASR for out-of-distribution accents. In other words, practition-
+ers should still aim to collect as much training data from each
+speaker if possible. However, Figure 3 still shows that some-
+times even increasing per-speaker duration may not match the
+performance gains from having more speakers. For instance, for
+zho, having more speakers (10 speakers each speaking only for
+10 minutes) have substantially lower CER compared to more
+per-speaker duration (5 speakers each speaking for 30 minutes)
+despite the former having less overall training data (100 minutes
+versus 150 minutes of total training data).
+Surprisingly, there is minimal benefits for explicitly prior-
+itizing accent diversity in low-resource ASR. As illustrated in
+Figure 4, for eng and spa, the CER decreases initially and
+increases again when we increase coverage of unique accents
+(while keeping the number of speakers and training hours con-
+trolled). For zho, increasing accent diversity does not yield any
+benefit to generalization to out-of-distribution accents.
+Practical Recommendations. Our findings have impor-
+tant implications for data collection strategies in low-resource
+scenarios: (1) to handle out-of-distribution accents, increasing
+accent diversity is not a necessary condition; (2) prioritize re-
+cruiting more speakers over collecting longer recordings from
+fewer speakers to mitigate accent bias; (3) for in-distribution
+accents, it helps to scale up the per-speaker duration. In other
+words, collect as much data as possible from each speaker while
+maintaining speaker diversity.
+5. Conclusion
+We systematically investigated how speaker count, speaking
+duration per speaker, and accent diversity in training data af-
+fect ASR robustness towards out-of-distribution accents in low-
+resource settings. Our work provides practical recommenda-
+tions on how to best allocate limited data collection resources
+for developing accent-robust ASR systems, particularly for
+under-served languages.
+1151
+
+6. References
+[1] R. Prabhavalkar, T. Hori, T. N. Sainath, R. Schl¨uter, and S. Watan-
+abe, “End-to-end speech recognition:
+A survey,” IEEE/ACM
+Transactions on Audio, Speech, and Language Processing, 2023.
+[2] A. Koenecke, A. Nam, E. Lake, J. Nudell, M. Quartey, Z. Menge-
+sha, C. Toups, J. R. Rickford, D. Jurafsky, and S. Goel, “Racial
+disparities in automated speech recognition,” Proceedings of the
+National Academy of Sciences, vol. 117, no. 14, pp. 7684–7689,
+2020.
+[3] K. Prinos,
+N. Patwari,
+and C. A. Power,
+“Speaking of
+accent:
+A content analysis of accent misconceptions in
+asr research,” in Proceedings of the 2024 ACM Conference
+on Fairness, Accountability, and Transparency, ser. FAccT
+’24.
+New York,
+NY, USA: Association for Computing
+Machinery, 2024, p. 1245–1254. [Online]. Available:
+https:
+//doi.org/10.1145/3630106.3658969
+[4] A. Hinsvark, N. Delworth, M. Del Rio, Q. McNamara, J. Dong,
+R. Westerman, M. Huang, J. Palakapilly, J. Drexler, I. Pirkin
+et al., “Accented speech recognition: A survey,” arXiv preprint
+arXiv:2104.10747, 2021.
+[5] M. P. Y. Chan, J. Choe, A. Li, Y. Chen, X. Gao, and N. R. Holli-
+day, “Training and typological bias in asr performance for world
+englishes.” in INTERSPEECH, 2022, pp. 1273–1277.
+[6] A. DiChristofano, H. Shuster, S. Chandra, and N. Patwari, “Per-
+formance disparities between accents in automatic speech recog-
+nition (student abstract),” Proceedings of the AAAI Conference on
+Artificial Intelligence, vol. 37, 2024.
+[7] R. Sanabria, N. Bogoychev, N. Markl, A. Carmantini, O. Kle-
+jch, and P. Bell, “The edinburgh international accents of english
+corpus: Towards the democratization of english asr,” in ICASSP
+2023-2023 IEEE International Conference on Acoustics, Speech
+and Signal Processing (ICASSP).
+IEEE, 2023, pp. 1–5.
+[8] A. Kulkarni, A. Tokareva, R. Qureshi, and M. Couceiro,
+“The balancing act:
+Unmasking and alleviating ASR biases
+in Portuguese,” in Proceedings of the Fourth Workshop on
+Language Technology for Equality, Diversity, Inclusion, B. R.
+Chakravarthi, B. B, P. Buitelaar, T. Durairaj, G. Kov´acs, and
+M. ´A. Garc´ıa Cumbreras, Eds.
+St. Julian’s, Malta: Association
+for Computational Linguistics, Mar. 2024, pp. 31–40. [Online].
+Available: https://aclanthology.org/2024.ltedi-1.4
+[9] Y. Zhang, Y. Zhang, B. M. Halpern, T. Patel, and O. Scharen-
+borg, “Mitigating bias against non-native accents,” in Proceedings
+of the Annual Conference of the International Speech Communi-
+cation Association, INTERSPEECH, vol. 2022, 2022, pp. 3168–
+3172.
+[10] M. Sawalha and M. Abu Shariah, “The effects of speakers’ gen-
+der, age, and region on overall performance of arabic automatic
+speech recognition systems using the phonetically rich and bal-
+anced modern standard arabic speech corpus,” in Proceedings of
+the 2nd Workshop of Arabic Corpus Linguistics WACL-2.
+Leeds,
+2013.
+[11] S. Feng, B. M. Halpern, O. Kudina, and O. Scharenborg,
+“Towards inclusive automatic speech recognition,” Computer
+Speech
+&
+Language,
+vol.
+84,
+p.
+101567,
+2024.
+[On-
+line]. Available:
+https://www.sciencedirect.com/science/article/
+pii/S0885230823000864
+[12] Y. Zhang, Y. Zhang, T. Patel, and O. Scharenborg, “Comparing
+data augmentation and training techniques to reduce bias against
+non-native accents in hybrid speech recognition systems,” in Proc.
+1st workshop on speech for social good (S4SG), 2022, pp. 15–19.
+[13] Y. Zhang, A. Herygers, T. Patel, Z. Yue, and O. Scharenborg, “Ex-
+ploring data augmentation in bias mitigation against non-native-
+accented speech,” in 2023 IEEE Automatic Speech Recognition
+and Understanding Workshop (ASRU).
+IEEE, 2023, pp. 1–8.
+[14] M. Baas and H. Kamper, “Voice conversion can improve asr in
+very low-resource settings,” in Proceedings of the Annual Con-
+ference of the International Speech Communication Association,
+INTERSPEECH, 2022.
+[15] P. Klumpp,
+P. Chitkara,
+L. Sarı,
+P. Serai,
+J. Wu,
+I.-E.
+Veliche, R. Huang, and Q. He, “Synthetic cross-accent data
+augmentation for automatic speech recognition,” arXiv preprint
+arXiv:2303.00802, 2023.
+[16] S. Sun, C.-F. Yeh, M.-Y. Hwang, M. Ostendorf, and L. Xie, “Do-
+main adversarial training for accented speech recognition,” in
+2018 IEEE international conference on acoustics, speech and sig-
+nal processing (ICASSP).
+IEEE, 2018, pp. 4854–4858.
+[17] D. Prabhu, P. Jyothi, S. Ganapathy, and V. Unni, “Accented speech
+recognition with accent-specific codebooks,” in Proceedings of
+the 2023 Conference on Empirical Methods in Natural Language
+Processing, H. Bouamor, J. Pino, and K. Bali, Eds.
+Singapore:
+Association for Computational Linguistics, Dec. 2023, pp.
+7175–7188. [Online]. Available: https://aclanthology.org/2023.
+emnlp-main.444/
+[18] S. Ghorbani and J. H. Hansen, “Leveraging native language infor-
+mation for improved accented speech recognition,” in Interspeech
+2018, 2018, pp. 2449–2453.
+[19] T. Viglino, P. Motlicek, and M. Cernak, “End-to-end accented
+speech recognition.” in Interspeech, 2019, pp. 2140–2144.
+[20] T. Shibano, X. Zhang, M. T. Li, H. Cho, P. Sullivan, and
+M. Abdul-Mageed, “Speech technology for everyone: Automatic
+speech recognition for non-native English,” in Proceedings of
+the 4th International Conference on Natural Language and
+Speech Processing (ICNLSP 2021), M. Abbas and A. A.
+Freihat, Eds.
+Trento, Italy:
+Association for Computational
+Linguistics, 12–13 Nov. 2021, pp. 11–20. [Online]. Available:
+https://aclanthology.org/2021.icnlsp-1.2
+[21] D. Berrebbi, R. Collobert, N. Jaitly, and T. Likhomanenko, “More
+speaking or more speakers?” in ICASSP 2023 - 2023 IEEE Inter-
+national Conference on Acoustics, Speech and Signal Processing
+(ICASSP), 2023, pp. 1–5.
+[22] V. Pratap, Q. Xu, A. Sriram, G. Synnaeve, and R. Collobert, “Mls:
+A large-scale multilingual dataset for speech research,” ArXiv,
+vol. abs/2012.03411, 2020.
+[23] LibriVox, “Accents table,” accessed on September 2024. [Online].
+Available: https://wiki.librivox.org/index.php/Accents Table
+[24] R. Ardila,
+M. Branson,
+K. Davis,
+M. Kohler,
+J. Meyer,
+M. Henretty, R. Morais, L. Saunders, F. Tyers, and G. Weber,
+“Common voice: A massively-multilingual speech corpus,” in
+Proceedings of the Twelfth Language Resources and Evaluation
+Conference, N. Calzolari, F. B´echet, P. Blache, K. Choukri,
+C. Cieri, T. Declerck, S. Goggi, H. Isahara, B. Maegaard,
+J. Mariani, H. Mazo, A. Moreno, J. Odijk, and S. Piperidis,
+Eds.
+Marseille,
+France:
+European
+Language
+Resources
+Association, May 2020, pp. 4218–4222. [Online]. Available:
+https://aclanthology.org/2020.lrec-1.520/
+[25] L. Magic Data Technology Co., “Magicdata mandarin chinese
+read speech corpus,” 2019, accessed via OpenSLR 68 in
+November 2024. [Online]. Available: https://www.openslr.org/68/
+[26] W. Wang, Y. Song, and S. Jha, “Globe: A high-quality english
+corpus with global accents for zero-shot speaker adaptive text-to-
+speech,” in Interspeech 2024, 2024, pp. 1365–1369.
+[27] V. Pratap, A. Tjandra, B. Shi, P. Tomasello, A. Babu, S. Kundu,
+A. Elkahky, Z. Ni, A. Vyas, M. Fazel-Zarandi et al., “Scaling
+speech technology to 1,000+ languages,” Journal of Machine
+Learning Research, vol. 25, no. 97, pp. 1–52, 2024.
+[28] G. Zhao, S. Sonsaat, A. Silpachai, I. Lucic, E. Chukharev-
+Hudilainen, J. Levis, and R. Gutierrez-Osuna, “L2-arctic: A non-
+native english speech corpus,” in Interspeech 2018, 2018, pp.
+2783–2787.
+[29] J. Kominek and A. W. Black, “The cmu arctic speech databases,”
+in Fifth ISCA workshop on speech synthesis, 2004.
+[30] A. Conneau, M. Ma, S. Khanuja, Y. Zhang, V. Axelrod, S. Dalmia,
+J. Riesa, C. Rivera, and A. Bapna, “Fleurs: Few-shot learning
+evaluation of universal representations of speech,” in 2022 IEEE
+Spoken Language Technology Workshop (SLT).
+IEEE, 2023, pp.
+798–805.
+1152
+

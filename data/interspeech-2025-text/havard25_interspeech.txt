@@ -1,0 +1,1073 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+Self-Supervised Models of Speech Processing for Haitian Creole
+William N. Havard1,2, Renauld Govain3, Benjamin Lecouteux2, Emmanuel Schang1
+1LLL, Université d’Orléans, CNRS, 45000 Orléans, France
+2LIG, Université Grenoble Alpes, CNRS, Grenoble INP, 38000 Grenoble, France
+3LangSé, Université d’État d’Haïti, Port-au-Prince, Haïti
+william.havard@univ-orleans.fr, emmanuel.schang@univ-orleans.fr
+Abstract
+We develop tailored speech processing models for Haitian Cre-
+ole positioning it as a high-resource language in terms of SSL
+models of speech processing. We do so by pretraining monolin-
+gual Wav2Vec2-Base, Wav2Vec2-Large and Data2Vec-Audio-
+Base models from scratch, which are then finetuned on an Au-
+tomatic Speech Recognition task. We compare the performance
+of these models with models finetuned from larger multilingual
+(XLSR-53, XLSR2-300m, MMS-1B) and monolingual French-
+based models (LeBenchmark 1 to 7K). Our results highlight the
+effectiveness of pretraining monolingual models from scratch,
+demonstrating that they can achieve performance comparable to
+or even surpassing larger models derived from large-scale mul-
+tilingual pretraining. Our work provides essential resources for
+robust Haitian Creole speech recognition and offers pretrained
+models that can be adapted to other French-based Caribbean
+Creoles, opening new avenues for linguistic research and prac-
+tical applications in the region.
+Index Terms: wav2vec2, data2vec, Haitian Creole, speech
+recognition
+1. Introduction
+Haitian Creole (kreyòl, or kreyòl ayisyen) is the primary lan-
+guage spoken in the Republic of Haiti, with approximately
+11 million speakers. Being spoken in a context of diglossia,
+Haitian Creole (HC) still faces challenges in achieving parity
+with French, which is considered a more prestigious variety,
+despite efforts within Haiti to grant it an equal status.
+In this paper, we present our work on the development
+of self-supervised speech processing models pretrained exclu-
+sively on HC,1 which are further finetuned on a Automatic
+Speech Recognition (ASR) task. The monolingual models we
+train represent a departure from prior approaches for this lan-
+guage that exclusively relied on transfer learning from multi-
+lingual models or from a typologically close high-resource lan-
+guage, and more specifically here, from its lexifier language,
+French. Our work grants Haitian Creole an equal status to other
+high-resourced languages such as English [1, 2], French [3] or
+Mandarin Chinese [4] which all have dedicated monolingual
+models. In summary, our work shows that monolingual mod-
+els perform competitively with similar-sized models trained via
+transfer learning for ASR, despite using less training data.
+Beyond the technical aspect, our initiative carries signifi-
+cant symbolic weight. For too long, it has been asserted that
+Creole languages were destined to disappear in favour of their
+1The models are made available on https://huggingface.
+co/LLL-CREAM and the exact and exhaustive list of speech segments
+used is made available on https://gin.g-node.org/CREAM/
+SSL-Haitian allowing full reproducibility.
+lexifier languages (a process called ‘decreolization’, see [5] for
+a critical review), in this case, French. This has been theorised
+as the “pidgin →creole →decreolisation cycle”. Our initia-
+tive highlights that HC can receive the same attention as ‘major
+languages’ and that HC speakers should and now do have equal
+access to advanced language technologies, just as speakers of
+high-resourced languages do.
+2. Background
+The field of speech processing for Creole languages is rela-
+tively sparse, compared to other languages such as English or
+French, mainly due to the lack of accessible data. One of the
+very first datasets created to train speech processing models for
+HC, and more specifically ASR models, was collected by the
+DARPA DIPLOMAT project in the late 1990s [6], and is com-
+monly known as the HAITI-CMU dataset. More recently, a
+larger collection of speech was collected for the IARPA BA-
+BEL program, which is accessible through the Linguistic Data
+Consortium [7] (see section 3 for more details on these two
+datasets). To the best of our knowledge, other than the two pre-
+vious datasets we mentioned, no publicly available datasets of
+transcribed Standard Haitian Creole exist, which severely lim-
+ited the work done for this language. This data scarcity is not
+limited to the spoken realm but also to textual approaches, and
+it is only recently that initiatives to develop textual resources
+specifically targeting Creole Languages emerged.
+Over the years, most work on Haitian Creole (HC) has pri-
+marily focused on Automatic Speech Recognition (ASR) [8, 9].
+However, in most work, ASR is often treated as a component of
+a larger speech translation pipeline [6, 10], where transcriptions
+serve as input for machine translation models in a cascaded ap-
+proach. Beyond ASR, research on spoken HC has also explored
+keyword spotting [11, 12], driven by datasets such as the IARPA
+Babel Haitian Creole Language Pack [7], which was specifi-
+cally created for this purpose. Research targeting other French-
+based Creoles is similarly limited. Recently, ASR models have
+been developed for Guadeloupean Creole, which is related to
+HC and mutually intelligible [13, 14, 15]. Regarding Mauritian
+Creole – spoken in Mauritius, which is neither related to HC
+nor mutually intelligible – the field appears more active, with
+notable contributions from [16, 17, 18] and part of the work by
+[13], although research remains relatively niche.
+Despite recent personal initiatives to create modern speech
+processing models for HC using transfer learning of pretrained
+multilingual models like Whisper [19], XLS-R [20] or MMS
+[21], reproducible scientific efforts to develop monolingual
+models comparable to WAV2VEC2 for English or LEBENCH-
+MARK for French are, to our knowledge, nonexistent. The only
+exception is the work of [22] which is limited in scope and do-
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+4018
+10.21437/Interspeech.2025-1852
+
+Table 1: (1a) shows the distribution of recording durations for each split. Pre-VAD refers to the duration of the recordings before any
+VAD algorithm was applied, while Post-VAD indicates the duration of the recordings after retaining only the segments identified as
+speech by the VAD. (1b) presents the gender distribution within the datasets (M[ale]/F[emale]/UNK[nown]). The symbol “–” is used
+when the value is unknown. Count represents the number of unique speakers. Each dataset is referred to by its acronym, which is
+introduced in parentheses following its full name in section 3.
+(a)
+Dataset
+BABEL
+CNHC
+RADIO-H
+ALH
+H-CMU
+VOXLG
+Overall Total
+Split
+Type
+Train
+Pre-VAD
+176h 57m
+5h 03m
+1131h 11m
+345h 36m
+16h 04m
+73h 47m
+1748h 40m
+Post-VAD
+74h 03m
+4h 05m
+1001h 15m
+221h 55m
+12h 18m
+73h 47m
+1387h 25m
+Val
+Pre-VAD
+5h 25m
+2h 03m
+88h 08m
+5h 16m
+1h 29m
+11h 32m
+113h 57m
+Post-VAD
+2h 11m
+1h 35m
+75h 03m
+3h 32m
+1h 07m
+11h 32m
+95h 02m
+Test
+Pre-VAD
+20h 02m
+2h 09m
+114h 36m
+5h 26m
+2h 03m
+10h 35m
+154h 53m
+Post-VAD
+8h 19m
+1h 37m
+100h 44m
+4h 01m
+1h 27m
+10h 35m
+126h 45m
+Total
+Pre-VAD
+202h 26m
+9h 16m
+1333h 56m
+356h 18m
+19h 37m
+95h 55m
+2017h 31m
+Post-VAD
+84h 34m
+7h 17m
+1177h 03m
+229h 29m
+14h 53m
+95h 55m
+1609h 14m
+(b)
+Count
+M
+F
+UNK
+Dataset
+ALH
+216
+117
+42
+57
+BABEL
+1091
+547
+544
+–
+CNHC
+–
+–
+–
+–
+H-CMU
+152
+80
+59
+13
+RADIO-H
+1081
+–
+–
+1081
+VOXLG
+7007
+–
+–
+7007
+Overall Total
+9547
+744
+645
+8158
+main, as it relied on 250 hours of spoken data, which solely
+consisted of fieldwork recordings from a unique dataset.
+In summary, there is a significant gap between the state-
+of-the-art speech processing models available for languages
+like English or French and those for HC. This gap is largely
+due to the lack of accessible data, which prevents the devel-
+opment of comparable models. Additionally, past speech pro-
+cessing efforts for HC, primarily ASR models, have remained
+largely confidential and inaccessible.
+Our work aims to ad-
+dress these challenges by (1) surveying the existing datasets of
+spoken HC, (2) training state-of-the-art self-supervised mono-
+lingual WAV2VEC2 and DATA2VEC models, and (3) finetuning
+these models on an ASR task while making them freely avail-
+able to the creolist community, our primary target audience.
+3. Haitian Creole Speech Corpora
+This section surveys the datasets of spoken Haitian Creole used
+in our experiments. Table 1a offers a concise comparison of
+each dataset, highlighting their size, train/validation/test split
+partitioning, and gender distribution among speakers.
+ATLAS LINGUISTIQUE
+D’HAÏTI (ALH) The ATLAS
+LINGUISTIQUE D’HAÏTI (Linguistic Atlas of Haiti) [23] con-
+sists of a collection of 499 audio recordings collected in Haiti
+between 1978 and 1987 for the purpose of creating a linguistic
+atlas, and totalises 356h of audio. The recordings were orig-
+inally done on audio cassettes with tape recorders, and were
+then digitalised by the French National Library (Bibliothèque
+Nationale de France, BNF) in 2010. Each recording is on av-
+erage 45 minutes long and features one or several interview-
+ers eliciting words or phrases from their native collaborators.
+This data has been made publically and legaly available by the
+BNF and the Faculté de Linguistique Appliquée de l’Université
+d’État d’Haïti and is accessible through the COCOON platform
+[24]. This corpus consists entirely of raw speech. Each record-
+ing is enriched with detailed metadata, including the exact lo-
+cation of collection and speaker information (e.g. age, profes-
+sion, literacy). The recordings span the entire country, ensuring
+a large diversity of accents and vocabulary, by more than 200
+speakers.
+CORPUS OF NORTHERN HAITIAN CREOLE (CNHC)
+The CORPUS OF NORTHERN HAITIAN CREOLE [25] consists
+of 10 recorded and transcribed interviews conducted in Cap-
+Haïtien (Northern Haiti) to study dialectal variation in relation
+to standard Haitian, and totalises 9h of audio. The transcriptions
+use non-standard spellings to more faithfully represent speak-
+ers’ pronunciations. For example, standard/non-standard varia-
+tions include: “Pòwoprens/Pòtoprens” (Port-au-Prince, capital
+city of Haiti); “eske/eskeu” (question word); or “de/deu” (two).
+While we do not have the exact number of speakers, we estimate
+it to be between 10 and 20, all from the Cap-Haïtien region.
+HAITI-CMU (H-CMU) The HAITI-CMU dataset con-
+sists of recordings that were originally collected for the DARPA
+DIPLOMAT project [6] in the late 1990s and totalises 20h of
+speech. The dataset solely consists of read speech, using sen-
+tences stemming from various sources (novels, speeches, reli-
+gious material, etc.), resulting in more than 7.5k sentences for
+152 speakers. The recordings were collected in various loca-
+tions (U.S. & France) with speakers from different backgrounds
+and regions of Haiti. Some of the speakers having lived or hav-
+ing been brought up in Metropolitan France, or Overseas France
+islands where neighbouring Creoles (Guadeloupean, Martini-
+can, Guianese) are spoken, this might have affected their accent.
+All the recordings are transcribed using the standard Haitian
+Creole spelling conventions.
+They have been collected in a
+noise-free environment resulting in high-quality recordings.
+IARPA-BABEL
+HAITIAN
+CREOLE
+(BABEL)
+The
+IARPA-BABEL HAITIAN CREOLE dataset [7] consists of
+recordings in Haitian Creole that were gathered for the U.S.
+government in the course of the BABEL program.
+The
+recordings were collected in 2012/2013 and mainly consist
+of conversational speech recorded over the phone.
+Some
+recordings were also collected using scripted material, where
+speakers were asked to read specific sentences and/or discuss
+specific topics. The whole dataset consists of more than 11k
+recordings totalising more than 202h of speech across more
+than 1k speakers.
+Most recordings were transcribed using
+standard Haitian Creole spelling conventions, but some were
+left untranscribed. To ensure maximal diversity, speakers come
+from different region of Haiti, and span a wide age range, and
+is balanced between male and females. The recordings were
+done in various environmental conditions, from very noisy
+(e.g. street) to very calm environements (e.g. home or office).
+VOXLINGUA HAITIAN (VOXLG) VoxLingua [26] is a
+speech dataset that consists of audio recordings scraped from
+YouTube, in order to train language identification models. The
+whole dataset consists of recordings for 107 languages. In this
+work, we only use the recordings that were classified as be-
+ing in Haitian Creole, totalising 96h of speech. The distributed
+recordings are already preprocessed [26] in order to exclude
+spoken sections from noise and non-spoken sections using a
+4019
+
+voice activity dectection (VAD) model. A speaker diarisation
+model was also applied to separate speakers from one another,
+resulting in more than 36.7k segments for 664 original record-
+ings. According to the speaker diarisation model, the dataset
+consists of more than 7k unique speakers. Given there are no
+ground-truth annotations, this is only an estimate and should be
+interpreted with caution, as this number seems to largely over-
+estimate the true number of speakers.
+RADIO HAITI (RADIO HAITI) While the datasets previ-
+ously mentioned are known to the speech and language pro-
+cessing community, and have already been used in other publi-
+cations, RADIO HAITI is a new dataset, which is used for the
+first time in this publication. RADIO HAITI consist of record-
+ings aired by Radio Haiti-Inter between 1957 and 2003, which
+were made available by Duke University through the David M.
+Rubenstein Rare Book Manuscript Library [27]. The dataset
+comprises over 5, 000 recordings totaling 2, 400 hours of spo-
+ken content. About half of the recordings only consist of speech
+in Haitian Creole, while the other half is mostly in French or a in
+mix of French and Haitian Creole, and, to a rarer extent English
+or Spanish. In this work, we only use a subset of this dataset,
+specifically the portion in Haitian Creole. This portion consists
+of about 2.9k recordings totalising more than 1.3k hours. This
+is, to the best of our knowledge, the largest ever collection of
+speech in Haitian Creole. Although most recordings were made
+in a studio, ensuring noise-free, high-quality audio, the dataset
+also includes interviews and interventions conducted over the
+phone or in public spaces, introducing a wide range of record-
+ing conditions.
+Each recording is paired with metadata that
+specifies the main topics discussed and the key speakers, typ-
+ically the presenters and, when relevant, the interviewees. Al-
+though it is impossible to determine the exact number of speak-
+ers (e.g. speakers who intervene over the phone or during inter-
+views are not mentioned in the metadata), the recordings we use
+feature at least 1, 000 unique individuals. Similarly, while we
+noticed the speakers are from different backgrounds and have,
+for some, a distinct accent (e.g. from the Cap Haïtien region),
+we do not have metadata indicating where the speakers come
+from. Finally, the metadata specifies the airdate of the record-
+ings (at least the year). Most of the recordings that are used in
+this publication were aired from the 1980s to the early 2000s.
+Overall, our work uses more than 2000h of recordings in
+Haitian Creole.
+While we cannot give an exact number of
+speakers, we estimate it is over 3, 000 unique speakers. The
+recordings cover a wide range of environmental conditions,
+from fieldwork recordings done in the field (ALH) or in calm
+environments (CNHC), to read (H-CMU, BABEL) speech and to
+more natural conversational speech (BABEL, VOXLG, RADIO-
+H). Concerning gender balance, although we lack this informa-
+tion for all the datasets we use, when it is available, we observe
+a fairly balanced distribution with 744 males and 645 females.
+4. Pretraining
+To ensure consistency across all datasets, we applied a stan-
+dardised preprocessing pipeline to each dataset before training
+our SSL models. First, all recordings were resampled to mono
+PCM 16 bits, 16 kHz. A voice activity detection (VAD) model
+[28, 29] was then applied to each recording in order to isolate
+spoken sections from silences and non-human speech sounds.
+The resulting segments were then combined through iterative
+concatenation, preserving temporal order so as to reach a mean
+Table 2: Hyperparameters of the best-checkpoint models, in-
+cluding inner & output Transformer block dimensions, number
+of attention heads, and training statistics.
+Model
+Output
+Dim.
+Inner
+Dim.
+Attn.
+Heads
+Transf.
+Blocks
+Train.
+Steps
+# Train.
+GPUs
+GPU
+hours
+data2vec-base
+768
+3072
+12
+12
+292k
+16
+3626.65
+wav2vec2-base
+768
+3072
+12
+12
+225k
+8
+3739.67
+wav2vec2-large
+1024
+4096
+16
+24
+218k
+16
+4340.99
+duration of 20 seconds.2 In the rare cases where VAD segments
+were larger than 30s, the segments were further segmented into
+sub-segments of a maximum length of 30s.3 Eventually, the
+concatenated segments reached a mean duration of 21.9s with
+a standard deviation of 7.3s. Given that VOXLG was already
+preprocessed in a similar fashion by [26] we did not apply our
+pipeline to this dataset. Overall, using a VAD preprocessing
+step resulted in a 25% reduction of the total amount of audio.
+This value largely varies from one dataset to the other, ranging
+from 57% for BABEL to only 11% for RADIO-H (see Table 1a).
+The train/validation/test partitions were constructed so as to
+ensure that the validation set includes speakers not seen during
+training, and the test set includes speakers not seen during train-
+ing or validation. This helps ensuring to select the checkpoint
+that generalises best on unseen speakers.
+To ensure maximal
+reproducibility and coherence with prior works, all our models
+were trained using PyTorch [31] through the fairseq toolkit
+[32]. The hyperparameters for the archicture of the WAV2VEC2-
+BASE and WAV2VEC2-LARGE models are identical to [33], and
+for the DATA2VEC model identical to [2].4 The architectures
+only mildly differ from those presented in [1] with for example
+12 attention heads for our BASE version instead of 8. Instead of
+training the models for a fixed amount of steps (e.g. [3] trains
+their 1k BASE and LARGE models for 200k steps) we decided to
+manually stop training when the models had converged, where
+convergence is defined as the point where the training and vali-
+dation curves intersect. The main hyperparameters of our mod-
+els are shown in Table 2.
+5. Finetuning
+Experimental
+Settings.
+Once
+our
+WAV2VEC2-BASE,
+WAV2VEC2-LARGE and
+DATA2VEC-AUDIO-BASE models
+pretrained, we finetuned them on an ASR task. Alongside our
+three pretrained model, we also finetune XLSR53-56k and
+XLSR2-300m-large (whole model) [20] and MMS-1B-all
+and MMS-1B-FL102 (using adapter layers) [34]. To do so,
+we used the transcribed recordings of the BABEL and H-CMU
+datasets. Contrary to CNHC, both consist of transcriptions that
+follow the standard orthography devised by the National Teach-
+ing Institute [35], which is commonly used by official Haitian
+institutions.
+We re-used the same train/validation/test parti-
+tions that were used for pretraining with the only difference
+that we excluded recordings of the BABEL corpus that were not
+2This value was chosen so as to obtain segments of similar length
+when accounting for standard deviation while limiting the number of
+segments longer than 30s. For reference, [1] and [3] use 20-second-long
+segments for the BASE and LARGE models, while [3] use 15-second-
+long segments for their XLARGE model, and [30] use 15-second and
+20-second segments for their BASE and LARGE models, respectively.
+3This could potentially result in a single word being split across two
+segments, however, the number of hard crops performed is minimal, and
+this method was only applied to segments from the RADIO-H corpus.
+4DATA2VEC-AUDIO-BASE uses a WAV2VEC2-BASE backbone.
+4020
+
+Table 3: WER and CER (mean ± std. dev.) at global level, by gender, and by dataset, sorted by global CER on the test set (best
+checkpoint selected based on validation results). The lowest CER is in blue, the lowest WER is in red, and the lowest mean CER/WER
+per category (F/M or BABEL/H-CMU) are in bold. Bold model names indicate finetuned versions of our pretrained models.
+Model
+Global
+Gender
+Dataset
+CER
+WER
+CER
+WER
+CER
+WER
+F
+M
+F
+M
+BABEL
+H-CMU
+BABEL
+H-CMU
+mean
+std
+mean
+std
+mean
+std
+mean
+std
+mean
+std
+mean
+std
+mean
+std
+mean
+std
+mean
+std
+mean
+std
+data2vec-hat-1.4K-base
+21.0
+51.4
+33.7
+49.9
+19.3
+41.0
+23.0
+60.2
+31.9
+43.4
+35.7
+55.8
+22.9
+53.4
+1.5
+6.1
+36.4
+51.3
+5.0
+9.5
+wav2vec2-hat-1.4K-large
+21.3
+53.0
+34.8
+49.7
+19.7
+43.2
+23.1
+61.5
+33.2
+43.9
+36.8
+55.1
+23.1
+55.1
+1.4
+6.1
+37.6
+51.1
+5.3
+9.7
+wav2vec2-hat-1.4K-base
+21.5
+52.0
+34.5
+52.8
+19.7
+41.1
+23.5
+61.1
+32.7
+44.1
+36.8
+60.4
+23.4
+54.0
+1.5
+6.4
+37.3
+54.3
+4.8
+9.1
+xlsr2-300m-large
+21.5
+50.1
+35.5
+51.0
+19.7
+39.4
+23.6
+59.1
+33.6
+43.4
+37.7
+57.7
+23.4
+52.0
+1.6
+5.9
+38.3
+52.4
+5.9
+10.1
+wav2vec2-FR-7K-large
+22.5
+51.7
+36.8
+48.6
+20.8
+42.0
+24.5
+60.0
+35.3
+43.7
+38.7
+53.1
+24.5
+53.6
+1.5
+6.0
+39.8
+49.7
+5.3
+9.7
+wav2vec2-FR-3K-large
+23.4
+51.5
+38.3
+48.5
+21.5
+41.2
+25.5
+60.2
+36.6
+42.3
+40.4
+54.1
+25.4
+53.4
+1.6
+6.1
+41.4
+49.6
+5.4
+9.6
+wav2vec2-FR-7K-base
+23.8
+52.9
+38.4
+50.6
+22.0
+42.7
+25.8
+61.5
+37.0
+45.1
+40.2
+55.7
+25.9
+54.8
+1.6
+6.2
+41.5
+51.8
+5.5
+9.6
+wav2vec2-FR-2.6K-base
+24.6
+54.8
+39.4
+53.9
+22.9
+46.7
+26.5
+62.0
+37.6
+47.1
+41.6
+60.1
+26.7
+56.8
+1.6
+6.3
+42.6
+55.3
+5.3
+9.5
+wav2vec2-FR-3K-base
+24.8
+55.5
+40.0
+54.7
+23.4
+47.1
+26.5
+63.1
+38.1
+45.9
+42.3
+62.4
+27.0
+57.6
+1.8
+6.4
+43.2
+56.1
+6.2
+9.9
+wav2vec2-FR-1K-large
+26.5
+48.7
+45.8
+47.8
+24.7
+40.0
+28.6
+56.1
+43.8
+42.9
+48.4
+52.3
+28.8
+50.3
+2.2
+6.5
+49.3
+48.4
+8.4
+11.1
+wav2vec2-FR-1K-base
+27.0
+54.8
+44.2
+53.4
+25.1
+47.3
+29.1
+61.6
+41.9
+46.0
+47.0
+59.9
+29.3
+56.7
+1.9
+6.0
+47.7
+54.4
+6.9
+13.1
+mms-1b-all
+30.7
+51.3
+58.2
+49.0
+29.3
+45.5
+32.3
+56.6
+56.4
+43.8
+60.4
+53.8
+33.2
+52.9
+3.6
+6.9
+62.1
+49.3
+16.1
+14.9
+mms-1b-fl102
+31.6
+49.3
+61.7
+46.9
+30.2
+44.8
+33.4
+53.5
+59.8
+43.3
+64.0
+50.3
+34.1
+50.8
+5.3
+6.9
+65.2
+47.3
+24.2
+15.8
+xlsr53-56k
+34.7
+54.2
+66.4
+50.7
+33.2
+46.9
+36.7
+60.8
+64.2
+46.2
+69.2
+54.9
+37.5
+55.9
+5.6
+7.0
+70.2
+51.2
+26.0
+16.5
+transcribed. Hence, the train/validation/test partitions for this
+dataset are subsets of the SSL pretraining partitions. For both
+datasets, all the speakers in the validation and test sets have not
+been seen at training time (and not seen at validation time for
+the test set). Contrary to pretraining, where we used concate-
+nated segments obtained by a VAD model, we used here the
+gold segmentation to segment the recordings in smaller chunks.
+The models were trained with CTC loss and frozen the first 10k
+steps to avoid overfitting. We used Viterbi decoding without
+any external LM, with a beam of 5.
+Text Prepocessing. We use a vocabulary of 28 symbols
+(27 characters and an additional space character 〈|〉).5 When
+encountering foreign graphemes in loanwords or proper nouns
+(e.g. 〈qu〉as in “Inuqua”) we converted them to their closest
+equivalent (e.g. 〈k〉as in “Inuka”). Digits were fully spelled
+out (e.g. “21”: “venteyen”) using the num2words package
+that we adapted for Haitian Creole,6 and abbreviations were
+fully spelled out (e.g. “HTML”: “ach te èm èl”) using a cus-
+tom script. All the annotations of the IARPA Babel specifi-
+cations (e.g. to signal noise, hesitations, etc.) were removed.
+Finally, the transcriptions were lowercased, all the punctuation
+was removed and characters normalised using Unicode’s NFKC
+standard [36]. Finally, we separated clitic pronouns (“t”, “m”,
+“n”, “y”, “l”, and “w”) which are phonetically bound (e.g. “w”
+as in “papa w”, your father) from the words they attach to.
+Haitian Creole being primarily an oral language, there is sig-
+nificant variation in their writing, often using hyphens, apostro-
+phes, spaces, or direct concatenation without strict regularity
+Results & Discussion. Table 3 shows Word and Charac-
+ter Error Rates (WER/CER) at global level, by gender and by
+dataset. The best models are our monolingual models pretrained
+on 1.4K hours of speech in HC (with a CER of 21 and WER of
+33.7 for the best of them, DATA2VEC-AUDIO-BASE), closely
+followed by XLSR-300m-large. Surprisingly, despite hav-
+ing been finetuned on the same data, XLSR53-56k and the two
+MMS models lie far behind. We observe that our models, despite
+having fewer parameters (95M for BASE models and 317M for
+LARGE) obtained better scores than larger models (MMS-1B),
+and better scores than models trained on many more record-
+ing hours and more language (1k languages for MMS, 100+ for
+XLSR). Prior works such as [37] found that transfer from a
+5aàbcdeèfghijklmnoòprstuvwyz|
+6https://github.com/LLL-Orleans/num2words
+closely related language (e.g. Czech to Slovak) can outperform
+large multilingual models like XLSR. In contrast, even our most
+targeted transfers – finetuning from French WAV2VEC2 mod-
+els – underperform XLSR-300m-large, despite French be-
+ing very close to HC.
+We observe very high standard deviations across all models.
+Upon closer examination, this can be attributed to the substan-
+tial differences in error rates (ER) between H-CMU and BA-
+BEL. H-CMU consists of read speech, recorded in calm environ-
+ments, while BABEL consist of natural speech recorded in noisy
+environments at 8kHz using phones. The difference lies both in
+the nature of the spoken content (read v. natural) and the in-
+trinsic acoustic quality of the recordings, with BABEL known to
+be a “challenging speech recognition benchmark” [20]. Finally,
+we explored ER by gender. As largely documented [38], ER are
+lower for females than for males. The mean difference between
+male and female across all models is of 4 WER and 3.6 CER
+points, with large variations across models (5 WER points for
+the model finetuned from wav2vec2-FR-1K-base and 3.2
+for wav2vec2-FR-7K). Our models lie inbetween, with the
+model finetuned from wav2vec2-hat-1.4K-base having
+a 4 WER points difference between males and females.
+In summary, our monolingual HC models, pretrained on
+1.4K hours of speech, outperform larger multilingual models,
+underscoring the value of domain-specific pretraining.
+6. Conclusion
+In this work, we presented three pretrained models of speech
+processing for Haitian Creole based on the WAV2VEC2-BASE,
+WAV2VEC2-LARGE, and DATA2VEC-AUDIO-BASE architec-
+tures. We further finetuned these models on a speech recog-
+nition task and show they obtain competitive results compared
+to large-scale multilingual and monolingual models. This is
+the first time models of this scale are developped for Haitian
+Creole, establishing it as a high-resource language in terms of
+SSL models of speech processing. Our work provide the nec-
+essary tools for robust speech recognition, and source models
+for transfer learning to other French-based Caribbean Creoles,
+and contribute to grant Haitian Creole equal status alongside
+French. We hope that creolists will seize upon these models to
+transcribe data on a large scale. They have already been used
+to transcribe 1, 600 hours of RADIO HAITI recordings, enabling
+unprecedented study of linguistic phenomena in Haitian Creole.
+4021
+
+7. Acknowledgements
+The authors acknowledge the support of the French Agence Na-
+tionale de la Recherche (ANR), under grant ANR-20-CE38-
+0006 (project CREAM). Experiments were conducted using
+Grid’5000, developed under INRIA ALADDIN with support
+from CNRS, RENATER, and various universities. Additional
+resources include the CaSciModOT cluster at Centre de Cal-
+cul Scientifique en région Centre-Val de Loire and HPC re-
+sources from IDRIS provided by GENCI (allocation 2024-
+AD011014940).
+8. References
+[1] A. Baevski et al., “wav2vec 2.0: a framework for self-supervised
+learning of speech representations,” in NeurIPS, ser. NIPS ’20.
+Red Hook, NY, USA: Curran Associates Inc., 2020.
+[2] ——, “data2vec: A general framework for self-supervised learn-
+ing in speech, vision and language,” in International Conference
+on Machine Learning, ICML 2022, 17-23 July 2022, Baltimore,
+Maryland, USA, ser. Proceedings of Machine Learning Research,
+K. Chaudhuri et al., Eds., vol. 162. PMLR, 2022, pp. 1298–1312.
+[3] T. Parcollet et al., “Lebenchmark 2.0: A standardized, replica-
+ble and enhanced framework for self-supervised representations
+of french speech,” Computer Speech & Language, vol. 86, p.
+101622, 2024.
+[4] K.-H. Lu et al., “A context-aware knowledge transferring strategy
+for ctc-based asr,” in SLT2022, 2023, pp. 60–67.
+[5] M. DeGraff, “Against creole exceptionalism,” Language, vol. 79,
+no. 2, pp. 391–410, 2003.
+[6] R. Frederking et al., “Interactive speech translation in the DIPLO-
+MAT project,” in Spoken Language Translation, 1997.
+[7] Andrus, Tony et al., “IARPA Babel Haitian Creole Language Pack
+IARPA-babel201b-v0.2b,” 2017.
+[8] N. T. Vu et al., “Initialization schemes for multilayer perceptron
+training and their impact on asr performance using multilingual
+data,” in Interspeech 2012, 2012, pp. 2586–2589.
+[9] W. Breiter, “Rapid bootstrapping of haitian creole large vocabu-
+lary continuous speech recognition,” 2014.
+[10] R. Frederking et al., “Interactive speech translation in the diplo-
+mat project,” Machine Translation, vol. 15, no. 1/2, p. 27–42, Jun.
+2000.
+[11] V.-B. Le et al., “Developing STT and KWS systems using limited
+language resources,” in Interspeech 2014, 2014, pp. 2484–2488.
+[12] M. J. F. Gales et al., “Speech recognition and keyword spotting
+for low-resource languages: Babel project research at cued,” in
+SLTU, 2014.
+[13] C. Macaire et al., “Automatic speech recognition and query by
+example for creole languages documentation,” in ACL 2022,
+S. Muresan et al., Eds., Dublin, Ireland, May 2022, pp. 2512–
+2520.
+[14] E. Le Ferrand et al., “Outiller la documentation des langues
+créoles,” in LIFT 2023, Vandoeuvre-Lès-Nancy, France, Nov.
+2023.
+[15] É. Le Ferrand et al., “Automatic transcription of grammatical-
+ity judgements for language documentation,” in COMPUTEL,
+S. Moeller et al., Eds.
+St. Julians, Malta: Association for Com-
+putational Linguistics, Mar. 2024, pp. 33–38.
+[16] W. Noormamode et al., “A speech engine for mauritian creole,”
+in Information Systems Design and Intelligent Applications, S. C.
+Satapathy et al., Eds.
+Singapore: Springer, 2019, pp. 389–398.
+[17] N. Gooda Sahib-Kaudeer et al., “Automatic speech recognition
+for kreol morisien: A case study for the health domain,” in Speech
+and Computer, A. A. Salah et al., Eds.
+Cham: Springer Interna-
+tional Publishing, 2019, pp. 414–422.
+[18] B. Gobin-Rahimbux et al., “A voice-based personal assistant for
+mental health in kreol morisien,” JECE, vol. 2023, Dec. 2023.
+[19] A. Radford et al., “Robust speech recognition via large-scale weak
+supervision,” in Proceedings of the 40th International Conference
+on Machine Learning, ser. ICML’23.
+JMLR.org, 2023.
+[20] A. Babu et al., “XLS-R: Self-supervised cross-lingual speech
+representation learning at scale,” in Interspeech 2022, 2022, pp.
+2278–2282.
+[21] V. Pratap et al., “Scaling speech technology to 1,000+ languages,”
+Journal of Machine Learning Research, vol. 25, no. 97, pp. 1–52,
+2024.
+[22] W. N. Havard et al., “Technologies de la parole et données de
+terrain : le cas du créole haïtien,” in Actes de la 31ème Conférence
+sur le Traitement Automatique des Langues Naturelles, volume 1
+: articles longs et prises de position, M. Balaguer et al., Eds.
+Toulouse, France: ATALA and AFPC, 7 2024, pp. 686–694.
+[23] D. Fattier, “Contribution à l’étude de la genèse d’un créole: l’atlas
+linguistique d’haïti, cartes et commentaires, 6 vol.” Bibliograph-
+ical record, Presses Universitaires du Septentrion, Villeneuve
+d’Ascq, 1998, ph.D. Dissertation, Université de Provence.
+[24] FLA,
+Faculté
+de
+Linguistique
+Appliquée
+de
+l’Université
+d’Etat d’Haïti (anciennement Centre de Linguistique Ap-
+pliquée (CLA)) et al.,
+“Atlas linguistique d’Haïti,”
+2015.
+[Online]. Available: https://cocoon.huma-num.fr/exist/crdo/meta/
+cocoon-8ea988d2-bf16-303d-81a0-0c55cc035240
+[25] A. Valdman et al., “On the influence of the standard norm of
+haitian creole on the cap haïtien dialect: Evidence from sociolin-
+guistic variation in the third person singular pronoun,” Journal of
+Pidgin and Creole Languages, vol. 30, no. 1, p. 1–43, Apr. 2015.
+[26] J. Valk et al., “VoxLingua107: a dataset for spoken language
+recognition,” in Proc. IEEE SLT Workshop, 2021.
+[27] V. Contributors, “Radio haiti collection,” 2024, digital items:
+5,314; Total components:
+3660; Last Indexed:
+2024-12-05.
+[Online]. Available: https://idn.duke.edu/ark:/87924/m1j07w
+[28] H. Bredin et al., “pyannote.audio: neural building blocks for
+speaker diarization,” in ICASSP 2020, Barcelona, Spain, May
+2020.
+[29] ——, “End-to-end speaker segmentation for overlap-aware reseg-
+mentation,” in Proc. Interspeech 2021, Brno, Czech Republic,
+August 2021.
+[30] A. Conneau et al., “Unsupervised cross-lingual representation
+learning for speech recognition,” in Interspeech 2021, 2021, pp.
+2426–2430.
+[31] A. Paszke et al., PyTorch: an imperative style, high-performance
+deep learning library.
+Red Hook, NY, USA: Curran Associates
+Inc., 2019.
+[32] M. Ott et al., “fairseq: A fast, extensible toolkit for sequence mod-
+eling,” W. Ammar et al., Eds.
+Minneapolis, Minnesota: Associ-
+ation for Computational Linguistics, Jun. 2019, pp. 48–53.
+[33] S. Evain et al., “Task Agnostic and Task Specific Self-Supervised
+Learning from Speech with LeBenchmark,”
+in Thirty-fifth
+Conference on NeurIPS ( NeurIPS 2021), ser. NeurIPS 2021
+Datasets and Benchmarks Track, on-line, United States, Dec.
+2021. [Online]. Available: https://hal.science/hal-03407172
+[34] V. Pratap et al., “Scaling speech technology to 1,000+ languages,”
+Journal of Machine Learning Research, vol. 25, no. 97, pp. 1–52,
+2024.
+[35] A. Valdman, Education Reform and the Instrumentalization of the
+Vernacular in Haiti.
+Boston, MA: Springer US, 1982, pp. 139–
+170.
+[36] Unicode, “UAX #15:
+Unicode Normalization Forms,” 2024.
+[Online]. Available: https://unicode.org/reports/tr15/
+[37] J. Leheˇcka et al., “Transfer learning of transformer-based speech
+recognition models from czech to slovak,” in Text, Speech, and
+Dialogue, K. Ekštein et al., Eds.
+Cham: Springer Nature, 2023,
+pp. 328–338.
+[38] M. Adda-Decker et al., “Do speech recognizers prefer female
+speakers?” in Interspeech 2005, 2005, pp. 2205–2208.
+4022
+

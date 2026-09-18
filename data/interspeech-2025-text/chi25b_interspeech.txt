@@ -1,0 +1,600 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+Adaptive Knowledge Distillation for Device-Directed Speech Detection
+Hyung Gun Chi1,∗, Florian Pesce1,∗, Wonil Chang1,∗, Oggi Rudovic1,∗,
+Arturo Argueta1, Stefan Braun1, Vineet Garg1, Ahmed Hussen Abdelaziz2,†
+1Apple, 2Meta
+hchi23@apple.com
+Abstract
+Device-directed speech detection (DDSD) is a binary classifi-
+cation task that separates the user’s queries to a voice assistant
+(VA) from background speech or side conversations. This is im-
+portant for achieving naturalistic user experience. To this end,
+we propose knowledge distillation (KD) to enhance DDSD ac-
+curacy while ensuring efficient deployment. Specifically, we
+introduce a novel adaptive KD method that transfers knowledge
+from general representations of an ASR large pre-trained acous-
+tic encoder (teacher). We apply task-specific adapters, on top
+of the (frozen) teacher encoder, trained jointly with the student
+model on DDSD. We demonstrate that the proposed adaptive
+KD outperforms the student model without distillation in the
+keyword and keyword-free (follow-up) invocations, with an im-
+provement of +26% and +19% in terms of Equal Error Rate, re-
+spectively. We also show that this approach generalizes across
+the transformer and conformer-based model architectures.
+Index Terms:
+Keyword detection, Knowledge distillation,
+Device-Directed Speech Detection
+1. Introduction
+Smart devices, such as mobile phones, wearables, and smart
+speakers, have become an integral part of our daily routines.
+This is facilitated by the use of VAs to enable a naturalis-
+tic user experience.
+Users can interact with these devices
+through various methods: voice-triggered commands using spe-
+cific wake-words, touch-based inputs via physical or virtual but-
+tons, and/on keyword-free follow-up modes. Device-directed
+speech detection (DDSD) [1–4] aims to distinguish between
+user queries directed at voice assistants, and background speech
+or side conversations. Thus, DDSD is crucial in preventing un-
+intended activations, which can occur when speech resembles
+wake-words or accidental button presses, among others.
+To improve the DDSD accuracy, we employ Knowledge
+Distillation (KD) [5, 6], a technique that has demonstrated
+promising ability in compressing model sizes while mitigating
+performance trade-offs across various domains [7–14]. The mo-
+tivation for applying KD to DDSD is two-fold: (i) the teacher is
+trained on a much larger corpus of audio data (compared to the
+audio data available for DDSD), and uses a larger model, tuned
+for the ASR task, producing more robust and general acous-
+tic representations. (ii) Hardware requirements often constrain
+the model size and runtime memory; therefore devising a small
+yet accurate DDSD model is critical for on-device deployment.
+Multiple approaches in various domains such as computer vi-
+sion [13, 14] and speech [7, 8, 15–17], have been used for dis-
+∗equal contribution.
+†work done at while Apple.
+Figure 1:
+Adaptive knowledge distillation for on-device
+device-directed speech detection (DDSD). To bridge the do-
+main gap, we add classification heads for the teacher model on
+top of a pre-trained ASR encoder. These teacher classification
+heads are jointly trained with the student on the DDSD task.
+tillation from larger models to the smaller ones. However, little
+has been investigated when it comes to DDSD task [4].
+The KD can be challenging, often requiring to fine-tune
+the teacher for the target task to narrow the domain gap (data
+used to train the teacher and the task-specific data). However,
+fine-tuning large teacher models is resource-intensive. In this
+paper, we propose adaptive KD (aKD) for DDSD task, where
+the teacher/student adapters and the student encoder are trained
+simultaneously. This sets aKD apart from conventional KD,
+which first fine-tunes the teacher model for the target task, and
+then distills knowledge into the student from the frozen teacher.
+In aKD, we enable a dynamic alignment of the features
+between the student and teacher acoustic encoders, as well as
+their decision scores for each task - keyword detection “Hey
+Agent” (HAG) and “Agent” (AG), and follow-up conversa-
+tions (FCO). This is depicted in Fig. 1, where the student and
+teacher are comprised of an acoustic encoder and classifica-
+tion heads (adapters). In this paper, the teacher encoder is a
+pre-trained (frozen) acoustic encoder for ASR [18, 19]; how-
+ever, the aKD method is general enough so any foundational
+model can be used as the teacher. The student encoder is much
+smaller than the teacher’s (∼5M vs. ∼79M parameters). In the
+classification heads, the encoder’s temporal outputs are com-
+bined into invocation-specific representations using attention-
+summarization (Sum in Fig. 1), followed by linear classifiers
+and SoftMax. We propose combining knowledge distillation
+techniques as follows: first, we apply the embedding distillation
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+5788
+10.21437/Interspeech.2025-30
+
+by computing the MSE loss between the teacher and student en-
+coder outputs (LED). This transfers the teacher’s representation
+knowledge to the student. Second, we introduce the attention
+regularization to enforce temporal consistency between the two
+models (LAR). Third, in addition to the label-supervised losses
+(LDDSD), we also apply pseudo-labelling (LP L), where the
+teacher model’s outputs serve as targets for the student model,
+aligning their predictions. By combining these losses within
+aKD, we effectively distill the teacher’s expertise into the stu-
+dent. In our experiments, we evaluate the impact of adding the
+different KD losses, and show on the real-world data the bene-
+fits of the aKD approach with those.
+The following sections outline the system and our distilla-
+tion framework design (Section 2). In Section 3, we define each
+distillation loss, discuss its role, and introduce the aKD. Finally,
+in Section 4, we show the experimental results and include abla-
+tions to explore the effectiveness of different distillation setups.
+2. System Overview
+2.1. Device-Directed Speech Detection (DDSD) Model
+Our DDSD model takes as an input temporal sequence of audio
+features X = [x1, .., xT ] and classifies them as device-directed
+or not y ∈{0, 1} (see Fig. 1).
+We design DDSD follow-
+ing the unified acoustic detector architecture proposed in [20].
+The acoustic features (mel-filter banks from input audio) X are
+first transformed by the encoder into an embedding sequence
+E = [e1, .., eT ] through the acoustic encoder. Then, the audio
+embedding E is summarized into a single vector Z by a global
+attention mechanism (GA) [21]. Formally, we obtain the GA
+weights as follows:
+αt =
+exp(st)
+P
+i∈{1,..,T } exp(si), and st = etθ,
+(1)
+where t is the frame index, and the GA linear projection θ com-
+putes the frame-wise attention weights αt. These are used to
+obtain the logit Z = P
+i∈{1,..,T } αiei. Finally, Z is passed
+through task-specific fully connected layers and SoftMax to
+produce the final mitigation score p, which is the probability
+of the input audio being device-directed. Finally, the joint loss
+is defined as cross-entropy (CE) loss:
+LDDSD = CE(y, p),
+(2)
+where y is a one-hot encoded vector of the ground truth label.
+As in [20], we adopt multi-task learning that involves training
+separate adapters for different invocation types alongside shared
+multi-task learning objectives. In Figure 1, the adapters are
+trained for each invocation type. The invocation types include
+two keyword-based methods: ‘Hey Agent’ (HAG) and ‘Agent’
+(AG), and one keyword-free follow-up conversation (FCO). The
+teacher and student models share the same architecture for these
+classification heads.
+Acoustic Encoder. In this work, we use two types of acous-
+tic encoder for our DDSD model; Transformer [22] and Con-
+former [18] to investigate generalization of the proposed KD
+architectures.
+Recently, conformer-based acoustic encoders
+have demonstrated great performance in speech recognition
+tasks [18]. However, the conformer architecture has yet to be
+tested for DDSD. Therefore, we aim to explore the advantages
+of conformers for DDSD. Convolution and self-attention (SA)
+modules are placed in a serial manner in the Conformer en-
+coder. The convolution module captures local features whereas
+the SA module captures the global features. We place these
+modules in parallel instead to capture features at different res-
+olutions [23, 24]. The SA and Convolution module output are
+concatenated, and added a bottleneck layer to maintain the hid-
+den size. We provide more details in Sec. 4.1.
+2.2. Teacher Model
+For our teacher model, we selected a conformer-based model
+trained for an automatic speech recognition (ASR) task [19].
+We tested several acoustic foundation models to use as a teacher
+model, but the ASR model outperformed the other candidates in
+our evaluations (since it was trained on in-domain data), making
+it the most suitable choice. This teacher model, featuring 12
+conformer layers and 79 million parameters, had its encoder
+frozen. We then appended classification heads identical to those
+in the DDSD model. These heads were trained on the DDSD
+learning objective defined in Eq. (2).
+3. Adaptive Knowledge Distillation
+3.1. Knowledge Distillation
+In our approach, we integrate several distillation losses to trans-
+fer knowledge effectively from the teacher to student models.
+Embedding Distillation (ED) aligns the acoustic representa-
+tions, encouraging the student models to develop more gen-
+eral representations. This enhances their performance on the
+DDSD task. Pseudo Labeling (PL) further aids this process by
+guiding the student model to mimic the DDSD responses of the
+teacher model. This not only helps the student adapter emulate
+the teacher adapter but also directly boosts the student model’s
+DDSD capabilities. Moreover, we propose a novel Attention
+Regularizer (AR), which aligns the temporal similarity between
+student and teacher representations, facilitating context transfer
+from the teacher to the student. Throughout the text, the super-
+scripts S and T are employed to distinguish between the student
+and teacher models, respectively.
+Embedding Distillation (ED). We distill the output of the ASR
+encoder of the teacher model, ZT, into the acoustic encoder of
+the student model, ZS, enabling the student’s acoustic encoder
+to mimic the robust acoustic representation of the teacher’s ASR
+encoder. Since the ASR encoder of the teacher is frozen and not
+fine-tuned for the DDSD task, it offers a more general represen-
+tation, beneficial for the DDSD task. For embedding distilla-
+tion, we use mean square error:
+LED = MSE(ET, ES).
+(3)
+Pseudo Labeling (PL). To facilitate the student adapter in mim-
+icking the responses of the teacher adapter, we introduce pseudo
+labeling motivated by [8] we replace the ground truth target in
+the DDSD objective (Eq. (2)) with the output of the teacher
+model. After applying argmax to obtain the predicted labels, we
+convert these to one-hot encoded targets. This pseudo-labeling
+approach is defined as:
+LPL = CE(ˆy, pS),
+(4)
+where the pseudo-label ˆy is derived by applying argmax to the
+teacher model’s output probability pT.
+Attention Regularization (AR). We leverage Attention Regu-
+larization (AR) to transfer temporal context, which is a critical
+aspect overlooked by existing methods like ED and PL. Tem-
+poral context is pivotal in keyword detection as not all frames
+5789
+
+Table 1: Performance comparison of various KD approaches, reporting EER in percentages (%). Large accuracy improvements are
+observed due to KD, outperforming the student model without KD. The best and second-best performances are denoted by bold and
+underlined characters, respectively.
+Student Architectures
+Transformer
+Conformer
+Models
+HAG
+AG
+FCO
+HAG
+AG
+FCO
+Baselines
+Teacher
+1.66
+3.87
+7.74
+1.66
+3.87
+7.74
+DDSD w/o KD
+2.62
+5.76
+11.78
+1.57
+5.24
+10.87
+Conventional KD
+LDDSD + LED
+3.14
+6.81
+12.32
+1.57
+5.24
+9.06
+LDDSD + LED + LAR
+2.09
+5.76
+12.32
+1.05
+5.24
+9.60
+LPL + LED + LAR
+2.62
+5.24
+10.33
+1.57
+4.19
+8.51
+LDDSD + LPL + LED + LAR
+2.62
+5.24
+10.14
+1.57
+4.71
+8.88
+Adaptive KD
+LDDSD + LED
+3.14
+6.81
+13.22
+1.57
+6.81
+9.96
+LDDSD + LED + LAR
+1.57
+5.24
+12.86
+1.57
+5.76
+9.42
+LPL + LED + LAR
+2.62
+4.71
+10.14
+2.09
+5.23
+9.24
+LDDSD + LPL + LED + LAR
+2.09
+4.87
+9.96
+1.05
+4.19
+8.70
+contain the target keyword. Some timeframes are more salient
+than others. To address this limitation, we propose an inno-
+vative approach by introducing an additional distillation term.
+This term regularizes the global attention weights between the
+student and teacher models, effectively emphasizing the impor-
+tance of different timeframes during the learning process.
+LAR =
+X
+t∈{1,...,T }
+(αT
+t −αS
+t)2,
+(5)
+where αt is a GA weight at t defined in Eq. (1).
+Objective. The final KD objective is a weighted sum of the
+above terms and a DDSD objective:
+Lstudent = LDDSD + λEDLED + λPLLPL + λARLAR,
+(6)
+where λED, λPL, and λAR are scalar weights for the ED, PL,
+and AR losses respectively. We provide details on how we tune
+these weights in Section 4.1.
+3.2. Adaptive Knowledge Distillation
+We propose Adaptive Knowledge Distillation (aKD), a novel
+method that trains the teacher adapter and the student model si-
+multaneously. Knowledge distillation between domains can be
+challenging, as it often requires fine-tuning the entire teacher
+model for the target task to bridge the domain gap.
+Con-
+ventional KD addresses this by fine-tuning a domain-specific
+adapter on the downstream domain without the computational
+burden of fine-tuning the full teacher model. However, it in-
+volves two steps:
+1. The teacher model is fine-tuned on the downstream domain
+with an adapter, while the encoder is frozen.
+2. Both the teacher encoder and adapter are then frozen, and
+knowledge is distilled to the student model.
+aKD differs from conventional KD in that it trains the teacher
+adapter and the student model simultaneously. This process
+aligns the student and teacher adapters since they are trained to-
+gether for the same target. Consequently, their knowledge gap
+is minimal at the beginning of training and gradually reduces
+throughout the process through KD. In contrast, conventional
+knowledge distillation leads to a substantial knowledge gap that
+is difficult to reduce because the teacher was already trained,
+while the student was not, when the distillation process began.
+By eliminating the need for the two-step process, aKD stream-
+lines the training process.
+4. Experiments
+4.1. Implementation Details
+Each model is trained on 32 × NVIDIA V100 40GB GPUs for
+100 epochs with an batch size of 256. We employ the Adam op-
+timizer [25] with an initial learning rate of 1 × 10−7. To further
+enhance convergence, we implement an adaptive learning rate
+scheduler that reduces the learning rate when a validation met-
+ric plateaus. For the student loss in Eq. 6, we set the weights
+as λED=1 × 102, λPL=1, and λAR=1. We conducted a grid
+search of the weights on our held-out validation set. As input,
+40-D Mel-filterbank features at 100 fps are used, and the cur-
+rent frame is augmented with 6 neighbouring frames, resulting
+in 280-D features. For the transformer-based student model, the
+acoustic encoder is comprised of 8 transformer encoder blocks
+with 256 hidden units, 4 heads within the SA module, and 1,024
+hidden units in the feed-forward layer. For conformer-based
+student model, we use 8 layers of conformer encoder blocks,
+where each block has the SA module with 168 hidden units
+and 4 heads, a convolution module with kernel size 31, and
+Macaron-style feed-forward layers with 672 hidden units. The
+model sizes for both Transformer and Conformer based student
+models are similar, both being around 5M parameters (com-
+pared to 79M parameters in the teacher).
+4.2. Dataset and Evaluation Metrics
+We used in-house collected training data, that consists of 2.7K
+hours of audio samples which includes the three invocation
+types and users interacting with VA in different contexts, as
+in [20, 26]. These were further augmented with room impulse
+responses and echo residuals, as in previous works [20,26,27].
+To evaluate our model, we also utilized in-house evaluation
+sets tailored to each invocation type. We report Equal-error-
+rate (EER) per invocation type.
+We established two base-
+line teacher models trained from scratch following Step 1 of
+conventional KD described in Section 3, serving as the upper
+bound, and DDSD model trained from scratch, representing our
+lower bound. Since the EER only provides a single representa-
+tive value, we further plot the Detection Error Tradeoff (DET)
+curves in Fig. 2 to investigate the impact of distillation on dif-
+ferent False Accept Rate (FAR) thresholds.
+5790
+
+Figure 2: DET curves on different invocation types. The red dotted line indicates the EER line, where the False Reject Ratio (FRR) and
+False Accept Ratio (FAR) are equal. The proposed aKD method was used for this plot.
+4.3. Results
+We report all our experimental results on DDSD in Table 1. The
+table presents results for various student architectures, invoca-
+tion types, and KD methods. We first see that KD based results
+bring the performance boost across both Transformer and Con-
+former architectures compared to the DDSD model without KD.
+Notably, the accuracy improvement of aKD with the Conformer
+architecture is substantial for keyword-based invocations (HAG
+and AG), where aKD achieves an average relative gain of 26%.
+Additionally, the relative improvement in keyword-free invoca-
+tions (FCO) is 19%. It highlights the advantages of knowledge
+distillation for DDSD task. In the following section, we delve
+into the components that contribute to the performance boost.
+4.3.1. aKD vs Conventional KD
+We begin by comparing conventional KD with our proposed
+aKD. aKD consistently outperforms conventional KD across
+both transformer and conformer student architectures and all
+invocation types. For example, with a conformer-based stu-
+dent model and all KD losses utilized, aKD substantially out-
+performs conventional KD in EER. It shows improvements of
+0.52% (33% relative) on HAG, 0.52% (11% relative) on AG,
+and 0.18% (2% relative) on FCO. One possible explanation for
+these results is that when both the teacher and student adapters
+are optimized jointly, knowledge is progressively distilled into
+the student model during the teacher’s training. This approach
+effectively reduces the gap between the models over time. In
+contrast, conventional KD methods often lead to a knowledge
+gap between the student and teacher models at the start of train-
+ing, which can hinder the learning process.
+4.3.2. KD Losses
+Next, we delve into the contributions of each distillation term
+outlined in Section 3.1.
+We found that the model utiliz-
+ing all distillation losses achieves the best or the competitive
+performance.
+Comparing models trained with and without
+LAR, we demonstrate the performance gain, highlighting LAR’s
+temporal-wise context distillation ability. Furthermore, replac-
+ing the true targets of LDDSD in Eq 2 with pseudo-labels in LPL
+leads to performance improvements, particularly for AG and
+FCO, though it degrades performance on HAG. Interestingly,
+combining LDDSD and LPL results in the best performance, un-
+derscoring their complementary nature. Since there are inherent
+relations between these losses, using all losses together brings
+more robustness to the model training overall. Further opti-
+mizations can be made by a more exhaustive search of the loss
+weights in the final loss.
+4.3.3. Conformer VS Transformer Student Models
+To demonstrate the generalizability of our distillation frame-
+work, we compare the distillation results of two different stu-
+dent architectures. We first investigate the effectiveness of KD
+on a Conformer model for the DDSD task, a model architec-
+ture that has not been previously reported for this task. When
+training models from scratch, Conformer shows superior per-
+formance compared to the Transformer-based model. To further
+investigate impact of KD on conformer, we apply the same dis-
+tillation technique used for the Transformer to the Conformer.
+As expected, KD improves the performance of both models.
+The aKD approach consistently outperforms conventional KD,
+enhancing the performance of both architectures. Interestingly,
+we observe that the Conformer architecture outperforms the
+Transformer-based one, aligning with the findings of previous
+work [18] on the advantages of Conformers in the acoustic
+domain. Additionally, we compare the DET curves between
+Transformer and Conformer-based student models in Figure 2.
+The results show that applying aKD improves the DET curves,
+reducing the area under the curves for both models across all
+invocation types.
+5. Conclusion
+This paper addresses the challenge of improving device-
+directed speech detection accuracy in on-device architectures
+with limited computing resources. Specifically, we introduced
+an adaptive knowledge distillation approach that transfers ef-
+fectively the knowledge from the teacher to student. In this
+approach, we (i) unified the distillation losses focusing on the
+score, representation and attention distillation, quantifying the
+impact of each loss on DDSD accuracy, and showing their gen-
+eralization across different model architectures (attention-only
+and conformer-based). (ii) We tackled a challenging problem of
+multi-invocation DDSD and showed that our approach reduces
+EER by an average of 22% across different invocation types,
+and by 22.5% overall across transformer and conformer-based
+student architectures and invocations. This makes it a valuable
+solution for enhancing the user experience of voice-activated
+devices while being able to deploy it on device due to the small
+model size. While in this work we did not explore using other
+teacher models, that is part of our ongoing research.
+5791
+
+6. References
+[1] T. N. Sainath and C. Parada, “Convolutional Neural Networks for
+Small-Footprint Keyword Spotting,” in Proc. Interspeech 2015.
+[2] M. Wu, S. Panchapagesan, M. Sun, J. Gu, R. Thomas, S. N. P. Vi-
+taladevuni, B. Hoffmeister, and A. Mandal, “Monophone-Based
+Background Modeling for Two-Stage On-Device Wake Word De-
+tection,” in Proc. ICASPP 2018.
+[3] S. H. Mallidi, R. Maas, K. Goehner, A. Rastrow, S. Matsoukas,
+and B. Hoffmeister, “Device-Directed Utterance Detection,” in
+Proc. Interspeech 2018.
+[4] V. Garg, O. Rudovic, P. Dighe, A. H. Abdelaziz, E. Marchi,
+S. Adya, C. Dhir, and A. Tewfik, “Device-directed speech detec-
+tion: Regularization via distillation for weakly-supervised mod-
+els,” in Proc. Interspeech 2022.
+[5] G. Hinton, “Distilling the knowledge in a neural network,” arXiv
+preprint arXiv:1503.02531, 2015.
+[6] J. Gou, B. Yu, S. J. Maybank, and D. Tao, “Knowledge distilla-
+tion: A survey,” International Journal of Computer Vision, vol.
+129, no. 6, pp. 1789–1819, 2021.
+[7] H.-J. Chang, S.-w. Yang, and H.-y. Lee, “Distilhubert: Speech
+representation learning by layer-wise distillation of hidden-unit
+bert,” in ICASSP 2022-2022 IEEE International Conference on
+Acoustics, Speech and Signal Processing (ICASSP). IEEE, 2022,
+pp. 7087–7091.
+[8] S. Gandhi, P. von Platen, and A. M. Rush, “Distil-whisper: Robust
+knowledge distillation via large-scale pseudo labelling,” arXiv
+preprint arXiv:2311.00430, 2023.
+[9] S. Muralidharan,
+S. T. Sreenivas,
+R. B. Joshi,
+M. Cho-
+chowski, M. Patwary, M. Shoeybi, B. Catanzaro, J. Kautz, and
+P. Molchanov, “Compact language models via pruning and knowl-
+edge distillation,” in The Thirty-eighth Annual Conference on
+Neural Information Processing Systems, 2024.
+[10] T. Asami, R. Masumura, Y. Yamaguchi, H. Masataki, and
+Y. Aono, “Domain adaptation of dnn acoustic models using
+knowledge distillation,” in 2017 IEEE International Conference
+on Acoustics, Speech and Signal Processing (ICASSP).
+IEEE,
+2017, pp. 5185–5189.
+[11] Y. Yang, J. Qiu, M. Song, D. Tao, and X. Wang, “Distilling knowl-
+edge from graph convolutional networks,” in Proceedings of the
+IEEE/CVF conference on computer vision and pattern recogni-
+tion, 2020, pp. 7074–7083.
+[12] J. Cui, B. Kingsbury, B. Ramabhadran, G. Saon, T. Sercu,
+K. Audhkhasi, A. Sethy, M. Nussbaum-Thom, and A. Rosenberg,
+“Knowledge distillation across ensembles of multilingual mod-
+els for low-resource languages,” in 2017 IEEE International Con-
+ference on Acoustics, Speech and Signal Processing (ICASSP).
+IEEE, 2017, pp. 4825–4829.
+[13] G. Chen, W. Choi, X. Yu, T. Han, and M. Chandraker, “Learn-
+ing efficient object detection models with knowledge distillation,”
+Advances in neural information processing systems, vol. 30, 2017.
+[14] D. Chen, J.-P. Mei, H. Zhang, C. Wang, Y. Feng, and C. Chen,
+“Knowledge distillation with the reused teacher classifier,” in Pro-
+ceedings of the IEEE/CVF conference on computer vision and
+pattern recognition, 2022, pp. 11 933–11 942.
+[15] K. Jang, S. Kim, S. Yun, and H.-R. Kim, “Recycle-and-distill:
+Universal compression strategy for transformer-based speech ssl
+models with attention map reusing and masking distillation,”
+in 24th International Speech Communication Association, Inter-
+speech 2023.
+International Speech Communication Association,
+2023, pp. 316–320.
+[16] Y. Peng, Y. Sudo, S. Muhammad, and S. Watanabe, “Dphubert:
+Joint distillation and pruning of self-supervised speech models,”
+in Proceedings of the Annual Conference of the International
+Speech Communication Association, INTERSPEECH, vol. 2023,
+2023, pp. 62–66.
+[17] Y. Lee, K. JANG, J. Goo, Y. Jung, and H.-R. Kim, “Fithubert:
+Going thinner and deeper for knowledge distillation of speech
+self-supervised learning,” in 23rd Annual Conference of the In-
+ternational Speech Communication Association, INTERSPEECH
+2022.
+ISCA, 2022, pp. 3588–3592.
+[18] A. Gulati, J. Qin, C.-C. Chiu, N. Parmar, Y. Zhang, J. Yu, W. Han,
+S. Wang, Z. Zhang, Y. Wu et al., “Conformer: Convolution-
+augmented transformer for speech recognition,” Interspeech 2020,
+2020.
+[19] Z. Yao, D. Wu, X. Wang, B. Zhang, F. Yu, C. Yang, Z. Peng,
+X. Chen, L. Xie, and X. Lei, “Wenet: Production oriented stream-
+ing and non-streaming end-to-end speech recognition toolkit,”
+arXiv preprint arXiv:2102.01547, 2021.
+[20] O. Rudovic, W. Chang, V. Garg, P. Dighe, P. Simha, J. Berkowitz,
+A. H. Abdelaziz, S. Kajarekar, E. Marchi, and S. Adya, “Less is
+more: A unified architecture for device-directed speech detection
+with multiple invocation types,” in ICASSP 2023 - 2023 IEEE In-
+ternational Conference on Acoustics, Speech and Signal Process-
+ing (ICASSP), 2023.
+[21] H. Wang, Y. Zou, and W. Wang, “A global-local attention frame-
+work for weakly labelled audio tagging,” in ICASSP. IEEE, 2021.
+[22] A. Vaswani, N. Shazeer, N. Parmar, J. Uszkoreit, L. Jones, A. N.
+Gomez, L. u. Kaiser, and I. Polosukhin, “Attention is All You
+Need,” in Proc. NeurIPS 2017.
+[23] C. Szegedy, W. Liu, Y. Jia, P. Sermanet, S. Reed, D. Anguelov,
+D. Erhan, V. Vanhoucke, and A. Rabinovich, “Going deeper with
+convolutions,” 2014. [Online]. Available: https://arxiv.org/abs/
+1409.4842
+[24] Y. Peng, S. Dalmia, I. Lane, and S. Watanabe, “Branchformer:
+Parallel mlp-attention architectures to capture local and global
+context for speech recognition and understanding,”
+2022.
+[Online]. Available: https://arxiv.org/abs/2207.02971
+[25] D. P. Kingma and J. Ba, “Adam: A method for stochastic opti-
+mization,” arXiv preprint arXiv:1412.6980, 2014.
+[26] D. Wagner, A. Churchill, S. Sigtia, and E. Marchi, “Selma: A
+speech-enabled language model for virtual assistant interactions,”
+arXiv preprint arXiv:2501.19377, 2025.
+[27] T. Higuchi, A. Brueggeman, M. Delfarah, and S. Shum, “Mul-
+tichannel voice trigger detection based on transform-average-
+concatenate,” in 2024 IEEE International Conference on Acous-
+tics, Speech, and Signal Processing Workshops (ICASSPW).
+IEEE, 2024, pp. 510–514.
+5792
+

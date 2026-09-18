@@ -1,0 +1,562 @@
+Hybrid Expert Knowledge and Self-Supervised Learning for Diagnostic
+Modeling of Adductor Spasmodic and Primary Myotonic Dysphonia
+Zhou Du1,+, Hang Chen2,+, Huijun Ding1,∗, Jun Du2, Zhen Chen3
+1Shenzhen University, Shenzhen 518055, China
+2University of Science and Technology of China, Hefei 230027, China
+3East China Normal University, Shanghai 200241, China
+hjding@szu.edu.cn
+Abstract
+Dysphonia encompasses a broad spectrum of vocal dis-
+orders with diverse etiologies, among which adductor spas-
+modic dysphonia (ADSD) and primary muscle tension dys-
+phonia (pMTD) are particularly challenging to diagnose. Cur-
+rently, the primary diagnostic method relies on subjective audi-
+tory perception by highly experienced clinicians. To alleviate
+the scarcity of diagnostic resources, this study develops a deep
+learning–based approach for automatically diagnosing ADSD
+and pMTD using patients’ speech data. Our contributions are:
+(1) designing a convolutional neural network (CNN)–based di-
+agnostic model that leverages handcrafted features derived from
+expert knowledge and (2) incorporating self-supervised learn-
+ing (SSL) to extract more discriminative representations as in-
+put from raw waveforms adaptively. This marks the first appli-
+cation of deep learning techniques to ADSD and pMTD diag-
+nostic modeling, achieving a classification accuracy of 83.3%
+on our newly constructed dataset.
+Index Terms: speech disorder classification, self-supervised
+learning, diagnostic speech processing
+1. Introduction
+As is well known, accurate disease diagnosis is crucial for sub-
+sequent treatment plans [1]. Misdiagnosis can lead to inappro-
+priate treatments, potentially worsening the condition. How-
+ever, adductor spasmodic dysphonia (ADSD) and primary mus-
+cle tension dysphonia (pMTD) are often confused and misdiag-
+nosed [2, 3, 4]. This is because the clinical diagnosis of these
+two conditions primarily relies on subjective auditory percep-
+tion [5], yet their acoustic features are very similar, making it
+difficult for many non-specialist specialists to distinguish be-
+tween them [6]. In this context, there is a growing demand for
+automated diagnostic methods based on acoustic signals.
+In recent years, research on the automatic differential diag-
+nosis of ADSD and pMTD has gradually evolved from tradi-
+tional acoustic parameter analysis to multidimensional feature
+fusion and algorithm-driven approaches. Early studies based
+on long-term average spectra (LTAS) spectral moment parame-
+ters differentiated ADSD from pMTD, revealing the dispersed
+low-frequency energy distribution characteristic of ADSD [7],
+which belongs to steady-state speech segment analysis. Roy
+[8] further found significant dynamic differences in fundamen-
+tal frequency (F0) and glottal closure features between ADSD
+patients during reading and conversation tasks, while pMTD
+patients exhibited relatively stable features. Li [9] integrated
+a creak recognition model that incorporates prosodic position,
+*Corresponding author
+†These authors contribute equally
+Table 1: A comparison of previous and our datasets.
+Models Content pMTDs ADSDs Durations
+LTAS [7] sustained vowels 59 41 30min
+CSID [8] /a/ and one sentence 45 36 50min
+Creak% [9] six sentences 16 16 50min
+Ours /a/ /i/ and six sentences 40 40 200min
+pitch, and pitch range. An open source creak detector was em-
+ployed to compute the percentage of creak (Creak% ) in each
+of the six recorded sentences of the speakers, validating the
+complementary role of short-term perturbations and long-term
+prosodic features. A recent study found that the Cepstral Spec-
+tral Index of Dysphonia (CSID) [8] outperformed Creak% [9]
+and manual auditory assessment in distinguishing ADSD, with
+superior diagnostic accuracy, particularly on the normalized
+voiceless sentence [10]. However, existing work focuses on
+exploring the interpretability of limited features and verifying
+their effectiveness with shallow classifiers, such as SVM and
+random forests [7, 8, 9]. There remains significant room for
+improvement in the characterization of disease heterogeneity.
+Recently, deep learning techniques [11] have significantly
+improved various tasks driven by large-scale datasets. However,
+due to the relative rarity of ADSD patients or challenges in diag-
+nosis [12], existing datasets have relatively limited patients and
+audio contents, as shown in Table 1. LTAS includes sentences
+with all vowels, CSID primarily focuses on sustained vowels /a/
+and read sentences, while Creak% covers the first six sentences
+of the Rainbow Passage. This study is the first to construct a
+Mandarin speech dataset for ADSD and pMTD patients, com-
+bining vowels and six sentences, totaling 200 minutes in dura-
+tion, with data balance between the pMTD and ADSD groups.
+Moreover, the case annotations were completed by senior ex-
+perts with certification as licensed speech-language pathologists
+(CCC-SLP) in the United States.
+To address the challenge of differential diagnosis between
+these two disorders, we first designed a method that employs a
+CNN framework with multidimensional features from openS-
+MILE [13]. Then, we integrated a CNN-based diagnosis model
+with a self-supervised pre-trained feature extractor (such as
+WavLM [14]). Additionally, considering that pre-trained mod-
+els derived from different speech tasks may not be well-suited
+for the current specific task, we incorporated adapter modules
+into the self-supervised model to better adjust it for downstream
+tasks. Extensive experiments and comprehensive comparisons
+on a custom-built dataset validate the effectiveness of the CNN
+model and SSL features in diagnosing pMTD and ADSD. The
+contributions are summarized as follows:
+• designing a CNN-based diagnostic model that leverages mul-
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+3543 10.21437/Interspeech.2025-1406
+tidimensional features derived from acoustic knowledge;
+• incorporating an SSL-based feature extractor with adapters
+into the aforementioned diagnostic model to handle limited
+training samples;
+• verifying the effectiveness of the CNN-SSL diagnostic model
+through a series of experiments on a real-world pMTD and
+ADSD corpus.
+2. Related Work
+The differential diagnosis of ADSD and pMTD remains chal-
+lenging. Early studies [6] pointed out that acoustic and aero-
+dynamic parameters can be helpful in distinguishing ADSD,
+MTD, and vocal cord tremor. Rees [12] demonstrated that ex-
+perienced speech pathologists can identify voice disruptions, ir-
+regular vertical striations, and retained resonance peaks through
+spectral analysis, validating its potential for diagnosing dy-
+namic phonatory patterns. Yan [15] proposed a spatiotempo-
+ral analysis method using high-speed videoendoscopy, quanti-
+fying the asymmetry and inhomogeneity of vocal cord vibration
+patterns via Nyquist diagrams, along with glottal area wave-
+form analysis, successfully distinguishing symmetric vibrations
+in MTD from intermittent spasms in ADSD, providing a new
+paradigm for the objective assessment of dynamic vibrational
+patterns. Carroll [16] further explored aerodynamics and re-
+vealed that ADSD patients show higher glottal peak pressure
+and final airflow in /p/ syllable tasks, while pMTD patients,
+especially those with pMTD, have significantly reduced final
+airflow, providing a quantitative basis for the aerodynamic fea-
+tures of these two diseases. Chen [17] used high-speed videoen-
+doscopy (HSV) combined with digital kymography analysis to
+reveal unique oscillatory breaks in the onset phase of vocal fold
+vibration in ADSD patients, while MTD patients mainly ex-
+hibited excessive vocal fold tension with sustained supraglottic
+compression, providing a new method for visualizing and dis-
+tinguishing vibratory patterns.
+Other research has focused on exploring either ADSD or
+pMTD individually. By evaluating the IINFV o perceptual scale
+and AMPEX acoustic analysis, finding their complementary
+roles helped identify ADSD-specific voice disruptions and fun-
+damental frequency irregularities [18]. A work used spatiotem-
+poral processing to quantify vocal fold vibration irregularities in
+ADSD and distinguish them from neurological disorders [15].
+Latest work finding that Maximum Phonation Time (MPT) ef-
+fectively distinguishes SD subtypes, with ADSD patients hav-
+ing significantly longer MPT than controls [19]. For MTD de-
+tection, Past work shows that MTD patients exhibited posterior
+glottal gaps, and MPT was reduced compared to other acous-
+tic and analysis methods [3]. Another study found significant
+correlations between laryngeal features and abnormal subglottic
+pressure peaks, showing statistical significance [20]. One of the
+latest efforts used random forest models and multivariate sta-
+tistical analysis to reveal that the 15 acoustic and aerodynamic
+parameters recommended by the American Speech-Language-
+Hearing Association, overlap significantly when distinguishing
+pMTD from other voice disorders, with a classification accu-
+racy of only 65%. This indicates limitations in the traditional
+acoustic parameters for characterizing the heterogeneity and
+specificity of pMTD, suggesting the need for combining physi-
+ological dynamics to improve diagnostic accuracy [21].
+The automatic diagnosis of pathological voice disorders
+is receiving increasing attention, particularly with the applica-
+tion of deep learning algorithms in speech disorder classifica-
+tion. A review pointed out that the trend of combining self-
+supervised learning with acoustic features offers new perspec-
+tives for speech pathology applications [22]. A study demon-
+strated the advantages of the pre-trained Wav2Vec 2.0 model
+for cross-database speech disorder detection[23]. Another study
+proposed a hybrid model combining Mel frequency cepstral
+coefficient and other acoustic features to enhance the robust-
+ness of detection [24]. And improved classification accuracy
+by combining CNN with transfer learning [25]. One of the lat-
+est efforts presented a SSL approach that significantly improved
+speech disorder detection efficiency and scalability with a small
+amount of labeled data [26].
+3. Dataset
+The audio data in this study were collected from 80 participants
+at the V oice Evaluation Room of the Eye and ENT Hospital of
+Fudan University. The dataset consists of 40 ADSD patients
+and 40 pMTD patients, with detailed demographic information
+provided in Table 2. It is divided into three subsets: training,
+validation, and evaluation, with statistical analysis conducted
+on the number of sentences, speech duration, and gender dis-
+tribution of participants. Additionally, the dataset includes the
+total number of speech samples and gender distribution of the
+participants. The study was approved by the Ethical Review
+Committee of the Eye and ENT Hospital of Fudan University
+(IRB2021060).
+Table 2: Demographic information of subjects
+Dataset Train Val Eval Total
+Duration (min) 140 40 20 200
+Utterance 1,008 288 144 1,440
+Participant 56 16 8 80
+-Male 21 6 3 31
+-Female 34 10 5 49
+4. Method
+4.1. Framework overview
+As shown in Figure 1, the proposed framework integrates ex-
+pert knowledge-driven feature extraction with SSL to improve
+the differential diagnosis of ADSD and pMTD. The architec-
+ture consists of two parallel pathways: CNN-EK, which cap-
+tures handcrafted features derived from domain expertise, and
+CNN-SSL, which leverages self-supervised representations to
+adaptively extract salient speech patterns.
+In the CNN-EK branch, openSMILE extracts a compre-
+hensive set of handcrafted acoustic features, which are subse-
+quently processed through a series of one-dimensional convolu-
+tional layers to capture temporal dependencies. Meanwhile, the
+CNN-SSL branch directly operates on raw speech waveforms,
+utilizing a pre-trained WavLM model with adapter modules to
+refine feature representations for the specific classification task.
+The extracted representations are further processed through ad-
+ditional one-dimensional convolutional layers to enhance their
+discriminative capability. By combining expert knowledge with
+data-driven representation learning, this dual-branch framework
+effectively balances interpretability and adaptability. The final
+classification is achieved through a fully connected layer with a
+Sigmoid activation function, ensuring robust prediction results.
+3544
+Figure 1: Framework of CNN-EK and CNN-SSL models
+4.2. Model Architecture
+4.2.1. CNN-EK Module
+In the CNN-EK branch, a deep neural network is employed to
+process multidimensional handcrafted features derived from ex-
+pert knowledge. First, the openSMILE toolkit is used to extract
+various acoustic features from the audio data, including Mel
+frequency cepstral coefficients (MFCCs), root mean square en-
+ergy, zero-crossing rate, and fundamental frequency [27]. By
+extracting high-dimensional features, the model can effectively
+leverage the rich information embedded in these handcrafted
+representations.The CNN-EK extracts features as follows:
+(1) Short-Term Low-Level Descriptor (LLD) Extraction:
+Frame-based acoustic features are computed, including:
+• Mel frequency spectral coefficients:
+cn =
+KX
+k=1
+logEk· cos
+
+n
+
+k− 1
+2
+ π
+K
+
+, n = 1,..., 15
+(1)
+whereEk denotes Mel filterbank energy.
+• Log Mel Spectrum:
+Smel(m) = ln
+ N−1X
+k=0
+|X(k)|2Hm(k)
+!
+(2)
+with triangular Mel-scale filterbank Hm(k) to approximate
+human auditory perception.
+• Spectral Features: Linear Prediction Spectral coefficients and
+root mean square energy.
+(2) Statistical Functional Application: Window-level aggre-
+gation via 3 base functionals (µ,σ, ∆) and 19 extended func-
+tionals (e.g., quartiles):
+Q(p) =x⌈pN⌉, p ∈{ 0.25, 0.75} (3)
+The total dimensionality of the feature is derived as:
+NTotal = 1582 =
+GX
+g=1
+
+N (g)
+LLD×N (g)
+func
+
+(4)
+(3) Pitch-Centric Characterization: Supra-segmental dynam-
+ics are modeled through:
+• Fundamental Frequency: Detected by autocorrelation:
+F 0 =argmaxτ
+T−1X
+t=0
+s(t)s(t +τ) (5)
+The extracted features(1582-D vector from Equation 4)
+serve as input feature vectors for the deep neural network, en-
+abling hierarchical encoding of both frame-level acoustic pat-
+terns (e.g., MFCCs in Equation 1) and utterance-level prosodic
+trends (e.g., F0 contours in Equation 5). The final layer con-
+sists of a fully connected layer followed by a Sigmoid activation
+function to produce classification results.
+4.2.2. CNN-SSL Module
+In the CNN-SSL system, a self-supervised model based on
+WavLM is adopted [28]. The model architecture consists of
+a series of convolutional layers, feature projection layers, and
+encoder layers designed for processing and classifying speech
+data. It is initialized with a pre-trained WavLM feature encoder,
+which extracts high-dimensional features directly from raw
+speech waveforms. The feature extraction module comprises
+a sequence of convolutional layers, each employing a GELU
+activation function, along with normalization and dropout tech-
+niques to refine layer outputs. The model includes seven con-
+volutional layers, each designed to reduce dimensionality while
+preserving key speech information.
+Following feature extraction, the model employs an en-
+coder with self-attention mechanisms and feedforward layers,
+combined with position-based convolutional embeddings, to
+maintain the sequential characteristics of speech data. Addition-
+ally, adapter modules are incorporated to fine-tune each layer.
+These adapters modify the learned features from the WavLM
+model to better suit the specific classification task. The adapter
+operates hierarchically, where higher layers are fine-tuned using
+progressively narrower task-specific adapters, ensuring optimal
+feature customization for downstream tasks.
+After adaptation, the feature maps are further refined us-
+ing a one-dimensional convolutional neural network (CNN),
+enabling the model to capture temporal dependencies and ex-
+tract discriminative patterns required for classification. This ap-
+proach effectively harnesses the power of SSL while minimiz-
+ing the dependence on large labeled datasets, thereby enhancing
+model performance in low-resource scenarios.
+5. Experiments
+5.1. Experimental Setup
+5.1.1. Baselines
+To compare with previous work, we select the following models
+as baselines:
+• LTAS [7] Using the spectral matrix as feature input and com-
+3545
+pleting classification with a logistic regression classifier.
+• CSID [8] Using the spectral matrix as a feature input and
+completing the classification with a logistic regression clas-
+sifier.
+• Creak% [9] Using vocal fry as the sole feature, combined
+with a threshold classifier to complete the classification task.
+5.1.2. Evaluation Metrics and Strategy
+We evaluate the performance of the model using three widely
+recognized metrics: accuracy, specificity, and sensitivity.These
+metrics offer a thorough evaluation of the model’s performance,
+with sensitivity and specificity highlighting how effectively the
+model identifies positive and negative cases in binary classifica-
+tion tasks. The dataset is divided into training, validation, and
+test sets with a 0.7:0.2:0.1 ratio. To ensure reliable results, the
+mean and standard deviation of test performance are reported in
+multiple runs.
+5.2. Experimental Results
+In our proposed CNN-SSL model, we conducted an ablation
+study on four mainstream speech pre-trained models: Whis-
+per [29], SpeechTokenizer [30], Wav2Vec2 [31], and WavLM
+[14], as shown in Table 3. WavLM achieved the best per-
+formance across all three metrics, with an accuracy of 0.833
+and a sensitivity of 0.875, representing a relative improvement
+of 20.9% and 20.7%, respectively, compared to the baseline
+model Whisper. Notably, while WavLM has a larger parame-
+ter size, the smaller Wav2Vec2 model still achieved an accu-
+racy of 0.779, outperforming SpeechTokenizer and Whisper by
+7.7% and 13.1%, respectively. Therefore, WavLM is more suit-
+able for the classification of ADSD and pMTD. Consequently,
+we selected WavLM as the pre-trained model for the CNN-SSL
+framework in subsequent experiments.
+Table 3: Performance comparison of Whisper, SpeechTokenizer,
+Wav2vec2, and WavLM.
+Models Accuracy Specificity Sensitivity
+Whisper [29] 0.689 0.650 0.725
+SpeechTokenizer [30] 0.723 0.700 0.745
+Wav2vec2 [31] 0.779 0.758 0.800
+WavLM [14] 0.833 0.791 0.875
+To investigate the impact of different vowels on model
+performance, we conducted an additional ablation study. As
+shown in Table 4, the CNN-SSL model based on WavLM out-
+performed CNN-EK in overall classification accuracy. How-
+ever, further analysis revealed performance differences across
+vowels. Specifically, CNN-EK achieves better results on the
+vowel /i/, while CNN-SSL slightly outperforms on the vowel
+/a/. In addition, both CNN-EK and CNN-SSL outperform on
+the vowel /a/ than on the vowel /i/, and the best results were
+obtained when both vowels were combined.
+We conducted a comprehensive performance evaluation to
+validate the classification effectiveness of the proposed deep
+learning models. As shown in Table 5, both CNN-EK and
+CNN-SSL achieved substantial improvements over traditional
+methods. CNN-SSL demonstrated the highest classification
+performance, achieving an accuracy of 0.833 and a sensitivity
+of 0.875. CNN-EK also performed strongly, with an accuracy
+of 0.818 and a sensitivity of 0.862. In contrast, traditional ap-
+Table 4: Comparison of the classification performance of two
+vowel pairs models
+Model /a/ /i/ Accuracy Specificity Sensitivity
+✓ 0.779 0.738 0.820
+CNN-EK ✓ 0.742 0.688 0.795
+✓ ✓ 0.791 0.746 0.835
+✓ 0.782 0.737 0.828
+CNN-SSL ✓ 0.731 0.680 0.782
+✓ ✓ 0.807 0.764 0.850
+Table 5: The comparison of prediction performance. The best
+results are bold.
+Methods Accuracy Specificity Sensitivity
+LTAS [7] 0.583 0.500 0.600
+CSID [8] 0.663 0.660 0.680
+Creak% [9] 0.663 0.670 0.640
+CNN-EK 0.818 0.774 0.862
+CNN-SSL 0.833 0.791 0.875
+proaches such as LTAS, CSID, and Creak% exhibited lower ac-
+curacy, ranging from 0.583 for LTAS to 0.663 for CSID and
+Creak%, and lower sensitivity, with CSID reaching 0.68 and
+Creak% at 0.64.
+Beyond overall classification performance, the specificity
+results further emphasize the advantages of CNN-based mod-
+els, particularly in distinguishing pMTD cases. pMTD has been
+especially challenging to diagnose due to its greater variability
+in acoustic presentation, often leading to poorer classification
+performance in previous studies. CNN-SSL achieved a speci-
+ficity of 0.791, while CNN-EK reached 0.774, both substan-
+tially outperforming CSID at 0.66 and Creak% at 0.67. The
+improved specificity of CNN-based models indicates a stronger
+ability to accurately identify pMTD cases, reducing misclassifi-
+cation rates and enhancing diagnostic reliability. These findings
+demonstrate that deep learning models, particularly CNN-SSL,
+provide a more robust and precise approach for the differential
+diagnosis of ADSD and pMTD.
+6. Conclusion
+This study developed a deep learning-based method for diag-
+nosing ADSD and pMTD from speech data, addressing the lim-
+itations of traditional methods that use a limited set of features
+and shallow classifiers. Specifically, both CNN-EK and CNN-
+SSL showed excellent performance on a real-world dataset. Ab-
+lation experiments showed that the CNN-SSL model outper-
+formed CNN-EK, with adapter modules further improving the
+performance. Finally, the five-fold cross-validation confirmed
+that the model outperforms traditional methods in diagnostic
+accuracy, specificity, and sensitivity, demonstrating its potential
+to enhance dysphonia diagnosis.
+7. Acknowledgements
+This work was supported by the Medical Scientific Research
+Foundation of Guangdong Province of China (Grant No.
+B2023078), the Shenzhen University ENT Discipline Develop-
+ment Project sponsored by Shenzhen Huaqiang Holdings Co.,
+Ltd.
+3546
+8. References
+[1] R. Watson, J. Bryant, R. Sanson-Fisher, E. Mansfield, and T.-J.
+Evans, “What is a ‘timely’diagnosis? exploring the preferences of
+australian health service consumers regarding when a diagnosis
+of dementia should be disclosed,” BMC health services research,
+vol. 18, pp. 1–9, 2018.
+[2] C. Watts, C. Nye, and R. Whurr, “Botulinum toxin for treating
+spasmodic dysphonia (laryngeal dystonia): a systematic cochrane
+review,” Clinical Rehabilitation , vol. 20, no. 2, pp. 112–122,
+2006.
+[3] E. Van Houtte, K. Van Lierde, and S. Claeys, “Pathophysiology
+and treatment of muscle tension dysphonia: a review of the current
+knowledge,” Journal of Voice, vol. 25, no. 2, pp. 202–207, 2011.
+[4] J. B. Braden, J. Russo, M.-Y . Fan, M. J. Edlund, B. C. Martin,
+A. DeVries, and M. D. Sullivan, “Emergency department visits
+among recipients of chronic opioid therapy,” Archives of internal
+medicine, vol. 170, no. 16, pp. 1425–1432, 2010.
+[5] G. A. Grillone and T. Chan, “Laryngeal dystonia,” Otolaryngo-
+logic Clinics of North America, vol. 39, no. 1, pp. 87–100, 2006.
+[6] J. M. Barkmeier and J. L. Case, “Differential diagnosis of
+adductor-type spasmodic dysphonia, vocal tremor, and muscle
+tension dysphonia,” Current Opinion in Otolaryngology & Head
+and Neck Surgery, vol. 8, no. 3, pp. 174–179, 2000.
+[7] D. R. Houtz, N. Roy, R. M. Merrill, and M. E. Smith, “Differential
+diagnosis of muscle tension dysphonia and adductor spasmodic
+dysphonia using spectral moments of the long-term average spec-
+trum,” The laryngoscope, vol. 120, no. 4, pp. 749–757, 2010.
+[8] N. Roy, A. Mazin, and S. N. Awan, “Automated acoustic analysis
+of task dependency in adductor spasmodic dysphonia versus mus-
+cle tension dysphonia,” The Laryngoscope, vol. 124, no. 3, pp.
+718–724, 2014.
+[9] A. Li, W. Lai, and J. Kuang, “Creaky voice identification in man-
+darin: The effects of prosodic position, tone, pitch range and creak
+locality,” The Journal of the Acoustical Society of America , vol.
+154, no. 1, pp. 126–140, 2023.
+[10] N. Roy, S. N. Awan, S. Jennings, J. Jensen, and R. M. Merrill,
+“Adductor laryngeal dystonia versus muscle tension dysphonia:
+Examining the utility of automated acoustic analysis to detect task
+dependency as a distinguishing feature,” Journal of Speech, Lan-
+guage, and Hearing Research , vol. 67, no. 10, pp. 3612–3630,
+2024.
+[11] Y . LeCun, Y . Bengio, and G. Hinton, “Deep learning,”nature, vol.
+521, no. 7553, pp. 436–444, 2015.
+[12] C. J. Rees, P. D. Blalock, S. E. Kemp, S. L. Halum, and J. A.
+Koufman, “Differentiation of adductor-type spasmodic dysphonia
+from muscle tension dysphonia by spectral analysis,” Otolaryn-
+gology—Head and Neck Surgery , vol. 137, no. 4, pp. 576–581,
+2007.
+[13] F. Eyben, M. W ¨ollmer, and B. Schuller, “Opensmile: the mu-
+nich versatile and fast open-source audio feature extractor,” in
+Proceedings of the 18th ACM international conference on Mul-
+timedia, 2010, pp. 1459–1462.
+[14] S. Chen, C. Wang, Z. Chen, Y . Wu, S. Liu, Z. Chen, J. Li,
+N. Kanda, T. Yoshioka, X. Xiaoet al., “Wavlm: Large-scale self-
+supervised pre-training for full stack speech processing,” IEEE
+Journal of Selected Topics in Signal Processing , vol. 16, no. 6,
+pp. 1505–1518, 2022.
+[15] Y . Yan, K. Izdebski, and E. Marriott, “Spatio-temporal processing
+of massive glottic images from high-speed videoendoscopy,” in
+Photonic Therapeutics and Diagnostics VII , vol. 7883. SPIE,
+2011, pp. 281–290.
+[16] L. Carroll, A. Rooney, T. J. Ow, and M. Tan, “Pressure and flow
+comparisons across vocal pathologies,” Journal of Voice, vol. 32,
+no. 1, pp. 95–100, 2018.
+[17] W. Chen, P. Woo, and T. Murry, “Vibratory onset of adductor spas-
+modic dysphonia and muscle tension dysphonia: A high-speed
+video study,”Journal of Voice, vol. 34, no. 4, pp. 598–603, 2020.
+[18] D. I. Siemons-L ¨uhring, M. Moerman, J.-P. Martens, D. Deuster,
+F. M¨uller, and P. Dejonckere, “Spasmodic dysphonia, perceptual
+and acoustic analysis: presenting new diagnostic tools,”European
+Archives of Oto-Rhino-Laryngology , vol. 266, pp. 1915–1922,
+2009.
+[19] N. K. Nerurkar and S. Goyal, “Utility of maximum phonation
+time in the diagnosis of spasmodic dysphonia (laryngeal dysto-
+nia),” The Journal of Laryngology & Otology, pp. 1–5, 2024.
+[20] O. Garaycochea, J. M. A. Navarrete, B. Del R ´ıo, and
+S. Fern ´andez, “Muscle tension dysphonia: which laryngoscopic
+features can we rely on for diagnosis?” Journal of Voice, vol. 33,
+no. 5, pp. 812–e15, 2019.
+[21] A. C. Shembel, J. Lee, J. R. Sacher, and A. M. Johnson, “Char-
+acterization of primary muscle tension dysphonia using acoustic
+and aerodynamic voice metrics,” Journal of Voice, vol. 37, no. 6,
+pp. 897–906, 2023.
+[22] M. U. Rehman, A. Shafique, Q.-U.-A. Azhar, S. S. Jamal,
+Y . Gheraibia, and A. B. Usman, “V oice disorder detection using
+machine learning algorithms: An application in speech and lan-
+guage pathology,” Engineering Applications of Artificial Intelli-
+gence, vol. 133, no. 108047, 2024.
+[23] S. Tirronen, F. Javanmardi, M. Kodali, S. R. Kadiri, and P. Alku,
+“Utilizing wav2vec in database-independent voice disorder detec-
+tion,” in ICASSP 2023-2023 IEEE International Conference on
+Acoustics, Speech and Signal Processing (ICASSP). IEEE, 2023,
+pp. 1–5.
+[24] V . Verma, A. Benjwal, A. Chhabra, S. K. Singh, S. Kumar, B. B.
+Gupta, V . Arya, and K. T. Chui, “A novel hybrid model integrat-
+ing mfcc and acoustic parameters for voice disorder detection,”
+Scientific Reports, vol. 13, no. 1, p. 22719, 2023.
+[25] X. Peng, H. Xu, J. Liu, J. Wang, and C. He, “V oice disorder classi-
+fication using convolutional neural network based on deep transfer
+learning,” Scientific Reports, vol. 13, no. 1, p. 7264, 2023.
+[26] D. Ribas, M. A. Pastor, A. Miguel, D. Mart ´ınez, A. Ortega,
+and E. Lleida, “Automatic voice disorder detection using self-
+supervised representations,” Ieee Access , vol. 11, pp. 14 915–
+14 927, 2023.
+[27] D. Turcian and V . Stoicu-Tivadar, “Speech emotion recognition
+using opensmile and gpt 3.5 transformer,” in Digital Health and
+Informatics Innovations for Sustainable Health Care Systems .
+IOS Press, 2024, pp. 924–928.
+[28] Y . Guo, H. Huang, X. Chen, H. Zhao, and Y . Wang, “Audio deep-
+fake detection with self-supervised wavlm and multi-fusion atten-
+tive classifier,” in ICASSP 2024-2024 IEEE International Con-
+ference on Acoustics, Speech and Signal Processing (ICASSP) .
+IEEE, 2024, pp. 12 702–12 706.
+[29] N. Cao, Y .-R. Lin, X. Sun, D. Lazer, S. Liu, and H. Qu, “Whis-
+per: Tracing the spatiotemporal process of information diffusion
+in real time,” IEEE transactions on visualization and computer
+graphics, vol. 18, no. 12, pp. 2649–2658, 2012.
+[30] X. Zhang, D. Zhang, S. Li, Y . Zhou, and X. Qiu, “Speechtok-
+enizer: Unified speech tokenizer for speech large language mod-
+els,” arXiv preprint arXiv:2308.16692, 2023.
+[31] A. Baevski, Y . Zhou, A. Mohamed, and M. Auli, “wav2vec
+2.0: A framework for self-supervised learning of speech repre-
+sentations,” Advances in neural information processing systems ,
+vol. 33, pp. 12 449–12 460, 2020.
+3547

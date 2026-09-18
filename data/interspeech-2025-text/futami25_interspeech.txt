@@ -1,0 +1,625 @@
+Scheduled Interleaved Speech-Text Training for Speech-to-Speech Translation
+with LLMs
+Hayato Futami1, Emiru Tsunoo1, Yosuke Kashiwagi1, Yuki Ito1, Hassan Shahmohammadi2, Siddhant
+Arora3, Shinji Watanabe3
+1Sony Group Corporation, Japan
+2Sony Europe, Germany
+3Carnegie Mellon University, USA
+Hayato.Futami@sony.com
+Abstract
+Speech-to-speech translation (S2ST) has been advanced with
+large language models (LLMs), which are fine-tuned on discrete
+speech units. In such approaches, modality adaptation from text
+to speech has been an issue. LLMs are trained on text-only
+data, which presents challenges to adapt them to speech modal-
+ity with limited speech-to-speech data. To address the training
+difficulty, we propose scheduled interleaved speech–text train-
+ing in this study. We use interleaved speech–text units instead of
+speech units during training, where aligned text tokens are inter-
+leaved at the word level. We gradually decrease the ratio of text
+as training progresses, to facilitate progressive modality adapta-
+tion from text to speech. We conduct experimental evaluations
+by fine-tuning LLaMA3.2-1B for S2ST on the CVSS dataset.
+We show that the proposed method consistently improves the
+translation performances, especially for languages with limited
+training data.
+Index Terms:
+speech-to-speech translation, large language
+model, modality adaptation
+1. Introduction
+Speech-to-speech translation (S2ST) is a promising technology
+converts speech from one language to another, which can be
+useful for communicating with people who do not share the
+same language. Traditionally, S2ST has been solved by cas-
+caded approaches, which consist of automatic speech recog-
+nition (ASR), machine translation (MT), and text-to-speech
+(TTS) synthesis [1]. In contrast, end-to-end S2ST systems have
+emerged [2–9], which are jointly optimized to translate speech
+in a source language into speech in a target language. They
+have the advantage of simplified architecture and avoiding error
+propagation through joint optimization.
+Recently, the end-to-end systems have adopted discrete
+speech units, instead of continuous mel-spectrogram features
+[4–9]. There are mainly two types of discrete units: semantic
+and acoustic units. Semantic units capture semantic information
+in speech and are obtained from self-supervised (SSL) speech
+encoders [10, 11]. Acoustic units capture acoustic details and
+are obtained from neural codecs [12, 13]. For S2ST, seman-
+tic speech LMs are used for semantic translation, and acoustic
+LMs are connected for high-quality speech generation, often
+with preserving speaker identities [7–9].
+After the success of LLMs in the natural language process-
+ing field [14], various efforts have been made to fine-tune pre-
+trained LLMs for speech processing [15–21]. They have been
+mainly applied to ASR and speech-to-text translation tasks. The
+use of discrete speech units paves the way for S2ST based on
+pre-trained LLMs. AudioPaLM [7], a representative study on
+this, fine-tunes a text LLM (PaLM2 [22]) on semantic units.
+Figure 1: Interleaved speech–text units used as input and out-
+put of LLM. Text ratio p is gradually decreased as training pro-
+gresses, which we call scheduled interleaved training.
+Due to strong language understanding capabilities of the LLM,
+AudioPaLM outperforms existing speech-to-text and speech-to-
+speech translation systems in a wide range of languages. In this
+study, we build an S2ST system following AudioPaLM.
+In fine-tuning text LLMs for the speech tasks, modality
+adaptation has been an issue. As LLMs are trained on large-
+scale text-only data, it would be challenging to adapt LLMs
+to the speech domain with limited supervised data. There are
+length and representation gaps between speech and text modal-
+ities [23, 24], which have been addressed by length compres-
+sion [17, 24], modality adapter modules [21], and training ob-
+jectives [24]. In AudioPaLM [7], an SSL speech encoder is fine-
+tuned with an ASR task before LLM fine-tuning. This helps
+mitigate the modality gap by obtaining discrete speech units
+that are similar to the text representations, leading to substan-
+tial performance improvement.
+More recently, SpiRitLM [25] has been proposed as a
+speech–text multimodal LM, which is pre-trained on large-scale
+speech-only, text-only, and aligned speech–text data. SpiRitLM
+employs interleaved speech–text representations for training on
+aligned data, where speech and aligned text units are randomly
+mixed at the word level. The training is reported to achieve bet-
+ter modality transfer, which leads to performance improvement
+on speech and text comprehension tasks.
+In this study, we propose scheduled interleaved speech–text
+training, shown in Figure 1. We focus on fine-tuning pre-trained
+LLMs with limited supervised data for S2ST, instead of pre-
+training foundational speech–text LMs as in [25]. Since pre-
+trained LLMs do not have the capabilities to interpret and gen-
+erate speech units, we propose progressively adapting LLMs to
+speech units. We use word-level interleaved speech and text
+units for both the input and output ends in S2ST. For progres-
+sive adaptation, we propose gradually decaying the ratio of text
+units to zero, which finally results in all being speech units as
+expected during inference.
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+36
+10.21437/Interspeech.2025-1595
+
+Figure 2: Our LLM-based speech-to-speech translation system.
+In experimental evaluations, we built an S2ST system by
+fine-tuning LLaMA3.2-1B LLM [26] on the CVSS corpus [27].
+We used discrete speech units from a w2v-BERT encoder,
+which was fine-tuned for ASR with the CTC objective. For
+waveform generation, we used a unit-based HiFi-GAN vocoder
+[28, 29]. The overall system is shown in Figure 2. We show
+that the proposed scheduled interleaved speech–text training
+improved the S2ST performances, which can be attributed to
+better modality adaptation. The proposed method was consis-
+tently effective across languages, and was especially effective
+for languages with limited training data.
+2. Related work
+2.1. Speech-to-speech translation (S2ST)
+End-to-end speech-to-speech translation (S2ST) systems have
+been actively studied, which is jointly optimized as a speech-to-
+speech task [2–9]. Early studies have solved the task by directly
+predicting spectrograms in a target language with sequence-to-
+sequence models [2,3]. Recently, speech synthesis has emerged
+to be conducted with autoregressive LMs on discrete speech
+units [28, 30–33].
+Two types of discrete speech units have
+been considered. The first type is semantic units, which repre-
+sent semantic information obtained from SSL speech encoders.
+The second type is acoustic units, which represent acoustic de-
+tails from neural codecs. Generative spoken language model-
+ing (GSLM) is trained on semantic units for speech continua-
+tion [30]. AudioLM is trained on both semantic and acoustic
+units [31]. VALL-E extends LMs trained on acoustic units for
+zero-shot TTS [32, 33]. Following this trend, S2ST has also
+been solved with discrete speech units. UnitY [5] adopts seman-
+tic units with two-pass architecture of speech-to-text and text-
+to-unit conversion, which are also trained on massively mul-
+tilingual data, known as SeamlessM4T [6]. AudioPaLM fine-
+tunes a pre-trained LLM on semantic units, and generate speech
+via acoustic units by AudioLM [31]. PolyVoice [8] and MSLM-
+S2ST [9] adopt the similar architecture that consists of semantic
+and acoustic LMs. In this study, we focus on how to fine-tune
+a pre-trained LLM and semantic accuracy in translation. As in
+AudioPaLM, we focus on fine-tuning a pre-trained LLM on se-
+mantic units, and generating speech by unit HiFi-GAN vocoder,
+as in [6,28] 1.
+1Instead of AudioLM, a unit vocoder is used due to its simplicity
+and training stability
+2.2. LLM for speech processing
+The NLP field has witnessed significant progress with LLMs
+[14,22,26]. Various efforts have been conducted to extend pre-
+trained LLMs to the speech modality, in the context of multi-
+modal LLMs [15–21]. They add a speech encoder as a frontend
+to the LLM to enable speech input, where foundational SSL
+or speech recognition models are adopted. In addition, length
+and modality adapters are often introduced to fill the modality
+gap between the speech encoder and the LLM [17, 21]. These
+models use continuous features as input to the LLM and focus
+mainly on speech-to-text tasks. Instead of continuous represen-
+tations, several approaches leverage discrete speech units and
+integrate speech generation tasks [18, 20], including S2ST [7].
+Recently, SpiRitLM has been proposed, which is pre-trained
+on interleaved speech–text, and shows strong speech–text com-
+prehension and in-context learning capabilities [25]. This is
+also extended with synthetic interleaved data [34]. Instead of
+pre-training foundational speech–text LMs that can freely mix
+speech and text, we focus on fine-tuning a pre-trained LLMs
+with limited supervised data and propose a scheduling that grad-
+ually decreases the text ratio.
+3. Method
+3.1. Speech-to-speech translation system
+As shown in Figure 2, we adopt a speech-to-speech translation
+(S2ST) system fine-tuned from an LLM, as in AudioPaLM [7].
+Let Ssrc denote semantic units in a source language, and Stgt
+denote those in a target language. End-to-end S2ST is trained to
+predict Stgt from Ssrc, by minimizing the following objective
+function:
+L = −log p(Stgt|Ssrc; θ),
+(1)
+where θ denotes the model parameter. As done in [7], we con-
+sider predicting transcribed text T src and translated text T tgt as
+intermediate steps, which is jointly modeled as:
+L = −log p(Stgt|T tgt, T src, Ssrc; θ)
+p(T tgt|T src, Ssrc; θ)p(T src|Ssrc; θ),
+(2)
+which we call chain-of-thought (CoT) prompting. Note that the
+model has access to Ssrc when predicting Stgt, enabling end-
+to-end optimization [7]. The model parameter is initialized with
+that of text LLM. Its vocabulary V is extended to a combination
+of the vocabulary of speech units Vs and that of text BPEs Vt
+from the LLM, i.e. V = Vs ∪Vt.
+LLMs have been pre-trained solely on text tokens, without
+seeing speech data. Therefore, it would be difficult for LLMs
+to adapt to speech units in the fine-tuning stage, as supervised
+training data is often limited. There are modality gaps between
+speech and text in terms of their lengths and representations
+[23], which makes the cross-modal fine-tuning difficult. It has
+been demonstrated that fine-tuning an SSL encoder for ASR is
+effective [7], which would reduce the modality gap and alleviate
+the training difficulty.
+3.2. Scheduled interleaved speech–text training
+In addition to ASR fine-tuning of SSL, we propose scheduled
+interleaved speech–text training inspired by SpiRitLM [25], for
+better modality adaptation. First, we calculate the word-level
+alignment of speech. As we adopt a speech encoder fine-tuned
+for CTC-based ASR, we can exploit the alignment given by the
+37
+
+Algorithm 1 Interleaved speech–text units
+Input: speech semantic units S = {s1, ..., sM}, word align-
+ments A = {(a1, b1, w1), ..., (aj, bj, wj), ..., (aN, bN, wN)}
+Output: interleaved speech–text units Ip
+1: Initialize Ip ←S, J ←{0, ..., N}.
+2: while N −|J| ≤p · N do
+3:
+Randomly select j ∈J.
+4:
+Sample length l ∼Poission(λ).
+5:
+Replace saj, ..., sbj+l in Ip with BPE(wj, ..., wj+l).
+6:
+J ←J −{j, ..., j + l}.
+7: end while
+Table 1:
+The effect of ASR fine-tuning (FT) of w2v-BERT
+(W2VB) and Chain-of-Thought (CoT) prompting.
+Fr-en
+ASR-BLEU(↑) / UTMOS(↑)
+W2VB
+9.6/4.35
+ASR FT W2VB (baseline)
+28.8/4.21
+w/o CoT
+13.7/4.21
+CTC [35], without relying on any external aligners. Then, we
+randomly mix speech and aligned text units at word level, to
+construct the interleaved speech–text units, as shown in Figure
+1. We use the interleaved speech–text units Isrc
+p
+and Itgt
+p
+in-
+stead of speech semantic units during LLM fine-tuning, where
+p denotes the text ratio. The Eq.(2) is rewritten with Isrc
+p
+and
+Itgt
+p
+as:
+L = −log p(Itgt
+p |T tgt, T src, Isrc
+p ; θ)
+p(T tgt|T src, Isrc
+p ; θ)p(T src|Isrc
+p ; θ).
+(3)
+Algorithm 1 explains the detail of the interleaving algo-
+rithm. The inputs are speech semantic units S (Ssrc or Stgt)
+and corresponding word alignments A, represented as start and
+end frame indices ai, bi in S, and word representations wi. The
+output is interleaved speech–text units Ip (Isrc
+p
+or Itgt
+p ). We ran-
+domly select word spans, by selecting start index j from remain-
+ing indices J (Line 3) and span length l from a Poisson distribu-
+tion (Line 4). Speech units in the selected span saj, ..., sbj+l are
+replaced with corresponding Byte Pair Encoding (BPE) tokens
+BPE(wj, ..., wj+l) (Line 5). The text replacement is applied
+while the percentage of words selected does not exceed the text
+ratio p (Line 2).
+In this study, we consider scheduling of the text interleav-
+ing ratio p, according to training steps. We propose decaying
+the text ratio p as training progresses (e.g. every 300 steps), to
+achieve seamless modality shift from a text LLM to a speech
+LLM. This means that the ratio of speech units, longer than
+text units, are gradually increased. Its length and learned rep-
+resentations are gradually adapted, as shown later in Figure 3,
+which would mitigate the difficulty of modality adaptation. The
+scheduling of p is the main difference from SpiRitLM [25]. In
+addition, we focus on fine-tuning for the S2ST task with lim-
+ited supervised data, rather than large-scale pre-training as in
+SpiRitLM. Different from SpiRitLM, we also investigate mul-
+tilingual settings, semantic units with ASR fine-tuning, and a
+combination with chain-of-thought prompting.
+4. Experimental evaluations
+We conducted speech-to-speech translation (S2ST) experiments
+based on the CVSS [27] corpus. The CVSS corpus is a widely
+used corpus for multilingual S2ST, built by speech synthe-
+sis from the CoVoST2 [36] speech-to-text translation corpus.
+CVSS consists of two versions: CVSS-C with a single high-
+quality canonical voice and CVSS-T with voice transfer from
+source speakers. We used the CVSS-C in the experiments.
+As described in Section 3, we used semantic units from the
+fine-tuned SSL encoder. We fine-tuned the w2v-BERT encoder
+for ASR on all the CoVoST2 and CVSS training data (21 lan-
+guages plus English). The w2v-BERT fine-tuning was done
+with the Adam optimizer with a learning rate of 2e−5. We
+added a linear layer for BPE of size 5K, and trained the entire
+model using the CTC objective. Then, we trained k-means of
+cluster size 2048 on features from the 20th w2v-BERT layer,
+using the CoVoST+CVSS data. We used cluster indices from
+the k-means as semantic units, without applying deduplication.
+We fine-tuned LLaMA3.2-1B2 LM on each language subset of
+CVSS. The vocabulary of the LM jointly consists of around
+12K text BPEs (identical to the original LLaMA) and 2048
+speech units. The LM fine-tuning was done with Adam opti-
+mizer of learning rate of 5e−5 and dropout rate of 0.2. During
+training and inference, we applied CoT prompting in Eq. (3),
+where speech recognition and text translation are conducted as
+intermediate steps. We implemented the w2v-BERT and LM
+fine-tuning with the ESPnet toolkit [37]. For waveform gener-
+ation, we trained a unit HiFi-GAN vocoder on the CVSS data,
+which consists of synthesized single-speaker speech in English.
+In the unit HiFi-GAN, we used semantic units from w2v-BERT
+as input, instead of mel-spectrograms. We implemented it with
+the ParallelWaveGAN toolkit following its LJSpeech recipe 3.
+First, we tested the effectiveness of ASR fine-tuning of
+w2v-BERT and CoT prompting in Table 1. We used the CVSS
+French-to-English (Fr-en). We fine-tuned the LM on the train
+set of Fr-en, and evaluated it on the test set 4. The translation
+accuracy was evaluated with ASR-BLEU scores, where BLEU
+scores were calculated on ASR transcripts of generated speech,
+by Whisper [38] large-v3 model. The audio quality was eval-
+uated with UTMOS [39]. We confirmed that ASR fine-tuning
+(ASR FT) was crucial for the accuracy, as observed in [7, 40].
+We also confirmed that CoT prompting was effective, as in [7].
+Hereafter, we regard the LM applied both of them as a baseline.
+Table 2 shows the main experiments for proposed sched-
+uled interleaved training (ILT), on subsets of seven languages
+in CVSS. We compared three training methods: the baseline
+without any interleaving (Baseline), proposed scheduled inter-
+leaved speech–text training (Scheduled ILT), and ILT without
+scheduling (ILT w/o scheduling). For ILT, we obtained the word
+alignments via CTC segmentation [35], by using the fine-tuned
+w2v-BERT encoder. In scheduled ILT, the text ratio p in Al-
+gorithm 1 was initialized with 0.9. The text ratio p was gradu-
+ally decreased by 0.1, every 300 training steps. In ILT without
+scheduling, we used a constant p of 0.3. Table 2 shows that
+scheduled ILT outperformed the baseline in terms of translation
+accuracy (ASR-BLEU) in all the seven languages, demonstrat-
+ing the effectiveness of our proposed method. We also found
+that the improvements were particularly large in the languages
+with less training data (It-en, Ru-en, and Pt-en). It would be
+2https://huggingface.co/meta-llama/Llama-3.2-1B
+3https://github.com/kan-bayashi/ParallelWaveGAN
+4We randomly sampled 1K samples from the test set. The number
+of samples is too large (more than 10K) in some languages.
+38
+
+Table 2: Speech-to-speech translation (S2ST) performances on CVSS, reported with ASR-BLEU and UTMOS scores. Proposed sched-
+uled interleaved speech-text training (ILT) outperformed baseline without it in ASR-BLEU.
+Fr-en
+De-en
+Es-en
+Ca-en
+It-en
+Ru-en
+Pt-en
+(180h)
+(119h)
+(97h)
+(81h)
+(28h)
+(16h)
+(7h)
+Baseline
+28.8/4.21
+27.3/4.22
+33.5/4.28
+23.8/4.17
+12.8/4.23
+6.0/4.25
+10.3/4.17
++Scheduled ILT
+29.5/4.23
+29.2/4.21
+33.9/4.28
+25.9/4.21
+19.5/4.23
+14.1/4.23
+19.5/4.17
++ILT w/o scheduling
+25.8/4.11
+22.1/4.11
+21.9/4.29
+17.8/4.10
+14.4/4.22
+6.0/4.12
+12.0/4.11
+Table 3: Ablation studies of S2ST on CVSS Pt-en, reported with
+ASR-BLEU and UTMOS scores.
+Pt-en
+Scheduled ILT
+19.5/4.17
+- Interleave input only
+11.1/4.18
+- Interleave output only
+12.6/4.18
+- Mask instead of interleave
+6.2/4.17
+- Interleave without alignment
+11.5/4.16
+difficult to adapt to the speech modality with limited speech-to-
+speech data, but the proposed training alleviated the difficulty.
+This is favorable for real-world applications, where supervised
+training data is often limited. Also, we confirmed that the quali-
+ties of generated speech (UTMOS) were in a high level, regard-
+less of the training methods. Finally, we compared scheduled
+ILT with one w/o scheduling, and found that the scheduling was
+effective for the translation performances.
+Table 3 shows ablation studies on the components of sched-
+uled ILT, on the CVSS Portuguese-to-English (Pt-en) subset. As
+described in Section 3, we used interleaved speech–text units
+at both the input (source) and output (target) sides Isrc
+p
+and
+Itgt
+p . To see whether interleaving in both sides is necessary,
+we compared this with interleaving in either input or output
+side (Row 2 or 3). For example, interleaving in the input side
+only corresponds to using Stgt instead of Itgt
+p
+in Eq. (3). We
+show that interleaving in both sides was necessary for transla-
+tion performances, comparing it with interleaving in the input
+or output side only. Also, we see whether our method is not
+just a data augmentation method with noisy input and output,
+comparing it with masking instead of interleaving the text to-
+kens (Row 4). Specifically, we replaced selected speech units
+saj, ..., sbj+l with a special mask token ([MASK]) instead of
+BPE at Line 5 in Algorithm 1. We observed that masking per-
+formed worse compared to speech–text interleaving. Finally, to
+see whether word alignment is necessary, we apply interleaving
+without alignment (Row 5). We assume that the words appear at
+equal intervals in speech. This is represented as ai = i·⌊M/N⌋
+and bi = (i+1)·⌊M/N⌋−1 in Algorithm 1. We observed that
+interleaving without alignment led to performance degradation,
+demonstrating the importance of alignment.
+Figure 3 shows how proposed scheduled ILT affects the
+training in terms of length and learned representations between
+speech and text. We used baseline and scheduled ILT models for
+Pt-En. The left figure shows the ratio of the speech-unit length
+against the text-unit length i.e. |S|/|T|. Instead of S, sched-
+uled ILT adopts interleaved units Ip. We measured it for both
+the source and target sides. We found that the lengths signifi-
+cantly varied between speech and text, where the speech units
+are longer than text, by 21.7 times in the source and 13.1 times
+in the target sequence. Scheduled ILT gradually decreased the
+text ratio p, so the lengths were gradually increased, as shown in
+(a) Length
+(b) Representation similarity
+Figure 3: Length and learned representation gaps between
+speech (S) and text (T), seen during training of baseline (Base)
+and scheduled ILT (SILT). Text ratio p is gradually decayed by
+0.1 every 300 steps.
+Figure 3 5, which would reduce the training difficulty. The right
+figure shows the cosine similarity of the hidden representations.
+We analyzed the hidden states of the last LLaMA layer, aver-
+aged over the sequence corresponding to each input type (e.g.
+Ssrc). We measured cosine similarity, between source speech
+and text (src S-T), between source and target text (src-tgt T),
+and between target text and speech (tgt T-S). We found that the
+baseline model had difficulty in learning speech–text relation-
+ship in the early training stages. On the other hand, in scheduled
+ILT, the speech–text similarities were much higher in the early
+stages, due to the high proportion of text in interleaving. This
+would help learn the interaction between speech and text, and
+the learned representations at the final stage (without interleav-
+ing, p = 0) were more similar than the baseline. In contrast,
+scheduled ILT did not bring impact on text–text similarity, as
+our method improved speech–text adaptation.
+5. Conclusions
+In this study, we have proposed a new training method
+named scheduled interleaved speech–text training for LLM-
+based speech-to-speech translation (S2ST). We use interleaved
+speech–text units as the input and output of LLM, instead of the
+speech units, during fine-tuning LLM. We gradually decrease
+the ratio of text in interleaving, for better modality adaptation
+from text to speech. We have conducted S2ST experiments on
+the CVSS corpus, and have shown that our method consistently
+improved the translation performances across seven languages.
+In future work, we will extend the proposed approach to other
+speech-to-speech systems, such as spoken dialog systems.
+5The jump on length was observed between p = 0.1 and 0. The
+actual text ratio is larger than p, because the loop in Algorithm 1 was
+stopped when the text ratio exceeds p.
+39
+
+6. References
+[1] S. Nakamura, K. Markov, H. Nakaiwa, G. Kikui, H. Kawai,
+T. Jitsuhiro, J.-S. Zhang, H. Yamamoto, E. Sumita, and S. Ya-
+mamoto, “The ATR multilingual speech-to-speech translation
+system,” TASLP, 2006.
+[2] Y. Jia, R. J. Weiss, F. Biadsy, W. Macherey, M. Johnson, Z. Chen,
+and Y. Wu, “Direct speech-to-speech translation with a sequence-
+to-sequence model,” in Interspeech, 2019.
+[3] Y. Jia, M. T. Ramanovich, T. Remez, and R. Pomerantz, “Trans-
+latotron 2: High-quality direct speech-to-speech translation with
+voice preservation,” in International Conference on Machine
+Learning, 2021.
+[4] A. Lee, P.-J. Chen, C. Wang, J. Gu, S. Popuri, X. Ma, A. Polyak,
+Y. Adi, Q. He, Y. Tang, J. Pino, and W.-N. Hsu, “Direct speech-
+to-speech translation with discrete units,” in ACL, 2022.
+[5] H. Inaguma, S. Popuri, I. Kulikov, P.-J. Chen, C. Wang, Y.-A.
+Chung, Y. Tang, A. Lee, S. Watanabe, and J. Pino, “UnitY: Two-
+pass direct speech-to-speech translation with discrete units,” in
+ACL, 2023.
+[6] SeamlessCommunication et al., “SeamlessM4T: Massively mul-
+tilingual&multimodal machine translation,” 2023.
+[7] P. K. Rubenstein et al., “AudioPaLM: A large language model
+that can speak and listen,” ArXiv, 2023.
+[8] Q. qian Dong, Z. Huang, Q. Tian, C. Xu, T. Ko, yunlong zhao,
+S. Feng, T. Li, K. Wang, X. Cheng, F. Yue, Y. Bai, X. Chen, L. Lu,
+Z. MA, Y. Wang, M. Wang, and Y. Wang, “PolyVoice: Language
+models for speech to speech translation,” in ICLR, 2024.
+[9] Y. Peng, I. Kulikov, Y. Yang, S. Popuri, H. Lu, C. Wang, and
+H. Gong, “MSLM-S2ST: A multitask speech language model for
+textless speech-to-speech translation with speaker style preserva-
+tion,” ArXiv, 2024.
+[10] W.-N. Hsu, B. Bolte, Y.-H. H. Tsai, K. Lakhotia, R. Salakhutdi-
+nov, and A. rahman Mohamed, “HuBERT: Self-supervised speech
+representation learning by masked prediction of hidden units,”
+TASLP, 2021.
+[11] Y.-A. Chung, Y. Zhang, W. Han, C.-C. Chiu, J. Qin, R. Pang,
+and Y. Wu, “w2v-BERT: Combining contrastive learning and
+masked language modeling for self-supervised speech pre-
+training,” ASRU, 2021.
+[12] N.
+Zeghidour,
+A.
+Luebs,
+A.
+Omran,
+J.
+Skoglund,
+and
+M. Tagliasacchi, “SoundStream:
+An end-to-end neural audio
+codec,” TASLP, 2021.
+[13] A. D´efossez, J. Copet, G. Synnaeve, and Y. Adi, “High fidelity
+neural audio compression,” arXiv, 2022.
+[14] T. B. Brown et al., “Language models are few-shot learners,”
+ArXiv, 2020.
+[15] Y. Fathullah, C. Wu, E. Lakomkin, J. Jia, Y. Shangguan, K. Li,
+J. Guo, W. Xiong, J. Mahadeokar, O. Kalinli, C. Fuegen, and
+M. L. Seltzer, “Prompting large language models with speech
+recognition abilities,” ICASSP, 2023.
+[16] M. Wang, W. Han, I. Shafran, Z. Wu, C.-C. Chiu, Y. Cao,
+Y. Wang, N. Chen, Y. Zhang, H. Soltau, P. K. Rubenstein, L. Zilka,
+D. Yu, Z. Meng, G. Pundak, N. Siddhartha, J. Schalkwyk, and
+Y. Wu, “SLM: Bridge the thin gap between speech and text foun-
+dation models,” ASRU, 2023.
+[17] J. Wu, Y. Gaur, Z. Chen, L. Zhou, Y. Zhu, T. Wang, J. Li, S. Liu,
+B. Ren, L. Liu, and Y. Wu, “On decoder-only architecture for
+speech-to-text and large language model integration,” in ASRU,
+2023.
+[18] S. Maiti, Y. Peng, S. Choi, J. weon Jung, X. Chang, and S. Watan-
+abe, “VoxtLM: Unified decoder-only models for consolidating
+speech recognition, synthesis and speech, text continuation tasks,”
+ICASSP, 2023.
+[19] Y. Chu, J. Xu, X. Zhou, Q. Yang, S. Zhang, Z. Yan, C. Zhou, and
+J. Zhou, “Qwen-Audio: Advancing universal audio understanding
+via unified large-scale audio-language models,” ArXiv, 2023.
+[20] D. Zhang, S. Li, X. Zhang, J. Zhan, P. Wang, Y. Zhou, and X. Qiu,
+“SpeechGPT: Empowering large language models with intrinsic
+cross-modal conversational abilities,” in EMNLP, 2023.
+[21] C. Tang, W. Yu, G. Sun, X. Chen, T. Tan, W. Li, L. Lu, Z. MA,
+and C. Zhang, “SALMONN: Towards generic hearing abilities for
+large language models,” in ICLR, 2024.
+[22] R. Anil et al., “PaLM 2 technical report,” ArXiv, 2023.
+[23] Y. Liu, J. Zhu, J. Zhang, and C. Zong, “Bridging the modality gap
+for speech-to-text translation,” ArXiv, 2020.
+[24] I. Tsiamas, G. G´allego, J. Fonollosa, and M. Costa-juss`a, “Push-
+ing the limits of zero-shot end-to-end speech translation,” in ACL,
+2024.
+[25] T. Nguyen, B. Muller, B. Yu, M. R. Costa-juss`a, M. Elbayad,
+S. Popuri, P.-A. Duquenne, R. Algayres, R. Mavlyutov, I. Gat,
+G. Synnaeve, J. Pino, B. Sagot, and E. Dupoux, “SpiRit-LM: In-
+terleaved spoken and written language model,” TACL, 2024.
+[26] A. Dubey et al., “The llama 3 herd of models,” ArXiv, 2024.
+[27] Y. Jia, M. Tadmor Ramanovich, Q. Wang, and H. Zen, “CVSS
+corpus and massively multilingual speech-to-speech translation,”
+in LREC, 2022.
+[28] A. Polyak, Y. Adi, J. Copet, E. Kharitonov, K. Lakhotia, W.-N.
+Hsu, A. rahman Mohamed, and E. Dupoux, “Speech resynthesis
+from discrete disentangled self-supervised representations,” in In-
+terspeech, 2021.
+[29] J. Kong, J. Kim, and J. Bae, “HiFi-GAN: Generative adversar-
+ial networks for efficient and high fidelity speech synthesis,” in
+NeurIPS, 2020.
+[30] K. Lakhotia, E. Kharitonov, W.-N. Hsu, Y. Adi, A. Polyak,
+B. Bolte, T.-A. Nguyen, J. Copet, A. Baevski, A. Mohamed, and
+E. Dupoux, “On generative spoken language modeling from raw
+audio,” TACL, 2021.
+[31] Z. Borsos, R. Marinier, D. Vincent, E. Kharitonov, O. Pietquin,
+M. Sharifi, D. Roblek, O. Teboul, D. Grangier, M. Tagliasacchi,
+and N. Zeghidour, “AudioLM: A language modeling approach to
+audio generation,” TASLP, 2023.
+[32] C. Wang, S. Chen, Y. Wu, Z.-H. Zhang, L. Zhou, S. Liu, Z. Chen,
+Y. Liu, H. Wang, J. Li, L. He, S. Zhao, and F. Wei, “Neural
+codec language models are zero-shot text to speech synthesizers,”
+TASLP, 2023.
+[33] Z.-H. Zhang, L. Zhou, C. Wang, S. Chen, Y. Wu, S. Liu, Z. Chen,
+Y. Liu, H. Wang, J. Li, L. He, S. Zhao, and F. Wei, “Speak for-
+eign languages with your own voice: Cross-lingual neural codec
+language modeling,” ArXiv, 2023.
+[34] A. Zeng, Z. Du, M. Liu, L. Zhang, S. Jiang, Y. Dong, and J. Tang,
+“Scaling speech-text pre-training with synthetic interleaved data,”
+ArXiv, 2024.
+[35] L. Kurzinger, D. Winkelbauer, L. Li, T. Watzel, and G. Rigoll,
+“CTC-segmentation of large corpora for german end-to-end
+speech recognition,” in SPECOM, 2020.
+[36] C. Wang, A. Wu, J. Gu, and J. Pino, “CoVoST 2 and massively
+multilingual speech translation,” in Interspeech, 2021.
+[37] S. Watanabe, T. Hori, S. Karita, T. Hayashi, J. Nishitoba, Y. Unno,
+N. Enrique Yalta Soplin, J. Heymann, M. Wiesner, N. Chen,
+A. Renduchintala, and T. Ochiai, “ESPnet: End-to-end speech
+processing toolkit,” in Interspeech, 2018.
+[38] A. Radford, J. W. Kim, T. Xu, G. Brockman, C. McLeavey, and
+I. Sutskever, “Robust speech recognition via large-scale weak su-
+pervision,” in ICML, 2022.
+[39] T. Saeki, D. Xin, W. Nakata, T. Koriyama, S. Takamichi, and
+H. Saruwatari, “UTMOS: Utokyo-sarulab system for voicemos
+challenge 2022,” Interspeech, 2022.
+[40] C.-W. Huang, H. Lu, H. Gong, H. Inaguma, I. Kulikov, R. Mav-
+lyutov, and S. Popuri, “Investigating decoder-only large language
+models for speech-to-text translation,” Interspeech, 2024.
+40

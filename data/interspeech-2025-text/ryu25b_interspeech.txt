@@ -1,0 +1,557 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+Unified Microphone Conversion: Many-to-Many Device Mapping via
+Feature-wise Linear Modulation
+⋆Myeonghoon Ryu1,2, ⋆Hongseok Oh3, Suji Lee1, Han Park1
+1Deeply Inc., Republic of Korea
+2Seoul National University, Republic of Korea
+3University of California, San Diego, USA
+myeonghoon.ryu@deeply.co.kr, h1oh@ucsd.edu, suji@deeply.co.kr, han@deeply.co.kr
+Abstract
+We present Unified Microphone Conversion, a unified gen-
+erative framework designed to bolster sound event classifica-
+tion (SEC) systems against device variability. While our prior
+CycleGAN-based methods effectively simulate device charac-
+teristics, they require separate models for each device pair,
+limiting scalability.
+Our approach overcomes this constraint
+by conditioning the generator on frequency response data, en-
+abling many-to-many device mappings through unpaired train-
+ing. We integrate frequency-response information via Feature-
+wise Linear Modulation, further enhancing scalability. Addi-
+tionally, incorporating synthetic frequency response differences
+improves the applicability of our framework for real-world ap-
+plication. Experimental results show that our method outper-
+forms the state-of-the-art by 2.6% and reduces variability by
+0.8% in macro-average F1 score.
+Index Terms: sound event classification, generative adversarial
+network, domain adaptation, device variability, deep learning
+1. Introduction
+Sound Event Classification (SEC) involves identifying audio
+events in a sound recording, enabling systems to recognize spe-
+cific sounds such as speech, music, or environmental noises.
+However, the accuracy of these systems is often compromised
+by distortions introduced by recording devices.
+These dis-
+tortions can arise from device-specific characteristics—such
+as frequency response mismatches, microphone sensitivity, or
+built-in signal processing algorithms—as well as environmen-
+tal factors, including background noise and reverberation. Al-
+though often unnoticed by human listeners, these distortions can
+significantly diminish the accuracy of SEC systems. [1]
+Previous methods to address the impact of device vari-
+ability have mainly focused on data augmentation and data-
+independent normalization techniques. [2, 3, 4] Our previous
+method tackles this challenge by utilizing a CycleGAN [5] to
+generate synthetic training audio samples, thereby simulating
+recordings captured with various devices. While this approach
+successfully leverages unpaired training data to model device
+characteristics, it still relies on a deterministic, one-to-one map-
+ping between two specific device domains. Consequently, a
+separate model must be trained for each device pair, leading
+to scalability challenges when dealing with multiple devices.
+Motivated by this limitation, we propose a many-to-many
+device mapping approach utilizing a CycleGAN framework
+combined with Feature-wise Linear Modulation (FiLM) [6],
+incorporating frequency response data of recording devices.
+We hypothesize that integrating device frequency response in-
+⋆These authors contributed equally to this work.
+formation via FiLM can accurately specify the desired inter-
+domain mappings while maintaining consistent acoustic infor-
+mation. Specifically, we modulate the channel-wise statistics
+of the generator’s intermediate embeddings by incorporating
+frequency-response-related embeddings, allowing the model to
+capture inter-device transformations.
+By not restricting the
+model to particular source–target pairs, this method provides a
+scalable and adaptable solution to address device variability in
+sound event classification. Moreover, we introduce a synthetic
+frequency difference generation algorithm to enhance the scala-
+bility of the Unified Microphone Conversion network, enabling
+more efficient training of SEC models across diverse domains
+without needing additional frequency response data.
+2. Related Work
+In tackling device variability, various strategies have been de-
+veloped through the DCASE Challenges [1].
+Common data
+augmentation techniques such as noise addition, convolving
+room impulse response, pitch shifting, SpecAugment [7], and
+MixUp [8] are frequently employed to diversify training data
+with a range of acoustic conditions. However, while these meth-
+ods can provide marginal performance gains, they often fail to
+account for the distortions that arise from recording devices.
+Consequently, the mismatch in frequency response or built-in
+signal processing among devices remains unaddressed, limiting
+the effectiveness of these methods in real-world scenarios.
+More complex methods that manipulate frequency statis-
+tics have emerged to enhance generalization in the presence of
+device variability. For example, MixStyle [2] exchanges fre-
+quency components to mimic the effects of different devices.
+Likewise, Residual Normalization [9] and Relaxed Instance
+Frequency-wise Normalization (RFN) [3] focus on normaliz-
+ing frequency-wise statistics to counteract device-specific dis-
+tortions. Furthermore, FilterAugment [10] simulates device-
+induced filtering by applying weights to frequency bands, help-
+ing the model handle device-specific spectral variations.
+Recently, a Microphone Conversion approach [11] utilized
+the CycleGAN framework to address device variability by gen-
+erating synthetic spectrograms that mimic recordings from var-
+ious devices. While it outperformed all previous methods and
+established the state-of-the-art for handling device variability
+across multiple devices, its reliance on one-to-one domain map-
+pings limits scalability, as a separate model must be trained for
+each device pair—making it a strong but impractical baseline
+for comparison. This requirement becomes increasingly chal-
+lenging with the expanding array of recording devices, espe-
+cially if new data becomes available or additional devices are
+introduced, as it necessitates retraining the network.
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+1333
+10.21437/Interspeech.2025-1356
+
+Figure 1: The training pipeline of the Unified Microphone Conversion model. The model receives an input spectrogram and a frequency
+response difference—computed by subtracting the frequency response of the source device from that of the target device—and outputs
+a spectrogram that simulates the target device domain. The FiLM encoder is jointly trained with G to learn device-specific modulation
+parameters, while each domain i is assigned its own discriminator Di to enforce alignment with the target device’s distribution.
+Figure 2: The training phase for SEC models using the trained
+Unified Microphone Conversion model G. Either real-world or
+synthetic frequency response difference data are provided to the
+FiLM encoder, which then modulates the generator G, produc-
+ing converted spectrograms for robust SEC model training.
+3. Methodology
+3.1. Unified Microphone Conversion
+We aim to generate a spectrogram corresponding to a differ-
+ent recording device, given the original spectrogram and the
+frequency response difference between the input and target de-
+vices. This approach eliminates the need for multiple generators
+for each device pair, allowing more scalable architecture.
+In this work, we propose a Unified Microphone Conver-
+sion framework that combines key concepts from CycleGAN
+and FiLM to tackle device variability in audio recordings. Our
+method conditions the CycleGAN generator with FiLM encoder
+utilizing the frequency response difference, granting more ver-
+satile and efficient handling of diverse devices, overcoming the
+limitation of CycleGAN, which relies on a bijective mapping.
+In contrast to the conventional CycleGAN setup, which em-
+ploys two generators and two discriminators, our modified ar-
+chitecture consolidates two generators into a single unified gen-
+erator augmented by outputs of a FiLM encoder. This gener-
+ator is supported by k discriminators, each assigned to one of
+k distinct device domains. We adopt the architectures for the
+generator and discriminator from Ryu et al. [11].
+Figure 3: (left) Mutual information estimates between the tar-
+get device and the dimension-wise statistics—the embeddings
+averaged across each dimension—at different layers of the Mi-
+crophone Conversion network. (right) Classification accuracy
+of the target device given these dimension-wise statistics.
+3.2. FiLM Encoder
+A FiLM encoder maps the frequency response difference to
+the scaling and shifting factors (γ, β) for each feature map.
+We apply FiLM-based modulation to the channel-wise feature
+statistics within the first residual block of the Unified Micro-
+phone Conversion network, harnessing scaling and shifting fac-
+tors generated by our FiLM encoder. As illustrated in Figure
+3, this choice is motivated by an analysis showing that channel-
+wise statistics exhibit the highest mutual information with the
+target device. The mutual information is estimated following
+the method presented by Wang et al. [12] The FiLM encoder it-
+self comprises three convolutional blocks—each consisting of a
+1D convolution, instance normalization, a ReLU activation, and
+a multi-layer perceptron that outputs the modulation factors.
+1334
+
+Figure 4: The first two rows display the input spectrogram of different acoustic contents and recording devices, and the frequency
+response difference between the target and input devices. The third row presents samples generated by Unified Microphone Conversion
+using these inputs, while the final row depicts ground truth spectrograms from the target devices.
+3.3. Synthetic Frequency Response Difference
+We propose a method to randomly generate synthetic frequency
+response differences for the FiLM encoder during the inference
+phase of the Unified Microphone Conversion, which is the train-
+ing phase of the SEC model. This approach mitigates the high
+cost and technical complexity of collecting frequency response
+data, while producing more diverse output spectrograms.
+To achieve this, we first segment the frequency range
+into multiple bands and assign random reference values at the
+boundaries of these bands. These values are samples within
+a predefined range from a uniform distribution and randomly
+assigned positive or negative signs to introduce variation. To
+ensure a gradual transition across the frequency bins, linear in-
+terpolation is applied between adjacent boundary values, form-
+ing a continuous frequency response difference curve.
+This
+method effectively simulates diverse frequency response vari-
+ations without requiring real-world calibration data, making it
+practical for augmenting training datasets for SEC models.
+4. Experiments and Results
+4.1. Dataset
+The development set comprises 75 unique sound events and
+315,966 audio segments (each 930 ms), recorded using seven
+end-user devices (iPhone 14, Galaxy S22, iPad 7, Galaxy Tab
+A8, Apple Watch SE, MacBook Pro 2020, and LG Gram 2020)
+in an ISO 3745–compliant anechoic chamber. [13] The audio
+is downsampled to 22,050 Hz and transformed into log Mel
+spectrograms using a 1,024-bin Hanning window, a 256-bin hop
+length, and 80 Mel bands. Following the procedure described
+in Sections 2 and 3.2 of Ryu et al. [11], we adopt the same
+dataset split for a fair evaluation—datatrain,mc, datatrain,sec,
+and dataval,sec—for Unified Microphone Conversion training,
+SEC model training, and SEC model validation, respectively.
+We extend the dataset by adding frequency response data of
+each device, defined as log Mel spectra (128 Mel bands) from
+200-ms segments of recorded impulses. The Kronecker delta
+function is used to generate the impulse with readily available
+mobile phones, providing a cost-effective alternative to more
+rigorous methods for characterizing the frequency response.
+Moreover, as the DCASE dataset lacks impulse response infor-
+mation, our dataset-which includes real device IRs and greater
+class and device diversity-is more suitable for our experiments.
+4.2. Implementation Details
+For the training of the Unified Microphone Conversion network,
+we use Adam optimizer [14] for 100 epochs with a learning rate
+5 × 10−4, divided by 10 every 30 epochs, with a batch size
+400 on 4 RTX 4090s. We adopt a generated image buffer [15]
+for each discriminator. We replace the negative log likelihood
+loss with the least square loss [16]. The cycle consistency loss
+weight set to 10 to emphasize its importance in the total loss
+function. For the SEC systems, ResNet-50 [17] serve as the
+backbone architecture. We use the AdamW optimizer [18] for
+200 epochs with a learning rate 1 × 10−3, divided by 10 every
+25 epochs, with a batch size 100 on a RTX 4090. Each SEC
+system is trained exclusively on recordings from a single source
+device, which are converted to six other devices via the Unified
+Microphone Conversion, while some samples remain unaltered.
+Figure 1 and 2 illustrate the training and deployment pipeline of
+Unified Microphone Conversion model.
+We adopt two variants of the proposed approach, Unified-
+MC-Real and Unified-MC-Synth. Unified-MC-Real leverages
+measured frequency responses collected from actual devices to
+ensure accurate modeling of real-world characteristics. In con-
+trast, Unified-MC-Synth employs synthetically generated fre-
+quency responses, removing the need for device-specific mea-
+surements while still capturing essential spectral variations.
+1335
+
+Table 1: Macro-average F1 scores of SEC models trained on sound samples from each source device with the Unified Microphone
+Conversion network. The performance is evaluated utilizing validation sound samples from all seven devices.
+(a) Experiment result of Unified-MC-Real with recorded frequency response
+Source Device
+Target Device
+iPhone 14
+Galaxy S22
+iPad 7
+Galaxy Tab A8
+Apple Watch SE
+MacBook Pro
+LG Gram
+iPhone14
+0.974
+0.968
+0.936
+0.938
+0.883
+0.912
+0.917
+GalaxyS22
+0.964
+0.966
+0.920
+0.903
+0.888
+0.916
+0.879
+iPad7
+0.945
+0.928
+0.964
+0.928
+0.903
+0.863
+0.904
+GalaxyTabA8
+0.953
+0.940
+0.930
+0.973
+0.868
+0.802
+0.869
+AppleWatchSE
+0.894
+0.882
+0.874
+0.795
+0.967
+0.907
+0.735
+MacbookPro
+0.918
+0.922
+0.862
+0.741
+0.914
+0.977
+0.852
+LG-Gram
+0.907
+0.913
+0.878
+0.809
+0.823
+0.849
+0.974
+(b) Experiment result of Unified-MC-Synth with synthetic frequency response
+Source Device
+Target Device
+iPhone 14
+Galaxy S22
+iPad 7
+Galaxy Tab A8
+Apple Watch SE
+MacBook Pro
+LG Gram
+iPhone14
+0.974
+0.962
+0.943
+0.928
+0.910
+0.914
+0.901
+GalaxyS22
+0.945
+0.970
+0.881
+0.878
+0.878
+0.905
+0.858
+iPad7
+0.950
+0.929
+0.964
+0.909
+0.902
+0.869
+0.890
+GalaxyTabA8
+0.942
+0.922
+0.906
+0.972
+0.837
+0.801
+0.818
+AppleWatchSE
+0.896
+0.865
+0.860
+0.752
+0.970
+0.891
+0.764
+MacbookPro
+0.928
+0.908
+0.870
+0.786
+0.913
+0.973
+0.858
+LG-Gram
+0.813
+0.842
+0.791
+0.701
+0.668
+0.806
+0.975
+Table 2: Results for generalization capability of our method and previous methods on the validation set. Source device (S) is iPhone
+14, and target devices (T1 - T6) are Galaxy S22, iPad 7, Galaxy Tab A8, Apple Watch SE, Macbook Pro (’20), and LG Gram (’20),
+respectively. The last column shows an average and 95% confidence interval of the performance.
+Method
+F1 Score
+S
+T1
+T2
+T3
+T4
+T5
+T6
+Overall (- S)
+Baseline
+0.982
+0.409
+0.709
+0.248
+0.471
+0.687
+0.491
+0.503 ± 0.167
+MC-100-Gen
+0.981
+0.958
+0.912
+0.894
+0.899
+0.831
+0.852
+0.891 ± 0.043
+MC-200-Gen
+0.982
+0.969
+0.909
+0.903
+0.912
+0.859
+0.887
+0.907 ± 0.035
+Unified-MC-Real
+0.975
+0.967
+0.936
+0.939
+0.885
+0.913
+0.913
+0.933 ± 0.027
+Unified-MC-Synth
+0.974
+0.968
+0.936
+0.938
+0.883
+0.912
+0.917
+0.933 ± 0.027
+Ideal
+0.983
+0.982
+0.972
+0.985
+0.979
+0.983
+0.986
+0.981 ± 0.005
+4.3. Results
+Table 1 presents the performance of Unified-MC-Real and
+Unified-MC-Synth, each trained on data from different source
+devices. Each row represents a model trained on a particular
+device, showcasing robust performance across heterogeneous
+recording conditions. The results confirm that both methods
+significantly enhance resilience against device mismatch, as ev-
+idenced by consistent performance gains in classification task.
+In Table 2, the Ideal system represents an ideal scenario in
+which data from all seven devices are available during training.
+The Baseline system is a SEC model trained on iPhone 14 data
+only, without any additional techniques, which demonstrates the
+extent of performance deterioration caused by device mismatch.
+The state-of-the-art methods, MC-100-Gen and MC-200-Gen,
+employ multiple Microphone Conversion models for each de-
+vice pair, each trained for 100 or 200 epochs, respectively, to
+generate augmented audio for SEC model training. Our meth-
+ods substantially bridge the gap between the Baseline and Ideal
+systems, outperforming the state-of-the-art by 2.6% and reduc-
+ing variability by 0.8% in the macro-average F1 score. Notably,
+Unified-MC-Synth performs comparably to Unified-MC-Real,
+despite not requiring recorded device frequency response.
+5. Conclusions and Limitations
+We propose Unified Microphone Conversion to address device
+variability in SEC systems, overcoming the bijective mapping
+limitation of CycleGAN while boosting scalability. By modu-
+lating the generator’s intermediate embeddings with device fre-
+quency response information, our approach further improves
+SEC performance across diverse devices, outperforming the
+state-of-the-art method that requires training multiple gener-
+ators. Additionally, synthetic frequency response differences
+eliminate the need for collecting measured device data, further
+enhancing scalability. However, the synthetic frequency gen-
+eration is currently based on hand-crafted rules. Another lim-
+itation is the absence of a direct evaluation metric for Unified
+Microphone Conversion. The current work relies on classifica-
+tion performance to assess the quality of domain adaptation.
+1336
+
+6. References
+[1] I.
+Mart´ın-Morat´o,
+F.
+Paissan,
+A.
+Ancilotto,
+T.
+Heittola,
+A. Mesaros, E. Farella, A. Brutti, and T. Virtanen, “Low-
+complexity acoustic scene classification in dcase 2022 challenge,”
+2022.
+[2] F. Schmid, S. Masoudian, K. Koutini, and G. Widmer, “CP-
+JKU submission to dcase22:
+Distilling knowledge for low-
+complexity convolutional neural networks from a patchout audio
+transformer,” DCASE2022 Challenge, Tech. Rep., June 2022.
+[3] B. Kim, S. Yang, J. Kim, H. Park, J. Lee, and S. Chang, “Domain
+Generalization with Relaxed Instance Frequency-wise Normaliza-
+tion for Multi-device Acoustic Scene Classification,” in Proc. In-
+terspeech 2022, 2022, pp. 2393–2397.
+[4] H. Nam, S.-H. Kim, and Y.-H. Park, “Filteraugment: An acous-
+tic environmental data augmentation method,” in ICASSP 2022
+- 2022 IEEE International Conference on Acoustics, Speech and
+Signal Processing (ICASSP), 2022, pp. 4308–4312.
+[5] J.-Y. Zhu, T. Park, P. Isola, and A. A. Efros, “Unpaired image-
+to-image translation using cycle-consistent adversarial networks,”
+in Proceedings of the IEEE international conference on computer
+vision, 2017, pp. 2223–2232.
+[6] E. Perez, F. Strub, H. de Vries, V. Dumoulin, and A. C. Courville,
+“Film: Visual reasoning with a general conditioning layer,” in
+AAAI, 2018.
+[7] D. S. Park, W. Chan, Y. Zhang, C.-C. Chiu, B. Zoph, E. D. Cubuk,
+and Q. V. Le, “SpecAugment: A Simple Data Augmentation
+Method for Automatic Speech Recognition,” in Proc. Interspeech
+2019, 2019, pp. 2613–2617.
+[8] H. Zhang, M. Cisse, Y. N. Dauphin, and D. Lopez-Paz, “mixup:
+Beyond empirical risk minimization,” in International Conference
+on Learning Representations, 2018.
+[9] B. Kim, S. Yang, J. Kim, and S. Chang, “QTI submission to
+DCASE 2021:
+Residual normalization for device-imbalanced
+acoustic scene classification with efficient design,” DCASE2021
+Challenge, Tech. Rep., June 2021.
+[10] H. Nam, B.-Y. Ko, G.-T. Lee, S.-H. Kim, W.-H. Jung, S.-M. Choi,
+and Y.-H. Park, “Heavily augmented sound event detection utiliz-
+ing weak predictions,” DCASE2021 Challenge, Tech. Rep., June
+2021.
+[11] M. Ryu, H. Oh, S. Lee, and H. Park, “Microphone conversion:
+Mitigating device variability in sound event classification,” in
+ICASSP 2024 - 2024 IEEE International Conference on Acous-
+tics, Speech and Signal Processing (ICASSP), 2024, pp. 1426–
+1430.
+[12] Y. Wang, Z. Ni, S. Song, L. Yang, and G. Huang, “Revisiting
+locally supervised learning: an alternative to end-to-end training,”
+in International Conference on Learning Representations (ICLR),
+2021.
+[13] International Organization for Standardization, Acoustics – De-
+termination of sound power levels and sound energy levels of
+noise sources using sound pressure – Engineering methods for
+small movable sources in reverberant fields – Part 1: Comparison
+method for a hard-walled test room, Std. 3745-1, 2012.
+[14] D. P. Kingma and J. Ba, “Adam: A method for stochastic op-
+timization,” in 3rd International Conference on Learning Repre-
+sentations, ICLR 2015, San Diego, CA, USA, May 7-9, 2015, Con-
+ference Track Proceedings, Y. Bengio and Y. LeCun, Eds., 2015.
+[15] A. Shrivastava, T. Pfister, O. Tuzel, J. Susskind, W. Wang, and
+R. Webb, “Learning from simulated and unsupervised images
+through adversarial training,” in Proceedings of the IEEE confer-
+ence on computer vision and pattern recognition, 2017, pp. 2107–
+2116.
+[16] X. Mao, Q. Li, H. Xie, R. Y. Lau, Z. Wang, and S. Paul Smolley,
+“Least squares generative adversarial networks,” in Proceedings
+of the IEEE international conference on computer vision, 2017,
+pp. 2794–2802.
+[17] K. He, X. Zhang, S. Ren, and J. Sun, “Deep Residual Learning for
+Image Recognition,” in Proceedings of 2016 IEEE Conference on
+Computer Vision and Pattern Recognition, ser. CVPR ’16. IEEE,
+Jun. 2016, pp. 770–778.
+[18] I. Loshchilov and F. Hutter, “Decoupled weight decay regulariza-
+tion,” in International Conference on Learning Representations,
+2019.
+1337
+

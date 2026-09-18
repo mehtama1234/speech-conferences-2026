@@ -1,0 +1,768 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+GTA: Towards Generative Text-To-Audio Retrieval via Multi-Scale Tokenizer
+Minghui Fang1, Shengpeng Ji1, Jialong Zuo1, Xize Cheng1, Wenrui Liu1, Xiaoda Yang1, Ruofan Hu1,
+Jieming Zhu2, Zhou Zhao1,∗∗
+1Zhejiang University, China
+2Huawei Noah’s Ark Lab, China
+minghuifang@zju.edu.cn, zhaozhou@zju.edu.cn
+Abstract
+Text-to-audio retrieval is a fundamental task in acoustic signal
+processing. Currently, mainstream approaches primarily em-
+ploy a dual-tower architecture, independently encoding text and
+audio while performing similarity score matching. However,
+these methods struggle to maintain a uniform embedding space
+and the latency of score matching increases with corpus size. In
+this light, we propose GTA to move towards a generative text-
+to-audio retrieval paradigm. Specifically, we utilize a multi-
+scale audio tokenizer to embed audio semantics into identifiers,
+while incorporating a dual-alignment strategy to ensure consis-
+tency between audio and text semantics. Furthermore, we im-
+plement curriculum learning to bridge the gap between train-
+ing and inference, guiding the model toward precise token-level
+generation. Extensive experiments demonstrate the effective-
+ness and robustness of GTA, further validating the feasibility of
+the generative text-to-audio retrieval paradigm.
+Index Terms: text-to-audio retrieval, generative retrieval
+1. Introduction
+Text-to-audio retrieval is a fundamental task in acoustic signal
+processing, enabling users to intuitively retrieve corresponding
+audio using natural language descriptions.
+Current classical
+methods [1, 2, 3, 4] treat this task as a discriminative learn-
+ing problem, employing a dual-tower framework to project text
+queries and candidate audio into a unified high-dimensional
+embedding space, where audio is ranked based on similarity
+scores. However, these methods struggle to effectively align
+data from different modalities [5] and become inefficient when
+dealing with large-scale corpora. Specifically, due to the signifi-
+cant disparity in semantic representations across modalities, the
+dual-tower framework typically requires large-scale pretraining
+to bridge this gap. Additionally, as the number of candidate au-
+dios increases, the similarity computation and ranking process
+introduces higher latency [6].
+As an emerging paradigm in document retrieval, generative
+retrieval [7, 8, 9, 10] introduces a new perspective and possibili-
+ties for cross-modal retrieval. As shown in Figure 1 (b), the core
+idea is to assign a semantic identifier to each candidate target,
+and then use a language model to replace the traditional retrieval
+process with the task of generating these identifiers. Compared
+to traditional retrieval frameworks, generative retrieval searches
+for the best candidate targets based solely on the user’s query,
+eliminating the need for a unified embedding space and explicit
+similarity matching. Given the impressive performance of lan-
+guage models [11, 12, 13], it is worthwhile to explore how to
+effectively integrate them with text-to-audio retrieval. Firstly,
+**indicates the corresponding author.
+Calculate 
+Similarity
+Audio
+Encoder
+Text
+Encoder
+A male speaking 
+and a saw running.
+discretization
+Language
+Model
+A male speaking 
+and a saw running.
+(a) Dual-tower retrieval
+(b) Generative retrieval
+32 47 65
+131 25 98
+…
+32
+47
+65
+Figure 1: The comparison between traditional dual-tower re-
+trieval and generative retrieval paradigm.
+unlike documents that can directly use titles or key sentences
+as identifiers [14, 15, 16], unstructured audio can not explic-
+itly extract identifiers. Secondly, identifiers serve as a bridge
+between queries and audio in generative text-to-audio retrieval.
+However, due to the temporal nature of audio, it often contains
+redundant content unrelated to the query. Thus, an effective
+mechanism is needed to align the semantics of the identifiers
+with the query. Thirdly, unlike text generation tasks, genera-
+tive retrieval has stricter constraints. In other words, each audio
+corresponds to an identifier with no interchangeability, which
+requires that each token be generated precisely.
+In this paper, we introduce GTA, which leverages dis-
+cretization and the power of language models to enable
+Generative Text-to-Audio retrieval. To address the aforemen-
+tioned challenges, GTA is designed with three key components
+to support end-to-end text-to-audio retrieval. Specifically, we
+propose to employ a multi-scale residual quantizer as an audio
+tokenizer to extract semantic information from audio embed-
+dings, taking the closest codeword in each codebook as the iden-
+tifier. To facilitate autoregressive modeling and match the hier-
+archical refinement nature of the residuals, the size of the deep
+codebook is larger than that of the shallow codebook. Mean-
+while, to align with the high-level semantics of the text, we
+design a dual alignment strategy to bring the paired identifiers
+closer to the text. Finally, we employ curriculum learning to
+enhance the generative process of the language model. By ran-
+domly merging ground truth tokens with predicted tokens, we
+reduce the gap between training and inference.
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+2650
+10.21437/Interspeech.2025-908
+
+We conducted extensive experiments to demonstrate the su-
+perior performance of GTA, alongside synchronized ablation
+studies to validate the effectiveness of each component. Ad-
+ditionally, GTA shows stable retrieval efficiency on both CPU
+and GPU, indicating that it is not affected by the number of can-
+didates. GTA challenges traditional dual-tower retrieval frame-
+works and provides new insights for text-to-audio retrieval.
+Our contributions are highlighted as follows.
+• We propose a multi-scale and multi-objective optimized au-
+dio tokenizer, which efficiently extracts audio identifiers that
+are consistent with the textual semantics.
+• We reformulated text-to-audio retrieval as an autoregressive
+generative task and developed a curriculum learning strategy
+to enhance its performance.
+• Experiments on two widely used benchmarks demonstrate
+the superior retrieval performance and efficiency of GTA.
+Ablation studies and in-depth analysis confirm the effective-
+ness and robustness of the individual components.
+2. Method
+2.1. Overview
+GTA is an end-to-end text-to-audio retrieval framework, which
+takes natural language queries as input and generates corre-
+sponding audio identifiers. This pipeline eliminates the need for
+auditory input, requiring only the generation training of {Query,
+Identifier} pairs.
+The whole framework is divided into two
+modules: 1) Multi-scale audio tokenizer, which is used to con-
+struct semantic identifiers for audio, and 2) Curriculum-learning
+based generative training, which utilizes a language model to
+convert discriminative retrieval to generative retrieval.
+2.2. Multi-Scale Audio Tokenizer
+The current popular approach [17, 18, 19, 20, 21] for unstruc-
+tured audio data is to discretize it, making it compatible with
+autoregressive generation models. Essentially, these methods
+are based on vector quantization [22, 23], embedding the se-
+mantic information of audio into codebooks and then selecting
+the most matching codeword from multiple codebooks. How-
+ever, they tend to compress at the ratio of hundreds of tokens
+per second and retain too much acoustic information, which fo-
+cuses on audio reconstruction and high fidelity. As previously
+mentioned, identifiers are not interchangeable for the retrieval
+task, restricting the autoregressive model to accurately generate
+hundreds of tokens is extremely difficult. Meanwhile, the re-
+trieval focuses on semantic relevance to the query rather than
+acoustic features. These drive us to design an audio tokenizer
+tailored specifically for retrieval tasks.
+The audio tokenizer is shown in Figure 2. We encode the
+paired audio a and text t into embeddings ˆa and ˆt with the pre-
+trained CLAP [1]. The formula is as follows:
+ˆa = CLAPa(a),
+ˆa ∈R1×1024
+ˆt = CLAPt(t),
+ˆt ∈R1×1024
+(1)
+To further refine the semantics and alleviate the burden of
+codebook learning, we further downsample with a shallow mul-
+tilayer perceptron (MLP). Inspired by SpeechT5 [24], the MLP
+is shared between audio and text to facilitate the initial extrac-
+tion of their consistent semantics. The formula is as follows:
+a = Encoder(ˆa),
+a ∈R1×64
+t = Encoder(ˆt),
+t ∈R1×64
+(2)
+Two men talks 
+while wind blows.
+Encoder
+Decoder
+ℒ𝑅𝑅𝑅𝑅𝑅𝑅𝑅𝑅𝑅𝑅
+ℒ𝑐𝑐𝑐𝑐𝑐𝑐𝑐𝑐𝑐𝑐𝑐𝑐
+Multi-Scale RQ
+3
+101
+412
+722
+ℒalign
+ℒalign
+Figure 2: The pipeline of multi-scale audio tokenizer.
+After that we perform residual quantization, where the
+quantizer Q = {C1, C2, . . . , CN} has N codebooks and the
+codebook Cn = {v1
+n, v2
+n, . . . , vM
+n }, where M denotes the total
+number of codewords in the codebook, and vm
+n denotes the m-
+th codeword in the n-th codebook. The initial residual r0 = a,
+and then search for the closest codeword vk
+1 in the codebook C1.
+The index k of the codeword vk
+1 is considered as the identifier
+token obtained from the codebook C1. Following the sugges-
+tion of prior work [25], we use cosine similarity as the distance
+function to improve code usage with the following formula:
+(
+cos(r0, vm
+n ) =
+r0·vm
+n
+∥r0∥∥vm
+n ∥
+k1 = arg maxk∈{1,2,...,M} cos(r0, vk
+n)
+(3)
+The residuals are then updated to r1
+=
+r0 −vk1
+1 ,
+this process is executed recursively N times and the indexes
+{k1, k2, . . . , kN} extracted from all codebooks are considered
+as identifiers of the audio.
+Finally, Q(a) = PN
+i=1 vki
+i
+is
+passed to the decoder, whose structure is symmetrical to the
+encoder. We treat the stepwise construction of identifiers as a
+gradual partitioning of categories. Meanwhile, considering the
+nature of autoregressive modeling, the difficulty of predicting
+tokens should increase from easy to hard, as incorrect predic-
+tions of earlier tokens render subsequent predictions meaning-
+less. Based on these considerations, we designed multi-scale
+codebooks, where the size of the codebook gradually increases
+from the shallow to the deep layers.
+In order to efficiently train the audio tokenizer, we retain
+the classical reconstruction loss and commit loss, where
+Lrecon = ∥ˆa −Decoder(Q(Encoder(ˆa)))∥2
+2,
+Lcommit = PN
+i=1 ∥sg[ri] −vki
+i ∥2
+2 + ∥ri −sg[vki
+i ]∥2
+2
+(4)
+Here, sg is the stop-gradient operation [26]. The reconstruc-
+tion loss ensures that the identifiers capture the essential audio
+semantics, while the commit loss prevents excessive deviation
+between the encoder output and the quantized vectors, thereby
+avoiding codebook collapse.
+To further bridge the gap in semantics between queries and
+audio, we propose a dual alignment strategy to further enhance
+the tokenizer. As mentioned earlier, we aim to extract con-
+sistent high-level semantics between text and audio using the
+shared MLP. To achieve this goal, we introduce an optimiza-
+tion objective here that we hope to align with the query before
+quantization. Correspondingly, we introduce another optimiza-
+tion objective after quantization which preserves semantics by
+limiting the distance between the codebook and the query. The
+formula is as follows:
+Ldual align = ∥t −a∥2
+2 + ∥t −z∥2
+2
+(5)
+where z denotes the quantized audio latent states. The total
+training loss of the audio tokenizer can be defined as:
+Ltokenizer = Lrecon + Lcommit + Ldual align
+(6)
+2651
+
+2.3. Curriculum Learning-Based Generative Retrieval
+With the help of the audio tokenizer, the paired {Query, Audio}
+is converted into {Query, Identifier}, at which point the retrieval
+task can be viewed as end-to-end text generation. Since tokens
+come from different codebooks, the same number in different
+positions carries different semantics. For example, 31 and 32
+in (31, 2, 32, 1) represent different meanings. Considering this,
+we add special prefixes to each position to distinguish them, e.g.
+(a 3, b 2, c 3, d 1), and add them to the language model vo-
+cabulary. Based on the encoder-decoder architecture, the cross-
+entropy loss for generating semantic identifiers T given a query
+q can be written as:
+Lgeneration = −
+L
+X
+i=1
+log p(ti | E(q), t<i, θi)
+(7)
+where ti is the i-th token, L denotes the length of T and
+E(·) denotes the encoder of language models, θ denotes the
+total parameters and θi is the parameter for the i-th step.
+Given that each audio corresponds to only one identifier,
+this requires token generation to be sufficiently precise. Con-
+sidering that during the training stage, the model can always
+refer to the groundtruth to generate the next token, while in
+the inference stage, the model generates the next token based
+solely on its previous predictions, we are motivated to bridge
+this gap. Therefore, we introduce curriculum learning [27] to
+assist the model. Specifically, the model performs the first for-
+ward propagation to obtain logits, and we decide with probabil-
+ity P whether to use groundtruth ti or model predictions ˆti for
+each token, which are mixed and passed to the decoder again,
+The formula is as follows,
+t′
+i =
+(
+ti
+with probability P
+ˆti
+with probability 1 −P
+(8)
+To obtain the ranked list of audio, we use beam search to
+generate the top-k audio with the highest relevance to the given
+query. Meanwhile, we use constrained generation [8, 28] in the
+decoder network to ensure generating valid identifiers.
+3. Experiments
+3.1. Datasets and Baselines
+We evaluate GTA on two widely used datasets: Audiocaps [29]
+and Clotho [30]. Audiocaps consist of 39,597 audio samples
+where each audio sample in the validation and test sets has
+five captions, making a total of 45,513 {Query, Audio} pairs.
+Clotho consists of 4981 audio samples with five captions per
+audio sample, for a total of 24,905 {Query, Audio} pairs.
+We select baselines based on the classical dual-tower ar-
+chitecture. The CLAP series [3, 31, 4] explores different com-
+binations of text encoders and audio encoders, presenting an
+efficient way to handle variable-length audio. While VALOR
+[32], ONE-PIECE [33] aim to build omni-modality fundamen-
+tal models with larger number of parameters and pre-training
+scale, which consider text-to-audio retrieval as a subtask. Con-
+sistent with previous work [2, 3], we use the standard retrieval
+metric R@K where K is set to 1, 5, 10.
+3.2. Implementation Details
+Following the previous work [8, 10, 34], we generate five addi-
+tional captions for each audio as Query for data enhancement.
+Table 1: Performance comparisons on text-to-audio retrieval
+tasks, all results from the original paper.
+Baseline
+Audiocaps
+Clotho
+R@1
+R@5
+R@10
+R@1
+R@5
+R@10
+LAION-CLAP [3]
+36.1
+71.8
+83.9
+16.1
+38.3
+51.1
+CNN14-BERT [31]
+35.1
+70.0
+82.1
+21.5
+47.9
+61.9
+HTSAT-BERT [31]
+42.2
+76.5
+87.1
+19.7
+45.7
+59.4
+CLAP-HTSAT [4]
+34.6
+70.2
+82
+16.7
+41.1
+54.1
+VALOR-B [32]
+40.1
+73.9
+83.1
+17.5
+42.7
+55.3
+ONE-PIECE [33]
+42.5
+77.5
+88.4
+22.4
+49.0
+62.7
+GTA(Ours)
+48.5
+78.0
+83.6
+44.1
+66.3
+74.8
+The audio tokenizer is trained with learning rate of 0.00001 and
+batch size of 512. The encoder consists of 4 intermediate layers
+with sizes of 768, 512, 256, and 128, respectively, and the de-
+coder is completely symmetrical to it. The quantizer includes
+four codebooks with sizes of 128, 256, 512 and 1024, each
+codebook vector has a dimension of 64. Following [35] sugges-
+tion, we are initializing the codebook centroid using K-Means
+to ensure training stability. The generative model utilizes T5-
+base [11] as the backbone and has an initial learning rate of 1e-
+7 during the warm up stage, after which training is completed
+with a learning rate of 0.001 and a batch size of 128. The prob-
+ability P of curriculum learning has an initial value of 1 and
+decreases by 0.005 per epoch.
+3.3. Main Results
+In Table 1, we report the the performance of the baseline and
+GTA. We observe that all methods perform better on AudioCaps
+than on Clotho. Compared to the baseline, GTA performs com-
+petitively on AudioCaps and outperforms the baseline across
+the board on Clotho. Our analysis indicates that the audio du-
+ration in the Clotho ranges from 15 to 30 seconds, whereas the
+audio in AudioCaps are generally around 10 seconds. Enhanc-
+ing the retrieval performance for long and variable-length audio
+sequences is exactly the challenge [3] that the dual-tower model
+aims to address. In contrast, the audio semantics are already em-
+bedded in the parameters of the language model during training.
+GTA only needs to focus on processing text queries and predict-
+ing fixed-length audio identifiers, which alleviates the retrieval
+burden to some extent.
+3.4. Ablation Results
+We employ multi-scale codebooks in the audio tokenizer to
+match the progressively refined nature of residual transmission.
+Additionally, we use dual-alignment to ensure that the identi-
+fiers not only encapsulate audio semantics but also align with
+the text. During the training stage, we enhance the language
+model’s prediction of identifiers through curriculum learning.
+To validate the effectiveness of these key components, we re-
+port the results of the ablation study in Table 2.
+We set the size of all codebooks to 128 to simulate the w/o
+multi-scale setting, and the retrieval performance showed sig-
+nificant degradation. Intuitively, we believe that as the resid-
+uals are passed from level to level, deeper codebook captures
+finer semantic granularity. With increasing depth of the code-
+book, extending the size of the codebook facilitates improved
+quantization accuracy.
+Removing dual-alignment during the
+audio tokenizer training also heavily impacted retrieval per-
+formance, highlighting the importance of aligning identifiers
+with query semantics. Finally, removing the curriculum learn-
+ing reduced retrieval performance, indicating that assisting the
+2652
+
+Table 2: Ablation studies on key components of GTA.
+Setting
+R@1
+R@5
+R@10
+w/o multi-scale
+38.4
+57.3
+65.2
+w/o dual-alignment
+38.5
+58.7
+66.7
+w/o curriculum learning
+41.1
+64.8
+73.8
+GTA(Ours)
+44.1
+66.3
+74.8
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+Number of candidate items(M)
+21
+22
+23
+24
+25
+26
+27
+Throughput(Queries/s)
+CLAP(GPU)
+CLAP(CPU)
+GTA(GPU)
+GTA(CPU)
+Figure 3: The efficiency of CLAP and GTA are measured by
+throughput (queries processed per second).
+A motor vehicle engine is idling, 
+and an adult male is speaking.
+a_75, b_205, c_284, d_972
+Caption
+Identifier
+Rapid, continuous tapping 
+on a computer keyboard.
+a_91, b_207, c_267, d_122
+Caption
+Identifier
+A man speaks as water runs.
+a_75, b_205, c_221, d_395
+Caption
+Identifier
+A person is typing on a 
+computer keyboard.
+a_91, b_207, c_267, d_231
+Caption
+Identifier
+A man speaking.
+a_0, b_87, c_262, d_324
+Caption
+Identifier
+A man delivering a speech.
+a_0, b_87, c_262, d_324
+Caption
+Identifier
+Figure 4: The t-SNE visualization of audio embeddings with the
+same prefix and the more intuitive case studies.
+model’s learning at the token level to bridge the gap between
+training and inference is meaningful.
+3.5. Comparison of Inference Latency
+We compare the retrieval efficiency of CLAP [1] and GTA on
+both CPU and NVIDIA V100 GPU to evaluate the performance
+of dual-tower and generative frameworks. We simulate 50 con-
+current queries and change the number of candidate audios, the
+metric is throughput (queries/per second) and the detailed re-
+sults are shown in Figure 3. We pre-encode the audio into em-
+beddings, so the primary time cost of CLAP comes from text
+encoding, similarity matching, and ranking. With the increase
+of audio, the retrieval throughput of the dual-tower framework
+gradually decreases. In contrast, GTA generates identifiers di-
+rectly based on the query, with efficiency independent of the
+number of candidate audios, which is an advantage of directly
+encoding all audios as its parameters.
+Table 3: Performance of varying token size.
+Token size
+R@1
+R@5
+R@10
+[128, 128, 128, 128]
+38.4
+57.3
+65.2
+[128, 512, 768, 1024](Ours)
+44.1
+66.3
+74.8
+[1024, 1024, 1024, 1024]
+35.7
+55.1
+63.4
+Table 4: Performance of varying token length.
+Token length
+R@1
+R@5
+R@10
+4(Ours)
+44.1
+66.3
+74.8
+5
+43.9
+66.4
+75.0
+6
+43.6
+66.0
+74.7
+3.6. Deep Analysis on Audio Tokenzier
+3.6.1. Analysis through visualisation.
+We further investigate the effectiveness of the audio tokenizer.
+As shown in Figure 4, we visualize the correlation between the
+audio, the corresponding query, and the identifiers.
+We use
+t-SNE to visualize the distribution of audio embeddings with
+the same prefix, showing clear clustering patterns. Embeddings
+within clusters are more closely grouped, while those between
+clusters are more dispersed. Additionally, we conducted a more
+detailed case study. It can be observed that the closer the iden-
+tifiers are, the more similar the semantics of the corresponding
+audio queries. This demonstrates that the identifiers extracted
+by the audio tokenizer not only capture the semantics of the au-
+dio but also align with the semantics of the query.
+3.6.2. Analysis on token size.
+We verify the effectiveness of multi-scale by adjusting the
+size of the codebooks, with the experimental results on Clotho
+shown in Table 3. We observe that both excessively large and
+small codebook sizes degrade retrieval performance, as the size
+of the codebook controls the granularity of classification, thus
+limiting the expressive power of the semantic identifiers. Ad-
+ditionally, an overly large decoding space reduces the accuracy
+of autoregressive model predictions. In contrast, the multi-scale
+approach effectively alleviates these issues.
+3.6.3. Analysis on token length.
+We adjust the length of the identifiers by varying the number of
+codebooks, with the experimental results on Clotho shown in
+Table 4. We observe only slight fluctuations in retrieval perfor-
+mance, indicating the effectiveness of the semantic identifiers
+and the stability of the retrieval model. Although increasing the
+identifier length helps distinguish different candidates at a finer
+granularity, excessively long identifiers reduce codebook uti-
+lization and increase decoding steps. Therefore, we ultimately
+choose to use four tokens.
+4. conclusion
+In this paper, we introduce GTA, an innovative end-to-end text-
+to-audio retrieval framework. By combining a multi-scale audio
+tokenizer with a dual alignment strategy, GTA effectively con-
+structs audio identifiers that are consistent with text semantics.
+With the power of generative models and curriculum learning,
+GTA demonstrates outstanding retrieval performance and effi-
+ciency across two benchmark datasets. Ablation studies and
+in-depth analysis also confirm the robustness of this paradigm.
+2653
+
+5. References
+[1] B. Elizalde, S. Deshmukh, M. Al Ismail, and H. Wang, “Clap
+learning audio concepts from natural language supervision,” in
+ICASSP 2023-2023 IEEE International Conference on Acoustics,
+Speech and Signal Processing (ICASSP).
+IEEE, 2023, pp. 1–5.
+[2] B. Elizalde, S. Deshmukh, and H. Wang, “Natural language su-
+pervision for general-purpose audio representations,” in ICASSP
+2024-2024 IEEE International Conference on Acoustics, Speech
+and Signal Processing (ICASSP).
+IEEE, 2024, pp. 336–340.
+[3] Y. Wu, K. Chen, T. Zhang, Y. Hui, T. Berg-Kirkpatrick, and
+S. Dubnov, “Large-scale contrastive language-audio pretraining
+with feature fusion and keyword-to-caption augmentation,” in
+ICASSP 2023-2023 IEEE International Conference on Acoustics,
+Speech and Signal Processing (ICASSP).
+IEEE, 2023, pp. 1–5.
+[4] S. Deshmukh, B. Elizalde, and H. Wang, “Audio retrieval with
+wavtext5k and clap training,” arXiv preprint arXiv:2209.14275,
+2022.
+[5] S. Lou, X. Xu, M. Wu, and K. Yu, “Audio-text retrieval in con-
+text,” in ICASSP 2022-2022 IEEE International Conference on
+Acoustics, Speech and Signal Processing (ICASSP). IEEE, 2022,
+pp. 4793–4797.
+[6] G. Geigle, J. Pfeiffer, N. Reimers, I. Vuli´c, and I. Gurevych, “Re-
+trieve fast, rerank smart: Cooperative and joint approaches for
+improved cross-modal retrieval,” Transactions of the Association
+for Computational Linguistics, vol. 10, pp. 503–521, 2022.
+[7] Y. Tay, V. Tran, M. Dehghani, J. Ni, D. Bahri, H. Mehta, Z. Qin,
+K. Hui, Z. Zhao, J. Gupta et al., “Transformer memory as a differ-
+entiable search index,” Advances in Neural Information Process-
+ing Systems, vol. 35, pp. 21 831–21 843, 2022.
+[8] Y. Wang, Y. Hou, H. Wang, Z. Miao, S. Wu, Q. Chen, Y. Xia,
+C. Chi, G. Zhao, Z. Liu et al., “A neural corpus indexer for docu-
+ment retrieval,” Advances in Neural Information Processing Sys-
+tems, vol. 35, pp. 25 600–25 614, 2022.
+[9] S. Rajput, N. Mehta, A. Singh, R. Hulikal Keshavan, T. Vu,
+L. Heldt, L. Hong, Y. Tay, V. Tran, J. Samost et al., “Recom-
+mender systems with generative retrieval,” Advances in Neural
+Information Processing Systems, vol. 36, 2024.
+[10] W. Sun, L. Yan, Z. Chen, S. Wang, H. Zhu, P. Ren, Z. Chen,
+D. Yin, M. Rijke, and Z. Ren, “Learning to tokenize for generative
+retrieval,” Advances in Neural Information Processing Systems,
+vol. 36, 2024.
+[11] C. Raffel, N. Shazeer, A. Roberts, K. Lee, S. Narang, M. Matena,
+Y. Zhou, W. Li, and P. J. Liu, “Exploring the limits of transfer
+learning with a unified text-to-text transformer,” Journal of ma-
+chine learning research, vol. 21, no. 140, pp. 1–67, 2020.
+[12] J. Achiam, S. Adler, S. Agarwal, L. Ahmad, I. Akkaya, F. L. Ale-
+man, D. Almeida, J. Altenschmidt, S. Altman, S. Anadkat et al.,
+“Gpt-4 technical report,” arXiv preprint arXiv:2303.08774, 2023.
+[13] A. Dubey, A. Jauhri, A. Pandey, A. Kadian, A. Al-Dahle, A. Let-
+man, A. Mathur, A. Schelten, A. Yang, A. Fan et al., “The llama
+3 herd of models,” arXiv preprint arXiv:2407.21783, 2024.
+[14] Y. Zhou, J. Yao, Z. Dou, L. Wu, P. Zhang, and J.-R. Wen, “Ul-
+tron: An ultimate retriever on corpus with a model-based indexer,”
+arXiv preprint arXiv:2208.09257, 2022.
+[15] M. Bevilacqua, G. Ottaviano, P. Lewis, S. Yih, S. Riedel, and
+F. Petroni, “Autoregressive search engines: Generating substrings
+as document identifiers,” Advances in Neural Information Pro-
+cessing Systems, vol. 35, pp. 31 668–31 683, 2022.
+[16] Y. Tang, R. Zhang, J. Guo, J. Chen, Z. Zhu, S. Wang, D. Yin,
+and X. Cheng, “Semantic-enhanced differentiable search index
+inspired by learning strategies,” in Proceedings of the 29th ACM
+SIGKDD Conference on Knowledge Discovery and Data Mining,
+2023, pp. 4904–4913.
+[17] A. D´efossez, J. Copet, G. Synnaeve, and Y. Adi, “High fidelity
+neural audio compression,” arXiv preprint arXiv:2210.13438,
+2022.
+[18] R. Kumar, P. Seetharaman, A. Luebs, I. Kumar, and K. Kumar,
+“High-fidelity audio compression with improved rvqgan,” Ad-
+vances in Neural Information Processing Systems, vol. 36, 2024.
+[19] S. Ji, M. Fang, Z. Jiang, R. Huang, J. Zuo, S. Wang, and
+Z. Zhao, “Language-codec: Reducing the gaps between discrete
+codec representation and speech language models,” arXiv preprint
+arXiv:2402.12208, 2024.
+[20] S. Ji, Z. Jiang, X. Cheng, Y. Chen, M. Fang, J. Zuo, Q. Yang,
+R. Li, Z. Zhang, X. Yang et al., “Wavtokenizer: an efficient acous-
+tic discrete codec tokenizer for audio language modeling,” arXiv
+preprint arXiv:2408.16532, 2024.
+[21] M. Fang, S. Ji, J. Zuo, H. Huang, Y. Xia, J. Zhu, X. Cheng,
+X. Yang, W. Liu, G. Wang et al., “Ace: A generative cross-
+modal retrieval framework with coarse-to-fine semantic model-
+ing,” arXiv preprint arXiv:2406.17507, 2024.
+[22] A. Van Den Oord, O. Vinyals et al., “Neural discrete represen-
+tation learning,” Advances in neural information processing sys-
+tems, vol. 30, 2017.
+[23] D. Lee, C. Kim, S. Kim, M. Cho, and W.-S. Han, “Autoregres-
+sive image generation using residual quantization,” in Proceed-
+ings of the IEEE/CVF Conference on Computer Vision and Pat-
+tern Recognition, 2022, pp. 11 523–11 532.
+[24] J. Ao, R. Wang, L. Zhou, C. Wang, S. Ren, Y. Wu, S. Liu, T. Ko,
+Q. Li, Y. Zhang et al., “Speecht5: Unified-modal encoder-decoder
+pre-training for spoken language processing,” arXiv preprint
+arXiv:2110.07205, 2021.
+[25] J. Yu, X. Li, J. Y. Koh, H. Zhang, R. Pang, J. Qin, A. Ku, Y. Xu,
+J. Baldridge, and Y. Wu, “Vector-quantized image modeling with
+improved vqgan,” arXiv preprint arXiv:2110.04627, 2021.
+[26] A. Van Den Oord, O. Vinyals et al., “Neural discrete represen-
+tation learning,” Advances in neural information processing sys-
+tems, vol. 30, 2017.
+[27] T. Mihaylova and A. F. Martins, “Scheduled sampling for trans-
+formers,” arXiv preprint arXiv:1906.07651, 2019.
+[28] N. De Cao, G. Izacard, S. Riedel, and F. Petroni, “Autoregressive
+entity retrieval,” arXiv preprint arXiv:2010.00904, 2020.
+[29] C. D. Kim, B. Kim, H. Lee, and G. Kim, “Audiocaps: Generat-
+ing captions for audios in the wild,” in Proceedings of the 2019
+Conference of the North American Chapter of the Association for
+Computational Linguistics: Human Language Technologies, Vol-
+ume 1 (Long and Short Papers), 2019, pp. 119–132.
+[30] K. Drossos, S. Lipping, and T. Virtanen, “Clotho: An audio cap-
+tioning dataset,” in ICASSP 2020-2020 IEEE International Con-
+ference on Acoustics, Speech and Signal Processing (ICASSP).
+IEEE, 2020, pp. 736–740.
+[31] X. Mei, C. Meng, H. Liu, Q. Kong, T. Ko, C. Zhao, M. D. Plumb-
+ley, Y. Zou, and W. Wang, “Wavcaps: A chatgpt-assisted weakly-
+labelled audio captioning dataset for audio-language multimodal
+research,” IEEE/ACM Transactions on Audio, Speech, and Lan-
+guage Processing, 2024.
+[32] S. Chen, X. He, L. Guo, X. Zhu, W. Wang, J. Tang, and
+J. Liu, “Valor: Vision-audio-language omni-perception pretrain-
+ing model and dataset,” arXiv preprint arXiv:2304.08345, 2023.
+[33] P. Wang,
+S. Wang,
+J. Lin,
+S. Bai,
+X. Zhou,
+J. Zhou,
+X. Wang, and C. Zhou, “One-peace: Exploring one general rep-
+resentation model toward unlimited modalities,” arXiv preprint
+arXiv:2305.11172, 2023.
+[34] S. Zhuang, H. Ren, L. Shou, J. Pei, M. Gong, G. Zuccon, and
+D. Jiang, “Bridging the gap between indexing and retrieval for
+differentiable search index with query generation,” arXiv preprint
+arXiv:2206.10128, 2022.
+[35] N.
+Zeghidour,
+A.
+Luebs,
+A.
+Omran,
+J.
+Skoglund,
+and
+M. Tagliasacchi, “Soundstream:
+An end-to-end neural audio
+codec,” IEEE/ACM Transactions on Audio, Speech, and Lan-
+guage Processing, vol. 30, pp. 495–507, 2021.
+2654
+

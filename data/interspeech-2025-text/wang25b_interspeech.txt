@@ -1,0 +1,574 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+Calm-Whisper: Reduce Whisper Hallucination On Non-Speech By Calming
+Crazy Heads Down
+Yingzhi Wang1, Anas Alhmoud1, Saad Alsahly1, Muhammad Alqurishi1, Mirco Ravanelli2,3
+1Research Center, Elm Company, KSA
+2Concordia University, Canada
+3Mila, Canada
+ywang@elm.sa, aalhmoud@elm.sa, salsahly@elm.sa, mualqurishi@elm.sa,
+mirco.ravanelli@concordia.ca
+Abstract
+OpenAI’s Whisper has achieved significant success in Auto-
+matic Speech Recognition. However, it has consistently been
+found to exhibit hallucination issues, particularly in non-speech
+segments, which limits its broader application in complex in-
+dustrial settings.
+In this paper, we introduce a novel method to reduce Whis-
+per’s hallucination on non-speech segments without using any
+pre- or post-possessing techniques. Specifically, we benchmark
+the contribution of each self-attentional head in the Whisper-
+large-v3 decoder to the hallucination problem by performing
+a head-wise mask. Our findings reveal that only 3 of the 20
+heads account for over 75% of the hallucinations on the Urban-
+Sound dataset. We then fine-tune these three crazy heads using
+a collection of non-speech data. The results show that our best
+fine-tuned model, namely Calm-Whisper, achieves over 80%
+reduction in non-speech hallucination with only less than 0.1%
+WER degradation on LibriSpeech test-clean and test-other.
+Index Terms: Whisper Hallucination, Calm-Whisper, Calm-
+down Fine-tuning, Noise-Robust ASR
+1. Introduction
+OpenAI’s Whisper [1] has emerged as a significant milestone
+in Automatic Speech Recognition (ASR), owing to its multi-
+lingual capabilities, high transcription accuracy, and adaptabil-
+ity to diverse acoustic environments.
+The model is built on
+a large-scale Transformer-based encoder-decoder architecture,
+boasting billions of parameters that allow it to capture complex
+details in speech signals. Whisper’s training leverages an ex-
+tensive dataset comprising 680k hours of multilingual and mul-
+titask speech data. The diversity of the dataset ensures that the
+model can generalise effectively to different scenarios.
+However, like many large-scale generative models, Whis-
+per has been shown to exhibit hallucination issues, where it
+generates text that is unrelated to the original audio input
+[2, 3, 4, 5, 6].
+These hallucinations, manifesting as fabri-
+cated phrases or entire sentences, raise concerns about the re-
+liability and fairness of ASR systems in real-world applications
+[7]. Key factors contributing to Whisper’s hallucinations can
+be categorized into three perspectives: model design, training
+data quality, and input ambiguity [8].
+Whisper’s large-scale
+transformer-based architecture, while highly generative, can un-
+intentionally generate plausible yet incorrect outputs, with its
+auto-regressive nature further amplifying its hallucination ten-
+dencies. The training corpus of Whisper includes weakly anno-
+tated data that may be biased, imbalanced, or noisy, leading to
+an increasing risk of hallucinations [7]. As a result, when the in-
+put is noisy, unclear, or contains ambiguous contexts, Whisper
+is highly prone to produce hallucinations.
+Previous studies have explored Whisper’s hallucination
+problem and offered potential solutions. In Careless-Whisper
+[7], the authors highlight that approximately 1% of Whis-
+per’s transcriptions contain hallucinated phrases or sentences
+not present in the original audio. Notably, 38% of these hal-
+lucinations include explicit harms such as perpetuating vio-
+lence, making inaccurate associations, or implying false author-
+ity. They also find that hallucinations disproportionately oc-
+cur for individuals with speech impairments, like aphasia, es-
+pecially when there are longer non-vocal durations in speech.
+In Distil-Whisper [9], the authors used a simple word error
+rate (WER) heuristic to select only the highest quality pseudo-
+labels for training.
+The study notes that Distil-Whisper is
+less prone to hallucination errors on long-form audio com-
+pared to the original Whisper model. WhisperX [10] proposes
+pre-processing operations involving Voice Activity Detection
+(VAD), and proves that these VAD operations reduce hallucina-
+tion and repeating on the Kincaid46 [11] and TED-LIUM [12]
+benchmarks.
+Unlike the speech environment in the above-mentioned
+studies, industrial environments are filled with complex acous-
+tic conditions, including audio segments containing only non-
+speech noise or varying lengths of silence.
+The Whisper
+model’s lack of robustness in handling such inputs has been
+long criticized1.
+While hallucination on speech content can
+lead to misinformation, in most cases, such hallucinations are
+recognizable and can be filtered out by reviewers. Despite mis-
+information, the primary content of the speech remains under-
+standable, allowing users to grasp the main ideas. In contrast,
+hallucinations on non-speech content pose a greater challenge
+by fabricating non-existent inputs. This can result in significant
+confusion in understanding transcriptions, as users may strug-
+gle to distinguish whether the entire segments of transcription
+are real. In [13], the authors also identified the hallucination
+issue on non-speech inputs and attempted to remove it by ap-
+plying VAD as pre-processing and an n-gram language model
+as post-processing. However, these techniques remain limited
+in effectiveness. Although VAD can be used to remove non-
+speech segments, due to the inherent limitations of VAD mod-
+els, complete removal is unachievable. For example Silero VAD
+v5 [14] achieves only 61% utterance-level accuracy on the ESC-
+50 dataset[15], suggesting that up to 40% of pure noise in sim-
+ilar scenarios could be misinterpreted as speech and propagate
+through the recognition pipeline. Regarding post-processing,
+using an additional language model as filter [13] may also filter
+out real speech contents, causing a loss of information.
+In this paper, we seek to eliminate Whisper’s non-speech
+1https://github.com/openai/whisper/
+discussions/1606
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+3414
+10.21437/Interspeech.2025-201
+
+Figure 1: Most frequently hallucinated sentences by Whisper-
+large-v3 on UrbanSound8K
+hallucinations within the model itself. We hypothesize that only
+certain self-attention heads in the decoder are noise-sensitive
+and hallucinatory. To validate this, we mask these heads one
+by one and benchmark their impact on hallucination occur-
+rence. After identifying the most hallucinatory heads, we con-
+duct calm-down fine-tuning only on these heads using non-
+speech audio paired with blank labels. Results show that our
+approach reduces non-speech hallucinations by over 80% while
+maintaining undegraded speech recognition accuracy.
+2. Whisper Hallucination On Non-Speech
+As a first step, we run Whisper-large-v32 on the UrbanSound8K
+dataset [16] to showcase its significant hallucination problem
+dealing with non-speech inputs.
+2.1. Evaluation Set
+UrbanSound8K is a widely used environmental sound dataset
+designed for audio classification and recognition tasks. It con-
+sists of 8,732 labeled sound clips spanning 10 different classes
+of urban sounds, including street music, air conditioners, and
+other noise sources that could be commonly encountered in in-
+dustrial settings. Each audio clip is up to four seconds long,
+which is also similar to the typical pause duration of speakers
+in industrial environments such as call centers.
+2.2. Metric
+For speech content, the insertion error rate (IER) is commonly
+used as a metric to measure a model’s hallucination. However,
+for non-speech content, where the total number of words in
+the sentence is zero, IER cannot be calculated. In such case,
+we abandon word-level evaluation methods and adopt a stricter
+utterance-level metric. We consider the hallucination assess-
+ment for non-speech content as a binary classification task: for
+an entire audio clip, the model’s output is categorized as either
+hallucinating or not hallucinating. A robust model is expected
+to produce an empty transcription for non-speech input, which
+is considered ”not hallucinating,” whereas any non-zero-length
+transcription is regarded as ”hallucinating”. Therefore, the hal-
+lucination rate, which quantifies non-speech hallucination, can
+be defined as:
+Hallucination Rate = Nlen(transcription)>0
+Ntotal
+(1)
+where Nlen(transcription)>0 refers to the number of hallucinat-
+ing transcriptions and Ntotal is the total number of audios in the
+dataset. Throughout the rest of this paper, we employ it as the
+standard metric for assessing non-speech hallucinations.
+2https://huggingface.co/openai/
+whisper-large-v3
+Figure 2:
+Whisper-large-v3’s hallucination rate on Urban-
+Sound8K with one particular self-attention head in the decoder
+masked.
+2.3. Results
+For comparison, we also run a popular CTC [17] model
+Conformer-CTC-Large3 [18]. As is shown in Table 3, Whisper-
+large-v3 exhibits an enormous hallucination rate of nearly
+100%, whereas Conformer-CTC is considerably more robust,
+with a hallucination rate of only 13.52%.
+Table
+1:
+Hallucination
+Rate
+of
+Whisper-large-v3
+and
+Conformer-CTC-large on UrbanSound8K.
+Whisper-large-v3
+Conformer-CTC-large
+Hallucination Rate
+99.97%
+13.52%
+Additionally, in Figure 1, we present some of the most fre-
+quently hallucinated contents. It can be observed that Whisper-
+large-v3 tends to misinterpret non-speech sounds as filler words
+or markers of tone and pause, with as much as 55.2% of the
+audios being transcribed into ” so”. Moreover, we found that
+8.5% of the hallucinations span more than five tokens, which
+might significantly disrupt the overall comprehension of the
+transcription under industrial conditions.
+3. Hallucinatory Heads Detection
+In [19], the authors investigated the role of the ”retrieval head”
+in transformer-based language models in maintaining factual
+accuracy over long contexts. Inspired by this research, we hy-
+pothesize that the decoder in the Whisper model, which han-
+dles language modeling, may also have ”crazy heads” that are
+more prone to causing hallucinations. To verify this effect, we
+conduct experiments using both single-head masking and multi-
+head masking approaches.
+3.1. Single-Head Masking
+We begin by masking each of the 20 self-attentional heads (#0-
+#19) in the decoder, one at a time, and subsequently measure
+the hallucination rate on the UrbanSound8k dataset.
+The head-wise benchmark results are presented in Figure
+2. Compared to the scenario without any masking (marked in
+green), masking any one of the following eight heads—#0, #1,
+#3, #4, #6, #8, #11, or #19—leads to varying degrees of re-
+duction in the hallucination rate on the UrbanSound8K dataset
+(marked in red). This indicates that these heads contribute to
+hallucinations and are thus identified as hallucinatory heads. In
+3https://catalog.ngc.nvidia.com/orgs/nvidia/
+teams/nemo/models/stt_en_conformer_ctc_large
+3415
+
+contrast, masking one of the other 12 heads increases the hal-
+lucination rate (marked in blue), indicating their robustness in
+handling pure noises.
+Notably, among the eight identified hallucinatory heads,
+masking head #1 leads to a reduction of the hallucination rate
+by more than 30%, demonstrating that head #1 is the craziest
+head compared to the other heads.
+3.2. Multi-Head Masking
+After validating our hypothesis, we attempt to mask combina-
+tions of the hallucinatory heads to further minimize the halluci-
+nation rate. However, considering that the mask operation could
+negatively impact speech recognition performance, we also cal-
+culate the Word Error Rate (WER) on LibriSpeech [20] test-
+clean and test-other sets to illustrate the trade-off between re-
+ducing hallucinations and maintaining recognition accuracy.
+Table 2: Results of masking combinations of heads in Whisper-
+large-v3 decoder. The Hallucination Rate on UrbanSound8K
+and the Word Error Rate (WER) on LibriSpeech test-clean and
+test-other are reported.
+Masked Heads
+Hallucination Rate
+WER test-clean
+WER test-other
+Non-Mask
+99.97%
+2.12%
+4.07%
+#1, #6
+50.16%
+5.70%
+5.48%
+#1, #11
+70.03%
+3.80%
+6.07%
+#6, #11
+57.08%
+2.37%
+4.66%
+#1, #6, #11
+24.10%
+3.57%
+5.98%
+#0, #1, #6, #11
+28.91%
+15.87%
+21.39%
+First, following the order shown in Figure 2, we infer the
+model by masking each time two of the top three most halluci-
+natory heads: #1, #11, and #6. Next, based on this, we further
+mask all three/four most hallucinatory heads. As shown in Ta-
+ble 3, masking all the top three heads lowers the hallucination
+rate to a minimum of 24.10%. Compared to the non-mask sce-
+nario, this highlights that the joint contribution of these three
+heads results in over 75% of the hallucinations. Meanwhile, we
+observed that masking three heads, compared to masking four,
+makes little difference in transcription accuracy, with the WER
+on LibriSpeech test-clean increasing from 2.12% to 3.57% and
+test-other increasing from 4.07% to 5.98%. These results sug-
+gest that masking three heads offers an optimal trade-off be-
+tween hallucination mitigation and ASR accuracy, which serves
+as the experimenral groundwork for the calm-down fine-tuning
+in Section 4. In addition, we found that the benefits of masking
+multiple heads were not as clear-cut as expected. For example,
+the hallucination rate increases when masking heads #1 and #11
+together versus masking head #1 alone, which points to a com-
+plex interplay among the heads.
+4. Calm-Down Fine-tuning
+Based on the findings in Section 3.2, we search to further re-
+duce the hallucination rate while minimizing the loss of speech
+recognition accuracy. We consider that retaining all heads dur-
+ing inference, rather than masking them out directly, allows for
+a closer approximation to the original recognition performance.
+Therefore, we fine-tune the three most hallucinatory heads to
+guide the model to remain calm when processing non-speech
+inputs. As shown in Figure 3, we freeze all other parameters in
+the Whisper model, keeping only the parameters of heads #1,
+#6, and #11 in each decoder layer trainable. Additionally, we
+train the model using purely noise data with blank labels.
+Figure 3: Calm-down fine-tuning designed to mitigate halluci-
+nations in Whisper-large-v3. Specifically, all parameters in the
+Whisper-large-v3 model are frozen except for the parameters
+in head #1, #6, and #11 of each decoder layer. The model is
+trained using various non-speech noises paired with empty la-
+bel strings to discourage it from reacting to non-speech inputs.
+4.1. Training set
+Our fine-tuning utilizes three datasets—AudioSet, DEMAND,
+and Musan—encompassing a total of 105 hours of non-speech
+data.
+AudioSet [21] is a comprehensive collection of audio events
+designed to support various tasks in audio analysis.
+It con-
+sists of over two million 10-second audio clips sourced from
+YouTube, labeled across 527 classes of sound events, includ-
+ing human speech, environmental sounds, music, and more. In
+our experiments, we utilize a subset of 11,753 audio clips, and
+exclude those segments labeled as ”human speech”.
+The Diverse Environments Multichannel Acoustic Noise
+Database (DEMAND) [22] provides high-quality recordings of
+environmental noises. DEMAND features recordings from 18
+different acoustic environments, captured using a 16-channel
+microphone array. These environments range from quiet indoor
+spaces to busy outdoor locations, offering a wide spectrum of
+real-world noise conditions. For audio files that exceed 30 sec-
+onds, we split them into segments of 30 seconds or shorter.
+The MUSAN dataset [23] is a large-scale corpus designed
+for speech, music, and noise augmentation in speech processing
+tasks. The dataset covers a wide variety of audio types, includ-
+ing diverse music genres, natural and artificial noise sources,
+and speech recordings in multiple languages. Similarly, we only
+utilize the music and noise subsets, and chunk long audio files
+into 30-second clips.
+For the calm-down fine-tuning we use only non-speech
+data, this has two key benefits: first, it minimizes the need
+for transcription, significantly reducing data annotation require-
+3416
+
+ments. Second, by excluding speech data from the fine-tuning
+process, it ensures that the benchmark results on LibriSpeech
+remain unaffected in order to form a meaningful contrast, high-
+lighting only the impact of non-speech fine-tuning on the WER
+of speech contents.
+4.2. Experimental Settings
+We first conduct a contrast experiment by fine-tuning the entire
+decoder, aiming to assess the necessity of limiting fine-tuning
+to only three identified hallucinatory heads. We fine-tune the
+entire decoder on our training set for 3 epochs.
+Next, for calm-down fine-tuning with the three most hal-
+lucinatory heads, we conduct experiments using different num-
+bers of iterations. These experiments aim to observe the im-
+pact of varying fine-tuning depth on the model’s overall perfor-
+mance. For each experiment, we fine-tune the model using a
+total batch size of 128 and a learning rate of 10−6 with a warm-
+up phase around 15% of the total iterations.
+4.3. Results and Discussion
+In the same manner as in Section 3.2, we benchmark the fine-
+tuned models on UrbanSound8K and the LibriSpeech test-clean
+and test-other datasets, comparing their performance with the
+non-fine-tuned models. It should be noted that we do not apply
+any head masks during the inference for the fine-tuned models.
+The results are shown in Table 3.
+Table 3: The hallucination rate on UrbanSound8K and the
+WER on LibriSpeech test-clean and test-other for non-fine-
+tuned models (first two rows) and calm-down fine-tuned models
+(last three rows).
+Model
+Hallucination Rate
+WER test-clean
+WER test-other
+Non-Mask
+99.97%
+2.12%
+4.07%
+Mask #1 #6 #11
+24.10%
+3.57%
+5.98%
+ft-decoder-3epochs
+0,01%
+100%
+100%
+ft-3heads-3epochs
+69.79%
+2.16%
+4.08%
+ft-3heads-5epochs
+15.51%
+2.19%
+4.13%
+For the non-fine-tuned models, we copy directly the results
+from Table 2, including the non-mask inference Non-Mask, and
+the inference with 3 crazy heads masked Mask #1 #6 #11. For
+the fine-tuned models, we list three variations: (1) ft-decoder-
+3epochs, where we fine-tune the entire decoder for three epochs;
+(2) ft-3heads-3epochs, where we fine-tune only three crazy
+heads for three epochs; and (3) ft-3heads-5epochs, where we
+fine-tune only three crazy heads for five epochs.
+We first analyze whether it is necessary to perform fine-
+tuning only on crazy heads.
+The ft-decoder-3epochs model
+reduces the hallucination rate to almost zero compared to the
+original model without fine-tuning.
+However, this improve-
+ment comes at a high cost, with the WER on Librispeech ris-
+ing to 100%, demonstrating that fine-tuning the entire decoder
+on non-speech data severely destroys the model’s recognition
+performance. In comparison, while reducing the hallucination
+rate from the initial value 99.97% to 69.79%, ft-3heads-3epochs
+maintains remarkable stability on the LibriSpeech benchmarks
+under the same 3-epoch fine-tuning, with only a 0.04% WER
+drop on the test-clean set and a 0.01% drop on test-other. The
+contrast reveals that when only 3 crazy heads in the decoder
+are fine-tuned, the remaining non-fine-tuned heads in the de-
+coder can preserve much of the model’s original capabilities
+on speech recognition, offering necessary redundancy and ro-
+Figure 4: The evolution of the hallucination rate on Urban-
+Sound8K and the WER on LibriSpeech test-clean across suc-
+cessive calm-down fine-tuning epochs for Whisper-large-v3.
+bustness. In opposition, fine-tuning all the decoder heads can
+disrupt their established collaboration and overwrite the pre-
+trained knowledge, ultimately leading to a significant decline
+in performance.
+Next,
+we
+find
+that
+the
+hallucination
+rate
+of
+ft-
+decoder-3epochs remains high compared to the 24.10%
+of Mask #1 #6 #11.
+Given the low WER on LibriSpeech
+benchmarks, there is still room to conduct further fine-tuning.
+As a result of deeper fine-tuning, the model ft-3heads-5epochs
+achieves a better balance between hallucination and speech
+recognition accuracy, significantly reducing the hallucination
+rate to 15.51%, with only minor increases in LibriSpeech
+WER: 0.07% on test-clean and 0.06% on test-other. We also
+tracked the number of hallucinations that span more than five
+tokens and discovered a significant reduction from 742 to 91
+after 5-epoch calm-down fine-tuning, illustrating the universal
+effectiveness of our method.
+Additionally, we further investigate the impact of fine-
+tuning depth. Figure 4 illustrates the evolution of the progres-
+sion of the hallucination rate and the WER on LibriSpeech test-
+clean as fine-tuning epochs increase. It can be observed that as
+fine-tuning becomes deeper, hallucination drops sharply at the
+beginning and then flattens, while the WER moves from slow
+increases to steeper rises. The best balance is reached between
+five and six epochs. As a conservative measure, we determine
+that the model fine-tuned for 5 epochs is the most ideal, which
+we name as Calm-Whisper.
+5. Conclusion
+In this paper, we investigate the hallucination issue of the Whis-
+per model on non-speech segments. By applying a head-wise
+mask and benchmarking the hallucination rate, we identify the
+most problematic heads in the Whisper-large-v3 decoder that
+cause hallucination. We then perform calm-down fine-tuning
+which focuses on only the three craziest heads using collected
+non-speech data. Additionally, we explore the impact of differ-
+ent fine-tuning epochs to optimize the trade-off between hallu-
+cination and speech recognition accuracy. Through our work,
+we hope to help mitigate Whisper’s limitations in industrial ap-
+plications and offer new perspectives on solving Whisper’s hal-
+lucination issues.
+3417
+
+6. References
+[1] A. Radford, J. W. Kim, T. Xu, G. Brockman, C. McLeavey, and
+I. Sutskever, “Robust speech recognition via large-scale weak
+supervision,” in International conference on machine learning.
+PMLR, 2023, pp. 28 492–28 518.
+[2] H. Alkaissi and S. I. McFarlane, “Artificial hallucinations in chat-
+gpt: implications in scientific writing,” Cureus, vol. 15, no. 2,
+2023.
+[3] Z. Ji, N. Lee, R. Frieske, T. Yu, D. Su, Y. Xu, E. Ishii, Y. J. Bang,
+A. Madotto, and P. Fung, “Survey of hallucination in natural lan-
+guage generation,” ACM Computing Surveys, vol. 55, no. 12, pp.
+1–38, 2023.
+[4] Y. Zhou, C. Cui, J. Yoon, L. Zhang, Z. Deng, C. Finn, M. Bansal,
+and H. Yao, “Analyzing and mitigating object hallucination in
+large vision-language models,” arXiv preprint arXiv:2310.00754,
+2023.
+[5] V. Raunak, A. Menezes, and M. Junczys-Dowmunt, “The curi-
+ous case of hallucinations in neural machine translation,” arXiv
+preprint arXiv:2104.06683, 2021.
+[6] R. Frieske and B. E. Shi, “Hallucinations in neural automatic
+speech recognition: Identifying errors and hallucinatory models,”
+arXiv preprint arXiv:2401.01572, 2024.
+[7] A. Koenecke, A. S. G. Choi, K. X. Mei, H. Schellmann,
+and M. Sloane, “Careless whisper: Speech-to-text hallucination
+harms,” in The 2024 ACM Conference on Fairness, Accountabil-
+ity, and Transparency, 2024, pp. 1672–1681.
+[8] A. Mittal, R. Murthy, V. Kumar, and R. Bhat, “Towards under-
+standing and mitigating the hallucinations in nlp and speech,” in
+Proceedings of the 7th Joint International Conference on Data
+Science & Management of Data (11th ACM IKDD CODS and
+29th COMAD), 2024, pp. 489–492.
+[9] S. Gandhi, P. von Platen, and A. M. Rush, “Distil-whisper: Robust
+knowledge distillation via large-scale pseudo labelling,” arXiv
+preprint arXiv:2311.00430, 2023.
+[10] M. Bain, J. Huh, T. Han, and A. Zisserman, “Whisperx: Time-
+accurate speech transcription of long-form audio,” arXiv preprint
+arXiv:2303.00747, 2023.
+[11] “Which
+automatic
+transcription
+service
+is
+the
+most
+ac-
+curate?”
+https://medium.com/descript/which-automatic-
+transcriptionservice-is-the-most-accurate-2018-2e859b23ed19,
+accessed: 2023-04-27.
+[12] A. Rousseau, P. Del´eglise, and Y. Esteve, “Ted-lium: an automatic
+speech recognition dedicated corpus.” in LREC, 2012, pp. 125–
+129.
+[13] M.
+Bara´nski,
+J.
+Jasi´nski,
+J.
+Bartolewska,
+S.
+Kacprzak,
+M. Witkowski, and K. Kowalczyk, “Investigation of whisper
+asr hallucinations induced by non-speech audio,” arXiv preprint
+arXiv:2501.11378, 2025.
+[14] S. Team, “Silero vad: pre-trained enterprise-grade voice activity
+detector (vad), number detector and language classifier,” https://
+github.com/snakers4/silero-vad, 2024.
+[15] K. J. Piczak, “Esc: Dataset for environmental sound classifica-
+tion,” in Proceedings of the 23rd ACM international conference
+on Multimedia, 2015, pp. 1015–1018.
+[16] J. Salamon, C. Jacoby, and J. P. Bello, “A dataset and taxonomy
+for urban sound research,” in Proceedings of the 22nd ACM inter-
+national conference on Multimedia, 2014, pp. 1041–1044.
+[17] A. Graves, S. Fern´andez, F. Gomez, and J. Schmidhuber, “Con-
+nectionist temporal classification:
+labelling unsegmented se-
+quence data with recurrent neural networks,” in Proceedings of
+the 23rd international conference on Machine learning, 2006, pp.
+369–376.
+[18] A. Gulati, J. Qin, C.-C. Chiu, N. Parmar, Y. Zhang, J. Yu, W. Han,
+S. Wang, Z. Zhang, Y. Wu et al., “Conformer: Convolution-
+augmented transformer for speech recognition,” arXiv preprint
+arXiv:2005.08100, 2020.
+[19] W. Wu, Y. Wang, G. Xiao, H. Peng, and Y. Fu, “Retrieval head
+mechanistically explains long-context factuality,” arXiv preprint
+arXiv:2404.15574, 2024.
+[20] V. Panayotov, G. Chen, D. Povey, and S. Khudanpur, “Lib-
+rispeech: an asr corpus based on public domain audio books,”
+in 2015 IEEE international conference on acoustics, speech and
+signal processing (ICASSP).
+IEEE, 2015, pp. 5206–5210.
+[21] J. F. Gemmeke, D. P. Ellis, D. Freedman, A. Jansen, W. Lawrence,
+R. C. Moore, M. Plakal, and M. Ritter, “Audio set: An ontology
+and human-labeled dataset for audio events,” in 2017 IEEE inter-
+national conference on acoustics, speech and signal processing
+(ICASSP).
+IEEE, 2017, pp. 776–780.
+[22] J. Thiemann, N. Ito, and E. Vincent, “The diverse environments
+multi-channel acoustic noise database (demand): A database of
+multichannel environmental noise recordings,” in Proceedings of
+Meetings on Acoustics, vol. 19, no. 1.
+AIP Publishing, 2013.
+[23] D. Snyder, G. Chen, and D. Povey, “Musan: A music, speech, and
+noise corpus,” arXiv preprint arXiv:1510.08484, 2015.
+3418
+

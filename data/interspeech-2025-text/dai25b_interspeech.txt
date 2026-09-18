@@ -1,0 +1,584 @@
+Inter-Speaker Relative Cues for Text-Guided Target Speech Extraction
+Wang Dai, Archontis Politis, Tuomas Virtanen
+Audio Research Group, Tampere University, Finland
+{name.surname}@tuni.fi
+Abstract
+We propose a novel approach that utilize inter-speaker rela-
+tive cues for distinguishing target speakers and extracting their
+voices from mixtures. Continuous cues (e.g., temporal order,
+age, pitch level) are grouped by relative differences, while dis-
+crete cues (e.g., language, gender, emotion) retain their cate-
+gories. Relative cues offers greater flexibility than fixed speech
+attribute classification, facilitating much easier expansion of
+text-guided target speech extraction datasets. Our experiments
+show that combining all relative cues yields better performance
+than random subsets, with gender and temporal order being the
+most robust across languages and reverberant conditions. Ad-
+ditional cues like pitch level, loudness, distance, speaking dura-
+tion, language, and pitch range also demonstrate notable benefit
+in complex scenarios. Fine-tuning pre-trained WavLM Base+
+CNN encoders improves overall performance over the baseline
+of using only a Conv1d encoder.
+Index Terms : target speech extraction, pre-trained model,
+LLM
+1. Introduction
+Target speech extraction (TSE) methods aim at isolating a spe-
+cific speaker’s voice from a multi-talker mixture. This process
+uses cues associated with the desired speaker, such as a pre-
+recorded enrollment speech that highlights the speaker’s vocal
+characteristics [1, 2], a spatial cue indicating the direction from
+which the speaker is speaking [3], or video input capturing lip
+movements [4, 5]. However, in real-world scenarios, these pre-
+registered cues can vary significantly, raise privacy concerns or
+may even be absent, thereby limiting the practicality and effec-
+tiveness of TSE systems.
+Compared to the aforementioned cues, text is more ac-
+cessible, making it a practical and flexible option. With ad-
+vances in language models, several studies have used natural
+language descriptions to extract specific sound events or musi-
+cal instruments from audio mixtures, achieving impressive re-
+sults [6, 7, 8]. Building on this, other research has employed text
+descriptions to isolate a specific speaker’s voice from a speech
+mixture. LLM-TSE [9] was the first to use natural language
+descriptions powered by a large language model to extract se-
+mantic information from text queries (such as a description of
+single speech attribute, e.g., gender, language) and integrate it
+into a speech separation network, demonstrating the practicality
+of text-guided TSE.
+However, its focus on a single speech attribute limits its
+broader application. To overcome this, Huo et al. introduced
+a more flexible text-guided TSE model and developed the Tex-
+trolMix dataset, which provides rich descriptions of speech at-
+tributes [10]. This dataset offers two types of contextual clues:
+(1) a natural language description of the target speech’s speak-
+ing style and (2) a reference audio that shares specific style at-
+tributes with the target speech, accompanied by a correspond-
+ing text prompt. Each utterance is annotated with six attributes:
+speaker identity, emotion, pitch level, gender, accent, and tempo
+(speaking rate). The speaker identity is represented by an en-
+rollment speech sample from the target speaker, aligned with
+the relevant text prompt.
+Despite these advancements, certain limitations persist.
+Firstly, the previous studies categorize continuous-valued at-
+tributes, such as pitch level, based on single-speaker speech
+statistics [8, 9, 10], which results in coarse quantization and the
+loss of valuable information. Secondly, the TextrolMix dataset
+captures only a limited set of speech attributes, omitting fac-
+tors like language, temporal order, and speaking duration. Fur-
+thermore, it does not guarantee that the mixture contains dif-
+ferent speakers, limiting its robustness in real-world scenarios.
+Similarly, Jiang et al. [8] use an LLM to interpret generic
+text prompts (queries) for target speech extraction with Textrol-
+Speech dataset [11], but encounter the same issues, especially
+the narrow scope of speech attributes and inflexible categoriza-
+tion.
+To address these limitations, we incorporate a broad range
+of speech attributes and create a two-speaker mixture dataset,
+including language, gender, transcription, emotion, temporal
+order, age, speaking rate, duration, pitch level (mean F0), pitch
+range (F0 span), loudness, and speaker-to-microphone distance.
+The contributions of our work are as follows: (i) We introduce
+inter-speaker relative cues, which categorize the collected at-
+tributes based on the differences between the target and interfer-
+ence speakers’ voices. The relative cues provide a way to over-
+come the fixed categorization of speech attributes and make the
+dataset much easier to expand. (ii) We conduct baseline experi-
+ment to evaluate their impact and contribution in distinguishing
+target speakers and extracting their voices. (iii) Since the ad-
+dition of more cues can complicate the learning process, we
+propose utilizing pre-trained weights of WavLM Base+ CNN
+encoders for improved extraction performance. To facilitate fu-
+ture research in this direction, code for creating our dataset is
+available at: https://github.com/daiwangsnr.
+2. Dataset Construction
+In this study, mixture signals consist of speech from two speak-
+ers: one as the target and the other as interference. We construct
+relative cues from various speech attributes to specify and ex-
+tract the target speaker’s voice. These cues are formatted as nat-
+ural language descriptions (text prompts) for target speech ex-
+traction. Our dataset includes three components: inter-speaker
+relative cues, audio part, and text prompt generation.
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+1918 10.21437/Interspeech.2025-1554
+
+2.1. Inter-Speaker Relative Cues
+Inter-speaker relative cues are constructed based on multiple
+speech attributes and applied to each pair of target and interfer-
+ence speech in one mixture. We first compile metadata for both
+the target and interference speech samples, covering attributes
+such as language, gender, age, emotional state, transcription,
+mean F0, F0 span, signal-to-interference Ratio (SIR), speaker-
+to-microphone distance, appearance time in the mixture, speak-
+ing duration, and speaking rate.
+The mean F0 and F0 span are extracted using the Librosa
+pYIN library 1, with the F0 span measured logarithmically to
+reduce the impact of outliers. If transcription annotations are
+available, word and pause durations are estimated using word
+time boundaries from the Montreal Forced Aligner tool 2. Oth-
+erwise, we use the Silero V AD tool3 to detect word and pause
+durations. The speaking duration is calculated by summing the
+durations of words and brief pauses, while excluding pauses
+longer than 0.6 seconds. Pauses shorter than this threshold are
+considered natural breaks. The speaking rate is calculated by
+dividing the total number of syllables by the speaking duration.
+Syllable counting is based on the number of vowel sequences,
+where in Chinese each character (acquired by splitting the text
+into individual characters) is counted as a syllable , while in
+English, French, German, and Spanish, each syllable is esti-
+mated by detecting continuous vowel groups (acquired by split-
+ting words into tokens and identifying consecutive vowel let-
+ters such as “aeiou”). The SIR is calculated with consideration
+of the speaking durations of both speech samples to estimate
+their relative loudness. The speaker-to-microphone distance for
+each speech sample is generated by our random constraining of
+speaker in a virtual room (for further details, refer to Section
+2.2). Language, gender, age, emotional state, and transcrip-
+tion are derived from the original annotation information in the
+datasets used (refer to Section 2.2).
+Relative cues are derived by comparing target and interfer-
+ence speech attributes. For continuous-valued attributes (e.g.,
+age, mean F0, F0 span, speaking duration, speaking rate, SIR,
+distance), cues are categorized based on auditory thresholds
+(see the bold numbers in Table 1). If the attribute difference
+exceeds the threshold, cues are assigned to two separate groups
+(e.g., older/younger for age category cue), otherwise they are la-
+beled as “similar”. For example, if speaking rates differ by more
+than 15%, the cue is labeled as “faster” or “slower”; otherwise,
+it is labeled “similar”. For discrete attributes (e.g., language,
+transcription, gender, emotion), cues are labeled as “same” if
+attribute values match; otherwise, the specific attribute is used
+(e.g., English/French for language, spoken words transcription
+for transcription, male/female for gender, happy/angry for emo-
+tion). The threshold for temporal order is based on our sub-
+jective listening test, while other thresholds are derived or re-
+fined from hearing studies on speech signals, considering cross-
+language variations and reverberant conditions.
+2.2. Audio part
+Our goal is to create a mixed speech dataset with diverse inter-
+speaker relative cues (attributes). Since no single corpus pro-
+vides all required attributes, we combine speech from multiple
+1https://librosa.org/doc/main/generated/
+librosa.pyin.html
+2https://montreal-forced-aligner.readthedocs.
+io/en/latest/
+3https://github.com/snakers4/silero-vad
+Table 1: Used auditory thresholds for some relative speech cues
+Cue Threshold
+Speaking Rate 15%
+(Faster/Slower/Similar) 5-10% noticeable [12, 13]
+Speaking Duration 15%
+(Longer/Shorter/Similar) 5-10% noticeable [12]
+Pitch Level 5 Hz
+(Higher/Lower/Similar) 3-5 Hz perceptible [14]
+Pitch Range 25%
+(Wider/Narrower/Similar) 10-20% perceptible [14]
+Distance 0.5 m
+(Farther/Nearer/Similar) 20-30 cm noticeable [15]
+Age Category 10 years
+(Older/Younger/Similar) 5-10 years discernible [16, 17]
+Loudness 3 dB
+(Louder/Quieter/Similar) 3 dB noticeable [15, 18]
+Temporal Order 0.1 s
+(First/Second/Similar) 0.1 s noticeable in our subjec-
+tive listening test
+corpora, selecting representative datasets across five major lan-
+guages (summarized in Table 2). These corpora include rich at-
+tributes like language, gender, transcription, age, and emotional
+state, enabling the generation of diverse speech mixtures. The
+speech mixture creation process involves the following steps:
+(i) To avoid overlaps in speakers and spoken content across
+training, validation, and test sets, and to expedite mixing,
+we split each corpus into two non-overlapping parts, ensur-
+ing no shared speakers or content. These parts are merged
+into two larger sets: training1/validation1/test1 and train-
+ing2/validation2/test2. The Montreal Forced Aligner tool is
+used to obtain word time boundaries for utterances with tran-
+scriptions.
+(ii) We generate 100,000 mixed speech samples for train-
+ing, and 10,000 each for validation and testing. Due to limited
+emotion and age annotations, we create three sub-pools: one
+with emotion labels, one with age labels, and one without ei-
+ther. We sample pairs from these sub-pools as follows: 20,000
+training, 2,000 validation, and 2,000 test pairs for the emotion
+sub-pool; 10,000 training, 1,000 validation, and 1,000 test pairs
+for the age sub-pool; and 70,000 training, 7,000 validation, and
+7,000 test pairs for the third sub-pool. During each mixing iter-
+ation, two speech samples are randomly selected from the sub-
+pools. Speech durations are capped at 6 seconds; longer ut-
+terances are truncated, and shorter ones are retained. Silence
+at the beginning or end is removed using word alignment (for
+transcribed speech) or voice activity detection. The trimmed
+samples S1 and S2 retain their original start and end times for
+transcription cues.
+(iii) In two-talker speech, there is usually a temporal or-
+der, with one speaker speaking first and the other follow-
+ing, often with some overlap. If either S1 or S2 is shorter
+than 3 seconds, the overlap equals the shorter sample’s du-
+ration, padded with zeros at the beginning using a ran-
+domly selected start offset from(0, duration of longer sample−
+duration of shorter sample). For samples longer than 3 seconds,
+the overlap is the difference between their total durations and 6
+seconds, with S2 padded at a fixed offset. The padded versions,
+S′
+1 and S′
+2 retain word boundaries from the original transcrip-
+tions, enabling transcription cues. Either S′
+1 or S′
+2 serves as the
+target clean speech.
+1919
+
+Table 2: Summary of used speech datasets across five lan-
+guages, detailing the number of speakers in the training, val-
+idation, and test splits, along with their partial attributes.
+Dataset Language Speakers Attributes
+CASIA [19] Chinese 2/1/1 Language, Emo-
+tion, Gender,
+Transcription
+ESD [20] Chinese 6/2/2 Language, Emo-
+tion, Gender,
+Transcription
+Aishell3 [21] Chinese 120/30/30 Language, Gen-
+der, Transcription
+MagicData-Read
+[22]
+Chinese 33/8/11 Language, Age,
+Gender
+Librispeech [23] English 120/30/30 Language, Gen-
+der, Transcription
+ESD [20] English 6/2/2 Language, Emo-
+tion, Gender,
+Transcription
+OreauFR-02 [24] French 21/7/4 Language, Emo-
+tion, Age, Gender
+MLS French [25] French 90/18/18 Language, Gen-
+der, Transcription
+EmoDB [26] German 6/2/2 Language, Emo-
+tion, Age, Gen-
+der, Transcription
+MLS German
+[25]
+German 120/30/30 Language, Gen-
+der, Transcription
+MLS Spanish
+[25]
+Spanish 79/20/20 Language, Gen-
+der, Transcription
+EmoMatchSpanish
+[27]
+Spanish 30/10/10 Language, Emo-
+tion, Gender,
+Transcription
+(iv) We simulate reverberant speech using the generated
+clean speech samples and gpuRIR, which models speakers in
+a room with reverberation effects. The room dimensions range
+from 9–11 m in length and width, 2.6–3.5 m in height, and re-
+verberation times of 0.3–0.6 seconds. The microphone is posi-
+tioned at the center of the room, while speaker-to-microphone
+distances vary from 0.3 to 1.5 m horizontally, with speaker
+heights between 1.6 and 1.9 m. We generate 10,000 RIR pairs
+for training, 1,000 for validation, and 1,000 for testing. For
+each mixing iteration, we randomly select RIRs ( rir1, rir2)
+and convolve them with speech signals ( S′
+1, S′
+2). The speech-
+to-interference ratio (SIR) between the reverberant speech sam-
+ples is uniformly sampled from 0 to 6 dB before merging them
+into a single mixture.
+2.3. Text Prompt Generation
+The goal is to create generic text prompts that capture inter-
+speaker relative cues for target speech extraction. We start
+by compiling template prompts based on one or more relative
+cues, following a similar approach to [8]. Since individual
+relative cues are intended to specify the target speaker, cues
+classified as “same” or “similar” are excluded. The template
+prompt is generated by inserting actions and cues into struc-
+tures like "Please <verb> <str(cues)>." or "Can
+you <verb> str(cues)?" . Here, the verb represents
+an action, randomly selected from “extract”, “isolate”, and
+“separate”, while the str function converts a cue vector into
+a human-readable string by inserting a noun phrase, such as
+“speaker characterized by”. For instance, the cue vector (fe-
+male, higher pitch level, faster speaking rate) can be expressed
+as: “the female speaker characterized by a higher pitch level
+and a faster speaking rate”
+For each mixed speech sample in the TSE training, vali-
+dation, and test sets, we generate multiple template prompts,
+including twelve individual cues, a randomly selected subset of
+cues (random cues), and a combination of all cues. To enhance
+template flexibility, we rephrase each prompt into five variations
+using ChatGPT-4o-mini, leveraging its efficiency and accuracy.
+We instruct the model to focus on action verbs such as “ex-
+tract”, “separate” and “isolate” while avoiding terms like “iden-
+tify” and “locate”. Additionally, we encourage the model to
+explore different sentence structures and synonyms for speech-
+or speaker-related keywords, such as “female”, “male”, “pitch
+range”, “speaking speed”, “quieter loudness”, “louder loud-
+ness”, “longer speaking duration”, “shorter speaking duration”
+and so on. Furthermore, we instruct the model to ensure the lan-
+guage remains simple and suitable for everyday use. After gen-
+erating these generic prompts, we found that only a few outputs
+were incomplete or irrelevant. These were manually removed
+and regenerated.
+3. Experimental Setup
+3.1. Proposed Method and Baseline
+The architecture of our proposed method is depicted in Figure 1.
+We adopt the conventional encoder-mask-decoder framework
+for speech separation, where the text prompt, describing cues
+of the target speaker, guides the extraction of the target speaker
+from the mixture speech.
+To enhance learning of mixed speech signals and interpret
+target speech cues, we leverage self-supervised representations
+pre-trained on overlapping speech data and use a large language
+model to encode these cues into a unified embedding space.
+Specifically, we incorporate CNN encoders from the WavLM
+Base+ model as an additional encoder for the mixture speech.
+WavLM Base+ is pre-trained with masked speech denoising
+and prediction techniques, learning from masked segments to
+predict pseudo-labels. This improves downstream tasks like
+speech recognition, speaker verification, separation, and di-
+arization. By training on noisy, overlapped speech, its CNN
+encoders capture rich speech and speaker features, which have
+been proven to benefit target speech extraction [28]. We fine-
+tune the WavLM Base+ CNN encoders and concatenate their
+output with the Conv1d encoder along the feature dimension.
+To model both local and global speech dependencies,
+we use two dual-path transformer (DPT) blocks [29], each
+with four intra- and four inter-transformer layers for mask
+estimation. To better interpret text cues, we employ an
+LLM, specifically the resource-efficient LLaMA 3.2 1B In-
+struct model, leveraging its strong multilingual understanding
+and instruction-following capabilities. The network incorpo-
+rates text embeddings from the fine-tuned LLaMA 3.2 1B In-
+struct model. These embeddings are fused with the encoder out-
+put and the first DPT block output via FiLM modules, similar to
+[8]. The language model is jointly trained with the mask estima-
+tion network to generate text embeddings that exhibit awareness
+of relative cues written in the text prompt, facilitating the system
+identify the target speaker. To assess the benefits of additional
+pre-trained features, we introduce a baseline model identical to
+the proposed one but without WavLM Base+ CNN encoders.
+1920
+
+Mixture
+Speech
+WavLMCNN 
+encoders
+(fine-tune)
+FiLM1 Dual Path 
+Transformer1 FiLM2
+Dual Path 
+Transformer2
+ConvTranspose1d
+Decoder
+Separated
+Speech
+Mask
+Mask Estimation Network
+Feature Modulation Feature Modulation
+Text 
+Embedding
+Text
+Embedding
+“Please extract the female speaker 
+with a quieter loudness in the audio.” Target
+Speech
+Loss: -SI-SDR
+Conv1d
+Encoder
+LLM
+(LoRAfine-tune)
+Concat
+Tokenizer
+Figure 1: A block diagram of the used target speech extraction system
+3.2. Training and Network Configurations
+We adopted a relative large kernel size of 80 and stride of 40 for
+both the Conv1d encoder and ConvTranspose1d decoder, simi-
+lar to [8], which proved efficient in preliminary experiments. To
+match the time resolution of the Conv1d encoder, only the first
+four temporal convolution blocks of WavLM Base+ CNN en-
+coders were fully fine-tuned and used for feature concatenation.
+Intra- and inter-transformers processed 50-frame chunks with
+50% overlap, using 8 attention heads and 2048-dimensional
+feed-forward networks per layer.
+The LLaMA 3.2 1B instruction model was fine-tuned using
+LoRA (rank 16, scaling weight 16, dropout 0.05), applied to
+query and key projection layers in self-attention. Training was
+performed using the negative SI-SDR loss with float16 mixed-
+precision and a batch size of 24. The AdamW optimizer was
+used with a learning rate of 1e-4. A linear warm-up was applied
+during the first 1,000 updates, and gradient normalization (with
+a maximum norm of 30) was employed to prevent gradient ex-
+plosion. Models were trained with early stopping, with a maxi-
+mum of 100 epochs. Following [8], we used all five generic text
+prompts with a randomly selected subset of cues (random cues)
+for each mixture during training. For validation, only the fifth
+set of generic prompts with random cues were used.
+3.3. Results and Discussion
+We evaluate target speech extraction performance using SI-SDR
+improvement (SI-SDRi) and perceptual evaluation of speech
+quality (PESQ) [30]. The fifth set of generic prompts, includ-
+ing random, individual, and all cues per test sample, is used for
+evaluation. Table 3 presents the results when both models are
+trained with random cues.
+The results show the potential of training with only random
+cues, while using all cues leads to better performance by utiliz-
+ing additional information during the inference stage. Notably,
+certain cues, such as gender and temporal order, exhibit strong
+discriminative power across different speech signals. These
+cues are language- and reverberation-independent and are more
+perceptible to humans than other individual cues. Cues like
+speaking duration, pitch level, and loudness also perform well
+across languages and in reverberant environments. The pitch
+range cue doesn’t work as well as pitch level, likely because
+reverberation—especially under strong conditions—distorts the
+boundaries of pitch changes. In contrast, the age category per-
+forms poorly, likely due to limited training samples and its sen-
+sitivity to both language and reverberation effects. Additionally,
+some age-annotated speech includes emotional speech, further
+Table 3: Performance of baseline and proposed method
+Differ In Baseline Proposed
+SI-SDRi PESQ SI-SDRi PESQ
+Random Cues 8.3 1.88 10.1 2.21
+All Cues 9.7 1.92 11.4 2.26
+Language 2.8 1.74 6.4 2.10
+Transcription −0.6 1.64 1.8 1.94
+Gender 8.9 1.90 11.0 2.25
+Emotion 2.0 1.55 1.9 1.77
+Pitch Level 5.3 1.77 6.0 2.05
+Pitch Range 2.9 1.61 3.0 1.96
+Loudness 7.1 1.81 8.1 2.11
+Distance 5.0 1.78 7.4 2.12
+Age Category −3.2 1.40 −4.4 1.52
+Temporal Order 8.8 1.94 10.4 2.26
+Speaking Rate 0.7 1.69 1.5 1.93
+Speaking Duration 6.4 1.87 6.9 2.15
+complicating differentiation. Meanwhile, transcription, emo-
+tion, and speaking rate cues outperform age category, as they
+are primarily influenced by language variations. The compar-
+ison between the baseline and proposed method indicates that
+integrating pre-trained WavLM Base+ features improves over-
+all SI-SDR performance, especially for language, transcription,
+gender and distance cues, while also enhancing speech percep-
+tion quality across all conditions.
+4. Conclusions and Future Work
+This study explored rich relative cues between speakers for text-
+guided target speech extraction. Experimental Results suggest
+the effectiveness of incorporating multiple cues and using the
+pre-trained representation of WavLM Base+ CNN encoders.
+The findings further reveal that different cues have varying im-
+pacts and contributions in extracting target speakers’ voices.
+Among the cues, gender and temporal order proved the most ro-
+bust in cross-lingual and reverberant conditions, while cues like
+pitch level, loudness, distance, speaking duration, language, and
+pitch range also contributed, yielding over or nearly 3 dB SI-
+SDR gains for both models. Age category underperformed due
+to limited data and sensitivity to complex environment. Future
+work will expand age-labeled data, refine the model or training
+strategy to boost overall performance, and assess generalization
+across different languages and reverberation conditions.
+1921
+
+5. References
+[1] Q. Wang, H. Muckenhirn, K. Wilson, P. Sridhar, Z. Wu, J. R. Her-
+shey, R. A. Saurous, R. J. Weiss, Y . Jia, and I. L. Moreno, “V oice-
+Filter: Targeted V oice Separation by Speaker-Conditioned Spec-
+trogram Masking,” in Proc. INTERSPEECH , 2019, pp. 2728–
+2732.
+[2] K. ˇZmol´ıkov´a, M. Delcroix, K. Kinoshita, T. Ochiai, T. Nakatani,
+L. Burget, and J. ˇCernock`y, “Speakerbeam: Speaker aware neural
+network for target speaker extraction in speech mixtures,” IEEE
+Journal of Selected Topics in Signal Processing , vol. 13, no. 4,
+pp. 800–814, 2019.
+[3] M. Ge, C. Xu, L. Wang, E. S. Chng, J. Dang, and H. Li, “L-
+spex: Localized target speaker extraction,” in IEEE International
+Conference on Acoustics, Speech and Signal Processing , 2022,
+pp. 7287–7291.
+[4] T. Ochiai, M. Delcroix, K. Kinoshita, A. Ogawa, and T. Nakatani,
+“Multimodal speakerbeam: Single channel target speech extrac-
+tion with audio-visual speaker clues.” in INTERSPEECH, 2019,
+pp. 2718–2722.
+[5] Z. Pan, R. Tao, C. Xu, and H. Li, “Selective listening by syn-
+chronizing speech with lips,” IEEE/ACM Transactions on Audio,
+Speech, and Language Processing, vol. 30, pp. 1650–1664, 2022.
+[6] X. Liu, Q. Kong, Y . Zhao, H. Liu, Y . Yuan, Y . Liu, R. Xia,
+Y . Wang, M. D. Plumbley, and W. Wang, “Separate anything you
+describe,” IEEE/ACM Transactions on Audio, Speech, and Lan-
+guage Processing, 2024.
+[7] C. Li, Y . Qian, Z. Chen, D. Wang, T. Yoshioka, S. Liu, Y . Qian,
+and M. Zeng, “Target sound extraction with variable cross-
+modality clues,” in IEEE International Conference on Acoustics,
+Speech and Signal Processing, 2023, pp. 1–5.
+[8] X. Jiang, C. Han, Y . A. Li, and N. Mesgarani, “Listen, chat, and
+edit: Text-guided soundscape modification for enhanced auditory
+experience,” arXiv preprint arXiv:2402.03710, 2024.
+[9] X. Hao, J. Wu, J. Yu, C. Xu, and K. C. Tan, “Typing to listen at
+the cocktail party: Text-guided target speaker extraction,” arXiv
+preprint arXiv:2310.07284, 2023.
+[10] M. Huo, A. Jain, C. P. Huynh, F. Kong, P. Wang, Z. Liu, and
+V . Bhat, “Beyond speaker identity: Text guided target speech ex-
+traction,” in ICASSP 2025 - 2025 IEEE International Conference
+on Acoustics, Speech and Signal Processing, 2025, pp. 1–5.
+[11] S. Ji, J. Zuo, M. Fang, Z. Jiang, F. Chen, X. Duan, B. Huai,
+and Z. Zhao, “Textrolspeech: A text style control speech cor-
+pus with codec language text-to-speech models,” in IEEE Inter-
+national Conference on Acoustics, Speech and Signal Processing,
+2024, pp. 10 301–10 305.
+[12] J. L. Miller, “Some effects of speaking rate on phonetic percep-
+tion,” Phonetica, vol. 38, no. 1-3, pp. 159–180, 1981.
+[13] H. Quen ´e, “On the just noticeable difference for tempo in speech,”
+Journal of Phonetics, vol. 35, no. 3, pp. 353–362, 2007.
+[14] B. C. Moore, An Introduction to the Psychology of Hearing .
+Brill, 2012.
+[15] J. Blauert and S. Hearing, “The psychophysics of human sound
+localization,” in Spatial Hearing. MIT Press Cambridge, MA,
+USA, 1997.
+[16] S. Linville, Vocal Aging. Singular Thomson Learning, 2001.
+[17] E. B. Ryan and H. L. Capadano III, “Age perceptions and eval-
+uative reactions toward adult speakers,” Journal of Gerontology,
+vol. 33, no. 1, pp. 98–102, 1978.
+[18] E. Zwicker and H. Fastl, Psychoacoustics: Facts and Models .
+Springer Science & Business Media, 2013, vol. 22.
+[19] J. Zhang and H. Jia, “Design of speech corpus for mandarin text
+to speech,” in The Blizzard Challenge 2008 Workshop, 2008.
+[20] K. Zhou, B. Sisman, R. Liu, and H. Li, “Emotional voice con-
+version: Theory, databases and esd,”Speech Communication, vol.
+137, pp. 1–18, 2022.
+[21] Y . Shi, H. Bu, X. Xu, S. Zhang, and M. Li, “Aishell-3: A multi-
+speaker mandarin tts corpus,” inINTERSPEECH, 2021, pp. 2756–
+2760.
+[22] L. Magic Data Technology Co., “Kespeech: A man-
+darin speech corpus,” http://www.imagicdatatech.com/index.php/
+home/dataopensource/data info/id/101, 05 2019.
+[23] V . Panayotov, G. Chen, D. Povey, and S. Khudanpur, “Lib-
+rispeech: an asr corpus based on public domain audio books,” in
+IEEE International Conference on Acoustics, Speech and Signal
+Processing, 2015, pp. 5206–5210.
+[24] L. Kerkeni, C. Cleder, Y . Serrestou, and K. Raouf, “French emo-
+tional speech database - or´eau,” Dec. 2020, Zenodo.
+[25] V . Pratap, Q. Xu, A. Sriram, G. Synnaeve, and R. Collobert, “Mls:
+A large-scale multilingual dataset for speech research,” ArXiv,
+vol. abs/2012.03411, 2020.
+[26] F. Burkhardt, A. Paeschke, M. Rolfes, W. F. Sendlmeier, B. Weiss
+et al. , “A database of german emotional speech.” in INTER-
+SPEECH, vol. 5, 2005, pp. 1517–1520.
+[27] E. Garcia-Cuesta, A. B. Salvador, and D. G. P ˜aez, “Emo-
+matchspanishdb: study of speech emotion recognition machine
+learning models in a new spanish elicited database,” Multimedia
+Tools and Applications, vol. 83, no. 5, pp. 13 093–13 112, 2024.
+[28] J. Peng, M. Delcroix, T. Ochiai, O. Plchot, S. Araki, and
+J. ˇCernock`y, “Target speech extraction with pre-trained self-
+supervised learning models,” in IEEE International Conference
+on Acoustics, Speech and Signal Processing , 2024, pp. 10 421–
+10 425.
+[29] C. Subakan, M. Ravanelli, S. Cornell, M. Bronzi, and J. Zhong,
+“Attention is all you need in speech separation,” inICASSP 2021-
+2021 IEEE International Conference on Acoustics, Speech and
+Signal Processing, 2021, pp. 21–25.
+[30] A. Rix, J. Beerends, M. Hollier, and A. Hekstra, “Perceptual eval-
+uation of speech quality (PESQ)-a new method for speech qual-
+ity assessment of telephone networks and codecs,” in 2001 IEEE
+International Conference on Acoustics, Speech, and Signal Pro-
+cessing, vol. 2, 2001, pp. 749–752 vol.2.
+1922

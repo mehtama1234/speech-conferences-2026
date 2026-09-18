@@ -1,0 +1,722 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+Novel Parasitic Dual-Scale Modeling for Efficient and Accurate Multilingual
+Speech Translation
+Chenyang Le1, Yinfeng Xia2, Huiyan Li2, Manhong Wang2, Yutao Sun2, Xingyang Ma2, Yanmin Qian†1
+1Auditory Cognition and Computational Acoustics Lab
+MoE Key Lab of Artificial Intelligence, AI Institute
+School of Computer Science, Shanghai Jiao Tong University, Shanghai, China
+2Honor Device Co, Ltd, China
+{nethermanpro,yanminqian}@sjtu.edu.cn
+Abstract
+Recent advancements in speech-to-text translation have led to
+the development of multilingual models capable of handling
+multiple language pairs simultaneously. However, these unified
+models often suffer from large parameter sizes, making it chal-
+lenging to balance inference efficiency and performance, par-
+ticularly in local deployment scenarios. We propose an inno-
+vative Parasitic Dual-Scale Approach, which combines an en-
+hanced speculative sampling method with model compression
+and knowledge distillation techniques. Building on the Whisper
+Medium model, we enhance it for multilingual speech transla-
+tion into whisperM2M, and integrate our novel KVSPN mod-
+ule, achieving state-of-the-art (SOTA) performance across six
+popular languages with improved inference efficiency. KVSPN
+enables a 40% speedup with no BLEU score degradation. Com-
+bined with distillation methods, it represents a 2.6× speedup
+over the original Whisper Medium with superior performance.
+Index Terms: Multilingual Speech Translation, Whisper, Spec-
+ulative Decoding
+1. Introduction
+In recent years, the field of speech-to-text translation has wit-
+nessed remarkable progress[1, 2, 3, 4], driven by the exponen-
+tial growth of data availability and computational power. This
+advancement has led to the emergence of multilingual mod-
+els capable of handling multiple language pairs simultaneously.
+Compared to training separate models for each language pair, a
+unified multilingual approach offers superior knowledge trans-
+fer and enhanced performance. However, existing multilingual
+translation models often suffer from large parameter sizes, mak-
+ing it challenging to balance inference efficiency and perfor-
+mance, particularly in scenarios requiring local deployment.
+While various acceleration techniques have been proposed
+in the speech domain, their applicability to multilingual speech
+translation remains limited. Model distillation[5, 6], while ef-
+fective for simpler tasks like speech recognition, faces con-
+straints in multilingual settings due to the inherent complexity
+of understanding and generating multiple languages. For exam-
+ple, Whisper[7] has its official distilled turbo version, which
+pitifully no longer supports speech translation, for which a
+probable reason is that the distilled model no longer contains
+enough parameters to handle the multi-lingual translation task.
+Alternative approaches, such as speculative sampling[8, 9] or
+multi-head Medusa mechanisms[10], prove less effective when
+applied to already compact models, as they often result in sig-
+nificant performance degradation. These limitations highlight
+†Yanmin Qian is corresponding author
+the need for a more tailored approach to accelerate inference in
+multilingual speech translation tasks.
+In this work, we present an innovative Parasitic Dual-Scale
+Approach, an enhanced speculative sampling method specif-
+ically designed for multilingual speech translation.
+Our ap-
+proach combines model compression and knowledge distilla-
+tion techniques commonly used in speech translation, achiev-
+ing state-of-the-art (SOTA) performance while maintaining
+model compactness and efficiency. Building upon the Whis-
+per Medium model, we first conduct task-specific fine-tuning
+for multilingual speech translation. Subsequently, we integrate
+our novel KVPSN (Key-Value Parasitic Speculative Network)
+module. Compared to previous methods, the KVPSN is more
+tightly integrated with the base model, which significantly im-
+proves inference efficiency with no performance degradation.
+The contributions of this work are as follows:
+1. We present whisperM2M, a modified version of Whisper,
+fine-tuned with extensive data, achieving SOTA performance
+in multilingual translation across six selected languages with
+reduced parameter size. Notably, our training data primarily
+consists of open-source resources.
+2. We introduce the innovative KVPSN module, which achieves
+an additional 40% inference speedup on top of an already ef-
+ficient model, with no BLEU score reduction. This represents
+a 2.6× over the original Whisper Medium’s inference speed.
+3. As a speculative sampling approach, KVPSN maintains
+compatibility with other acceleration techniques (e.g., flash
+attention[11] or quantization[12]) and offers modular flexi-
+bility, allowing users to balance performance and efficiency
+according to their specific needs.
+2. Methods
+2.1. WhisperM2M
+Whisper is a speech recognition system that follows the stan-
+dard encoder-decoder transformer architecture. It is known for
+its multi-lingual recognition ability. To better serve the task of
+efficient speech translation, we make the following modification
+to the original whisper model into the whisperM2M model.
+First, the language ID in the prompt of the original whis-
+per model indicates the input language, which is unnecessary
+in translation tasks. In our reformulated version, we repurpose
+the language ID to indicate the language of the target output
+language. We also removed other elements from the original
+prompt that are irrelevant to our task.
+Second, many previous works have shown promising re-
+sults in training MT and ST tasks together in a multi-task
+way[13, 14, 3], and thus the ST can distill knowledge from MT
+through a distribution matching loss like KL divergence. Fol-
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+908
+10.21437/Interspeech.2025-568
+
+Figure 1: (a) Structure of one KVPSN block. (b) Example of inference process of KVPSN. Here the Nl = 6 and Ng = 2, thus the
+average inference cost reduces from 6 layers to 4 layers.
+lowing this, we add a text encoder to the whisper model for
+the MT task. Because whisper has never trained on text-to-text
+tasks, we do not add KL loss until the MT loss falls below the
+ST loss.
+Finally, to speed up during inference, we follow the method
+in [5] to reduce the number of layers of the decoder, since the
+size of the decoder has the most significant impact on inference
+speed. We keep the first and last layers while evenly discarding
+internal layers to reach the target layer size.
+All of the above make up our base model for multilingual
+speech-to-text translation, achieving a balance between effi-
+ciency and performance. The training objective is the weighted
+combination of ST loss, MT loss, and KL loss.
+Lbase = wst ∗Lst + wmt ∗Lmt + wkl ∗Lkl
+(1)
+2.2. KVPSN
+In this section, we present the innovative Key-Value Para-
+sitic Speculative Network (KVPSN), a lightweight yet effec-
+tive transformer-based architecture designed to accelerate in-
+ference with minimal computational overhead. Similar to the
+Medusa method, after the original decoder generates a to-
+ken, the KVPSN module generates a speculative future token
+through a lightweight network, thus reducing the overall infer-
+ence latency.
+The main idea behind KVPSN is to resolve two key weak-
+nesses of standard Medusa implementations. First, traditional
+Medusa heads operate in isolation, where each subsequent head
+must blindly hypothesize the outputs of its predecessors. This
+lack of coordinated decision-making creates errors when di-
+vergent predictions occur across heads. Second, conventional
+Medusa implementations derive predictions from single-layer
+hidden states of the base model. For moderately sized archi-
+tectures (e.g., < 1B parameters), this restricts their predictive
+accuracy due to limited contextual representation.
+2.2.1. Architectural Overview
+The structure of the KVPSN module is shown in Figure 1 (a).
+Instead of hidden states of the base model, KVPSN takes the
+embedding of the current generated token as the initial input.
+This design strictly adheres to the autoregressive generation
+paradigm, ensuring full forward dependency during speculative
+prediction and thereby enhancing output determinism.
+Given a base decoder with Nl layers, we partition them into
+stratified groups (in this work Ng=3). Each KVPSN block in-
+teracts with a dedicated layer group through a cross-model at-
+tention mechanism. For the l−th KVPSN block processing the
+i−th sequence position:
+qi,l
+SN = WQ
+θ′ · hi,l
+in
+(2)
+hi,l
+attn = WO
+θ′ · MHA
+
+qi,l
+SN, k<i,Gl
+base , v<i,Gl
+base
+
+(3)
+where denotes concatenation across layers in group Gl
+=
+h
+Nl
+Ng × (l −1), Nl
+Ng × l
+
+. The subsequent residual connection
+follows standard transformer practice:
+hi,l+1
+out
+= hi,l
+in + LayerNorm(hi,l
+attn)
+(4)
+Under this architecture, the KVPSN shares the KV of the
+past sequence with the base decoder. Therefore, it leverages
+multi-layer contextual signals from the base model without ad-
+ditional computation, enabling a higher prediction accuracy.
+The remaining components (cross-attention and feed-forward
+networks) remain identical to the standard transformer archi-
+tecture.
+The loss of the KVPSN module Lspec is similar to the base
+model described in equation 1, as this module can also perform
+text-to-text translation. The total loss is a weighted combination
+of base and KVPSN.
+Ltotal = Lbase + wspec ∗Lspec
+(5)
+2.2.2. Speculative Execution
+Given the computational constraints imposed by the base
+model’s scale, our implementation adopts a conservative single-
+token speculation strategy. As depicted in Figure 1(b), the in-
+ference process follows an interleaved execution pattern:
+1. Base Model Step: Generates token yt with full autoregres-
+sive computation
+2. (Optional) Validation Step: If yt−1 is predicted by KVPSN,
+the base model validates it using its own output distribution.
+If denial, discard yt and replace yt−1 with the output of the
+base model. In following steps, t ←−t −1.
+3. KVPSN Step: Utilizes yt’s embedding and the base model’s
+KV cache to speculatively predict yt+1.
+909
+
+Table 1: The BLEU score(%) of different models on CoVoST2 and Fleurs testset, where all results are based on greedy search. Only
+parameters involved in the speech-to-text translation task are calculated. N.L. denotes the number of layers in the text decoder. ALTP
+denotes the average generation latency per token. R.Speed is the decoder inference speed relative to the whisper medium model.
+Methods
+|
+Param
+N.L.
+|
+CoVoST2
+|
+Fleurs
+|
+ALPT
+R.Speed
+X-EN
+EN-X
+X-EN
+EN-X
+X-X
+Whisper Small
+244M
+12
+22.4
+-
+-
+-
+-
+8.1
+202%
++ finetune
+-
+-
+28.9
+28.0
+19.9
+24.9
+17.8
+8.1
+202%
+Whisper Medium
+769M
+24
+29.8
+-
+-
+-
+-
+16.5
+100%
++ finetune
+-
+-
+36.1
+37.6
+26.0
+31.3
+23.9
+16.5
+100%
+SeamlessM4T Medium
+821M
+12
+34.4
+35.9
+25.6
+27.1
+16.1
+10.2
+162%
+SeamlessM4T Large v2
+1.5B
+24
+38.3
+40.8
+29.8
+31.5
+19.6
+31.1
+53%
+whisperM2M
+561M
+12
+37.0
+38.9
+26.4
+32.4
+25.1
+8.7
+189%
++ KVPSN (top-1)
+605M
+12+3
+37.0
+38.8
+26.5
+32.4
+25.1
+6.4
+259%
+This tight coupling ensures computational state sharing –
+the KVPSN’s speculative generation directly inherits the base
+model’s contextual representation through shared KV cache ac-
+cess, eliminating redundant computation.
+A top-k validation mechanism is implemented to control
+quality and mitigate error propagation in speculative decoding.
+Accept(yt) =
+(
+1
+if yt ∈top-k (Pbase(yt|y<t))
+0
+otherwise
+(6)
+Here we use a fixed K. Thus the quality of speculative prediction
+will have a direct impact on inference efficiency.
+3. Experiments
+3.1. Task & Data
+We focus on many-to-many speech-to-text translation across six
+popular languages: EN, ZH, DE, ES, FR, and IT. We collect
+various open-source speech recognition datasets covering the
+six languages, including LibriSpeech [15], Multilingual Lib-
+rispeech(MLS)
+[16], VoxPopuli
+[17], Common Voice[18],
+WenetSpeech[19], KeSpeech[20] and Emilia [21].
+Then we
+create pseudo translation labels for these data by translating
+the transcription into different languages through a cloud text-
+to-text translation API. The dataset consists of approximately
+100K hours of training data, with about 80% of it being in Chi-
+nese and English.
+3.2. Model
+As mentioned in section 2.1, the whisperM2M model is initial-
+ized by the whisper medium model. A 6-layer text encoder,
+with a hidden size of 1024, is incorporated to facilitate the text-
+to-text translation task. Starting with a 24-layer encoder and
+24-layer decoder whisper medium model, we add a 6-layer text
+encoder and prune the text decoder to Nl = 12 layers for de-
+coding efficiency. Additionally, we perform an ablation study
+to compare the performance of the proposed model with an al-
+ternative 8-layer version.
+The KVPSN module consists of Ng = 3 blocks, with the
+hidden size matching that of the base model. This leads to a
+theoretical maximum of Nl−Ng
+Nl+Ng = 60% computation speeding.
+And K=1 means to rollback every time the speculation deviates
+from the base model.
+3.3. Training
+To retain the capability of the whisper encoder, we employ Low-
+Rank Adaptation(LoRA)[22] (α = 64 ) at the first 20 layers of
+the whisper encoder. The rest 4 encoder layers, as well as the
+text encoder, text decoder, and KVPSN module, are set free.
+The text encoder is initialized by the weights in self-attention
+and MLP modules of the first six whisper decoder layers. The
+KVPSN module is randomly initialized. For training loss, we
+set wst = 2, wmt = 1, wkl = 0.5 . Empirical study shows the
+model is not sensitive to these weights. And we set wspec = 0.2
+to prioritize the training of the base model. It turns out that
+KVPSN converges well with this small weight. For each ex-
+periment train in fp16 on 8 Nvidia H800 GPUs for 2 million
+steps, using a batch size of 64 utterances. We use AdamW
+optimizer[23] and linear learning rate schedular with 5000 steps
+of warmup and a maximum learning rate of 1e-4.
+3.4. Evaluation
+We report the case-sensitive BLEU[24] with HF sacreBLEU
+implementation on two testset: CoVoST2[25] and Fleurs[26].
+We report the average BLEU score of 5 non-English to En-
+glish pairs(X-EN) and the average score of 2 English to Non-
+English pairs(EN-X) provided by CoVoST2. Fleurs testset pro-
+vides parallel data within our six languages, allowing many-to-
+many evaluation between all 30 pairs. We report the average
+score of 5 X-EN pairs, 5 EN-X pairs, and 30 X-X pairs.
+As baselines, we compare our whisperM2M and KVPSN
+models against whisper small, whisper medium, Seamless M4t
+medium, and Seamless large v2[27]. For fairness, we fine-tune
+the two whisper models on our full training set, as they are not
+dedicately designed for translation.
+For inference speed evaluation, we measure the average la-
+tency per token in milliseconds (ALTP). ALTP is computed as
+the total time for decoder generation divided by the total number
+of tokens generated. We sample 1000 utterances from the CoV-
+oST2 test set for the inference speed test, running the process
+for 10 rounds and reporting the average ALTP. All evaluations
+are conducted on a single Nvidia H800 GPU using the Ubuntu
+platform.
+4. Results
+4.1. Main Result
+Table 1 shows the BLEU score and inference efficiency for
+greedy decoding on the testsets. The R.Speed is the relative in-
+ference speed against whisper medium models. When calculat-
+ing the parameter size, only the parameters involved in speech-
+to-text translation are considered. When calculating ALTP we
+only consider the time in decoder auto-regressive generation
+910
+
+and exclude the encoder forward.
+We can see from the table, that whisperM2M shows su-
+perior performance in speech translation than all other mod-
+els except SeamlessM4T Large v2. It is noteworthy that whis-
+perM2M even performs better than whisper medium that is fine-
+tuned on the same training set. This shows the following empir-
+ical results: 1) With proper training data, a whisper is a suitable
+base model for multi-lingual speech translation, as all of its vari-
+ants perform well after finetuning 2) Pruning layer is effective
+in improving efficiency in this task as 12 layers are enough to
+handle translation between six languages. 3) Knowledge distil-
+lation from the text-to-text translation task is helpful even if the
+training data is adequate.
+Compared to seamless models, WhisperM2M outperforms
+M4T medium model in all test sets.
+Although the large v2
+model is powerful in English-centric translation, it marginally
+falls behind whisperM2M by 5.5 bleu score in Fleurs many-
+to-many settings. Possibly it is because of some issue in the
+distribution of training data while ours is more balanced.
+As for the efficiency, we can conclude from the table that
+within the same architecture, the inference speed is very related
+to the number of layers in the decoder. Thus the efficiency of
+whisperM2M is comparable to whisper small with the same
+number of decoder layers. The KVPSN module takes a step
+further, increasing the inference speed of whisperM2M by 37%
+to become the fastest model in the table with an extra 44M pa-
+rameter. During this acceleration no performance is lost, thanks
+to the top1 validation rollback. With this module, whisperM2M
+can reach a performance comparable to that of M4T large v2
+with about 5 times the inference speed.
+4.2. Ablation Study
+4.2.1. Decoding Configuration Analysis
+This section investigates the performance impacts of different
+speculative decoding configurations. We systematically adjust
+the threshold k in our top-k rollback validation mechanism (in-
+troduced in Section 2.2.2) and examine the integration with
+beam search algorithms. Evaluation is conducted on the CoV-
+oST2 testset, reporting average BLEU scores across 7 language
+pairs.
+Table 2 reveals three key observations for greedy decoding:
+1. Without rollback validation (maximum k), we achieve 48%
+speedup – approaching the theoretical maximum of 60% – but
+at the cost of a 1.2 BLEU score degradation 2. Progressively
+reducing k improves translation quality, with performance con-
+verging to baseline levels at k = 1 (the minor BLEU difference
+stems from implementation-specific factors) 3. The optimized
+configuration (k = 1) maintains 37% acceleration while pre-
+serving translation quality.
+For beam search experiments (Nb=3), we observe distinct
+behavior: 1. Rollback thresholds show minimal impact (≤0.34
+BLEU difference even without validation) 2. KVPSN-enhanced
+beam search slightly outperforms baseline greedy decoding in
+both quality (+0.2 BLEU) and speed (+12%).
+This comparative analysis demonstrates that our method
+achieves different optimal operating points for greedy and beam
+search paradigms, providing flexibility for quality-speed trade-
+offs.
+4.2.2. Compare to different methods
+In this section, we compare KVPSN with two other techniques
+for boosting efficiency: 1) Further prune the decoder to 8 layers.
+Table 2: Comparison of BLEU scores and speed for different
+decoding configurations.
+Base
+w/ KVPSN
+-
+top-1
+top-2
+top-3
+top-∞
+Greedy
+BLEU
+37.51
+37.55
+37.03
+36.68
+36.28
+speed
+100%
+137%
+141%
+143%
+148%
+BS 3
+BLEU
+38.05
+37.89
+37.74
+37.76
+37.71
+speed
+84%
+110%
+113%
+113%
+116%
+Table 3: Comparison of BLEU score and decoder inference
+speech between KVPSN and two other common techniques: fur-
+ther pruning and Medusa.Rel.S. is the relative speech to the
+base model with a 12-layer decoder.
+Methods
+Rollback
+BLEU
+ALTP
+Rel.S.
+Base
+-
+37.51
+8.71
+100%
+Prune L8
+-
+34.91
+6.02
+145%
+Medusa
+top-∞
+32.55
+5.86
+149%
+top-2
+36.54
+7.33
+119%
+top-1
+37.50
+8.14
+107%
+KVPSN
+top-∞
+36.28
+5.87
+148%
+top-2
+37.03
+6.18
+141%
+top-1
+37.55
+6.36
+137%
+This should result in a similar inference speech with KVPSN. 2)
+Medusa speculative decoding. For fairness, we use the same 3
+transformer blocks for the additional Medusa heads. The result
+is shown in Table 3.
+For the pruning method, after further pruned to 8 layers,
+the model shows 2.6 bleu score degradation compared to the
+12-layer base model. So 8 layers of decoder may not contain
+enough parameters to support this task.
+For Medusa methods, this table shows that the additional
+Medusa head does not perform well under the same training
+and inference setting. Without rollback, the Bleu score drops
+by 4.96. Even with top-1 validation, the acceleration is only 9%
+due to too many rollbacks.
+5. Conclusions and Discussions
+In this paper, we present the full workflow to transform whis-
+per into a powerful and efficient model for multi-lingual speech
+translation. We present whisperM2M that reaches SOTA per-
+formance among models of similar size and efficiency. KVPSN
+module can boost efficiency by 37% with no performance
+degradation.
+One thing to be discussed is that we choose to directly flat-
+ten the KV of different layers and allow queries from KVPSN
+to attend to each of them. This may cause a high computation
+cost if the sequence to be generated is too long(>500 tokens).
+For generating longer sequences, it is recommended to combine
+with some KV compression techniques for better efficiency.
+Currently, we only test our KVPSN method on a single
+task with encoder-decoder transformer. We hope this technique
+can be applied to more tasks and models. The architecture of
+KVPSN should be more coherent if applied to a decoder-only
+model with no cross-attention module. Moreover, we will try
+multi-token generation in speculation decoding, which may fur-
+ther increase efficiency.
+911
+
+6. Acknowledgement
+This work was supported in part by China NSFC projects under
+Grants 62122050 and 62071288, in part by Shanghai Munici-
+pal Science and Technology Commission Project under Grant
+2021SHZDZX0102.
+7. References
+[1] Z. Chen, Y. Zhang, A. Rosenberg, B. Ramabhadran, P. Moreno,
+A. Bapna, and H. Zen, “MAESTRO: Matched Speech Text
+Representations through Modality Matching,” arXiv preprint
+arXiv:2204.03409, no. arXiv:2204.03409, 2022.
+[2] Y. Zhang, W. Han, J. Qin, Y. Wang, A. Bapna, Z. Chen, N. Chen,
+B. Li, V. Axelrod, G. Wang, Z. Meng, K. Hu, A. Rosenberg,
+R. Prabhavalkar, D. S. Park, P. Haghani, J. Riesa, G. Perng,
+H. Soltau, T. Strohman, B. Ramabhadran, T. Sainath, P. Moreno,
+C.-C. Chiu, J. Schalkwyk, F. Beaufays, and Y. Wu, “Google USM:
+Scaling Automatic Speech Recognition Beyond 100 Languages,”
+arXiv preprint arXiv:2303.01037, 2023.
+[3] C. Le, Y. Qian, L. Zhou, S. Liu, Y. Qian, M. Zeng, and X. Huang,
+“ComSL: A Composite Speech-Language Model for End-to-End
+Speech-to-Text Translation,” in Advances in Neural Information
+Processing Systems, vol. 36, 2023, pp. 58 312–58 323.
+[4] S. Communication, L. Barrault, Y.-A. Chung, and et al., “Seam-
+lessM4T: Massively Multilingual & Multimodal Machine Trans-
+lation.”
+arXiv, 2023.
+[5] S. Gandhi, P. von Platen, and A. M. Rush, “Distil-whisper: Robust
+knowledge distillation via large-scale pseudo labelling,” arXiv
+preprint arXiv:2311.00430, 2023.
+[6] T. P. Ferraz, M. Zanon Boito, C. Brun, and V. Nikoulina, “Mul-
+tilingual distilwhisper: Efficient distillation of multi-task speech
+models via language-specific experts,” in ICASSP 2024 - 2024
+IEEE International Conference on Acoustics, Speech and Signal
+Processing (ICASSP), 2024, pp. 10 716–10 720.
+[7] A. Radford, J. W. Kim, T. Xu, G. Brockman, C. McLeavey, and
+I. Sutskever, “Robust speech recognition via large-scale weak
+supervision,” in International conference on machine learning.
+PMLR, 2023, pp. 28 492–28 518.
+[8] Y. Leviathan, M. Kalman, and Y. Matias, “Fast inference from
+transformers via speculative decoding,” in International Confer-
+ence on Machine Learning.
+PMLR, 2023, pp. 19 274–19 286.
+[9] S. Kim, K. Mangalam, S. Moon, J. Malik, M. W. Mahoney,
+A. Gholami, and K. Keutzer, “Speculative decoding with big lit-
+tle decoder,” Advances in Neural Information Processing Systems,
+vol. 36, 2024.
+[10] Y. Segal-Feldman, A. Shamsian, A. Navon, G. Hetz, and
+J. Keshet, “Whisper in medusa’s ear: Multi-head efficient decod-
+ing for transformer-based asr,” arXiv preprint arXiv:2409.15869,
+2024.
+[11] T. Dao, D. Fu, S. Ermon, A. Rudra, and C. R´e, “Flashattention:
+Fast and memory-efficient exact attention with io-awareness,” Ad-
+vances in Neural Information Processing Systems, vol. 35, pp.
+16 344–16 359, 2022.
+[12] H. Shao, B. Liu, W. Wang, X. Gong, and Y. Qian, “Dq-whisper:
+Joint distillation and quantization for efficient multilingual speech
+recognition,” in 2024 IEEE Spoken Language Technology Work-
+shop (SLT).
+IEEE, 2024, pp. 240–246.
+[13] Y. Liu, H. Xiong, Z. He, J. Zhang, H. Wu, H. Wang, and C. Zong,
+“End-to-End Speech Translation with Knowledge Distillation,”
+2019.
+[14] P. K. Rubenstein, C. Asawaroengchai, D. D. Nguyen, A. Bapna,
+Z. Borsos, F. d. C. Quitry, P. Chen, D. E. Badawy, W. Han,
+E. Kharitonov, H. Muckenhirn, D. Padfield, J. Qin, D. Rozen-
+berg, T. Sainath, J. Schalkwyk, M. Sharifi, M. T. Ramanovich,
+M. Tagliasacchi, A. Tudor, M. Velimirovi´c, D. Vincent, J. Yu,
+Y. Wang, V. Zayats, N. Zeghidour, Y. Zhang, Z. Zhang, L. Zilka,
+and C. Frank, “AudioPaLM: A Large Language Model That Can
+Speak and Listen.”
+arXiv, 2023.
+[15] V. Panayotov, G. Chen, D. Povey, and S. Khudanpur, “Lib-
+rispeech: an asr corpus based on public domain audio books,”
+in 2015 IEEE international conference on acoustics, speech and
+signal processing (ICASSP).
+IEEE, 2015, pp. 5206–5210.
+[16] V. Pratap, Q. Xu, A. Sriram, G. Synnaeve, and R. Collobert,
+“Mls: A large-scale multilingual dataset for speech research,”
+arXiv preprint arXiv:2012.03411, 2020.
+[17] C. Wang, M. Riviere, A. Lee, A. Wu, C. Talnikar, D. Haz-
+iza, M. Williamson, J. Pino, and E. Dupoux, “Voxpopuli: A
+large-scale multilingual speech corpus for representation learn-
+ing, semi-supervised learning and interpretation,” arXiv preprint
+arXiv:2101.00390, 2021.
+[18] R. Ardila, M. Branson, K. Davis, M. Henretty, M. Kohler,
+J. Meyer, R. Morais, L. Saunders, F. M. Tyers, and G. Weber,
+“Common voice: A massively-multilingual speech corpus,” arXiv
+preprint arXiv:1912.06670, 2019.
+[19] B. Zhang, H. Lv, P. Guo, Q. Shao, C. Yang, L. Xie, X. Xu, H. Bu,
+X. Chen, C. Zeng et al., “Wenetspeech: A 10000+ hours multi-
+domain mandarin corpus for speech recognition,” in ICASSP
+2022-2022 IEEE International Conference on Acoustics, Speech
+and Signal Processing (ICASSP).
+IEEE, 2022, pp. 6182–6186.
+[20] Z. Tang, D. Wang, Y. Xu, J. Sun, X. Lei, S. Zhao, C. Wen, X. Tan,
+C. Xie, S. Zhou et al., “Kespeech: An open source speech dataset
+of mandarin and its eight subdialects,” in Thirty-fifth Conference
+on Neural Information Processing Systems Datasets and Bench-
+marks Track (Round 2), 2021.
+[21] H. He, Z. Shang, C. Wang, X. Li, Y. Gu, H. Hua, L. Liu, C. Yang,
+J. Li, P. Shi, Y. Wang, K. Chen, P. Zhang, and Z. Wu, “Emilia: An
+extensive, multilingual, and diverse speech dataset for large-scale
+speech generation,” in Proc. of SLT, 2024.
+[22] E. J. Hu, Y. Shen, P. Wallis, Z. Allen-Zhu, Y. Li, S. Wang,
+L. Wang, and W. Chen, “Lora: Low-rank adaptation of large lan-
+guage models,” arXiv preprint arXiv:2106.09685, 2021.
+[23] I. Loshchilov, “Decoupled weight decay regularization,” arXiv
+preprint arXiv:1711.05101, 2017.
+[24] K. Papineni, S. Roukos, T. Ward, and W.-J. Zhu, “Bleu: A Method
+for Automatic Evaluation of Machine Translation,” in Proceed-
+ings of the 40th Annual Meeting of the Association for Compu-
+tational Linguistics, P. Isabelle, E. Charniak, and D. Lin, Eds.
+Philadelphia, Pennsylvania, USA: Association for Computational
+Linguistics, 2002, pp. 311–318.
+[25] C. Wang, A. Wu, J. Gu, and J. Pino, “Covost 2 and massively
+multilingual speech translation.” in Interspeech, 2021, pp. 2247–
+2251.
+[26] A. Conneau, M. Ma, S. Khanuja, Y. Zhang, V. Axelrod, S. Dalmia,
+J. Riesa, C. Rivera, and A. Bapna, “Fleurs: Few-shot learning
+evaluation of universal representations of speech,” in 2022 IEEE
+Spoken Language Technology Workshop (SLT).
+IEEE, 2023, pp.
+798–805.
+[27] S. Communication, L. Barrault, Y.-A. Chung, M. C. Meglioli,
+D. Dale, N. Dong, M. Duppenthaler, P.-A. Duquenne, B. Ellis,
+H. Elsahar, J. Haaheim, J. Hoffman, M.-J. Hwang, H. Inaguma,
+C. Klaiber, I. Kulikov, P. Li, D. Licht, J. Maillard, R. Mavlyutov,
+A. Rakotoarison, K. R. Sadagopan, A. Ramakrishnan, T. Tran,
+G. Wenzek, Y. Yang, E. Ye, I. Evtimov, P. Fernandez, C. Gao,
+P. Hansanti, E. Kalbassi, A. Kallet, A. Kozhevnikov, G. M. Gon-
+zalez, R. S. Roman, C. Touret, C. Wong, C. Wood, B. Yu, P. An-
+drews, C. Balioglu, P.-J. Chen, M. R. Costa-juss`a, M. Elbayad,
+H. Gong, F. Guzm´an, K. Heffernan, S. Jain, J. Kao, A. Lee,
+X. Ma, A. Mourachko, B. Peloquin, J. Pino, S. Popuri, C. Ropers,
+S. Saleem, H. Schwenk, A. Sun, P. Tomasello, C. Wang, J. Wang,
+S. Wang, and M. Williamson, “Seamless: Multilingual Expressive
+and Streaming Speech Translation,” 2023.
+912
+

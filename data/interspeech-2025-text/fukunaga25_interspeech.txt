@@ -1,0 +1,557 @@
+Backchannel prediction for natural spoken dialog systems
+using general speaker and listener information
+Yoshinori Fukunaga1, Ryota Nishimura2, Kengo Ohta3, Norihide Kitaoka2
+1Tokushima University, Japan
+2Toyohashi University of Technology, Japan
+3National Institute of Technology, Anan College, Japan
+c612435007@tokushima-u.ac.jp, nishimura.ryota.tz@tut.jp, kengo@anan-nct.ac.jp,
+kitaoka@tut.jp
+Abstract
+Backchannel responses are a crucial component of conver-
+sations enabling more effective communication through listener
+feedback. Current backchannel prediction models classify these
+responses into just three categories, using speech, text, and lis-
+tener IDs. These IDs, which contain detailed personal infor-
+mation, cannot be applied in real-world dialog systems how-
+ever, and three-category classification limits response genera-
+tion capabilities. Therefore, we propose a model for predict-
+ing a backchannel’s ‘surface form’ using only general speaker
+and listener embeddings. Our experiments show a 1.3% im-
+provement in prediction accuracy when performing 3-category
+classification, and a 0.9% improvement when performing 11-
+category classification, compared to conventional ID embed-
+dings, demonstrating an enhancement in performance that is
+deployable in real-world systems.
+Index Terms: backchannel prediction, spoken dialog system,
+speaker and listener information
+1. Introduction
+Backchannels are conversational elements uttered by listeners
+during a speaker’s speech to facilitate communication by pro-
+viding feedback. These backchannels are not limited to short,
+verbal responses, but also include non-verbal cues such as nod-
+ding and smiling. These subtle signals (nods, non-verbal vo-
+calizations, brief comments, etc.) not only convey understand-
+ing and empathy from the listener and provide feedback to the
+speaker, they also play a crucial role in sustaining the conver-
+sation. In recent years, as speech input and dialog applications
+based on spoken dialog systems have become more practical,
+achieving a system that can engage in dialog as naturally as hu-
+mans still remains challenging. In order to realize dialog with
+AI agents comparable to human conversations, it will be nec-
+essary to replicate the natural backchannel responses which are
+frequently used during human interactions.
+Previous research on backchannels has explored various as-
+pects of this phenomenon, such as determining when dialog
+systems should produce backchannels [1–8]. Recent studies
+on classification of backchannels (BC) divide them into two
+main types: “Continuers” [9], which are generic BCs which
+acknowledge understanding and encourage the speaker to con-
+tinue their narrative, and “Assessments” [10], which are specific
+BCs consisting of short, context-dependent responses [11–16].
+Some studies have further split Assessment BCs into “Under-
+standing” and “Empathetic” assessments, in order to make bet-
+ter predictions [17–19]. Other works have suggested annotating
+each function of the backchannel and classifying short feedback
+which is more detailed than a backchannel [20–22].
+There have been two major challenges in recent research
+on backchannel prediction. First, studies have demonstrated
+that incorporating additional information about speakers and
+listeners, alongside linguistic and acoustic features of their
+speech, can improve accuracy. However, when implementing
+a backchannel prediction model into a spoken dialog system,
+it is difficult to input personal IDs with extensive, personally
+identifiable information for many, or unknown, users. There-
+fore, these models need a way to acquire and utilize informa-
+tion about speakers and listeners that can be applied to any user.
+Second, predicting backchannel categories alone does not al-
+low the system to determine which specific backchannel to use.
+Even within the “Continuer” category, there are multiple types
+of backchannels to choose from, and their nuances can vary sub-
+tly. Moreover, users can be put off if the system selects the same
+backchannel repeatedly. As a result, the model needs to be able
+to predict which specific backchannel the system should select,
+not just the correct backchannel category.
+Therefore, in this paper we propose a backchannel predic-
+tion model that uses general information about speakers and lis-
+teners to predict the ‘surface form’ of backchannels, which is
+the more specific and appropriate type of backchannel response
+that should be selected by the system, taking into account the
+way backchannel prediction models are actually implemented
+in spoken dialog systems.
+Major our contributions can be summarized as follows:
+• Unlike previous research, which has proposed the use of in-
+puts such as speaker IDs, which cannot realistically be used
+in actual spoken dialog systems, and backchannel category
+classifications such as Continuer or Assessment, we propose
+a model that uses self-reported, general speaker and listener
+information to predict the correct ‘surface form’ of backchan-
+nel responses, an approach which can be implemented in ex-
+isting spoken dialog systems.
+• By reproducing the model proposed by Ortega et al. in [13],
+we conduct a detailed comparison of different methods used
+to employ dialog participant information, as well as differ-
+ences in performance across languages.
+• Through experiments using dialog data, we analyze differ-
+ences in the backchannel prediction accuracy of various mod-
+els based on the presence or absence of speaker information,
+the methods used to employ this information, and the effect
+of speaker-listener relationships on backchannel selection.
+2. Proposed Methods
+The overall structure of our proposed model is shown in Fig. 1.
+We concatenate the features output from the language model,
+acoustic model, and speaker-listener model to obtain predic-
+tion probabilities for each backchannel through a classification
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+1078 10.21437/Interspeech.2025-1316
+!"#$$%&’()% 
+!"#$% !$&’% !!! 
+!"#$%&#’())*+,& 
+*+%’,%& -./$%(%& 
+012 012 012 012 012 
+-.**’/),,#01’2%3#$ 
+/*%44+5+#$ 
+!"#$%&’ 
+!" #" !"#$%&’ 
+()"$%&’ 
+$!" 
+!"#$% &’() 
+"#$% 
+&’"#$% 
+3%(4%& 56% 3%(4%& 56% 7%8’$.9( 
+Figure 1: Structure of proposed model
+Table 1: General informationcolleted from speakers & listeners
+for CEJC data used in this study, with response totals
+Gender Age Relationship
+Male 198 Less than 20 11 Family 80
+Female 246 20 to 39 165 Friend 83
+40 to 59 157 Business 31
+60 or higher 101 School 9
+Other 14
+layer. In the following, we will describe the details of each of
+these three model.
+For our language model, we used BERT [23], which has
+been widely used in previous research. The input to the model
+consists of 4 turns of dialog text before the backchannel occurs,
+during which 768-dimensional features are obtained from the
+CLS (classification) token output.
+For our acoustic model, we use HuBERT [24]. While
+Wav2Vec2.0 [25] has been used in predominantly previous
+studies, recent research has shown that HuBERT is more ef-
+fective for classification prediction tasks [26]. The input to the
+model is 5 seconds of audio before the backchannel occurs. We
+obtained 768-dimensional features through average pooling of
+the HuBERT output.
+The following information was used as input for the speaker
+and listener model; the speaker’s gender and age, the listener’s
+gender and age, and the category of the relationship between the
+speaker and listener (Family, Friend, Business, School, Other).
+The details of the input information are shown in Table 1. The
+model extracts 128-dimensional features for each piece of in-
+formation through an embedding layer, concatenates these fea-
+tures, and processes them through a fully connected layer, ulti-
+mately obtaining 256-dimensional features.
+3. Datasets
+3.1. CEJC
+The Corpus of Everyday Japanese Conversation (CEJC) [27]
+is a well-balanced, audio-visual corpus of typical, daily life
+Japanese conversations. It consists of 557 dialogs, with 200
+hours of speech data in total, and the genders and ages of
+the speakers are balanced. The CEJC contains many multi-
+party (three or more speaker) conversations, however predict-
+ing backchannels under such condition is much more challeng-
+ing. Therefore, in this study we only used the approximately 45
+hours of conversations that involve only two speakers.
+The Japanese backchannel responses obtained from the
+CEJC corpora which occurred frequently and were semantically
+classifiable were categorized into 11 ‘surface types’. The most
+common backchannel ‘surface form’ of each ‘surface type’,
+their English translations, and number of occurrences of each
+type of backchannel are shown in Table 2. Backchannels such
+as laughter are known as ‘non-verbal backchannels’ [28–30].
+In previous studies, these responses have often not been con-
+Table 2: Distribution of backchannels by ‘surface type’ cate-
+gories in CEJC data used in this study, with examples
+Backchannel Total Backchannel Total
+Un (Yeah) 8,745 Ne- (Isn’t it?) 407
+Unun (Uh-huh) 2,680 Fu-n (Oh, really?) 605
+U-n (Hmm) 3,304 He- (Wow) 526
+Ee (I see) 572 Ah (Oh) 1,157
+Hai (Yes) 2,258 (laughter) 3,582
+So (Right) 886
+sidered to be backchannels, but since laughter tags are applied
+within the CEJC, it was included as one of the classification
+targets in this study. It should be noted that the backchan-
+nel “Hai” includes repetitions such as “ Hai hai” and “ Hai hai
+hai”, which are all treated as the same backchannel. Similarly,
+other backchannels that are semantically almost identical are
+also grouped together as the same backchannel ‘surface form’.
+3.2. Data augmentation
+The extracted backchannels are numerically imbalanced, so us-
+ing all of the data as-is would result in accuracy bias. If we per-
+form alignment using the less frequent backchannels, we can
+only use around 500 instances per type. In order to increase
+the amount of learnable data, we performed data augmentation.
+For audio data, we extracted 5-second segments from 0.2 and
+0.5 seconds prior to the original segment and treated these as
+pseudo-correct data. For text data, we expanded the data by
+deleting the last 3 and 5 characters to correspond with the au-
+dio time segments. While the deletion of immediatly preced-
+ing data does impact prediction accuracy, research by Adiba et
+al. [5] has demonstrated that reasonable prediction performance
+is still achievable under these conditions. This augmentation
+was made only for backchannels with less than 1,500 occur-
+rences, and was not applied to backchannels with 1,500 or more
+occurrence. In the following experiments, the dataset is limited
+to a maximum of 500 samples per backchannel category with-
+out data augmentation, and a maximum of 1,500 samples per
+backchannel category with data augmentation.
+4. Experimental Setup
+4.1. Reproduction of previous research
+To facilitate comparison with the results of previous research,
+backchannel responses extracted from the CEJC dataset were
+classified as either “Continuers”, “Assessments”, or “No-BC”
+(no backchannel) to obtain a three-category classification of the
+data. Following Ortega et al. [13], ‘uh-huh’ and its variants
+were classified as “Continuers”, while other backchannels were
+classified as “Assessments”. For the “No-BC” category, we also
+followed their methodology to extract utterances that were not
+considered backchannels. The number of instances within each
+classification were 5,000 for “Continuers”, 5,000 for “Assess-
+1079
+Table 3: Comparison of accuracy and macro-average F1 scores
+for classification of 3 types of backchannel[%]
+AM & LM Dataset SLM Accuracy F1 score
+[13] SWBD [33] - 56.7 -
+[13] 58.9 -
+- 55.4 54.5
+[13] CEJC ours 57.7 54.6
+[13] 57.0 55.8
+CEJC
+- 68.9 65.2
+Ours ours 70.2 67.2
+[13] 71.9 69.1
+ments”, and 10,000 for “No-BC”. This data was only used for
+the comparison experiment described in Section 5.1.
+To compare the effectiveness of our approach with con-
+ventional listener-only information embeddings, we conducted
+a comparative analysis based on Ortega et al. [13]. Follow-
+ing their methodology, linguistic features were extracted us-
+ing the five words preceding a backchannel event, as encoded
+by Word2Vec [31]. Acoustic features were derived from the 2
+seconds preceding the backchannel event, using 13-dimensional
+MFCCs extracted using the OpenSMILE toolkit [32], and pro-
+cessed through a Convolutional Neural Network (CNN). Lis-
+teners were assigned unique IDs in numerical order, and these
+IDs were processed through an embedding layer to generate
+listener-specific features. Using the CEJC dataset, we repli-
+cated the model proposed in [13] to facilitate a direct compar-
+ison with our proposed approach. Additionally, to evaluate the
+difference in performance between listener ID embedding as
+used in [13] and our proposed use of general speaker-listener
+information, we conducted experiments where we replaced the
+speaker-listener model in our proposed architecture with lis-
+tener ID embeddings.
+4.2. Training settings
+The pre-trained models used in this study were independently
+developed by Inui Lab at Tohoku University 1and by Rinna 2.
+While some previous studies have relied on the output of these
+pre-trained models, we performed fine-tuning to adapt the mod-
+els to our task. The training dataset consisted of up to 1,500
+samples from each backchannel category, with the data split into
+training, validation, and test sets a ratio of 6:2:2.
+The classifier architecture comprised three layers, with hid-
+den layer sizes of 1,024 and 512, followed by the number of
+output classes. Dropout layers with a dropout rate of 0.25 and
+ReLU activation functions were applied between each layer.
+The model was trained for 100 epochs using a batch size of
+128. We employed the Adam optimizer with a learning rate of
+1e-5 and used cross-entropy loss to guide the learning process.
+5. Results
+5.1. Comparison with previous studies
+Table 3 shows the three-category backchannel classification re-
+sults for the pre-trained base model only, the conventional clas-
+sification model proposed by Ortega et al. in [13], and for our
+proposed model. The upper row of the table shows the accu-
+racy rates reported in [13], where they achieved a 2.2% im-
+provement in accuracy through the implementation of listener
+ID embeddings. The middle row displays results for the pre-
+1https://github.com/cl-tohoku/bert-japanese
+2https://huggingface.co/rinna/japanese-hubert-base
+Table 4: Accuracy and macro-average F1 scores for classifica-
+tion of 11 types of backchannels various conditions [%]
+LM AM DataAug SLM Accuracy F1 score
++ - - - 31.1 29.2
++ - + - 35.7 34.2
+- + - - 26.3 22.6
+- + + - 29.1 24.8
++ + - - 36.5 35.0
++ + + - 37.4 37.1
++ + + ours 39.2 38.7
++ + + [13] 40.3 39.9
+Figure 2: Confusion matrix for classification of test data using
+our proposed method
+trained base model only, our replication of the model proposed
+in [13] trained with the CEJC dataset, and for our model, to
+compare the results when using listener ID embeddings versus
+our proposed speaker-listener model. While listener ID embed-
+dings yielded improvements of 1.6% in accuracy and 1.3% in
+the F1 score, our proposed speaker-listener model achieved a
+2.3% improvement in accuracy and a slight 0.1% improvement
+in the F1 score. The bottom row presents results when us-
+ing HuBERT acoustic model and BERT language model with
+the pre-trained only, conventional, and proposed backchannel
+classification models. Here, the model using listener ID em-
+beddings demonstrated improvements of 3.0% in accuracy and
+3.9% in the F1 score, while our proposed speaker-listener model
+showed improvements of 1.3% in accuracy and 2.0% in the F1
+score.
+5.2. Main results
+Prediction results when classifying 11 types of backchannels
+are presented in Table 4. Looking at the upper portion of the
+table, we can see that data augmentation improved accuracy
+rates and F1 scores across language models, acoustic models,
+and combined language-acoustic models when using the pre-
+trained model only. Examining the lower portion of the table,
+our proposed approach incorporating language, acoustic, and
+speaker-listener models demonstrated improvements of 1.8% in
+accuracy and 1.6% in F1 score through the integration of the
+speaker-listener model. However, in comparison to the con-
+ventional method using listener ID embeddings, our proposed
+model scored 0.9% lower in accuracy and 1.2% lower in F1
+score. Fig. 2 shows a confusion matrix of the classification
+result for our proposed model when using the test data, corre-
+sponding to the parameters of the seventh row in Table 4. The
+matrix reveals notably higher accuracy rates for “ Ee”, “ Hai”,
+and “(laughter)” compared to the other backchannel responses.
+1080
+!
+!"# 
+!"$ 
+!"% 
+!" !"#" !$" %& ’() *+ ,&$ -#$" ’&$ ./ 01(#2/3&45 
+!"#$%& !’$()* +,-$)(-- ./011% 230(’ 
+Figure 3: Percentage of each speaker-listener relationship for each backchannel response
+6. Analysis and Discussion
+6.1. Analysis
+Regarding the results of the main experiment this study, high
+accuracy rates were observed for the backchannel responses
+“Ee” (I see), “Hai” (Yes), and “(laughter)”. “Ee” and “Hai” are
+honorific expressions in Japanese, typically employed when ad-
+dressing individuals of higher social status. The superior classi-
+fication performance for these response suggests that our model
+effectively incorporates speaker and listener relationship infor-
+mation.
+Fig 3 shows the distribution of the five speaker-listener
+relationship types used as input to model for each of the
+11backchannel responses. We can see that the bachchannels
+“Ee” and “ Hai” occur more frequently in Business contexts
+compared to Family or Friend situations. This distribution
+aligns with their function as polite backchannel expressions
+which are more frequently used in professional relationships
+than in more familiar ones. This clear contextual pattern likely
+contributed to the model’s ability to predict these expressions
+more accurately, using the provided speaker-listener relation-
+ship information. While “(laughter)” shows no notable distri-
+bution patterns across relationship types, its high prediction ac-
+curacy can be attributed to its contextual nature, since listeners
+often respond with laughter when the speaker has just laughed.
+This makes laughter relatively easy to predict, based on dialog
+history and acoustic features.
+6.2. Discussion
+Our experiments demonstrated improvement in backchannel
+classification accuracy through the incorporation of general
+speaker-listener information in both three-category backchannel
+prediction (for comparison with previous studies) and in the 11
+category backchannel prediction task used in this study. How-
+ever, the accuracy of the proposed method was slightly lower
+than that achieved by methods proposed in previous research
+which use personal ID embeddings. It is important to note that
+while methods using personal ID embeddings have achieved
+higher accuracy, they face a significant limitation: They cannot
+be practically implemented in real-world spoken dialog systems
+due to the difficulty in collecting and inputting personal ID pro-
+files for random users. In contrast, our approach, which relies
+on easily obtainable user inputs such as gender and age, can be
+utilized by any user. Thus, our research highlights the trade-offs
+between performance and practicality when using systems with
+and without detailed speaker-listener information, especially in
+relation to real-world deployment in spoken dialog systems.
+While our analysis focused on the relationship between
+backchannel responses and speaker-listener information, other
+factors warrant investigation. For example, Figueroa et al [21]
+have demonstrated that backchannel types vary according to the
+speaker’s gender. Additionally, differences based on whether
+conversation participants are in the same age group, or belong
+to different generations, should also be examined. Furthermore,
+Park et al [19] have shown that incorporating factors such as
+elapsed time since the beginning of the dialog, as well as con-
+versation topics, can improve prediction accuracy. We plan to
+investigate these elements, along with contextual factors such
+as conversation location.
+7. Conclusion
+In this study we have proposed a model that predicts 11 types of
+backchannel ‘surface forms’ using general speaker and listener
+information such as gender, age, and relationship. When used
+for three-category backchannel prediction, as in previous stud-
+ies, our proposed approach using speaker-listener information
+showed a 1.3% improvement in classification accuracy. How-
+ever, this was 1.7 % lower than the acuuracy of a conventional
+method using personal ID embeddings. When used for the
+prediction of 11 types of backchannels, our proposed method
+demonstrated a 1.8% improvement in accuracy compared to us-
+ing only a pre-trained model , however this was still 0.9% below
+the accuracy achieved by the conventional method using per-
+sonal ID embeddings. Although we did not exceed the accuracy
+achieved in previous research, we have established a new bench-
+mark for backchannel prediction accuracy using more general-
+ized speaker and listener information, an approach which takes
+into account the issue of practical implementation in spoken di-
+alog system.
+8. Limitation
+In this study we have successfully validated the effectiveness
+of utilizing general speaker-listener information as opposed to
+previously employed individual ID-based approaches. How-
+ever, when applied to a task involving the predition of 11 types
+of ‘surface form’ backchannel responses, our proposed method
+achieved a maximum accuracy of just over 39%, which while
+notably low, was only 0.9% lower than a converntional method.
+This limited performance can be attributed to the fundamental
+difficulty of predicting backchannels in conversation, due to the
+lack of strict grammatical or ‘naturalness’ rules limiting possi-
+ble backchannel responses in given contexts. Moving forward,
+we propose transitioning from the current single-label learning
+approach to a multi-label learning framework that can accom-
+modate multiple valid responses. It is important to note that our
+current dataset does not include multi-label annotations. There-
+fore, careful consideration must be given to both the methodol-
+ogy for label annotation and the evaluation metrics for such a
+model.
+1081
+9. Acknowledgements
+This study was supported by the Japan Society for the Promo-
+tion of Science (JSPS) KAKENHI Grant number JP23H00493.
+10. References
+[1] N. Kitaoka, M. Takeuchi, R. Nishimura, and S. Nakagawa, “Re-
+sponse timing detection using prosodic and linguistic information
+for human-friendly spoken dialog systems,” Japanese Society for
+Artificial Intelligence, vol. 20, pp. 220–228, 2005.
+[2] R. Nishimura, N. Kitaoka, and S. Nakagawa, “Prosody change
+and response timing analysis in spontaneously spoken dialogs and
+their modeling in a spoken dialog system,” in Proc. Interspeech,
+pp. 2565–2568, 2007.
+[3] R. Ruede, M. M ¨uller, S. St ¨uker, and A. Waibel, “Enhancing
+Backchannel Prediction Using Word Embeddings,”in Proc. of In-
+terspeech, pp. 879–883, 2017.
+[4] R. Ruede, M. M ¨uller, S. St ¨uker, and A. Waibe, “Yeah, Right,
+Uh-huh: A Deep Learning Backchannel Predictor,” in Proc. of
+IWSDS, 2017.
+[5] A. I. Adiba, T. Homma, and T. Miyoshi, “Towards immedi-
+ate backchannel generation using attention-based early prediction
+model,” ICASSP 2021-2021 IEEE International Conference on
+Acoustics, pp. 7408–7412, 2021.
+[6] M. Murray, N. Walker, A. Nanavati, P. Alves-Oliveira1, N. Filip-
+pov, A. Sauppe, B. Mutlu, and M. Cakmak, “Learning Backchan-
+neling Behaviors for a SocialRobot via Data Augmentation from
+Human-Human Conversations,” Proceedings of the 5th Confer-
+ence on Robot Learning, vol. 164, pp. 513–525, 2022.
+[7] A. Nakata, R. Nishimura, K. Ohta, and N. Kitaoka, “Development
+of a model for predicting timing of back-channel in a real-time
+spoken dialog system,” 12th IEEE Global Conference on Con-
+sumer Electronics, GCCE 2023, pp. 453–456, 2023.
+[8] J. Wang, L. Chen, A. Khare, A. Raju, P. Dheram, D. He, M. Wu,
+A. Stolcke, and V . Ravichandran, “Turn-taking and backchan-
+nel prediction with acoustic and large language model fusion,”
+ICASSP 2024-2024 IEEE International Conference on Acoustics,
+pp. 12 121–12 125, 2024.
+[9] E. A. Schegloff, “Discourse as an interactional achievement:
+Some uses of ’uh huh’ and other things that come between sen-
+tences,” in Analyzing Discourse: Text and Talk, vol. Georgetown
+University Press, pp. 71–93, 1982.
+[10] C. Goodwin, “Between and within: Alternative sequential treat-
+ments of continuers and assessments,” Journal of Human Studies,
+1986.
+[11] T. Kawahara, T. Yamaguchi, K. Inoue, K. Takanashi, and N. Ward,
+“Prediction and generation of backchannel form for attentive lis-
+tening systems,” in Proc. Interspeech, pp. 2890–2894, 2016.
+[12] R. Tyo, K. Inoue, K. Oti, and T. Kawahara, “Predictive use
+of spoken dialogue by pre-training using large-scale text data,”
+Proc.84th National Convention of IPSJ, vol. 2022, no. 1, pp. 305–
+306, 2022.
+[13] D. Ortega, C.-Y . Li, and N. T. Vu, “Oh, jeez! or uh-huh?
+A listener-aware backchannel predictor on ASR transcriptions,”
+ICASSP 2020-2020 IEEE International Conference on Acoustics,
+pp. 8064–8068, 2020.
+[14] D. Ortega, S. Meyer, A. Schweitzer, and N. T. Vu, “Model-
+ing Speaker-Listener Interaction for Backchannel Prediction,” in
+Proc. of IWSDS, 2023.
+[15] W. Liermann, Y .-H. Park, Y .-S. Choi, and K. Lee, “Dialogue
+Act-Aided Backchannel Prediction Using Multi-Task Learn-
+ing,” Findings of the Association for Computational Linguistics:
+EMNLP 2023, p. 15073–15079, 2023.
+[16] Y .-S. Choi, J.-U. Bang, and S. H. Kim, “Joint streaming model for
+backchannel prediction and automatic speech recognition,” ETRI
+Journal, vol. 46, no. 1, pp. 118–126, 2024.
+[17] J. Y . Jang, S. Kim, M. Jung, S. Shin, and G. Gweon, “BPM MT:
+Enhanced backchannel prediction model using multi-task learn-
+ing,” in Proceedings of the 2021 Conference on Empirical Meth-
+ods in Natural Language Processing, pp. 3447–3452, 2021.
+[18] Y .-H. Park, W. Liermann, Y .-S. Choi, and K. J. Lee, “Improving
+backchannel prediction leveraging sequential and attentive con-
+text awareness,”in Findings of the Association for Computational
+Linguistics: EACL 2024, pp. 1689–1694, 2024.
+[19] Y .-H. Park, W. Liermann, Y .-S. Choi, S. H. Kim, J.-U. Bang,
+S. Yun, and K. J. Lee, “Backchannel prediction, based on who,
+when and what,” in Proc. Interspeech, pp. 3570–3574, 2024.
+[20] C. Figueroa, A. Adigwe, M. Ochs, and G. Skantze, “Annotation
+of Communicative Functions of Short Feedback Token in Switch-
+board,” Proceedings of the Thirteenth Language Resources and
+Evaluation Conference, pp. 1849–1859, 2022.
+[21] C. Figueroa, M. Ochs, and G. Skantze, “Classification of feed-
+back functions in spoken dialog using large language models and
+prosodic features,” in Proc. SemDial, pp. 15–24, 2023.
+[22] C. Qian and G. Skantze, “Joint learning of context and feedback
+embeddings in spoken dialogue,”in Proc. Interspeech, pp. 15–24,
+2024.
+[23] J. Devlin, M.-W. Chang, K. Lee, and K. Toutanova, “BERT: Pre-
+training of deep bidirectional transformers for language under-
+standing,” In Proceedings of the 2019 Conference of North Amer-
+ican Chapter of the Association for Computational Linguistics:
+Human Language Technologies, vol. 1, pp. 4171–4186, 2019.
+[24] W.-N. Hsu, B. Bolte, Y .-H. H. Tsai, K. Lakhotia, and R. S. A. Mo-
+hamed, “HuBERT:Self-supervised speech representation learning
+by masked prediction of hidden units,” IEEE/ACM Transactions
+on Audio, Speech, and Language Processing , vol. 29, pp. 3451–
+3460, 2021.
+[25] A. Baevski, Y . Zhou, A. Mohamed, and M. Auli, “wav2vec
+2.0: A framework for self-supervised learning of speech repre-
+sentations,” Advances in Neural Information Processing Systems,
+vol. 33, pp. 12 449–12 460, 2020.
+[26] D. Wang, A. Boumadane, and A. Heba, “A fine-tuned wav2vec
+2.0/HuBERT benchmark for speech emotion recognition, speaker
+verification and spoken language understanding,” arXiv preprint
+arXiv:2111.02735, 2021.
+[27] H. Koiso, H. Amatani, Y . Den, Y . Iseki, Y . Ishimoto, W. Kashino,
+Y . Kawabata, K. Nishikawa, Y . Tanaka, Y . Usuda, and Y . Watan-
+abe, “Design and Evaluation of the Corpus of Everyday Japanese
+Conversation,” Proceedings of the Thirteenth Language Re-
+sources and Evaluation Conference, p. 5587–5594, 2022.
+[28] R. Bertrand, G. Ferre, P. Blache, R. Espesser, and S. Rauzy,
+“Backchannels revisited from a multimodal perspective,”in Proc.
+of AVSP, pp. 1–5, 2007.
+[29] L. J. Brunner, “Smiles can be back channels,” Journal of Person-
+ality and Social Psychology, pp. 728–734, 1979.
+[30] J. B. Bavelas and J. Gerwing, “The listener as addressee in face-
+to-face dialogue,” Journal of Listening, pp. 178–198, 2011.
+[31] T. Mikolov, I. Sutskever, K. Chen, G. Corrado, and J. Dean, “Dis-
+tributed Representations of Words and Phrases and their Compo-
+sitionality,” Advances in Neural Information Processing Systems,
+vol. 26, 2013.
+[32] F. Eyben, F. Weninger, F. Gross, and B. Schuller, “Recent de-
+velopments in openSMILE, the Munich open-source multimedia
+feature extractor,”in Proc. of ACM Multimedia, p. 835–838, 2013.
+[33] J. Godfrey, E. Holliman, and J. McDaniel, “Switchboard: Tele-
+phone speech corpus for research and development,” ICASSP-92:
+1992 IEEE International Conference on Acoustics, Speech, and
+Signal Processing, vol. 1, no. 517-520, 1992.
+1082

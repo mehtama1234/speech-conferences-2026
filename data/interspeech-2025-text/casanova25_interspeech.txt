@@ -1,0 +1,1087 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+NanoCodec: Towards High-Quality Ultra Fast Speech LLM Inference
+Edresson Casanova1, Paarth Neekhara1, Ryan Langman1, Shehzeen Hussain1,
+Subhankar Ghosh1, Xuesong Yang1, Ante Juki´c1, Jason Li1, Boris Ginsburg1
+1NVIDIA Corporation, USA
+{ecasanova,pneekhara,rlangman,shehzeenh,subhankarg,xueyang,ajukic,jasoli,bginsburg}@nvidia.com
+Abstract
+Large Language Models (LLMs) have significantly advanced
+audio processing by leveraging audio codecs to discretize au-
+dio into tokens, enabling the application of language modeling
+techniques to speech data. However, existing audio codecs of-
+ten operate at high frame rates, leading to slow training and in-
+ference, particularly for autoregressive models. To address this,
+there is growing interest in low frame-rate audio codecs, which
+reduce the number of autoregressive steps required to generate
+one second of audio. In this paper, we conduct ablation studies
+to examine the impact of frame rate, bitrate, and causality on
+codec reconstruction quality. Based on our findings, we intro-
+duce NanoCodec, a state-of-the-art audio codec that achieves
+high-quality compression at just 12.5 frames per second (FPS).
+NanoCodec outperforms related works across various bitrate
+ranges, establishing a new benchmark for low-latency and ef-
+ficient Speech LLM training and inference.
+Index Terms: Neural Audio Codec, Speech Codec, Speech
+LLMs, Speech Synthesis, Text-to-Speech
+1. Introduction
+Audio coding is an important signal processing technique, that
+compresses audio signals into discrete codes and then uses these
+codes to reconstruct the original audio. These technologies have
+been central to fields such as audio transmission and commu-
+nication [1, 2]. Recently, audio codecs have been applied to
+various downstream tasks. For instance, discrete codes gen-
+erated by audio codecs combined with large language models
+(LLMs) have shown impressive results in tasks like zero-shot
+text-to-speech (ZS-TTS) [3, 4] and speech-to-speech translation
+(S2ST) [5, 6].
+In recent years, Neural Audio Codecs (NACs), which pro-
+cess raw waveforms as both input and output, have emerged
+as a promising solution that balances audio quality and bitrate
+[7, 8, 9, 2]. Notable examples include SoundStream [7], En-
+codec [8], DAC [10], and APCodec [1]. These models utilize
+Residual Vector Quantization (RVQ) [11] to encode audio at
+low bitrates while preserving fidelity, often incorporating gen-
+erative adversarial network (GAN)-based losses to enhance re-
+construction quality. Research efforts have primarily focused
+on improving quantization strategies to enhance NAC perfor-
+mance. Several studies have refined RVQ techniques [12] and
+explored alternative approaches such as Finite Scalar Quanti-
+zation (FSQ) [13, 9, 2].
+In addition, task-specific optimiza-
+tions have been introduced, including integration of semantic
+information into quantization [3]. Further improvements have
+been achieved through architectural modifications [14] and re-
+ductions in computational complexity [15], collectively advanc-
+ing the efficiency and effectiveness of NACs. Additionally, re-
+searchers have pursued significant reductions in bitrate. For in-
+stance, WavTokenizer [16] encoded 24kHz audio at 0.9 kbps us-
+ing a single codebook at 75 FPS, achieving audio quality com-
+parable to previous NACs at a similar bitrate. TAAE [17] en-
+codes 16 kHz audio at 25 FPS with bitrates of 0.4 and 0.7 kbps,
+surpassing previous works trained at the same bitrate. TS3-
+Codec [18] encodes 16 kHz audio at 40-50 FPS with 0.68kbps-
+0.85kbps, achieving significantly better audio quality and com-
+putational efficiency than previous models at a similar bitrate.
+Recently, there has been growing interest in reducing the
+frame rate of NACs, aiming to reduce the number of autore-
+gressive steps required to generate audio in Speech LLMs. No-
+table examples include Mimi [19], a model designed for duplex
+speech-to-speech applications, which compresses 24 kHz audio
+at 1.1 kbps and 12.5 FPS while maintaining reasonable audio
+quality. The Low Frame-rate Speech Codec (LFSC) [2] pro-
+vides high-quality 22.05 kHz audio compression at 1.89 kbps
+with a frame rate of 21.5 FPS. More recently, LFSC was inte-
+grated into the Koel-TTS model [4], resulting in a threefold ac-
+celeration in inference for autoregressive zero-shot speech syn-
+thesis, while achieving state-of-the-art (SOTA) zero-shot per-
+formance in intelligibility, speaker similarity, and audio quality.
+This highlights the significant advantages of frame rate reduc-
+tion.
+Despite notable advancements in the field, several recent
+studies have overlooked the critical need for low latency, which
+presents significant challenges for enabling real-time stream-
+able inference [1, 14, 2].
+Achieving low latency in Speech
+LLMs can be accomplished through frame rate reduction [2], ar-
+chitectural optimizations [18], and the incorporation of a causal
+decoder [19], which facilitates inference without requiring to-
+ken/frame caching. In this paper, we conduct a series of ab-
+lation studies to investigate the effects of frame rate, bitrate,
+and causality on codec reconstruction quality. Based on these
+insights, we propose NanoCodec, a SOTA audio codec that de-
+livers high-quality compression at a remarkably low frame rate
+of 12.5 FPS, while outperforming related works across various
+bitrate ranges.
+The key contributions of this work are as follows:
+• We introduce NanoCodec, a novel state-of-the-art, partially
+causal audio codec that delivers high-quality audio compres-
+sion at an exceptionally low frame rate of 12.5 FPS.
+• We conduct extensive ablation studies on frame rate reduc-
+tion, causal audio coding, and the impact of bitrate on our
+proposed codec.
+• To demonstrate our codec’s effectiveness in enhancing audio
+quality and reducing inference time for Speech LLMs, we
+train and evaluate a SOTA LLM-based TTS model.
+• Our codec implementation is publicly available in the NeMo
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+5028
+10.21437/Interspeech.2025-827
+
+repository1, and the pretrained checkpoints can be accessed
+on Hugging Face2.
+The audio samples for each of our experiments are available
+on the demo website3.
+2. NanoCodec
+NanoCodec builds upon the LFSC [2], incorporating architec-
+tural modifications to enhance audio quality and intelligibility,
+while reducing the model number of parameters. The model
+consists of a fully convolutional generator network and three
+discriminators.
+The generator includes an encoder, vector quantization, and
+a HiFi-GAN-based decoder [20].
+The encoder features five
+residual blocks [20], each comprising three residual layers sim-
+ilar to the multi-receptive field fusion (MRF) module proposed
+by [20]. Unlike [2], which used a dilation rate of 1, we adopted
+dilation rates of 1, 3, and 5, as suggested by [9]. We also ex-
+plored various frame rates for the codec. To achieve a frame
+rate of 21.5, as in [2], each residual block is followed by a 1D
+convolutional layer with strides of [2, 2, 4, 8, 8]. For frame rates
+of 25, 12.5, and 6.25, we used strides of [2, 3, 3, 7, 7], [2, 3, 6,
+7, 7], and [3, 4, 6, 7, 7], respectively. The encoder has 24 ini-
+tial channels, which are doubled after each downsampling 1D
+convolutional layer, and has a total of 30.4M parameters.
+The decoder, based on the HiFi-GAN vocoder, uses upsam-
+pling rates that are the reverse of the encoder’s 1D convolutional
+strides, following the approach in [2]. However, our decoder has
+864 initial channels, which are halved after each upsampling
+layer. Inspired by [21], we replaced the Leaky ReLU activation
+in the decoder with Snake activation [22]. The decoder contains
+31.6M parameters.
+Additionally, we explored a causal variant of the encoder
+and decoder by replacing noncausal convolutional layers with
+causal ones, as in [19]. In total, these changes reduce the gen-
+erator’s parameter count by 45% compared to LFSC.
+For the discriminators, we employ three neural networks
+using squared-GAN and feature-matching loss, consistent with
+[2]. We retained the WavLM-based discriminator and the multi-
+period discriminator [20] from the original work [2], but re-
+placed the multi-scale complex STFT discriminator [8] with the
+multi-band multi-scale STFT discriminator [10].
+In addition, inspired by [23], we incorporate Speaker Con-
+sistency Loss (SCL) to improve speaker similarity in recon-
+structed speech. Specifically, we employ a pre-trained speaker
+encoder [24] to extract speaker embeddings from both the gen-
+erated and ground truth audio, maximizing their cosine similar-
+ity. Formally, let ϕ(·) denote the function that outputs a speaker
+embedding, cos sim the cosine similarity function, α a positive
+real-valued scaling factor controlling the contribution of SCL to
+the overall loss, and n the batch size. The SCL is then defined
+as:
+LSCL = −α
+n
+n
+X
+i=1
+cos sim(ϕ(gi), ϕ(hi)),
+(1)
+where gi and hi correspond to the ground truth and generated
+audio, respectively. In our experiments, we set α = 0.1.
+For vector quantization, we followed [2], using Finite
+Scalar Quantization (FSQ) with eight codebooks, each contain-
+ing four dimensions. The codebook levels are set to [8, 7, 6,
+1https://github.com/NVIDIA/NeMo
+2https://huggingface.co/nvidia/nanocodec-22khz-1.78kbps-12.5fps
+3https://edresson.github.io/NanoCodec
+6], resulting in a total of 2016 codes per codebook. Addition-
+ally, we investigated various configurations of codebook num-
+bers and levels to meet the specific requirements of our ablation
+studies.
+2.1. Datasets
+For codec training, we utilize the two 22.05kHz audio datasets
+used in [2]. The Common Voice derived [25] training set com-
+prises 105 languages, totaling 2.7 million utterances, and 3.2k
+hours of audio from about one-hundred thousand speakers. The
+MLS English training dataset consists of 6.2 million utterances
+and 25.5k hours of audio from 4329 speakers.
+2.2. Training setup
+We trained our codec for approximately 196,000 steps using
+48 A100 GPUs with a batch size of 32. The total accumulated
+batch size was 1,536, and the model processed roughly 301 mil-
+lion samples. The training was conducted on 1.1-second audio
+excerpts. We used the Adam optimizer [26] for both the gener-
+ator and the discriminator, with β1 = 0.8, β2 = 0.99, and an
+initial learning rate of 2e-4, which decayed exponentially with
+a gamma of 0.998.
+2.3. Results and Discussion
+We followed an evaluation strategy similar to [2]. To assess per-
+ceptual quality, we estimate Mean Opinion Scores (MOS) using
+Torchaudio-Squim [27] (SQMOS) and the wide-band Percep-
+tual Evaluation of Speech Quality (PESQ) metric [28]. Spectral
+accuracy is evaluated by computing the L1 distance between
+log mel-spectrograms (Mel Dist.). To quantify the intelligibil-
+ity of the codec’s reconstruction, we compute the Character Er-
+ror Rate (CER) by comparing transcriptions from the Massively
+Multilingual Speech (MMS) model [29] for both the ground-
+truth and reconstructed audio. Speaker similarity is assessed
+using the Speaker Encoder Cosine Similarity (SECS) [23], com-
+puted with the SOTA ECAPA2 speaker encoder [30].
+For evaluation, we use the 44.1kHz MLS test set [2], which
+includes 200 samples per language across eight languages. Ad-
+ditionally, we assess performance on the F10 and M10 speak-
+ers from the DAPS clean dataset to evaluate model quality on
+studio-recorded audio.
+2.3.1. Ablation Study
+We conduct an ablation study to analyze the enhancements in-
+troduced to the LFSC architecture, as well as the effects of
+causality, frame rate, and bitrate reduction on our codec. Ta-
+ble 1 presents the evaluation results on the 44.1kHz MLS test
+set and the F10 and M10 DAPS speakers.
+For consistency,
+both ground-truth and reconstructed audio were downsampled
+to 16kHz during metric computation.
+Architectural Improvements: The proposed architectural
+modifications enhanced the LFSC model across nearly all met-
+rics while reducing the number of parameters by approximately
+45%.
+Causality: A causal codec is preferable for Speech LLM
+models as it minimizes first-token latency. In contrast, the non-
+causal LFSC requires a lookahead of approximately five frames
+(232.5 ms), meaning that tokens from the first five autoregres-
+sive steps must be cached to achieve the same quality in both
+streaming and offline inference. This constraint introduces a
+significant delay in generating the initial audio output.
+For
+a demonstration of the impact of this lookahead requirement,
+5029
+
+Table 1: Reconstruction performance of different codec configurations using MLS 44.1kHz test set and F10 and M10 DAPS speakers
+Codec
+Sampling rate
+Bitrate
+Token/Sec
+Frames/Sec
+# Codebooks
+# Codes
+Encoder
+Decoder
+Dataset
+SQMOS (↑)
+PESQ(↑)
+Mel Dist. (↓)
+SECS (↑)
+CER(↓)
+LFSC[2]
+22.05kHz
+1.89kbps
+172
+21.5
+8
+2016
+Noncausal
+Noncausal
+MLS
+4.432
+2.831
+0.146
+0.841
+2.529
+DAPS
+4.677
+3.122
+0.141
+0.807
+0.655
+Ours
+22.05kHz
+1.89kbps
+172
+21.5
+8
+2016
+Noncausal
+Noncausal
+MLS
+4.427
+2.919
+0.136
+0.876
+2.203
+DAPS
+4.693
+3.271
+0.130
+0.844
+0.577
+Ours
+22.05kHz
+1.1kbps
+100
+12.5
+8
+2016
+Causal
+Causal
+MLS
+4.394
+1.926
+0.211
+0.735
+5.490
+DAPS
+4.655
+2.058
+0.2157
+0.717
+1.124
+Ours
+22.05kHz
+1.1kbps
+100
+12.5
+8
+2016
+Noncausal
+Noncausal
+MLS
+4.423
+2.592
+0.158
+0.825
+3.614
+DAPS
+4.683
+2.893
+0.154
+0.785
+0.927
+Ours
+22.05kHz
+1.1kbps
+100
+12.5
+8
+2016
+Noncausal
+Causal
+MLS
+4.426
+2.378
+0.177
+0.788
+3.617
+DAPS
+4.564
+2.646
+0.171
+0.777
+0.839
+Ours
+22.05kHz
+1.1kbps
+100
+25
+4
+2016
+Noncausal
+Causal
+MLS
+4.415
+2.534
+0.167
+0.798
+3.749
+DAPS
+4.662
+2.863
+0.160
+0.755
+0.622
+Ours
+22.05kHz
+1.1kbps
+100
+12.5
+8
+2016
+Noncausal
+Causal
+MLS
+4.426
+2.378
+0.177
+0.788
+3.617
+DAPS
+4.564
+2.646
+0.171
+0.777
+0.839
+Ours
+22.05kHz
+1.1kbps
+100
+6.25
+16
+2016
+Noncausal
+Causal
+MLS
+4.400
+2.081
+0.200
+0.746
+5.293
+DAPS
+4.652
+2.135
+0.213
+0.711
+1.419
+Ours
+22.05kHz
+1.78kbps
+162.5
+12.5
+13
+2016
+Noncausal
+Causal
+MLS
+4.441
+2.760
+0.143
+0.862
+2.423
+DAPS
+4.697
+3.030
+0.139
+0.831
+0.758
+Ours
+22.05kHz
+1.1kbps
+100
+12.5
+8
+2016
+Noncausal
+Causal
+MLS
+4.426
+2.378
+0.177
+0.788
+3.617
+DAPS
+4.564
+2.646
+0.171
+0.777
+0.839
+Ours
+22.05kHz
+0.8kbps
+50
+12.5
+4
+65536
+Noncausal
+Causal
+MLS
+4.369
+2.033
+0.205
+0.706
+6.519
+DAPS
+4.617
+2.237
+0.202
+0.645
+1.189
+Ours
+22.05kHz
+0.6kbps
+50
+12.5
+4
+4032
+Noncausal
+Causal
+MLS
+4.407
+2.012
+0.205
+0.701
+7.792
+DAPS
+4.662
+2.205
+0.204
+0.656
+1.469
+Ours
+22.05kHz
+1.78kbps
+162.5
+12.5
+13
+2016
+Noncausal
+Causal
+MLS
+4.441
+2.760
+0.143
+0.862
+2.423
+DAPS
+4.697
+3.030
+0.139
+0.831
+0.758
+Ours
+22.05kHz
+1.89kbps
+172
+21.5
+8
+2016
+Noncausal
+Causal
+MLS
+4.427
+2.837
+0.150
+0.854
+2.434
+DAPS
+4.666
+3.156
+0.145
+0.832
+0.601
+please refer to our demo website4. To address this issue, we
+explored different combinations of causal and non-causal en-
+coder/decoder configurations. Following the Mimi codec [19],
+we reduced the bitrate to 1.1 kbps and the frame rate to 12.5
+FPS. Our fully causal model yielded the worst results, partic-
+ularly in intelligibility and speaker similarity. Conversely, the
+fully non-causal model achieved the best performance across
+nearly all metrics. The partially causal model, which employs
+a non-causal encoder and a causal decoder, demonstrated com-
+petitive performance compared to the fully non-causal model.
+For certain Speech LLM tasks, such as TTS and Speech-to-
+Speech models where ASR or SSL models serve as the encoder,
+a causal encoder is unnecessary since only the codec decoder is
+used during inference. In these scenarios, our experiments sug-
+gest that a partially causal codec may be beneficial. Given that
+our primary goal in this paper is TTS downstream task, we will
+adopt the partially causal model for future experiments.
+Frame Rate Reduction:
+Reducing the frame rate in
+Speech LLMs decreases the number of autoregressive steps per
+second of audio, improving inference speed and reducing la-
+tency. To evaluate this effect, we trained our 1.1 kbps codec
+at 25, 12.5, and 6.25 FPS. While the 25 FPS codec outper-
+formed the 12.5 FPS variant in PESQ and Mel Distance, both
+exhibited comparable performance in perceptual quality (SQ-
+MOS), speaker similarity (SECS), and intelligibility (CER). In
+contrast, the 6.25 FPS codec showed a significant decline, par-
+ticularly in intelligibility. We hypothesize that at 6.25 FPS, the
+model frequently compresses two distinct phonemes within a
+single frame, whereas such occurrences are considerably less
+frequent at 12.5 FPS. Given that most English speakers produce
+speech at a rate of approximately ten to twelve phonemes per
+second [31], this observation is further supported.
+Bitrate Reduction: Recent research has extensively ex-
+plored bitrate reduction in neural audio codecs. The primary
+hypothesis is that lower bitrates yield simpler representations,
+making it easier for Speech LLMs to learn the target distribu-
+tion. However, there is an inherent trade-off between bitrate, au-
+dio quality, and intelligibility. To further investigate this trade-
+off, we trained our 12.5 FPS codec at 1.78 kbps, 1.1 kbps, 0.8
+kbps, and 0.6 kbps. As expected, higher-bitrate models pro-
+duced better results across all metrics. Notably, bitrate reduc-
+4https://edresson.github.io/NanoCodec
+tion has a substantial impact on intelligibility (CER), whereas
+general audio quality and speaker similarity are comparatively
+less affected. Specifically, reducing the bitrate from 1.78 kbps
+to 1.1 kbps led to a relative degradation of approximately 1.49
+times in CER (from 2.423 to 3.617). A further reduction to 0.8
+kbps resulted in a 2.69 times relative increase in CER (from
+2.423 to 6.519). At 0.6 kbps, intelligibility deteriorated even
+further, with pronunciation errors becoming significantly more
+frequent. These findings strongly suggest that such a decline in
+intelligibility could severely impact the performance of Speech
+LLM models trained with extremely low-bitrate codecs.
+21.5 FPS vs. 12.5 FPS: We further compared our model
+trained at 1.78 kbps with a frame rate of 12.5 FPS against the
+same model trained at 1.89 kbps with a frame rate of 21.5 FPS.
+Both models show comparable performance, with 12.5 FPS ex-
+celling in SQMOS and 21.5 FPS in PESQ. Speaker similar-
+ity and intelligibility remain comparable, indicating that lower
+frame rates can maintain quality while improving efficiency.
+2.3.2. Comparison with Related Works
+To ensure a fair comparison with related works, we trained
+our model at a bitrate comparable to previous approaches. For
+LFSC [2], Mimi [19], WavTokenizer [16], and TAAE [17], we
+utilized publicly available checkpoints and inference code. For
+TS3-Codec [18], we evaluated samples generously provided by
+the authors. For consistency, we downsampled both ground-
+truth and reconstructed audio to 16kHz during metric compu-
+tation, ensuring a fair comparison with TAAE and TS3-Codec,
+which operate at this sampling rate. Table 2 presents the results
+of our evaluation on the 44.1 kHz MLS test set and the F10
+and M10 DAPS speakers, highlighting the performance of our
+approach relative to state-of-the-art codecs.
+Our model, trained at 1.78 kbps, outperforms the 1.89 kbps
+LFSC across most metrics, while benefiting from the advan-
+tages of a causal decoder and approximately 45% fewer pa-
+rameters. At 1.1 kbps, our model outperforms the Mimi codec
+across all metrics, showing a particularly large improvement in
+intelligibility. At 0.8 kbps, while the overall audio quality of
+our model is slightly lower than that of the 0.9 kbps WavTok-
+enizer, it consistently outperforms the WavTokenizer across all
+other evaluation metrics. When compared to the 0.85 kbps TS3-
+Codec, our 0.8 kbps model exhibits better intelligibility on both
+5030
+
+Table 2: Reconstruction performance of different SOTA codecs.
+Codec
+Bitrate
+Dataset
+SQMOS
+PESQ
+Mel Dist.
+SECS
+CER
+LFSC [2]
+1.89kbps
+MLS
+4.432
+2.831
+0.146
+0.841
+2.529
+DAPS
+4.677
+3.122
+0.141
+0.807
+0.655
+Ours
+1.78kbps
+MLS
+4.441
+2.760
+0.143
+0.862
+2.423
+DAPS
+4.697
+3.030
+0.139
+0.831
+0.758
+Mimi [19]
+1.1kbps
+MLS
+4.333
+2.132
+0.238
+0.678
+7.221
+DAPS
+4.302
+2.316
+0.244
+0.569
+1.629
+Ours
+1.1kbps
+MLS
+4.426
+2.378
+0.177
+0.788
+3.617
+DAPS
+4.564
+2.646
+0.171
+0.777
+0.839
+WavTokenizer [16]
+0.9kbps
+MLS
+4.404
+1.877
+0.207
+0.576
+15.27
+DAPS
+4.671
+2.222
+0.213
+0.535
+4.042
+TS3-Codec [18]
+0.85kbps
+MLS
+4.392
+2.389
+0.183
+0.672
+8.159
+DAPS
+4.674
+2.770
+0.167
+0.733
+1.522
+Ours
+0.8kbps
+MLS
+4.369
+2.033
+0.205
+0.706
+6.519
+DAPS
+4.617
+2.237
+0.202
+0.645
+1.189
+TAAE [17]
+0.7kbps
+MLS
+4.370
+2.053
+0.320
+0.323
+18.355
+DAPS
+4.611
+2.250
+0.248
+0.372
+3.692
+Ours
+0.6kbps
+MLS
+4.407
+2.012
+0.205
+0.701
+7.792
+DAPS
+4.662
+2.205
+0.204
+0.656
+1.469
+evaluation datasets. Additionally, it achieves superior speaker
+similarity on the multilingual MLS dataset, though it shows a
+slight reduction in speaker similarity for two high-quality En-
+glish speakers in the DAPS dataset. Despite these minor trade-
+offs in specific metrics, our model delivers these results with
+a 50 bps smaller bitrate and is trained at 22.05 kHz, while the
+TS3-Codec was trained at 16 kHz. This distinction is signifi-
+cant, as our model encodes a broader frequency range. At 0.6
+kbps, our model significantly outperforms the TAAE codec in
+most metrics, although TAAE slightly surpasses our model in
+PESQ. Overall, our model achieves SOTA results across a wide
+range of bitrates, demonstrating the efficiency and effectiveness
+of the proposed NanoCodec. Notably, it excels in enhancing
+key metrics such as intelligibility and speaker similarity, further
+solidifying its superiority in low-bitrate audio coding scenarios.
+3. Zero-Shot TTS study
+3.1. Experiments setup
+To assess the performance of our codec in comparison to the
+LFSC and explore the effects of bitrate reduction, we adopted
+Koel-TTS [4], a SOTA LLM-based TTS model. Among Koel-
+TTS architectures, we use the Decoder Context variant with
+Classifier-Free Guidance (CFG) as it achieves the best perfor-
+mance in zero-shot TTS. For simplicity, we did not apply Di-
+rect Preference Optimization in our experiments.
+For train-
+ing the TTS model, we used the same datasets as [4]. These
+datasets consist of 18,000 hours of English data from three
+sources: the train-clean 100 and 360 subsets of LibriTTS [32],
+HiFiTTS [33], and a 17,000-hour subset of the LibriVox MLS
+dataset [34].
+The model was trained using 1.89 kbps LFSC, as well as
+NanoCodec at 1.89 kbps, 1.78 kbps, and 1.1 kbps bitrates, using
+a fixed five-second context from an alternate utterance of the
+same speaker. Training ran for 200,000 steps on 32 A100 GPUs
+with a batch size of 8, totaling 256. The AdamW optimizer was
+used with a 1e-4 learning rate. During inference, we applied
+multinomial Top-k sampling with K = 80, CFG scale 2.5, and
+a temperature of 0.6.
+3.2. Results and Discussion
+To evaluate the performance of the Koel-TTS model with vari-
+ous codecs, we followed the methodology proposed by [4]. We
+evaluated the model on unseen speakers, using the same subset
+of test-clean LibriTTS containing 180 utterances from a total of
+36 speakers. We use a random 5 second slice from the context
+audio during inference for all experiments. CER was computed
+using the Parakeet-TDT ASR model [35]. SECS was calculated
+using the Titanet-Small [36] speaker verification model.
+For MOS evaluation, each sample was rated on a 5-point
+scale by at least 37 independent listeners.
+Additionally, we
+measured the inference real-time factor (RTF) and time-to-first-
+audio (TTFA) using a batch size of 16 on a single RTX 6000
+GPU. To ensure consistency, both RTF and TTFA values were
+normalized by setting the fastest model’s values to 1 and scaling
+those of the other models accordingly.
+Table 3: Koel-TTS evaluation using different codecs
+Codec
+Bitrate
+Frames/Sec
+MOS(↑)
+CER(↓)
+SECS(↑)
+RTF(↓)
+TTFA(↓)
+LFSC [4]
+1.89kbps
+21.5
+4.17 ± 0.04
+0.85±0.35
+0.719
+2.48
+2.85
+Ours
+1.89kbps
+21.5
+4.16 ± 0.04
+0.76±0.28
+0.738
+2.47
+1.14
+Ours
+1.78kbps
+12.5
+4.01 ± 0.04
+0.49±0.03
+0.635
+1.06
+1.01
+Ours
+1.1kbps
+12.5
+4.02 ± 0.04
+0.69±0.12
+0.565
+1
+1
+Ours - 10s
+context
+1.78kbps
+12.5
+3.84 ± 0.04
+0.55 ± 0.07
+0.691
+1.06
+1.01
+* Note that RTF and TTFA values are normalized by setting the smallest value to 1.
+Table 3 presents the results of our ZS-TTS experiments.
+Koel-TTS trained with the 21.5 FPS NanoCodec achieved CER
+and MOS values comparable to those of the model trained with
+21.5 FPS LFSC, while exhibiting better speaker similarity, a
+similar real-time factor, and a latency (TTFA) approximately
+2.5 times shorter. In contrast, the model trained with the 12.5
+FPS 1.78 kbps NanoCodec showed better intelligibility than its
+21.5 FPS counterpart, while improving the real-time factor by
+2.33 times and slightly reducing TTFA. However, it struggled
+to generalize to unseen speakers, leading to lower speaker sim-
+ilarity, and reduced overall quality, despite improving intelli-
+gibility. A similar trend was observed in the Koel-TTS model
+trained with the 12.5 FPS 1.1 kbps NanoCodec, which exhibited
+even lower speaker similarity and a slightly higher CER. This
+degradation is likely due to the reduced reconstruction quality
+of the 1.1 kbps NanoCodec compared to its 1.78 kbps variant.
+We hypothesize that the performance gap in speaker simi-
+larity and overall quality between the 12.5 FPS and 21.5 FPS
+models arises because the 12.5 FPS model generates nearly
+twice as much speech per autoregressive step, making the task
+more challenging. Conversely, the lower CER observed with
+the 12.5 FPS model could be attributed to the phoneme input
+and codec tokens having a similar rate, making alignment learn-
+ing easier. Additionally, the shorter sequence length reduces the
+available speaker context by a factor of 1.7, potentially impair-
+ing speaker similarity. To mitigate this issue, we extended the
+context audio length from 5 to 10 seconds through repetition,
+which consistently improved speaker similarity from 0.635 to
+0.691, but at the cost of a slight degradation in overall quality.
+These findings suggest that fully harnessing the potential of the
+12.5 FPS NanoCodec may require architectural refinements to
+Koel-TTS.
+4. Conclusions and future work
+In this work, we introduced NanoCodec, a state-of-the-art au-
+dio codec that achieves high-quality compression at a bitrate
+of 1.78 kbps and a frame rate of 12.5 frames per second. Ex-
+perimental results demonstrate that NanoCodec surpasses exist-
+ing approaches at the same bitrate, offering significantly higher
+intelligibility and speaker similarity. Furthermore, we showed
+that a Speech LLM trained with NanoCodec achieves quality
+comparable to that of a model trained with the LFSC, while
+exhibiting a lower real-time factor and reduced speech output
+latency, benefiting from our causal decoder. Our ablation stud-
+ies further reveal that bitrate reduction does not always improve
+downstream performance due to the trade-off between quality
+and intelligibility. In future work, we plan to further investi-
+gate architectural modifications to Koel-TTS to fully leverage
+the potential of the 12.5 FPS NanoCodec.
+5031
+
+5. References
+[1] Y. Ai, X.-H. Jiang, Y.-X. Lu, H.-P. Du, and Z.-H. Ling, “Apcodec:
+A neural audio codec with parallel amplitude and phase spectrum
+encoding and decoding,” IEEE/ACM Trans. Audio, Speech and
+Lang. Proc., vol. 32, p. 3256–3269, jun 2024. [Online]. Available:
+https://doi.org/10.1109/TASLP.2024.3417347
+[2] E. Casanova, R. Langman, P. Neekhara, S. Hussain, J. Li,
+S. Ghosh, A. Juki´c, and S.-g. Lee, “Low frame-rate speech codec:
+a codec designed for fast high-quality speech llm training and in-
+ference,” ICASSP, 2025.
+[3] X. Zhang, D. Zhang, S. Li, Y. Zhou, and X. Qiu, “Speechtok-
+enizer: Unified speech tokenizer for speech large language mod-
+els,” arXiv preprint arXiv:2308.16692, 2023.
+[4] S. Hussain, P. Neekhara, X. Yang, E. Casanova, S. Ghosh,
+M.
+T.
+Desta,
+R.
+Fejgin,
+R.
+Valle,
+and
+J.
+Li,
+“Koel-
+tts:
+Enhancing llm based speech generation with preference
+alignment and classifier free guidance,” 2025. [Online]. Available:
+https://arxiv.org/abs/2502.05236
+[5] X. Li, Y. Jia, and C.-C. Chiu, “Textless direct speech-to-speech
+translation with discrete speech representation,” in ICASSP 2023-
+2023 IEEE International Conference on Acoustics, Speech and
+Signal Processing (ICASSP).
+IEEE, 2023, pp. 1–5.
+[6] M. Kim, J. Choi, D. Kim, and Y. M. Ro, “Many-to-many
+spoken language translation via unified speech and text repre-
+sentation learning with unit-to-unit translation,” arXiv preprint
+arXiv:2308.01831, 2023.
+[7] N.
+Zeghidour,
+A.
+Luebs,
+A.
+Omran,
+J.
+Skoglund,
+and
+M. Tagliasacchi, “Soundstream:
+An end-to-end neural audio
+codec,” IEEE/ACM Transactions on Audio, Speech, and Lan-
+guage Processing, vol. 30, pp. 495–507, 2021.
+[8] A. D´efossez, J. Copet, G. Synnaeve, and Y. Adi, “High fidelity
+neural audio compression,” arXiv preprint arXiv:2210.13438,
+2022.
+[9] R. Langman, A. Juki´c, K. Dhawan, N. R. Koluguri, and B. Gins-
+burg, “Spectral codecs:
+Spectrogram-based audio codecs for
+high quality speech synthesis,” arXiv preprint arXiv:2406.05298,
+2024.
+[10] R. Kumar, P. Seetharaman, A. Luebs, I. Kumar, and K. Kumar,
+“High-fidelity audio compression with improved rvqgan,” Ad-
+vances in Neural Information Processing Systems, vol. 36, 2024.
+[11] A. Vasuki and P. Vanathi, “A review of vector quantization tech-
+niques,” IEEE Potentials, vol. 25, no. 4, pp. 39–47, 2006.
+[12] Y. Luo, J. Yu, H. Chen, R. Gu, and C. Weng, “Gull: A generative
+multifunctional audio codec,” arXiv preprint arXiv:2404.04947,
+2024.
+[13] F. Mentzer, D. Minnen, E. Agustsson, and M. Tschannen, “Fi-
+nite scalar quantization: Vq-vae made simple,” arXiv preprint
+arXiv:2309.15505, 2023.
+[14] L. Xu, J. Jiang, D. Zhang, X. Xia, L. Chen, Y. Xiao,
+P. Ding, S. Song, S. Yin, and F. Sohel, “An intra-brnn and
+gb-rvq based end-to-end neural audio codec,” arXiv preprint
+arXiv:2402.01271, 2024.
+[15] L. Xu, J. Wang, J. Zhang, and X. Xie, “Lightcodec: A high fidelity
+neural audio codec with low computation complexity,” in ICASSP
+2024-2024 IEEE International Conference on Acoustics, Speech
+and Signal Processing (ICASSP).
+IEEE, 2024, pp. 586–590.
+[16] S. Ji, Z. Jiang, X. Cheng, Y. Chen, M. Fang, J. Zuo, Q. Yang,
+R. Li, Z. Zhang, X. Yang et al., “Wavtokenizer: an efficient acous-
+tic discrete codec tokenizer for audio language modeling,” arXiv
+preprint arXiv:2408.16532, 2024.
+[17] J. D. Parker, A. Smirnov, J. Pons, C. Carr, Z. Zukowski, Z. Evans,
+and X. Liu, “Scaling transformers for low-bitrate high-quality
+speech coding,” arXiv preprint arXiv:2411.19842, 2024.
+[18] H. Wu, N. Kanda, S. E. Eskimez, and J. Li, “Ts3-codec:
+Transformer-based simple streaming single codec,” arXiv preprint
+arXiv:2411.18803, 2024.
+[19] A. D´efossez, L. Mazar´e, M. Orsini, A. Royer, P. P´erez, H. J´egou,
+E. Grave, and N. Zeghidour, “Moshi: a speech-text foundation
+model for real-time dialogue,” arXiv preprint arXiv:2410.00037,
+2024.
+[20] J. Kong, J. Kim, and J. Bae, “Hifi-gan: Generative adversarial net-
+works for efficient and high fidelity speech synthesis,” Advances
+in neural information processing systems, vol. 33, pp. 17 022–
+17 033, 2020.
+[21] S.-g. Lee, W. Ping, B. Ginsburg, B. Catanzaro, and S. Yoon,
+“Bigvgan: A universal neural vocoder with large-scale training,”
+arXiv preprint arXiv:2206.04658, 2022.
+[22] L. Ziyin, T. Hartwig, and M. Ueda, “Neural networks fail to learn
+periodic functions and how to fix it,” Advances in Neural Infor-
+mation Processing Systems, vol. 33, pp. 1583–1594, 2020.
+[23] E. Casanova, J. Weber, C. D. Shulby, A. C. Junior, E. G¨olge, and
+M. A. Ponti, “Yourtts: Towards zero-shot multi-speaker tts and
+zero-shot voice conversion for everyone,” in International Con-
+ference on Machine Learning.
+PMLR, 2022, pp. 2709–2720.
+[24] H. S. Heo, B.-J. Lee, J. Huh, and J. S. Chung, “Clova baseline sys-
+tem for the voxceleb speaker recognition challenge 2020,” arXiv
+preprint arXiv:2009.14153, 2020.
+[25] R. Ardila, M. Branson, K. Davis, M. Kohler, J. Meyer, M. Hen-
+retty, R. Morais, L. Saunders, F. Tyers, and G. Weber, “Common
+voice: A massively-multilingual speech corpus,” in Proceedings
+of the Twelfth Language Resources and Evaluation Conference,
+2020, pp. 4218–4222.
+[26] D. P. Kingma and J. Ba, “Adam: A method for stochastic opti-
+mization,” arXiv preprint arXiv:1412.6980, 2014.
+[27] A. Kumar, K. Tan, Z. Ni, P. Manocha, X. Zhang, E. Henderson,
+and B. Xu, “Torchaudio-squim: Reference-less speech quality
+and intelligibility measures in torchaudio,” in ICASSP 2023-2023
+IEEE International Conference on Acoustics, Speech and Signal
+Processing (ICASSP).
+IEEE, 2023, pp. 1–5.
+[28] A. W. Rix, J. G. Beerends, M. P. Hollier, and A. P. Hekstra,
+“Perceptual evaluation of speech quality (pesq)-a new method for
+speech quality assessment of telephone networks and codecs,” in
+2001 IEEE international conference on acoustics, speech, and
+signal processing. Proceedings (Cat. No. 01CH37221), vol. 2.
+IEEE, 2001, pp. 749–752.
+[29] V. Pratap, A. Tjandra, B. Shi, P. Tomasello, A. Babu, S. Kundu,
+A. Elkahky, Z. Ni, A. Vyas, M. Fazel-Zarandi et al., “Scaling
+speech technology to 1,000+ languages,” Journal of Machine
+Learning Research, vol. 25, no. 97, pp. 1–52, 2024.
+[30] J. Thienpondt and K. Demuynck, “Ecapa2: A hybrid neural net-
+work architecture and training strategy for robust speaker embed-
+dings,” arXiv preprint arXiv:2401.08342, 2024.
+[31] P. Roach, A little encyclopaedia of phonetics.
+Verlag nicht er-
+mittelbar, 2002.
+[32] H. Zen, V. Dang, R. Clark, Y. Zhang, R. J. Weiss, Y. Jia, Z. Chen,
+and Y. Wu, “Libritts: A corpus derived from librispeech for text-
+to-speech,” Interspeech 2019, 2019.
+[33] E. Bakhturina, V. Lavrukhin, B. Ginsburg, and Y. Zhang, “Hi-Fi
+Multi-Speaker English TTS Dataset,” in Proc. Interspeech 2021,
+2021, pp. 2776–2780.
+[34] V. Pratap, Q. Xu, A. Sriram, G. Synnaeve, and R. Collobert,
+“Mls: A large-scale multilingual dataset for speech research,” In-
+terspeech 2020, 2020.
+[35] H. Xu, F. Jia, S. Majumdar, H. Huang, S. Watanabe, and B. Gins-
+burg, “Efficient sequence transduction by jointly predicting tokens
+and durations,” in International Conference on Machine Learn-
+ing.
+PMLR, 2023.
+[36] N. R. Koluguri, T. Park, and B. Ginsburg, “Titanet: Neural model
+for speaker representation with 1d depth-wise separable convo-
+lutions and global context,” in ICASSP 2022-2022 IEEE Inter-
+national Conference on Acoustics, Speech and Signal Processing
+(ICASSP).
+IEEE, 2022, pp. 8102–8106.
+5032
+

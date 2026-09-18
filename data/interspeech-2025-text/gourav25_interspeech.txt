@@ -1,0 +1,195 @@
+Code Mix TTS: An Approach to Infer Human Like Speech for Multi-Lingual
+Input Texts
+Vishal Gourav, Phanindra Mankale
+Oracle Corporation, India
+vishal.gourav@oracle.com*, phanindra.mankale@oracle.com
+Abstract
+We have come a far way in terms of producing high quality,
+human like audios for given input texts using TTS or Text to
+Speech Systems. We simply provide the TTS system with an
+input text and it generates an audio output. But, if we look
+at it closely, we provide the input text in a particular language
+only. However, as humans, while interacting with each other,
+do we actually speak in just one particular language? The an-
+swer is No, in most cases. Our speech in general, specially in
+multiple language countries, is a mix of native language of the
+specific country and a popular language(mostly English) and
+sometimes the other way round where we mix a bit of the na-
+tive language words in our English conversation. In this paper,
+we talk about an approach to achieve the similar kind of ”Code
+Mix” inference output for ”Multi-Lingual” input texts from our
+TTS system without the need of any additional training data or
+fine tuning.
+Index Terms : TTS, Multi-Lingual Text, StyleTTS2,
+Automated-MOS
+1. Introduction
+In this modern day and age, TTS is one of the most sought af-
+ter pieces of technology that uses AI, more precisely Neural
+Networks to produce audio for a given Text Input. If you have
+ever used a modern TTS system, you would know that you have
+to typically select the language, the speaker, the audio type,
+the model you want to use for inference and last and most im-
+portantly provide your input text in the language selected, and
+voila, an audio is generated for you. The audio though, human
+like might sound robotic to some listener because, we humans,
+in general do not speak in a single language. Our speech gen-
+erally comprises mostly of our native language with some filler
+words coming from another language, which is mostly English.
+Vice versa of the previous statement is also true as sometimes
+we speak in English with a few filler words creeping in from our
+Native language. These mistakes of mixing of languages while
+speaking is what makes us human and the speech human like.
+In general a TTS system consists of 5 stages as shown in
+Figure 1. These are as follows:
+Figure 1: Flow diagram of a TTS System
+• Input Text: The input from the user in string format.
+• Text Preprocessing : The input text is passed through a
+Text Normalizer to convert inputs like currency symbols,
+acronyms, etc. into their spoken forms. This spoken form
+is then passed through the G2P which converts the text into
+phonemes and then the phonemes to their mapped integers
+which is the form in which the model can understand.
+• Acoustic Model : The Acoustic Model takes the phoneme
+integer numpy array and produces Mel Spectograms which is
+a tensor containing elements of float datatype.
+• Neural V ocoder: The vocoder accepts the output of the
+acoustic model and produces the waveform tensor contain-
+ing float type elements.
+• Speech Waveform: The output from the vocoder is con-
+verted to a numpy array which is then converted to .wav file.
+In this paper, we try to present a way of achieving the
+same human like ”Code Mix” audio from our Multi-Lingual
+StyleTTS2[1] which is Style Diffusion based TTS Model, by
+making changes to the Text Pre-processing layer.
+2. Experiment
+In our approach we first train a Multi-Lingual StyleTTS2 Model
+with English(en-US)[2], Spanish(es-ES)[3], Portuguese(pt-
+PT)[3] and Hindi(hi-IN) 1 Dataset. The total duration of the
+standardized dataset came up to be approximately 1000 hrs
+of audio with corresponding 370k utterances. All the datasets
+listed, were standardized to adhere to the following nuances:
+• Standardized Sample Rate: Audios resampled to 24 kHz.
+• Standardized Pauses : Multiple audios joined with 800ms
+pauses to enhance pauses during punctuations.
+• Silence Padding: Padding of 400ms on either end of audio
+to prevent inference noise.
+• Audio Buffering: All samples less than 1 second in length
+have been padded at the beginning(on the left side) to in-
+crease their duration to greater than 1 second(model limita-
+tion) thus, making them viable for training.
+• Dataset Expansion: All samples having token length more
+than 512(model limitation) for the transcriptions correspond-
+ing to the audios in the dataset have been filtered out.
+The first stage of training was run for 50 epochs with the
+following configurations: max len as 200, batch size as 16,
+sample rate as 24k, n token(number of neurons in input layer
+of the NN) as 184, style dim as 128, decoder as iSTFTNet[4],
+lr(learning rate) as 0.0001.
+While for the second stage, which ran for 20 epochs, most
+of the training hyper-parameters listed above, remained the
+same with a few minor adjustments and some additional hyper-
+parameters, which were: batch size as 2, diff epoch(style diffu-
+sion starting epoch) as 3 and joint epoch(joint training starting
+1Dataset produced in House
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+2143
+epoch) as 6.
+The training was run on A100 GPUs and it ran for about 3.5
+weeks, with the first stage taking about half of the time using 8
+GPUs while the second stage taking up the rest of the time using
+1 GPU(model limitation).
+Now, that we have our Multi-Lingual Model trained we
+went to the inference code, and further to the G2P layer which
+uses Espeak-ng2 that phonemizes the text, before the tokenizer
+tokenizes them into the corresponding mapped integers called
+tokens(which is then passed to the TTS Model for inference).
+This is where we added another layer. We came up with an
+idea to write a script that recognizes the languages(maximum
+of 2 for now) present in the input text and then break the
+text into separate chunks of the corresponding languages. The
+chunks would then be passed to the corresponding languages’
+espeak-ng phonemizer which would produce the phonemes.
+The chunks would then be joined back to make one single
+phonemized text which would then be passed to the tokenizer to
+get the tokens that would be passed to the model for inference.
+A flow diagram with an example text comprising of English and
+Hindi is shown in Figure 2.
+Figure 2: Flow diagram of a Code-Mix TTS System
+3. Evaluation
+Now, we use this Multi-Lingual StyleTTS2 Model to create an
+inference pipeline which takes input as text and returns an audio
+in wav format. Each input text contains of a string in at-most
+2 languages, one of them being English and the other being
+any one out Spanish, Portuguese or Hindi. We then overlay a
+pipeline for evaluation on top of the inference pipeline and pass
+250 said input texts of average length of 210 characters from a
+custom curated Code-Mix dataset. We run this pipeline on CPU
+inference mode and evaluate on Automated-MOS(Automated
+Mean Opinion Score), which is widely regarded as the best
+comparison standard for TTS models, using Nisqa[5]. On com-
+parison with other industry standard Models, we find that our
+2Espeak-ng: https://github.com/espeak-ng/espeak-ng
+model is performing on par with the them as can be seen in Ta-
+ble 1. The Automated-MOS scores is very much comparable
+to the StyleTTS2 model trained on a single language(English)
+dataset, LJspeech[6] while, like StyleTTS2, it outperforms all
+other other models like VITS[7] and YourTTS[8].
+Table 1: Evaluation of our Code-Mix StyleTTS2 Model
+StyleTTS2 Based TTS Models Other Models
+Metrics Our Model StyleTTS2 VITS Y ourTTS
+A-MOS(out of 5) 4.12 ± 0.09 4.12 ± 0.08 3.69 ± 0.12 2.35 ± 0.07
+A vg Inf Time(secs) 2.88 ± 0.43 2.93 ± 0.22 2.81 ± 0.11 3.25 ± 0.17
+4. Conclusion
+In this paper, we showcase an approach to alter the G2P layer of
+any typical TTS model to enhance its capability to process in-
+put text in more than one language and generate corresponding,
+high quality audio output. On subjective(human) evaluation, the
+audios generated, sound much more natural as compared to sin-
+gle language output as the input text is much more aligned how
+humans actually speak. There can be a wide range of appli-
+cations for such a TTS other the simple inference, like creating
+large training dataset for ASR systems which can help them rec-
+ognize audios having multi-lingual speech. Future work, on this
+would be towards recognition and phonemization of text which
+is mix of more than two languages without the compulsion of
+one of them being English, as in the case of this paper. An-
+other idea would be to recognize text that are actually spoken in
+2 languages but written in a single language like, Hinglish 3 or
+Portunish4, etc. The possibilities are endless.
+5. References
+[1] Y . A. Li, C. Han, V . Raghavan, G. Mischler, and N. Mesgarani,
+“Styletts 2: Towards human-level text-to-speech through style dif-
+fusion and adversarial training with large speech language models,”
+Advances in Neural Information Processing Systems , vol. 36, pp.
+19 594–19 621, 2023.
+[2] Y . Koizumi, H. Zen, S. Karita, Y . Ding, K. Yatabe, N. Morioka,
+M. Bacchiani, Y . Zhang, W. Han, and A. Bapna, “Libritts-r:
+A restored multi-speaker text-to-speech corpus,” arXiv preprint
+arXiv:2305.18802, 2023.
+[3] F. S. Oliveira, E. Casanova, A. C. Junior, A. S. Soares, and A. R.
+Galv˜ao Filho, “Cml-tts: A multilingual dataset for speech synthesis
+in low-resource languages,” in International Conference on Text,
+Speech, and Dialogue. Springer, 2023, pp. 188–199.
+[4] T. Kaneko, K. Tanaka, H. Kameoka, and S. Seki, “istftnet: Fast and
+lightweight mel-spectrogram vocoder incorporating inverse short-
+time fourier transform,” in ICASSP 2022-2022 IEEE International
+Conference on Acoustics, Speech and Signal Processing (ICASSP).
+IEEE, 2022, pp. 6207–6211.
+[5] G. Mittag, B. Naderi, A. Chehadi, and S. M ¨oller, “Nisqa:
+A deep cnn-self-attention model for multidimensional speech
+quality prediction with crowdsourced datasets,” arXiv preprint
+arXiv:2104.09494, 2021.
+[6] K. Ito and L. Johnson, “The lj speech dataset,” https://keithito.com/
+LJ-Speech-Dataset/, 2017.
+[7] J. Kim, J. Kong, and J. Son, “Conditional variational autoencoder
+with adversarial learning for end-to-end text-to-speech,” in Inter-
+national Conference on Machine Learning . PMLR, 2021, pp.
+5530–5540.
+[8] E. Casanova, J. Weber, C. D. Shulby, A. C. Junior, E. G ¨olge, and
+M. A. Ponti, “Yourtts: Towards zero-shot multi-speaker tts and
+zero-shot voice conversion for everyone,” in International confer-
+ence on machine learning . PMLR, 2022, pp. 2709–2720.
+3English Text containing Hindi words written in English
+4Spanish Text containing Portuguese words written in Spanish
+2144

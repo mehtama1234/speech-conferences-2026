@@ -1,0 +1,689 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+Multistage Universal Speech Enhancement System for URGENT Challenge
+Xiaohuai Le1, Zhuangqi Chen1, Siyu Sun1, Xianjun Xia1, Chuanzeng Huang1
+1ByteDance, China,
+(lexiaohuai.123, chenzhuangqi.audio, sunsiyu.319, xiaxianjun,
+huangchuanzeng)@bytedance.com
+Abstract
+During audio transmission and processing, various distor-
+tions may occur.
+To effectively address this challenge, we
+developed a multistage universal speech enhancement system,
+consisting of four submodules, namely audio declipping, packet
+loss compensation, audio separation, and spectral inpainting.
+These modules operate across the time, sub-band, and time-
+frequency domains.
+We employed a pretrain-finetune train-
+ing paradigm and introduce a self-distillation method to fur-
+ther improve performance. Experiments on large-scale datasets
+demonstrate that our system outperforms in multiple evalua-
+tion metrics, particularly in improving subjective speech qual-
+ity. The proposed system ranked 1st in the URGENT 2024 chal-
+lenge with a MOS of 3.52 and placed 4th in the second track of
+the URGENT 2025 challenge.
+Index Terms:
+Universal Speech Enhancement, Multistage,
+URGENT Challenge
+1. Introduction
+In audio encoding, transmission, and processing, various dis-
+tortions such as noise, signal amplitude clipping, codec arti-
+facts, and spectral loss are commonly encountered. These dis-
+tortions significantly impair speech perceptual quality and lead
+to performance degradation in downstream tasks, such as au-
+tomatic speech recognition. Recent speech enhancement sys-
+tems designed for a single task have achieved remarkable suc-
+cess, producing significant results in specific scenarios, includ-
+ing speech enhancement [1, 2], spectral band extension [3, 4],
+and packet loss compensation (PLC) [5]. Some models employ
+multistage [6, 7] or end-to-end [8] approaches to simultaneously
+address multiple of the aforementioned distortions. Universal
+speech enhancement [9], which aims to handle all potential dis-
+turbances, has gained increasing attention in recent research.
+To extend speech enhancement capabilities from single to
+universal scenarios, it is essential to address significant varia-
+tions in distortions across multiple scales and domains. Early
+works attempted to integrate speech enhancement with derever-
+beration [10], as these tasks can be equivalently formulated as
+additive noise removal through spectral mask estimation. Un-
+like additive noise, spectral band loss is more challenging, as
+it requires spectrogram estimation, which is difficult to learn.
+Unified approaches such as TF-GridNet [2] or Apollo [3] have
+been proposed to simultaneously handle noise and spectral dis-
+tortions. Discontinuities in the time domain are another criti-
+cal factor that contributes to perceptual degradation, commonly
+manifested as audio clipping, interruptions, and packet loss.
+Conventional time-frequency models struggle to accurately lo-
+calize distortions at signal sampling points due to their limited
+spectral resolution, making time domain [11] and subband do-
+main [5] models more widely used. Multistage models [7] pro-
+vide a robust solution by combining the advantages of differ-
+ent models or domains to effectively handle various distortions.
+These models have been extensively studied in the context of
+speech enhancement and restoration [6, 12], demonstrating their
+compatibility with both noise reduction and spectrogram exten-
+sion. Generative models, such as diffusion models [13, 14] and
+generative adversarial networks (GANs) [15], have also been
+introduced to the field of universal speech enhancement. These
+approaches typically treat the correction of various distortions
+as a unified generative task, conditioned on the distorted speech
+feature. In recent studies, how semantic information embedded
+in speech can facilitate audio restoration has been investigated
+[16, 17]. Using pre-trained self-supervised embeddings, audio
+restoration models can produce more intelligible speech, even
+under severe distortion or packet loss conditions [18].
+Although previous competitions such as the Deep Noise
+Suppression (DNS) Challenge [19] have substantially increased
+attention and research on the speech enhancement task, there is
+a dearth of relevant datasets and appropriate evaluation metrics.
+Researchers often focus on closed-domain datasets from spe-
+cific subfields that lack comprehensive cross-domain validation.
+Furthermore, there has been no well-recognized benchmark to
+assess the performance of these models across the wide variety
+of speech quality distortions encountered in real-world scenar-
+ios. The URGENT Challenge1 provides such a platform, en-
+couraging researchers to develop universally robust speech en-
+hancement systems. More importantly, the organizers offer 14
+evaluation metrics in four main categories, evaluating objective
+signal quality, subjective human perception, and downstream
+task performance.
+This paper presents our universal speech enhancement sys-
+tem submitted to the URGENT Challenge.
+The system ad-
+dresses various types of distortion through a combination of
+four submodules, which respectively handle clipping, packet
+loss, additive noises, and spectrogram distortion. To optimize
+each submodule for optimal performance, we adopted a training
+paradigm in which the submodules are individually pretrained,
+followed by fine-tuning of the entire system. During testing, we
+also introduced a routing strategy by detecting the existence of
+distortions, where an additional detector controls the activation
+of the Declipping and PLC modules. Our system achieved the
+1st place in the URGENT Challenge 2024, with a mean opin-
+ion score (MOS) of 3.52, significantly higher than other teams.
+Additionally, we ranked 4th in Track-2 of URGENT Challenge
+2025. These results demonstrate the outstanding performance
+and effectiveness of our system in addressing complex audio
+distortions.
+1https://urgent-challenge.com/
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+868
+10.21437/Interspeech.2025-749
+
+2. System
+2.1. Problem formulations and Methodology
+Let s ∈RT represent the clean speech signal and the degraded
+speech x can be written as
+x = d1 ◦d2 ◦...dN(s) ∈RT
+(1)
+where ◦stands for the composition of the function and N is the
+number of distortions. The distortions in real scenarios can be
+mainly classified into the following categories.
+Clipping: dclip(s) = max(min(s, δ1), δ2)), where δ1 and δ2
+are the lower and upper bounds of the signal that limit the am-
+plitude. In this paper, we only consider hard clipping and do not
+consider the problem of sample discontinuity.
+Packet loss: dP L(s) = s ⊙m, where m ∈RT denotes the
+mask of packet loss in the time domain. The value of m(k) is 0
+or 1, which indicates whether packet loss occurred in packet k.
+Additive noise and reverberation: dnoise(s) = s ∗h + n,
+where h and n respectively denote the room impulse response
+(RIR) and the noise signal. In this paper, clean speech with
+early reverberation is used as the noise suppression target.
+Low bandwidth: dlowb(s) = Resample(s ∗hlp, sro, srt),
+where hlp is a low-pass filter and Resample(·, sro, srt) refers
+to the resampling operation that converts the original sample
+rate sro to the target srt.
+Spectral artifacts: dspec(s) = F(s), where F(·) denotes the
+process of a specific audio codec or front-end algorithm.
+During the training process, we do not assume a fixed dis-
+tortion order for data construction. Instead, during enhance-
+ment, we prioritize handling time-domain distortions, such as
+clipping, followed by frequency-domain distortions. This ap-
+proach facilitates the decoupling of the effects from different
+domains, thereby reducing the optimization difficulties. Spec-
+trum inpainting is placed at the final stage to mitigate the ad-
+ditional artifacts introduced by the preceding stages. Based on
+this methodology, we construct a multistage audio enhancement
+system consisting of submodules, denoted Ei. The enhanced
+speech e ∈RT is represented as
+e = E1 ◦E2 ◦...EM(x)
+(2)
+2.2. System overview
+As shown in Figure 1, our system addresses distortions by uti-
+lizing a combination of four submodules: a time-domain de-
+clipping module, a time-frequency domain speech separation
+module, a subband-domain PLC model, and a time-frequency
+domain inpainting module. These modules are cascaded and
+can be independently optimized.
+All submodules follow an
+encoder-decoder architecture. The structure of the declipping
+module is depicted in Figure 2-(a). We adopted the Demucs
+architecture [20], which consists of 12 layers of symmetric
+convolutional encoders and decoders, along with a bottleneck
+layer comprising 3 BLSTMs. The PLC module is based on
+BS-PLCNET [5], the champion system of the PLC Challenge
+2024 [21]. This model operates in the pseudo quadrature mir-
+ror filter bank (PQMF) domain and employs multi-resolution
+adversarial training for learning. Given that additive noise is
+the most common type of distortion, we employ the state-of-
+the-art audio separation framework BSRoformer [22] for de-
+noising and dereveraberation. As shown in Figure 2-(b), this
+model separates speech by dividing the spectrum into 62 non-
+overlapping frequency bands, which are processed through 16
+Figure 1: Schematic diagram of the proposed system.
+(a)
+(b)
+Figure 2: Structure details of the declipping and inpainting
+module (a) and the separation module (b).
+Rope-Transformer layers [23] to capture the dependencies be-
+tween the bands and the frames.
+The speech spectral in-
+painting module, similar to the declipping model, employs
+a 2-dimensional convolutional recurrent network in the time-
+frequency domain, in which the bottleneck BLSTM is replaced
+by DPBLSTM [24]. To process audio with arbitrary sample
+rates, both the declipping and the separation module are trained
+on a diverse range of sample rates, spanning from 8 kHz to
+48 kHz. Specifically, the sample rate is provided as an addi-
+tional input to the BSRoformer following the band-split mod-
+ule, enabling it to determine the appropriate number of fre-
+quency bands for subsequent processing. For the PLC and in-
+painting modules, all the input clips are resampled to 48 kHz
+and the outputs are then resampled back to the original sample
+rate.
+To further reduce the inference complexity, we trained a
+time-domain detector which can assess the occurrence of clip-
+ping and packet loss, and then decide whether to activate the de-
+clipping and PLC module accordingly. By using Temporal Con-
+volutional Networks (TCN), the detector effectively identifies
+clipping and packet loss at the sample level. The model is com-
+posed of 7 convolutional layers followed by a linear layer for
+probability prediction. The predictions generated by the model
+not only determine whether the module should be activated but
+also act as supplementary input features to boost model perfor-
+mance.
+869
+
+Table 1: Evaluation results on the non-blind test set of URGENT Challenge 2024
+Non-intrusive metrics
+Intrusive metrics
+Downstream task metrics
+Metrics
+DNSMOS
+NISQA
+PESQ
+ESTOI
+SDR
+LSD
+SpeechBERT Score
+WAcc
+Base (Declipping + Separation)
+3.21
+3.86
+2.71
+0.89
+16.94
+6.30
+0.87
+82.81
++ Inpainting
+3.22
+4.01
+2.88
+0.90
+16.79
+2.80
+0.88
+82.24
++ Self-distilation (2nd)
+3.26
+4.15
+2.92
+0.90
+16.84
+2.84
+0.88
+82.19
+Team A (1st)
+3.20
+4.16
+3.04
+0.90
+16.65
+2.70
+0.89
+83.31
+Team B (3rd)
+3.21
+4.14
+2.88
+0.89
+16.05
+2.97
+0.88
+83.00
+Table 2: Evaluation results on the blind test set of URGENT Challenge 2024
+Non-intrusive metrics
+Intrusive metrics
+Downstream task metrics
+Subjective metrics
+Metrics
+DNSMOS
+NISQA
+PESQ
+ESTOI
+SDR
+LSD
+SpeechBERT Score
+WAcc
+MOS
+Our system (1st)
+3.06
+3.66
+2.65
+0.87
+14.58
+2.92
+0.84
+73.57
+3.52
+Team A (2nd)
+3.00
+3.59
+2.80
+0.87
+14.52
+2.78
+0.85
+72.91
+3.46
+Team B (4th)
+2.95
+3.35
+2.66
+0.86
+13.54
+2.70
+0.85
+73.10
+3.40
+2.3. Training framework
+We followed the data construction approach from the URGENT
+Challenge, expressed as equation (1). We also generated paral-
+lel augmented samples for each stage of the model. To optimize
+each module to its best, we adopted a training paradigm where
+the submodules are pre-trained individually and then fine-tuned
+as a whole system. During the pre-training phase, we catego-
+rized the modules as discriminative or generative models and
+applied different training losses for each group. For the de-
+clipping and separation models, we used a discriminative loss
+L, which is the weighted sum of the time-domain loss LT and
+frequency-domain loss LF with a weight λ = 0.5, expressed as
+L = λ × LT (s,ˆs) + (1 −λ) × LF
+
+S, ˆS
+
+(3)
+where the time-domain loss is based on L1 loss and the
+frequency-domain loss uses multi-resolution compressed spec-
+tral MSE loss [25] as
+LT (s,ˆs) = 1
+N
+N
+X
+t=1
+|s(t) −ˆs(t)|
+(4)
+LF
+
+S, ˆS
+
+=
+X
+nfft∈S
+MSEnfft(
+S
+|S|0.5 ,
+ˆS
+|ˆS|0.5 )
+(5)
+where S and ˆS represent the clean and estimated spectrograms,
+respectively, using an FFT with a specified length nfft. In
+our experiments, the selected set of FFT length was configured
+as S = {256, 512, 1024, 2048, 4096}. We employ adversar-
+ial generative training for the PLC and the spectral inpainting
+module, introducing a multi-resolution frequency-domain dis-
+criminator Df and a multi-resolution subband-domain discrim-
+inator Ds. The discriminators aim to distinguish between the
+predicted ˆs and the real target s, by minimizing
+Ld = Es∼pdata[(Df(s) −1)2 + (Ds(s) −1)2+
+(Df(ˆs))2 + (Ds(ˆs))2]
+(6)
+The inpainting model, serving as a generator, utilizes the
+weighted sum of the spectral loss Lspec and the GAN loss Lgan,
+Figure 3: Schematic of the self-distillation method used in the
+fine-tuning phase.
+expressed as
+Lg = Lgan + α × Lspec
+(7)
+Lspec = LF
+
+S, ˆS
+
+(8)
+Lgan = Es∼pdata[(Df(ˆs) −1)2 + (Ds(ˆs) −1)2+
+β × (Lfeat(s, ˆs; Df) + Lfeat(s, ˆs; Ds))]
+(9)
+where Lfeat is the MSE loss of the outputs from the hidden
+layers of the discriminators, which contributes to more stable
+training. The weights α and β are set to 45 and 2, respectively.
+During the fine-tuning stage of the entire system, we intro-
+duce a metric-based self-distillation approach to enhance model
+performance across multiple evaluation metrics, shown as Fig-
+ure 3. Specifically, at each epoch, we evaluate the output of the
+model on a constructed distillation dataset, which is a subset
+of the original training data. For each metric, we identify the
+best-performing samples from the last 10 checkpoints. These
+high-quality enhanced samples serve as additional supervision
+labels for subsequent training, allowing the model to integrate
+the strengths of different checkpoints and optimize its perfor-
+mance across various metrics in a more balanced manner. In
+our experiments, the selected samples are mixed with ideal la-
+bels at a ratio of 30% during fine-tuning.
+870
+
+Table 3: Evaluation result on the URGENT challenge 2025 blind test set (track 2)
+Non-intrusive metrics
+Intrusive metrics
+Downstream task metrics
+Subjective metrics
+Metrics
+DNSMOS
+NISQA
+PESQ
+ESTOI
+SDR
+LSD
+SpeechBERT Score
+WAcc
+MOS
+Team B (1st)
+2.92
+3.24
+2.47
+0.79
+11.10
+2.99
+0.84
+76.06
+3.32
+Team C (2nd)
+2.90
+3.11
+2.44
+0.79
+11.61
+3.44
+0.83
+77.51
+3.27
+Team D (3rd)
+2.83
+2.90
+2.49
+0.81
+11.76
+3.00
+0.85
+78.40
+2.99
+Our system (4th)
+2.91
+3.31
+2.31
+0.78
+11.21
+3.57
+0.83
+76.77
+3.25
++ Detector
+2.91
+3.28
+2.88
+0.78
+11.10
+3.78
+0.83
+77.15
+-
+3. Results
+3.1. Parameter setups and Metrics
+In our experiments, we utilized the full dataset provided by
+the URGENT Challenge, generating nearly 2 TB of FLAC-
+format audio for training. The four modules have parameter
+sizes of 6 M, 125 M, 3.8 M and 4.6 M, with a total computa-
+tional cost of 350 GMACs for 48 kHz input. The model was
+trained on 8 A100-80GB GPUs, totaling 44 GPU days. The
+learning rate was set to 5e-4 for pre-training and 1e-5 for fine-
+tuning, with a decay rate of 0.95, both optimized with Adam.
+Self-distillation was applied for 20 epochs.
+For evaluation,
+we selected 8 key metrics from the original challenge-provided
+evaluation metrcs, covering non-intrusive speech quality met-
+rics (DNSMOS [26] and NISQA [27]), intrusive metrics (PESQ
+[28], ESTOI [29], SDR [30] and LSD [31]), downstream task
+performance (SpeechBERT Score [32] and WAcc) and subjec-
+tive evaluation (MOS).
+3.2. Experimental Results
+We developed multiple systems and evaluated them on the UR-
+GENT Challenge 2024 non-blind test set. As shown in Table 1,
+audio after declipping and separation module already achieved
+good DNSMOS and SDR scores, but the objective metrics were
+suboptimal due to spectral loss. Notably, the inpainting mod-
+ule significantly improved these metrics, demonstrating the ad-
+vantage of multi-stage processing in integrating the strengths
+of different modules. Furthermore, with the addition of self-
+distillation, most metrics showed improvement, particularly the
+non-intrusive ones, while a few, such as SDR and WAcc, exhib-
+ited slight degradation. This suggests that the approach effec-
+tively balances trade-offs among different metrics. A compari-
+son with other top-tier systems of URGENT Challenge 2024, as
+presented in Table 1 and 2, highlights the superiority of our sys-
+tem in non-intrusive metrics and perceptual quality. Ultimately,
+our system ranked first across five metrics, notably achieving
+a MOS of 3.52, significantly outperforming other teams. This
+contributed to our top ranking on the blind test set. However,
+since our approach did not primarily focus on downstream tasks
+during training and fine-tuning, our performance on those met-
+rics was relatively lower.
+The results of our system with an additional PLC mod-
+ule on the URGENT 2025 blind test set are presented in Ta-
+ble 3. Although the system achieved robust performance on
+non-intrusive metrics, severe packet loss in some samples posed
+challenges beyond the current capabilities of our modules, re-
+sulting in a decline in objective scores. This is likely attributable
+to the absence of a PLC module specifically designed for the
+competition task. We also evaluated the activation strategy of
+the detector. In our experiments, the declipping and PLC mod-
+ules are selectively disabled when the clipped sample ratio falls
+Figure 4: Visualization of the Pearson correlation matrix for all
+metrics on the URGENT Challenge 2024 non-blind test set.
+below 5% or in the absence of packet loss events. The results
+show that this approach effectively reduces computational cost
+without significantly affecting performance.
+Moreover, we visualized the Pearson correlation matrix for
+all metrics across our 38 submissions in Figure 4. A positive
+correlation is observed among the four main metric categories.
+Notably, non-intrusive metrics exhibit relatively lower correla-
+tion with other metrics, making them effective references for
+speech quality evaluation. Within intrusive metrics, LSD, SDR,
+and MCD [33] also demonstrate strong independence.
+For
+downstream tasks, SpeechBERTScore and ESTOI show strong
+correlations, while WAcc demonstrates limited correlation with
+other metrics and can be considered as an independent refer-
+ence. These insights can serve as valuable guidelines for speech
+quality evaluation in future work.
+4. Conclusion
+In summary, we propose a multistage cross-domain model
+for the universal speech enhancement task, trained within a
+pretrain-finetune framework. By optimizing both objective and
+subjective evaluation metrics, our system achieves top-tier per-
+formance and ranks 1st in the URGENT Challenge 2024 and
+4th in the URGENT Challenge 2025. In the future, we aim
+to improve generalization and computational efficiency of the
+model and leveraging more generative modules to further boost
+performance, especially under conditions of severe distortions.
+871
+
+5. References
+[1] J. Chen, Z. Wang, D. Tuo, Z. Wu, S. Kang, and H. Meng, “Full-
+subnet+: Channel attention fullsubnet with complex spectrograms
+for speech enhancement,” in ICASSP 2022-2022 IEEE Interna-
+tional Conference on Acoustics, Speech and Signal Processing
+(ICASSP).
+IEEE, 2022, pp. 7857–7861.
+[2] Z.-Q. Wang, S. Cornell, S. Choi, Y. Lee, B.-Y. Kim, and S. Watan-
+abe, “Tf-gridnet:
+Integrating full-and sub-band modeling for
+speech separation,” IEEE/ACM Transactions on Audio, Speech,
+and Language Processing, 2023.
+[3] K. Li and Y. Luo, “Apollo: Band-sequence modeling for high-
+quality audio restoration,” arXiv preprint arXiv:2409.08514,
+2024.
+[4] M. Liu, Z. Chen, X. Yan, Y. Lv, X. Xia, C. Huang, Y. Xiao,
+and L. Xie, “Rad-net 2: A causal two-stage repairing and de-
+noising speech enhancement network with knowledge distillation
+and complex axial self-attention,” in Interspeech 2024, 2024, pp.
+1700–1704.
+[5] Z. Zhang, J. Sun, X. Xia, C. Huang, Y. Xiao, and L. Xie, “Bs-
+plcnet: Band-split packet loss concealment network with multi-
+task learning framework and multi-discriminators,” in 2024 IEEE
+International Conference on Acoustics, Speech, and Signal Pro-
+cessing Workshops (ICASSPW), 2024, pp. 23–24.
+[6] A. Li, S. You, G. Yu, C. Zheng, and X. Li, “Taylor, can you hear
+me now? a taylor-unfolding framework for monaural speech en-
+hancement,” arXiv preprint arXiv:2205.00206, 2022.
+[7] A. A. Nair and K. Koishida, “Cascaded time+ time-frequency
+unet for speech enhancement: Jointly addressing clipping, codec
+distortions, and gaps,” in ICASSP 2021-2021 IEEE Interna-
+tional Conference on Acoustics, Speech and Signal Processing
+(ICASSP).
+IEEE, 2021, pp. 7153–7157.
+[8] J. Chen, Y. Shi, W. Liu, W. Rao, S. He, A. Li, Y. Wang, Z. Wu,
+S. Shang, and C. Zheng, “Gesper: A unified framework for gen-
+eral speech restoration,” in ICASSP 2023-2023 IEEE Interna-
+tional Conference on Acoustics, Speech and Signal Processing
+(ICASSP).
+IEEE, 2023, pp. 1–2.
+[9] H. Liu, Q. Kong, Q. Tian, Y. Zhao, D. Wang, C. Huang, and
+Y. Wang, “Voicefixer: Toward general speech restoration with
+neural vocoder,” 2021.
+[10] M. Wang, M. Yuan, A. Li, C. Zheng, and X. Li, “A deep proximal-
+unfolding method for monaural speech dereverberation,” in 2022
+Asia-Pacific Signal and Information Processing Association An-
+nual Summit and Conference (APSIPA ASC), 2022, pp. 324–329.
+[11] A. Defossez, G. Synnaeve, and Y. Adi, “Real time speech
+enhancement
+in
+the
+waveform
+domain,”
+arXiv
+preprint
+arXiv:2006.12847, 2020.
+[12] A. Li, W. Liu, C. Zheng, C. Fan, and X. Li, “Two heads are bet-
+ter than one: A two-stage complex spectral mapping approach for
+monaural speech enhancement,” IEEE/ACM Transactions on Au-
+dio, Speech, and Language Processing, vol. 29, pp. 1829–1843,
+2021.
+[13] J. Serr`a, S. Pascual, J. Pons, R. O. Araz, and D. Scaini, “Universal
+speech enhancement with score-based diffusion,” arXiv preprint
+arXiv:2206.03065, 2022.
+[14] J.-M. Lemercier, J. Richter, S. Welker, and T. Gerkmann, “Storm:
+A diffusion-based stochastic regeneration model for speech en-
+hancement and dereverberation,” IEEE/ACM Transactions on Au-
+dio, Speech, and Language Processing, 2023.
+[15] S.-W. Fu, C. Yu, T.-A. Hsieh, P. Plantinga, M. Ravanelli, X. Lu,
+and Y. Tsao, “Metricgan+: An improved version of metricgan for
+speech enhancement,” in Interspeech 2021, 2021, pp. 201–205.
+[16] J. Byun, Y. Ji, S.-W. Chung, S. Choe, and M.-S. Choi, “An empir-
+ical study on speech restoration guided by self-supervised speech
+representation,” in ICASSP 2023-2023 IEEE International Con-
+ference on Acoustics, Speech and Signal Processing (ICASSP).
+IEEE, 2023, pp. 1–5.
+[17] K.-H. Hung, S. wei Fu, H.-H. Tseng, H.-T. Chiang, Y. Tsao, and
+C.-W. Lin, “Boosting self-supervised embeddings for speech en-
+hancement,” in Interspeech 2022, 2022, pp. 186–190.
+[18] H. Wang, Y. Qian, H. Yang, N. Kanda, P. Wang, T. Yoshioka,
+X. Wang, Y. Wang, S. Liu, Z. Chen et al., “Data2vec-sg: Improv-
+ing self-supervised learning representations for speech generation
+tasks,” in ICASSP 2023-2023 IEEE International Conference on
+Acoustics, Speech and Signal Processing (ICASSP). IEEE, 2023,
+pp. 1–5.
+[19] H. Dubey, A. Aazami, V. Gopal, B. Naderi, S. Braun, R. Cutler,
+A. Ju, M. Zohourian, M. Tang, M. Golestaneh et al., “Icassp 2023
+deep noise suppression challenge,” IEEE Open Journal of Signal
+Processing, 2024.
+[20] A. D´efossez, N. Usunier, L. Bottou, and F. Bach, “Demucs: Deep
+extractor for music sources with extra unlabeled data remixed,”
+arXiv preprint arXiv:1909.01174, 2019.
+[21] L. Diener, S. Branets, A. Saabas, and R. Cutler, “The icassp 2024
+audio deep packet loss concealment grand challenge,” IEEE Open
+Journal of Signal Processing, 2025.
+[22] W.-T. Lu, J.-C. Wang, Q. Kong, and Y.-N. Hung, “Music source
+separation with band-split rope transformer,” in ICASSP 2024-
+2024 IEEE International Conference on Acoustics, Speech and
+Signal Processing (ICASSP).
+IEEE, 2024, pp. 481–485.
+[23] J. Su, M. Ahmed, Y. Lu, S. Pan, W. Bo, and Y. Liu, “Roformer:
+Enhanced transformer with rotary position embedding,” Neuro-
+computing, vol. 568, p. 127063, 2024.
+[24] Y. Luo, Z. Chen, and T. Yoshioka, “Dual-path rnn: efficient long
+sequence modeling for time-domain single-channel speech sepa-
+ration,” in ICASSP 2020-2020 IEEE International Conference on
+Acoustics, Speech and Signal Processing (ICASSP). IEEE, 2020,
+pp. 46–50.
+[25] A. Li, C. Zheng, R. Peng, and X. Li, “On the importance of power
+compression and phase estimation in monaural speech dereverber-
+ation,” JASA express letters, vol. 1, no. 1, 2021.
+[26] C. K. Reddy, V. Gopal, and R. Cutler, “Dnsmos p. 835: A
+non-intrusive perceptual objective speech quality metric to eval-
+uate noise suppressors,” in ICASSP 2022-2022 IEEE Interna-
+tional Conference on Acoustics, Speech and Signal Processing
+(ICASSP).
+IEEE, 2022, pp. 886–890.
+[27] G. Mittag, B. Naderi, A. Chehadi, and S. M¨oller, “Nisqa: A deep
+cnn-self-attention model for multidimensional speech quality pre-
+diction with crowdsourced datasets,” in Interspeech 2021, 2021,
+pp. 2127–2131.
+[28] A. W. Rix, J. G. Beerends, M. P. Hollier, and A. P. Hekstra,
+“Perceptual evaluation of speech quality (pesq)-a new method for
+speech quality assessment of telephone networks and codecs,” in
+2001 IEEE international conference on acoustics, speech, and
+signal processing. Proceedings (Cat. No. 01CH37221), vol. 2.
+IEEE, 2001, pp. 749–752.
+[29] J. Jensen and C. H. Taal, “An algorithm for predicting the in-
+telligibility of speech masked by modulated noise maskers,”
+IEEE/ACM Transactions on Audio, Speech, and Language Pro-
+cessing, vol. 24, no. 11, pp. 2009–2022, 2016.
+[30] E. Vincent, R. Gribonval, and C. F´evotte, “Performance measure-
+ment in blind audio source separation,” IEEE transactions on au-
+dio, speech, and language processing, vol. 14, no. 4, pp. 1462–
+1469, 2006.
+[31] A. Gray and J. Markel, “Distance measures for speech process-
+ing,” IEEE Transactions on Acoustics, Speech, and Signal Pro-
+cessing, vol. 24, no. 5, pp. 380–391, 1976.
+[32] T. Saeki, S. Maiti, S. Takamichi, S. Watanabe, and H. Saruwatari,
+“Speechbertscore:
+Reference-aware automatic evaluation of
+speech generation leveraging nlp evaluation metrics,” arXiv
+preprint arXiv:2401.16812, 2024.
+[33] R. Kubichek, “Mel-cepstral distance measure for objective speech
+quality assessment,” in Proceedings of IEEE pacific rim confer-
+ence on communications computers and signal processing, vol. 1.
+IEEE, 1993, pp. 125–128.
+872
+

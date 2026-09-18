@@ -1,0 +1,612 @@
+An Investigative Study on Recent Sharpness- and Flatness-Based Optimizers for
+Enhanced Self-Supervised Speaker Verification
+Abderrahim Fathan1, Jahangir Alam1, Xiaolin Zhu*
+1Computer Research Institute of Montreal (CRIM), Montreal, Canada
+abderrahim.fathan@crim.ca, jahangir.alam@crim.ca, alice.zhuxl@gmail.com
+Abstract
+Flat minima have recently proven effective for improving
+generalization and robustness against label noise. While Adam
+and Stochastic gradient descent (SGD) remain the most popular
+optimizers in deep learning, other optimizers such as Sharpness-
+Aware Minimization (SAM), simultaneously minimizing loss
+value and minimizing loss sharpness and/or improving flatness,
+have proven to be more effective across a variety of tasks. Moti-
+vated by this, we present the first comprehensive study of general-
+purpose optimizers (ADOPT, AdEMAMix) and sharpness-aware
+variants (SAM, ASAM, GAM, GSAM) for the supervised and
+self-supervised speaker verification tasks. We also explore dif-
+ferent regularization methods such as weight decay, EMA, and
+SWITCH EMA to enhance robustness and learn flat optima with-
+out extra optimization costs. Our experimental results highlight
+the significant impact of the optimizer choice on generalization,
+achieving state-of-the-art performance in self-supervised speaker
+verification.
+Index Terms: Optimizers, label noise robustness, sharpness-
+aware minimization, self-supervised speaker verification
+1. Introduction
+Automatic speaker verification (ASV) as one of the most con-
+venient means of biometric recognition [1], uses the voiceprint
+of a speaker to verify his or her identity. Based on known ut-
+terances of a speaker, the speaker verification (SV) task aims to
+identify whether a speaker is a legitimate user or an imposter.
+Although advances in self-supervised learning (SSL) techniques
+have helped to improve self-supervised SV leveraging large un-
+labeled datasets [2–5], label noise can still dramatically impact
+the final accuracy of predictions and generalization due to in-
+correct representations. As large-scale datasets are typically
+collected from the internet within automatic pipelines [6, 7],
+these memorization effects [8] can also impact supervised train-
+ing. Therefore, designing robust and effective mechanisms to
+select reliable labels [9] for training and/or to curate these noisy
+annotations is a crucial task [10].
+Many cleansing methods exist in the label noise and data
+pruning literature [11–14]. They rely in general on one or mul-
+tiple stages of label noise cleansing followed by a supervised
+training stage that uses the curated training set. Besides, iterative
+approaches to mitigate label noise by refining Pseudo-Labels
+(PLs) such as [2, 3] can be intimidating and cumbersome as
+they require more memory and computations. Contrary to these
+methods and to approaches [4, 15] based on retraining from
+scratch on final cleansed datasets, AdaptiveDrop [16] integrates
+both label noise correction and filtering mechanisms in a single
+* Independent Researcher
+framework throughout the whole training to enhance robustness
+against noisy labels in one stage of end-to-end training. In-
+deed, AdaptiveDrop adopts an adaptive and dynamic strategy
+to keep adjusting filtering decisions throughout training: repro-
+cess cleansed samples to recover them in later epochs in case
+of wrong drop out decisions or to remove inaccurate labels that
+were mistakenly included in training. On the other hand, flat
+minima have proven recently to be effective for improving gener-
+alization and to considerably enhance performance against label
+noise [17, 18]. Additionally, optimizing only the training loss
+value, as is commonly done, can easily lead to suboptimal solu-
+tions. Indeed, learning algorithms motivated by sharpness of the
+loss surface, as an effective measure of generalization gap [19],
+have provided state-of-the-art (SOTA) performance across vari-
+ous tasks and were demonstrated to enhance robustness against
+label noise.
+Motivated by these recent developments, in this paper we
+present the first comprehensive study of various recent opti-
+mizers for the tasks of supervised and self-supervised SV for
+improved generalization and robustness against label noise. We
+study a wide range of recent general-purpose optimizers such
+as ADOPT and AdEMAMix, and sharpness-based optimizers
+(e.g., SAM [19], Adaptive SAM [20], GAM [17], GSAM [21])
+to analyze their impact on robustness of SV systems, especially
+when label noise is present during training.
+As a comparison, we also explore different regularization
+methods and their combinations with optimizers for better label
+noise robustness, namely weight decay, exponential moving av-
+erage of model parameters (EMA) [22] and SWITCH EMA [23]
+to learn flat optima for better generalizations without extra opti-
+mization cost. We extend our study to other common success-
+ful techniques such as label smoothing regularization [24] and
+mixup [25] to dilute label noise, and using small batch sizes [18]
+that can lead to flatter local minima to boost the performance of
+our networks.
+Our experimental results show that the choice of the right
+optimizer can make a big difference in terms of training ro-
+bustness to label noise and the final generalization performance.
+Besides, our approach adopted with our selected list of opti-
+mizers achieves superior results compared to a wide range of
+self-supervised SV benchmarks.
+The contributions of this paper are as follows:
+• We perform the first comprehensive study of a wide range of
+optimizers for the self-supervised SV task, as alternatives to
+the commonly used Adam and SGD optimizers.
+• A significant number of experimental results demonstrate the
+effectiveness and robustness of our method under real-world
+label noise and various loss functions and configurations.
+• Despite the effectiveness and robustness of these recent op-
+timizers, especially under considerable label noise, we show
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+1503 10.21437/Interspeech.2025-2361
+
+that filtering label noise is still important to avoid overfitting
+noisy labels and to further boost generalization performance.
+• Our approach outperformed numerous self-supervised SV
+baselines and achieved high SV performance.
+2. Related Work and Motivation
+Label Noise Robustness One common way to leverage large
+unlabeled datasets for SV systems is to use clustering mod-
+els [26 –28], or to employ SSL-based objectives (SimCLR,
+MoCo) [29] to generate PLs and train the speaker embedding
+network using these labels in a discriminative fashion [2, 3].
+However, clustering accuracy remains a limiting factor that con-
+strains SV performance [2,30]. Alternatively, iterative clustering-
+classification methods [2, 31] aim to jointly improve PLs and
+SV , but errors in PLs may still propagate, reducing overall per-
+formance. Thus, there is a need for more resilient training ap-
+proaches to label noise to minimize its impact on generalization.
+To tackle label noise, noise-robust algorithms [32,33] can be
+used to learn directly from noisy labels, or use label-cleansing
+approaches [14, 34] that remove or correct mislabeled samples.
+For instance, Subcenter-ArcFace [15] introduced a new loss
+function that relaxes ArcFace’s intra-class constraint, improving
+robustness to label noise by forming a dominant sub-class of
+majority clean samples and grouping hard or noisy samples into
+non-dominant sub-classes.
+To detect mislabeled instances, one can simply employ ad-
+hoc anomaly measures such as cosine similarity to filter out
+low-quality instances or correct those that are above a certain
+threshold [13, 14] (e.g. low cosine similarity, exceptionally high
+training loss value). AdaptiveDrop employs sub-centers to dy-
+namically track dominant sub-centers for each class from the
+beginning of training via a dictionary table, and performs a dy-
+namic drop out of noisy samples at each training step from an
+early stage based on the latter table in order to learn progressively
+cleaner dominant sub-centers without the need to retrain mod-
+els from scratch or to store embeddings and similarities for all
+samples. In the context of self-supervised speaker recognition,
+to mitigate the negative effect of noise in PLs, [4] proposed an
+audio-visual two-step label noise detection and filtering method
+by dividing data into easy and peculiar (hard or noisy). [2] also
+proposed a two-stage iterative loss-gated learning strategy where
+clustering of generated embeddings is applied to generate PLs,
+and samples with a large training loss are dropped out.
+In another line of work, the BoundaryFace [35] loss adopts a
+label correction scheme to correct wrong labels. For that, before
+computing the loss of each batch, it performs label correction
+by deciding whether to correct a label based on whether the
+sample is distributed within the decision boundary of the nearest
+negative class: If max{cos(θk +m),∀k̸=yi}− cos(θyi )> 0:
+yi =k, otherwise labelyi remains the same.yi are labels.
+Optimization Algorithms and Regularizers With today’s
+non-convex and often complex training loss landscapes, the
+training loss provides only few guarantees on model generaliza-
+tion ability. To improve that, Sharpness-Aware Minimization
+(SAM) [19] navigates the multiplicity of local and global min-
+ima by simultaneously minimizing loss value and loss sharpness.
+To this aim, SAM seeks parameters that lie in neighborhoods
+having uniformly low loss by minimizing the worst-case loss
+within a perturbation radius. This results in better generalization
+and enhanced label noise robustness. To improve sensitivity to
+parameter re-scaling which weakens the connection between
+sharpness and generalization gap, Adaptive SAM (ASAM) [20]
+has also introduced a concept of adaptive sharpness which is
+Figure 1: General process for training our self-supervised
+speaker embedding network using the AdaptiveDrop frame-
+work [16]. The pipeline depicts the data flow and the label
+correction module employed for correcting noisy wrong labels,
+followed by the data filtering module used to remove the re-
+maining misclassified samples. CS denotes the cosine similarity
+between the generated sample embeddingω and the class iden-
+tity center embeddingωy.
+scale-invariant. Besides, since SAM does not always prefer flat
+minima, GSAM [21] defines a surrogate gap to encourage more
+flat minima. GAM [17] also presents a novel training procedure
+named Gradient norm Aware Minimization to seek minima with
+uniformly small curvature across all directions by introducing a
+concept of first-order flatness as a stronger measure of flatness.
+Finally, ADOPT [36] is a new adaptive gradient method,
+suggested as an improvement to Adam by removing the current
+gradient from the second moment estimate and changing the
+order of the momentum update and the normalization by the
+second moment estimate to improve convergence. Besides, to
+improve the contribution of older gradients in Momentum based
+optimizers, AdEMAMix [37] leverages two EMAs to better take
+advantage of past gradients and improve Adam performance.
+Additionally, the mixup [25] strategy can be employed as
+an efficient strategy to augment data by interpolating different
+data samples alongside their labels to mitigate the memorization
+effects of label noise. In this paper, we explore two variants of
+mixup at both the instance input-level (i-mix) [38] and the la-
+tent space (l-mix) [27]. Moreover, Exponential Moving Average
+(EMA) [22] is also a widely used weight averaging regularization
+to learn flat optima for better generalizations without additional
+cost in terms of network optimization. EMA can often contribute
+to enhance the stability and output distribution of deep models.
+To take both flatness and sharpness into account during optimiza-
+tion, Switch EMA (SEMA) method [23] was also proposed as an
+enhancement to EMA by simply switching the EMA parameters
+to the original model after each epoch.
+3. Our self-supervised SV Approach
+Clustering-driven PLs can contain a considerable amount of
+wrongly annotated samples. To mitigate the negative effect
+of these wrong labels on generalization during training and to
+improve their accuracy via label correction, we adopt the Adap-
+tiveDrop filtering scheme framework [16]. A detailed schematic
+diagram of AdaptiveDrop is presented in Figure 1 which depicts
+both the label filtering and correction modules.
+Typically, we use Cosine Similarity (CS) as a proxy label
+confidence indicator to detect the mislabeled instances and set a
+constant CS thresholdτ for label filtering to drop high-confident
+1504
+
+noisy data. First, given each training sample x and its labely,
+we use the weights of our currently trained embedding network
+to extract embedding ω of x on the fly at each training step.
+We then compute cosine similarityCS (x,y ) = cos(ω,ωy) =
+ω·ωy
+∥ω∥∥ωy∥ betweenω and the current learnt class center/prototype
+embeddingωy corresponding to classy. IfCS (x,y )>=τ, we
+retain samplex in the training batch, otherwise it is dropped out
+from the batch. We also perform dropping from a very early
+stage of training to mitigate overfitting. Therefore, this can
+induce converging to a better trade-off between the optimized
+training accuracy of noisy labels and the CS to class centers.
+Here in our current experiments, we adopt the angular ad-
+ditive margin softmax (ArcFace) loss [39] to train our models
+and employ the variety of aforementioned optimizers to learn
+weights and compare their performances.
+The ArcFace objective is formulated as follows:
+LArcFace =− 1
+N
+PN
+i=1log(es(cos(θyi +m))
+K1
+), where
+K1 = es(cos(θyi +m)) + PC
+j=1,j̸=iescosθj , N is the batch
+size, C is the number of classes, yi corresponds to label
+index,θyi represents the angle between the column vector of
+weight matrix Wyi ∈ R512×1 of the class center and the ith
+feature embeddingxi∈ R512×1, where bothWyi andxi arel2
+normalized.θj = arccos(Wj
+Txi) is the angle betweenxi and
+thejth class centerWj∈ R512×1. The scale factors prevents
+the gradient from becoming too small during training, andm is
+a margin to ensure correct classes have higher similarity than
+incorrect ones.
+For label correction, we adopt the label correction scheme
+of BoundaryFace [35] (without its proposed regularization
+term to emphasize hard samples). Additionally, inspired
+from the idea of sub-centers [15] used in [5], we employ
+a max pooling step on the subclass-wise cosine similarity
+scores (WTxi) across all our predefined K sub-centers. This
+helps to identify dominant clean sub-centers to use later as
+class prototypes for enhanced label noise robustness. Given
+a weight matrix W ∈ RC×K×512 of all sub-centers, the
+Subcenter-ArcFace objective that we now use is formulated as
+follows: LSubcenter−ArcFace =− 1
+N
+PN
+i=1log(es(cos(θi,yi +m))
+K1
+), where
+nowK1 = es(cos(θi,yi +m)) + PC
+j=1,j̸=iescosθi,j , andθi,j =
+arccos(maxk(Wjk
+Txi)) fork∈ 1,...,K .
+To this purpose, we employ a sub-centers dictionary table
+DSCT∈ NC×K (initially all entries are set to zero) to adaptively
+track the dominant ones per class from the beginning of training.
+As a rule, the ongoing sub-centers with the highest value per
+class are considered dominant (see Algorithm 1). Algorithm 1
+shows our implementation of AdaptiveDrop using sub-centers.
+4. Experimental setup
+We conducted a set of experiments based on the V oxCeleb2
+dataset [7]. To train the embedding networks, we used the de-
+velopment subset of the V oxCeleb2 dataset, which consists of
+1,092,009 utterances collected from 5,994 speakers. The eval-
+uation was performed according to the Original (V ox1-O) V ox-
+Celeb1 trials lists [6].
+We employ ECAPA-TDNN [40] as our speaker embedding
+network. As acoustic features for our SV experiments, we used
+40-dimensional Mel-frequency cepstral coefficients (MFCCs)
+extracted at every 10 ms, using a 25 ms Hamming window via
+Kaldi toolkit [41]. Moreover, we have used waveform-level
+data augmentations including additive noise and room impulse
+response (RIR) simulation [42] to follow other SV works. Be-
+sides, we have applied augmentation over the extracted MFCCs
+Algorithm 1 AdaptiveDrop Algorithm (using Sub-centers)
+Inputs: Training dataX, noisy pseudo-labels Y , modelM, loss function l,
+cosine similarity thresholdτ, epoch to start correcting noisy labels (ESC), epoch
+to start dropping out noisy labels (ESD), epoch to start tracking dominant sub-
+centers (ESTD), dominant sub-centers table DSCT∈ NC×K, optimizer Opt.
+Output: The best modelM.
+Initialize: Table DSCT with zeros
+for epoch = 1 to max_epochs do
+Extract embeddingsω for samples of current batchx.
+Compute cosine similarities (CS ) between each sample inx and its corre-
+sponding class sub-centersωy,j forj∈{ 1,..,K}.
+ifepoch≥ ESTD then
+#Update dominant sub-centers table (DSCT)
+closest_subcenter = arg maxj∈{1,..,K}CS [y,j ]
+DSCT [y, closest_subcenter] += 1
+end if
+ifepoch≥ ESC then
+Correct pseudo-labelsy of batchx.
+end if
+ifepoch≥ ESD then
+#Compute dominant sub-centers
+Kdominant = arg maxi∈{1,..,K}DSCT [y,i ]
+Filter samples based onCS (x,y ) = cos(ω,ωy,Kdominant ).
+Set (xclean,y clean) ={(xi,yi) forxi,yi∈ (x,y ) ifCS >τ}
+else
+Setxclean =x andyclean =y
+end if
+Compute lossl with filteredxclean andyclean.
+Perform gradient descent to update parameters of model M using Opt.
+end for
+features, analogous to the specaugment scheme [43]. All SV
+experiments have been run for 150 epochs using a single A40
+GPU (around 2 days training), with a default batch size of 200
+MFCC samples. Scale factors = 30 and marginm = 0.2 were
+used across all margin-based losses. Besides, we do not use
+score normalization and CS was used as a backend for verifica-
+tion scoring between enrollment and test embeddings. We refer
+to our loss implementation using label correction with Bound-
+aryFace and refer to sub-centers combined with label correction
+with subcenter-BoundaryFace.
+Finally, we use a defaultK = 3 sub-centers when applied
+and a CS threshold of τ = 0 .423. For AdaptiveDrop, use
+ESD = 5 , ESC = 7 , ESTD = 3 . Besides, to avoid training
+unstability especially for highly noisy thresholds, we only drop
+out a maximum of 50% of samples from each training batch. Ad-
+ditionally, we employ a first very short warm-up stage of training
+for the first 5 epochs to train our embedding network with all the
+PLs to have meaningful weights when label noise filtering and
+correction begin. Besides, we use the CAMSAT clustering algo-
+rithm [44] to generate PLs using 10000 as a predefined number
+of clusters. We useλ = 0.001 for weight decay regularization,
+and a default smoothing coefficientϵ of 0.15. Code is available
+at https://github.com/fathana/Optimizers
+5. Results and Discussion
+First of all, to assess the effectiveness of our studied optimizers
+and regularization techniques, in Tables 1 and 2 we compare
+the performance of our system under different configurations,
+trained with different optimizers. In Table 1, we report the SV
+performance using ground truth labels, while in Table 2 we use
+CAMSAT-based PLs (70.9% unsupervised clustering accuracy)
+to train our systems. Results show that sharpness and flatness
+-based optimizers can be effective to improve generalization
+and robustness of SV systems under label noise. We find these
+improvements more pronounced when labels are noisy than when
+training with true labels. We also notice that these SAM-based
+optimizers are considerably more effective than most of our other
+studied regularization techniques.
+1505
+
+Table 1: Supervised SV performance in terms of EER (%) on
+the Vox1-O test set, using ground-truth labels across various
+optimizers and configurations. When unspecified, Adam is used.
+Optimizer / Regularization ArcFace Sub-center ArcFace
+Adam 1.437 1.384
+SGD 2.63 2.572
+SAM+SGD 3.728 2.921
+ASAM+SGD 2.651 3.112
+SAM+Adam 1.448 1.373
+ASAM+Adam 1.41 1.363
+GAM+Adam 1.331 1.204
+GSAM+Adam 1.22 1.214
+ADOPT 1.341 1.41
+AdEMAMix 1.474 -
+AdamW (weight decay) 1.538 1.543
+EMA 1.379 1.283
+SEMA 1.389 1.379
+i-mix 1.294 1.432
+l-mix 1.458 1.341
+Label smoothing 1.596 1.304
+i-mix + Label smoothing - 1.384
+l-mix + Label smoothing - 1.564
+BoundaryFace 1.341 1.315
+i-mix + BoundaryFace 1.469 1.67
+l-mix + BoundaryFace 1.638 1.543
+Label smoothing + BoundaryFace 1.469 1.267
+Table 2: SV perf. (EER) on the Vox1-O test set, using CAMSAT-
+based PLs across various optimizers and configurations.
+Optimizer Regularization techniques Batch size EER (%)
+Adam - 50 2.407
+Adam - 200 2.508
+ASAM+Adam - 50 1.983
+SAM+Adam - 200 2.439
+Adam weight decay 50 2.63
+GSAM+Adam - 50 2.057
+ASAM+Adam SubcenterBoundaryFace 200 2.365
+ASAM+Adam BoundaryFace, no filtering 200 2.603
+ASAM+Adam BoundaryFace 200 2.375
+Adam SubcenterBoundaryFace 50 2.625
+Adam l-mix, no filtering 200 3.033
+Adam i-mix, no filtering 200 3.139
+ASAM+Adam Label smoothing ( ϵ = 0.2) 50 2.073
+Table 3: SV performance in terms of EER (%) on the Vox1-O test
+set, using CAMSAT-based PLs with and without Adam -based
+ASAM optimizer across various configurations.
+Loss function Regularization techniques EER (%)
+without ASAM+Adam with ASAM+Adam
+ArcFace (supervised) - 1.463 1.41
+Subcenter-ArcFace (supervised) - 1.384 1.363
+ArcFace - 3.134 3.001
+Subcenter-ArcFace - 2.943 2.656
+Subcenter-ArcFace i-mix 3.139 2.725
+Subcenter-ArcFace l-mix 3.033 2.89
+Subcenter-ArcFace AdaptiveDrop 2.407 1 .983
+BoundaryFace - 2.752 2.503
+BoundaryFace AdaptiveDrop 2.513 2.413
+Subcenter-BoundaryFace AdaptiveDrop 2.672 2.338
+Table 4: SV performance in terms of EER (%) on the Vox1-O test
+set, using CAMSAT-based PLs with and without AdaptiveDrop
+noise filtering across various optimizers (batch size is 200).
+Loss function Optimizer EER (%)
+without AdaptiveDrop with AdaptiveDrop
+BoundaryFace ASAM+Adam 2.556 2.37
+Subcenter-ArcFace ASAM+Adam 2.656 2.153
+Subcenter-ArcFace SAM+Adam 2.906 2.439
+Subcenter-ArcFace SGD 3.256 3.006
+Subcenter-ArcFace ASAM 2.996 2.789
+Subcenter-ArcFace SAM 3.192 2.704
+Subcenter-ArcFace AdEMAMix 2.895 2.715
+Subcenter-ArcFace Adam 2.943 2.407
+Subcenter-ArcFace AdamW (weight decay) 2.869 2.678
+Subcenter-ArcFace Adopt 41.803 3.728
+Table 5: Some recent SOTA self-supervised SV approaches in
+EER (%) compared to AdaptiveDrop on the Vox1-O eval set.
+SSL Objective EER (%)
+MoBY [29] 8.2
+InfoNCE [2] 7.36
+MoCo [45] 7.3
+ProtoNCE [29] 7.21
+PCL [29] 7.11
+CA-DINO [46] 3.585
+i-mix [47] 3.478
+l-mix [47] 3.377
+Iterative clustering [2] 3.09
+CAMSAT [44] 3.065
+Subcenter-BoundaryFace [48] 2.752
+AdaptiveDrop [16] 2.407
+Proposed (ours) [with AdaptiveDrop & ASAM+Adam] 1.983
+Additionally, in Table 3 we perform further ablations using
+different configurations to assess the effectiveness of the Adam
+-based ASAM optimizer (denoted as ASAM+Adam). Besides,
+in Table 4 we assess the contribution of AdaptiveDrop label
+noise filtering compared to our best performing ASAM+Adam
+sharpness-based optimizer. Results show that ASAM+Adam op-
+timizer is effective across all systems. However, Table 4 shows
+that label noise filtering is even more effective than sharpness
+optimization, and that label filtering and loss sharpness mini-
+mization of SAM are complementary to each other.
+Finally, Table 5 shows a comparison of our approach us-
+ing our best-performing configuration with Subcenter-ArcFace,
+AdaptiveDrop filtering, Adam-based ASAM optimizer, and
+CAMSAT-based PLs, compared to recent SOTA self-supervised
+SV approaches employing diverse SSL objectives with the same
+ECAPA-TDNN model encoder, on V ox1-O. The results show
+clearly that our approach provides large performance gains com-
+pared to all baselines, while being simple, fast and performed
+end-to-end in a single stage of training.
+6. Conclusion
+In this work, we investigate the performance of various recent
+optimizers and regularization methods to improve robustness of
+self-supervised (SS) training in the presence of noisy labels. We
+proposed a framework encompassing label noise filtering, label
+correction, Sharpness-Aware Minimization, and sub-centers of
+classes to integrate with any type of loss objective. Besides, our
+extensive experiments show that the choice of optimizer can be
+crucial for final performance, that label filtering is paramount,
+and that our method outperforms various other SS speaker verifi-
+cation benchmarks.
+1506
+
+7. Acknowledgment
+The authors wish to acknowledge the funding from the Natural
+Sciences and Engineering Research Council of Canada through
+grant RGPIN-2019-05381.
+8. References
+[1] J. H. Hansen et al., “Speaker recognition by machines and humans:
+A tutorial review,”IEEE Signal Processing Magazine, 2015.
+[2] R. Tao et al., “Self-supervised speaker recognition with loss-gated
+learning,” in ICASSP. IEEE, 2022.
+[3] J. Peng et al. , “Progressive Contrastive Learning for Self-
+Supervised Text-Independent Speaker Verification,” in Proc. of
+Odyssey Workshop, 2022.
+[4] R. Taoet al., “Speaker recognition with two-step multi-modal deep
+cleansing,” in IEEE ICASSP 2023. IEEE, 2023, pp. 1–5.
+[5] A. Fathan, X. Zhu, and J. Alam, “On the influence of regulariza-
+tion techniques on label noise robustness: Self-supervised speaker
+verification as a use case,” in Proc. of the IEEE IJCB, Buffalo,
+NewYork, USA, 15-18 September 2024.
+[6] A. Nagrani, J. S. Chung et al., “V oxceleb: a large-scale speaker
+identification dataset,” in INTERSPEECH, 2017.
+[7] J. S. Chung, A. Nagrani, and A. Zisserman, “V oxceleb2: Deep
+speaker recognition,” in INTERSPEECH, 2018.
+[8] D. Arpit, S. Jastrz˛ ebski, N. Ballas, D. Kruegeret al., “A closer look
+at memorization in deep networks,” in International conference on
+machine learning. PMLR, 2017, pp. 233–242.
+[9] M. N. Rizve et al., “In defense of pseudo-labeling: An uncertainty-
+aware pseudo-label selection framework for semi-supervised learn-
+ing,” arXiv preprint arXiv:2101.06329, 2021.
+[10] H. Wei et al., “Mitigating memorization of noisy labels by clipping
+the model prediction,” in International Conference on Machine
+Learning. PMLR, 2023, pp. 36 868–36 886.
+[11] B. Frénay, A. Kabán et al., “A comprehensive introduction to label
+noise.” in ESANN. Citeseer, 2014.
+[12] I. Guyon, N. Matic, V . Vapnik et al., “Discovering informative
+patterns and data cleaning.” 1996.
+[13] J.-w. Sun et al., “Identifying and correcting mislabeled training
+instances,” in Future generation communication and networking
+(FGCN 2007), vol. 1. IEEE, 2007, pp. 244–250.
+[14] C. E. Brodley and M. A. Friedl, “Identifying mislabeled training
+data,” Journal of artificial intelligence research, 1999.
+[15] J. Deng, J. Guo et al., “Sub-center arcface: Boosting face recogni-
+tion by large-scale noisy web faces,” in Computer Vision–ECCV
+2020: 16th European Conference, Glasgow, UK, Proceedings, Part
+XI 16. Springer, 2020, pp. 741–757.
+[16] A. Fathan, X. Zhu, and J. Alam, “Adaptivedrop: A simple adaptive
+label noise filtering scheme for enhanced self-supervised speaker
+verification,” inICASSP 2025-2025 IEEE International Conference
+on Acoustics, Speech and Signal Processing (ICASSP).
+[17] X. Zhang et al., “Gradient norm aware minimization seeks first-
+order flatness and improves generalization,” in Proceedings of the
+IEEE/CVF Conference on Computer Vision and Pattern Recogni-
+tion, 2023, pp. 20 247–20 257.
+[18] N. S. Keskar et al. , “On large-batch training for deep learn-
+ing: Generalization gap and sharp minima,” arXiv preprint
+arXiv:1609.04836, 2016.
+[19] P. Foretet al., “Sharpness-aware minimization for efficiently im-
+proving generalization,” arXiv preprint arXiv:2010.01412, 2020.
+[20] J. Kwon et al., “Asam: Adaptive sharpness-aware minimization for
+scale-invariant learning of deep neural networks,” in International
+Conference on Machine Learning. PMLR, 2021, pp. 5905–5914.
+[21] J. Zhuang et al., “Surrogate gap minimization improves sharpness-
+aware training,” arXiv preprint arXiv:2203.08065, 2022.
+[22] B. T. Polyak and A. B. Juditsky, “Acceleration of stochastic approx-
+imation by averaging,” SIAM journal on control and optimization,
+vol. 30, no. 4, pp. 838–855, 1992.
+[23] S. Li et al., “Switch ema: A free lunch for better flatness and
+sharpness,” arXiv preprint arXiv:2402.09240, 2024.
+[24] C. Szegedy et al., “Rethinking the inception architecture for com-
+puter vision,” in Proc. of the IEEE conference on CVPR, 2016, pp.
+2818–2826.
+[25] H. Zhang et al., “mixup: Beyond empirical risk minimization,”
+arXiv preprint arXiv:1710.09412, 2017.
+[26] A. Fathan, J. Alam, and W. Kang, “On the impact of the quality of
+pseudo-labels on the self-supervised speaker verification task,” in
+NeurIPS 2022 Second ENLSP Workshop, 2022. [Online]. Available:
+https://neurips2022-enlsp.github.io/papers/paper_51.pdf
+[27] W. H. Kang et al., “L-mix: A latent-level instance mixup regular-
+ization for robust self-supervised speaker representation learning,”
+IEEE JSTSP, vol. 16, no. 6, pp. 1263–1272, 2022.
+[28] W. H. Kang, J. Alam, and A. Fathan, “An analytic study on
+clustering-based pseudo-labels for self-supervised deep speaker
+verification,” in SPECOM, 2022.
+[29] W. Xia et al. , “Self-supervised text-independent speaker veri-
+fication using prototypical momentum contrastive learning,” in
+ICASSP. IEEE, 2021.
+[30] B. Han, Z. Chen, and Y . Qian, “Self-supervised speaker verifica-
+tion using dynamic loss-gate and label correction,” arXiv preprint
+arXiv:2208.01928, 2022.
+[31] Y . Li et al., “Contrastive clustering,” in AAAI, 2021.
+[32] M. Guan et al., “Who said what: Modeling individual labelers
+improves classification,” in Proc. of AAAI, vol. 32, no. 1, 2018.
+[33] D. Rolnick, A. Veitet al., “Deep learning is robust to massive label
+noise,” ICLR, 2018.
+[34] D. T. Nguyen et al., “Self: Learning to filter noisy labels with
+self-ensembling,” arXiv preprint arXiv:1910.01842, 2019.
+[35] S. Wu, “Boundaryface: A mining framework with noise label
+self-correction for face recognition,” in ECCV. Springer, 2022.
+[36] S. Taniguchi et al., “Adopt: Modified adam can converge with any
+β2 with the optimal rate,” arXiv preprint arXiv:2411.02853, 2024.
+[37] M. Pagliardini et al., “The ademamix optimizer: Better, faster,
+older,” arXiv preprint arXiv:2409.03137, 2024.
+[38] K. Lee et al., “i-mix: A domain-agnostic strategy for contrastive
+representation learning,” in ICLR, 2021.
+[39] J. Deng et al., “Arcface: Additive angular margin loss for deep
+face recognition,” IEEE TPAMI, 2021.
+[40] B. Desplanques et al., “ECAPA-TDNN: emphasized channel at-
+tention, propagation and aggregation in TDNN based speaker veri-
+fication,” in Interspeech 2020. ISCA.
+[41] D. Povey et al., “The kaldi speech recognition toolkit,” in In IEEE
+2011 workshop, 2011.
+[42] D. Snyder et al., “X-vectors: Robust dnn embeddings for speaker
+recognition,” in Proc. of IEEE ICASSP, 2018, pp. 5329–5333.
+[43] D. S. Park et al., “Specaugment: A simple data augmentation
+method for automatic speech recognition.” in Interspeech, 2019,
+pp. 2613–2617.
+[44] A. Fathan and J. Alam, “Camsat: Augmentation mix and self-
+augmented training clustering for self-supervised speaker recogni-
+tion,” in IEEE ASRU Workshop, 2023.
+[45] J. Cho et al., “The jhu submission to voxsrc-21: Track 3,” arXiv
+preprint arXiv:2109.13425, 2021.
+[46] B. Han et al., “Self-supervised learning with cluster-aware-dino
+for high-performance robust speaker verification,” arXiv preprint
+arXiv:2304.05754, 2023.
+[47] A. Fathan and J. Alam, “On the influence of the quality of pseudo-
+labels on the self-supervised speaker verification task: a thorough
+analysis,” in IWBF. IEEE, 2023.
+[48] A. Fathan, X. Zhu, and J. Alam, “An investigative study of the
+effect of several regularization techniques on label noise robustness
+of self-supervised speaker verification systems,” Odyssey 2024.
+1507

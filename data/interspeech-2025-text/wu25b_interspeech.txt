@@ -1,0 +1,1026 @@
+Towards Few-Shot Training-Free Anomaly Sound Detection
+Ho-Hsiang Wu1,∗, Wei-Cheng Lin1,∗, Abinaya Kumar1,∗, Luca Bondi1, Shabnam Ghaffarzadegan1,
+Juan Pablo Bello2
+1Bosch Center for Artificial Intelligence, USA
+2Music and Audio Research Laboratory, New York University, USA
+{wei-cheng.lin, abinaya.kumar}@us.bosch.com
+Abstract
+Anomaly sound detection is an important audio task, with
+various applications in industrial monitoring, healthcare, secu-
+rity and surveillance, and other domains. Existing methods are
+often designed with various assumptions for specific types of
+anomalies and are not suitable when applied to the challenging
+real-world scenarios, such as domain shifts and data scarcity
+issues.
+In this work, we propose a few-shot training-free
+method, leveraging pre-trained audio models to extract patch-
+based spatial-temporal representations for few-shot anomaly
+detection and segmentation. We show that our proposed ap-
+proach is flexible and applicable even under the extreme low-
+shot regimes, and can at times outperform models trained with
+the full datasets. Furthermore, our method is more robust in
+tackling domain shifts, with the need of only few-shot data
+points to quickly adapt to various conditions, therefore more
+suitable for deployment in real-world applications.
+Index Terms: anomaly sound detection, machine condition
+monitoring, few-shot learning, training-free methods
+1. Introduction
+Anomaly sound detection (ASD) is an important and practical
+task with numerous applications, including monitoring machine
+operating conditions, conducting end-of-line testing in manu-
+facturing pipelines [1–4], and healthcare [5, 6]. Audio can be
+a complementary or alternative sensory modality that is cost-
+effective, non-contact and ubiquitous (unlike, e.g. vibration,
+torque, temperature or most bio-sensing) and robust to low vis-
+ibility and occlusion (unlike, e.g., vision).
+Conventional reconstruction-based [7, 8] methods usually
+utilize an autoencoder (AE) architecture, requiring certain num-
+ber of normal samples to fit a distribution to identify anomaly
+outliers. In the field of vision, recent generative models like
+GANs and diffusion models are also utilized to reconstruct nor-
+mal data distribution for anomaly detection [9,10]. These meth-
+ods require lots of domain-specific data and fail to generalize to
+new domains. Deviation-based methods (e.g., DevNet [11]) re-
+lax the constraint of only training with normal samples, mixing
+few anomaly samples with larger normal sets to obtain better re-
+sults. Furthermore, clustering [12, 13] and classification-based
+techniques [14, 15] turn the original outlier detection problem
+into a binary classification task, treating normal samples from
+different sources (e.g., different machines) as anomalies to es-
+tablish a more compact decision boundary. This approach typi-
+cally requires significant amounts of labeled data. There is also
+growing interest in leveraging large language models (LLMs)
+toward building foundation models for anomaly detection, es-
+*These authors contributed equally.
+Few-Shot Support Set (𝒟)
+Query (𝑞)
+𝑝(𝑖, 𝑗)
+...
+𝑙-layers
+AST Encoder (ℱ)
+...
+𝑙-layers
+AST Encoder (ℱ)
+Score Function (𝒮)
+0.9
+0.9
+0.9
+0.8
+0.9
+0.8
+0.8
+0.8
+0.9 0.9 0.9
+0.9 0.9 0.9
+0.8 0.9 0.9
+0.8 0.9 0.9
+0.6
+0.5
+0.6
+0.5
+0.9
+0.9
+0.7
+0.6
+0.5
+0.2
+0.1
+0.3
+Anomaly Map (𝒜𝑞)
+thresholding
+Figure 1: The proposed few-shot patch-based difference frame-
+work.
+pecially in vision [16–19]. However, it is challenging to apply
+such methods directly to audio, as common natural language de-
+scriptions of sound anomalies are not well defined and broadly
+available. Also, unlike vision, the background component is not
+occluded by the source of the anomaly, but additively combined.
+Thus, few shot solutions, that can easily adapt to new domains
+with very little data, are especially appealing in audio.
+As highlighted in the discussion and results for Task 2 of
+the 2024 DCASE challenge [20, 21], existing approaches are
+often impractical and unfeasible for real-world applications due
+to data scarcity issues. For example, in the case of machine
+anomaly detection in industrial applications, the performance
+of models may decrease for machine types not seen in the train-
+ing data. Also, the assumption of collecting normal and partic-
+ularly abnormal samples from every single machine type is im-
+practical [22]. In such scenarios, pre-trained audio models on
+large-scale data are often utilized to address generalization is-
+sues across various data distributions [23–25]. Therefore, few-
+shot ASD approaches have recently become important research
+topics [26–30]. These works leverage few-shot learning [31,32]
+for adapting pre-trained normal models to new domains with
+few anomaly samples.
+In this work, we introduce a patch-based difference method
+for the ASD task. We demonstrate the effectiveness and gen-
+eralizability of our proposed methods across diverse datasets
+including machine anomaly and healthcare domains. Our con-
+tributions are: 1) We propose a few-shot, training-free ASD ap-
+proach that requires minimal data samples and is applicable to
+a wide range of real-world conditions. 2) Our approach demon-
+strates robustness to domain-shifts and cross-domain general-
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+3384
+10.21437/Interspeech.2025-467
+
+ization in both industrial and medical data, representing a step
+forward toward a foundational solution for ASD.
+2. Few-shot Patch-based Difference Method
+We aim to rapidly adapt to domain shifts (e.g., changes in
+machine configurations) without requiring extensive data col-
+lection and model fine-tuning, while maintaining high perfor-
+mance and robustness against variations. Therefore, we formu-
+late the problem as few-shot anomaly detection, relying on only
+a limited number of available normal samples. Our method
+is inspired by WinCLIP [16], a vision-based anomaly detec-
+tion framework that computes anomaly scores by leveraging vi-
+sual differences. Differently, we dispense the language com-
+ponent entirely to account for the non-availability of textual
+descriptions for audio anomaly, relying solely on intermediate
+patch-level audio features from a pre-trained transformer en-
+coder. This way, our approach is not tied to a specific encoder,
+any transformer-based encoder trained on large-scale data can
+be integrated into our framework. Another closely related work
+[33] also utilizes hidden representations from a pre-trained au-
+dio transformer for anomaly detection. However, their method
+targets a low-shot setting (approximately 200 or more normal
+samples), whereas our approach focuses on a more challenging
+few-shot regime (fewer than 10 normal samples). In this study,
+we use the audio spectrogram transformer (AST) [34] encoder,
+which is trained based on the vision transformer (ViT) architec-
+ture [35]. AST is a widely adopted transformer-based general
+purpose audio encoder in various research studies [36,37].
+Figure 1 illustrates our proposed framework with a training-
+free inference pipeline focusing on the exposure of local differ-
+ences in audio spectrogram. Let D = {x1, x2..., xN} be an
+N-shot normal support set (typically with N ≤10), and q be
+a query sample. We first compute a 128-bin log Mel spectro-
+gram for each audio sample, following the configuration from
+the original AST paper (25 ms window size and 10 ms hop size).
+Each spectrogram is then divided into P sub-patches, indexed
+by (i, j), which we denote as p(i, j). Accordingly, each nor-
+mal support sample is represented as xn = pn(i, j) while the
+query sample is represented as q = pq(i, j). These sub-patches
+p(i, j) are passed to a frozen, pre-trained AST encoder (adopted
+from Huggingface1). The AST model consists of L = 11 trans-
+former layers. At each layer l ∈1, . . . , L, its corresponding
+latent representation extracted by the AST encoder Fl(·) is di-
+vided into 12 × 101 sub-patches ( i.e., i = 12 and j = 101).
+Therefore, we can obtain a total of N × 12 × 101 patch-level
+representations per layer from the support set. We denote it as
+the collection set of searching keys P ′
+l ∈R(1212·N)×d in Eq.
+(1), where the AST hidden dimension d=768.
+P ′
+l =
+N
+[
+n=1
+Fl(xn)
+(1)
+To detect anomalies, we compute the cosine distance by
+calculating the pairwise cosine similarity S between the input
+query patches Fl(q) ∈R1212×d and the searching keys P ′
+l as
+shown in Eq. (2), where Sa,b is the cosine similarity between
+vectors of Fl(q) and P ′
+l . We select only the maximum value
+as the representative score over the P ′
+l comparisons. We for-
+mally define the scoring function S(·) in Eq. (3), to reveal
+the most dissimilar regions. Finally, we aggregate these sub-
+patch-level differences by averaging across all the layers, re-
+1https://huggingface.co/docs/transformers/en/model doc/audio-
+spectrogram-transformer
+sulting in an averaged anomaly map Aq as shown in Eq. (4).
+Since each transformer layer captures different feature repre-
+sentations (from low-level to high-level), queries with large de-
+viations across multiple layers can be treated as an anomaly.
+Consequently, if the pooling value of anomaly map Aq exceeds
+a certain threshold, the query is considered anomalous. We ob-
+tain a single anomaly score by taking a specified quantile of
+values from this anomaly map, where the quantile acts as a hy-
+perparameter that controls detection sensitivity. We refer to this
+proposed approach as AST-PB.
+Sa,b =
+
+Fl(q)a, P ′
+l b
+
+,
+S ∈R1212×(N·1212)
+(2)
+S(Fl(q), P ′
+l ) = 1 −max
+b
+(S:,b)
+(3)
+Aq = 1
+L
+L
+X
+l=1
+S(Fl(q), P ′
+l )
+(4)
+3. Experimental Design
+Table 1: Data statistics of the used public and private datasets.
+Dataset
+# Types
+# Train
+# Test
+len (sec)
+MIMII
+4
+400 - 800
+200 - 600
+10
+DCASE-Dev
+7
+990(SRC), 10(TGT)
+100(SRC), 100(TGT)
+10
+DCASE-Eval
+9
+990(SRC), 10(TGT)
+100(SRC), 100(TGT)
+10
+Kadia
+1
+20
+36
+10
+Asthma
+1
+101
+42
+1-2
+Data: We perform few-shot scenario studies on diverse pub-
+lic and private datasets to showcase the generalizability of the
+proposed approach across various domains. For this, we con-
+sider a total of five datasets (three public and two private) to
+comprehensively evaluate the model robustness and generaliza-
+tion across different domains and conditions. Table 1 shows
+the detailed data statistics, namely: MIMII [38]: The dataset
+comprises four machine types recorded at different SNRs
+and machine IDs; DCASE2024-Task2-Development (DCASE-
+Dev) [38, 39] and DCASE2024-Task2-Additional (DCASE-
+Eval) [21,39]: These two datasets are from DCASE2024-Task2
+Challenges, containing various machine types, recorded in both
+source (SRC) and target (TGT) domains, with balanced test
+set2; Kadia: This is a Bosch proprietary dataset collected in the
+manufacturing line. The anomaly comes from misalignment of
+the honing tool-tip, causing a squealing sound; Asthma [40]:
+This is another private dataset in the healthcare domain, featur-
+ing normal coughing and coughing with wheeze. The samples
+containing wheezing are classified as anomalies. This data was
+collected during patients visit to their healthcare provider.
+For MIMII and the two private datasets, we follow the parti-
+tioning strategy adopted from [38]. To create a balanced test set,
+we use all of the anomaly samples along with the same number
+of randomly selected normal samples. The remaining normal
+data is used for training. Notice that we randomly craft a small
+subset (i.e., 10 shots of normal and abnormal samples) from
+MIMII as the validation set to study the role of hyperparame-
+ters for the proposed approach (see Sec. 4.1). For the DCASE
+datasets, we respect the official train and test splits.
+Baseline: We consider autoencoder (AE) [41] as our baseline
+method, which is the most conventional approach for bench-
+marking anomaly detection systems [8, 21]. The AE model is
+trained to reconstruct normal samples, and the reconstruction
+2https://github.com/nttcslab/dcase2024 task2 evaluator
+3385
+
+Figure 2: AUC performances of different decision quantiles per
+machine type based on the crafted small MIMII validation set.
+The red dashed vertical line represents the default 0.05 quantile.
+error is utilized as the anomaly score during inference. It is also
+commonly assumed that a significant amount of normal data is
+accessible during the training stage. We directly adopt the of-
+ficial implementations of AE as our baseline system34. Notice
+that the AE baseline is trained separately for each dataset, uti-
+lizing all available in-domain normal data for the training.
+Metrics: We follow the same evaluation from DCASE2024-
+Task2 and report area under the curve (AUC) as our main met-
+ric, and compute harmonic mean (HMean) for the overall ag-
+gregation.
+Experiments: We conduct experiments with different scenarios
+by varying the number of normal shots used to train the AE
+model or for the proposed AST-PB support set. First, all normal
+(denote as all) samples are used from the training set. Second,
+few-shot N ∈(1, 5, 10) (denote as the number) normal samples
+are randomly selected from the original full training set. All
+the experiments are conducted in three trials (i.e., with different
+random seeds), and the mean and standard deviation (STD) of
+the evaluation metrics are reported.
+4. Results and Discussions
+4.1. Hyperparameter Study
+There are two main hyperparameters to consider for the pro-
+posed AST-PB method: 1) the choice of the intermediate net-
+work layers L (i.e., from 1 to 11) that are used in calculating the
+anomaly map Aq; and 2) the percentage quantile (e.g., 0.05, 0.1,
+..., 0.95) of the anomaly score decision threshold. We use the
+small crafted MIMII validation set (Sec. 3) to tune these hyper-
+parameters. Firstly, we observe that utilizing all L layers yields
+the most robust results. Secondly, Figure 2 shows the impact
+of decision threshold (via percentage quantile) on AUC perfor-
+mance of the validation set. We observe that different machines
+do require different thresholds to achieve their best performance
+(see the solid dots per machine). Although we recognize that
+tuning hyperparameters could improve performance, we adhere
+to the official benchmark setup in the DCASE Challenge for the
+rest of the experiments. For fair comparisons, we fix the hyper-
+parameters obtained from MIMII validation knowledge (i.e., all
+L layers and a 0.05 decision quantile) across all experiments
+and datasets. We also provide the ideal results as a reference,
+denoted as AST-PB (10HT), which would be achieved if we
+were able to further tune the quantile for each machine individ-
+ually. Here HT stand for hyperparameter tuning.
+4.2. Cross-Domain Generalizability
+In Table 2, we show the AUC results per machine type for
+MIMII dataset on the left, which is aggregated across different
+machine IDs and SNRs. We see that the performance of pro-
+3https://github.com/nttcslab/dcase2023 task2 baseline ae
+4https://github.com/MIMII-hitachi/mimii baseline
+Table 2: MIMII and the two private datasets results in AUC
+(averaged over different SNR conditions and machine IDs.
+STD ≤0.05). Bold: best few-shot results. Underline: out-
+perform AE (all).
+MIMII
+Private
+Fan
+Pump Slider Valve
+HMean
+Kadia Asthma
+AE (all) [38]
+0.790 0.723
+0.786 0.613
+0.720
+0.309
+0.217
+AE (1)
+0.702 0.641
+0.611 0.474
+0.594
+0.428
+0.217
+AE (5)
+0.714 0.700
+0.644 0.456
+0.608
+0.336
+0.218
+AE (10)
+0.716 0.696
+0.658 0.454
+0.610
+0.319
+0.220
+AST-PB (1)
+0.628 0.787
+0.726 0.575
+0.669
+0.421
+0.617
+AST-PB (5)
+0.661 0.828
+0.754 0.600
+0.700
+0.556
+0.626
+AST-PB (10)
+0.671 0.859
+0.765 0.613
+0.715
+0.733
+0.635
+posed AST-PB (10) is comparable and at times outperforming
+(e.g. pump) the AE (all) benchmark, which is trained with the
+entire training samples. Looking at the few-shot performance,
+our proposed method clearly outperform the AE baselines for
+the corresponding shots (1, 5, 10). We can also observe that,
+adding more shots help to improve the performance in general.
+Table 2 on the right shows the results of two private datasets,
+Kadia in manufacturing domain and Asthma in healthcare do-
+main. We notice similar trends here as in the MIMII dataset,
+with a notable performance improvement when using our pro-
+posed AST-PB approach compared to AE (all). We attribute this
+significant performance improvement to the limited availabil-
+ity of normal samples to adequately represent the normal space.
+Methods such as AE typically require a diverse range of training
+samples to learn the robust normal distribution, whereas AST-
+PB demonstrates its robustness and effectiveness even with only
+a few in-domain samples available.
+4.3. Cross-Domain Robustness
+Table 3 and Table 4 show the detailed results in SRC and
+TGT domains from DCASE-Dev and DCASE-Eval, respec-
+tively. Firstly, looking into the SRC domain results, we ob-
+serve comparable or sometimes superior performance between
+the AE (N) results and AST-PB (N). However, for this dataset,
+AE (all) demonstrates better performance on average. Look-
+ing closer, there are several machine types that AST-PB demon-
+strates better performance, such as GearBox, ToyTrain; while
+worse at ToyCar. Similar findings hold for both DCASE-Dev
+and DCASE-Eval sets.
+We speculate that the variance in performance may be at-
+tributed to the characteristics of the anomaly types (e.g., pe-
+riodic vs. aperiodic/impulsive, stationary vs. non-stationary),
+where AST-PB and AE may each have their own advantages in
+handling different types. It would be an interesting future di-
+rection to take different characteristics of anomaly types into
+consideration and design targeted specific score function (S).
+Another hypothesis is that different machines or anomaly types
+require different set of hyperparameters, as shown in Figure 2
+as we see a consistent improvement of AST-PB (10HT) results
+if we are able to perform hyperparameter tuning properly.
+Additionally, the results from the TGT domain could pro-
+vide us with a better understanding of the performance of these
+approaches, as TGT simulates real-world scenarios where ma-
+chine operation could constantly change, and only a few-shot
+samples are available (i.e., 10 shots in the DCASE setup) for
+unsupervised domain adaptation. We note substantial perfor-
+mance improvements of the proposed AST-PB approach over
+the AE baselines, even when compared to the one trained on the
+3386
+
+Table 3: DCASE-Dev results of source (SRC) and target (TGT) domains in AUC (average over 3 trials, STD ≤0.06).
+Fan
+Slider
+Valve
+ToyTrain
+ToyCar
+Bearing
+GearBox
+HMean
+SRC
+TGT
+SRC
+TGT
+SRC
+TGT
+SRC
+TGT
+SRC
+TGT
+SRC
+TGT
+SRC
+TGT
+SRC
+TGT
+AE (all) [21]
+0.677
+0.552
+0.665
+0.560
+0.511
+0.463
+0.766
+0.469
+0.670
+0.338
+0.620
+0.614
+0.704
+0.693
+0.650
+0.503
+AE (1)
+0.577
+0.455
+0.462
+0.582
+0.548
+0.573
+0.385
+0.402
+0.551
+0.538
+0.431
+0.422
+0.290
+0.449
+0.440
+0.479
+AE (5)
+0.706
+0.342
+0.54
+0.511
+0.462
+0.408
+0.554
+0.407
+0.508
+0.452
+0.536
+0.564
+0.452
+0.528
+0.527
+0.447
+AE (10)
+0.721
+0.295
+0.580
+0.524
+0.442
+0.329
+0.545
+0.429
+0.548
+0.370
+0.539
+0.620
+0.485
+0.550
+0.541
+0.417
+AST-PB (1)
+0.571
+0.533
+0.556
+0.540
+0.568
+0.511
+0.469
+0.552
+0.395
+0.528
+0.523
+0.578
+0.577
+0.589
+0.514
+0.546
+AST-PB (5)
+0.576
+0.588
+0.555
+0.573
+0.505
+0.500
+0.590
+0.601
+0.420
+0.494
+0.514
+0.613
+0.624
+0.661
+0.533
+0.570
+AST-PB (10)
+0.569
+0.576
+0.559
+0.566
+0.502
+0.498
+0.666
+0.626
+0.393
+0.454
+0.516
+0.650
+0.639
+0.691
+0.535
+0.580
+AST-PB (10HT)
+0.575
+0.636
+0.571
+0.613
+0.665
+0.515
+0.668
+0.630
+0.518
+0.477
+0.548
+0.655
+0.646
+0.712
+0.594
+0.595
+SOTA [24]
+0.653
+0.656
+0.935
+0.835
+0.790
+0.848
+0.780
+0.627
+0.619
+0.650
+0.703
+0.765
+0.784
+0.755
+0.740
+0.724
+Table 4: DCASE-Eval results of source (SRC) and target (TGT) domains in AUC (average over 3 trials, STD ≤0.07). Abbreviations:
+3DPrinter (3DP), AirCompressor (AIR), BrushlessMotor (BRU), HairDryer (HAI), HoveringDrone (HOV), RoboticArm (ROB), Scan-
+ner (SCA), ToothBrush (TOO), ToyCircuit (TOY).
+3DP
+AIR
+BRU
+HAI
+HOV
+ROB
+SCA
+TOO
+TOY
+HMean
+SRC
+TGT
+SRC
+TGT
+SRC
+TGT
+SRC
+TGT
+SRC
+TGT
+SRC
+TGT
+SRC
+TGT
+SRC
+TGT
+SRC
+TGT
+SRC
+TGT
+AE (all) [21]
+0.791
+0.480
+0.650
+0.482
+0.707
+0.635
+0.622
+0.460
+0.860
+0.439
+0.660
+0.415
+0.692
+0.537
+0.750
+0.695
+0.766
+0.527
+0.715
+0.506
+AE (1)
+0.457
+0.458
+0.468
+0.502
+0.643
+0.462
+0.501
+0.410
+0.184
+0.633
+0.504
+0.506
+0.333
+0.460
+0.786
+0.320
+0.597
+0.261
+0.424
+0.419
+AE (5)
+0.536
+0.508
+0.499
+0.455
+0.654
+0.482
+0.679
+0.248
+0.643
+0.272
+0.609
+0.402
+0.348
+0.474
+0.836
+0.288
+0.773
+0.24
+0.583
+0.344
+AE (10)
+0.590
+0.502
+0.508
+0.444
+0.749
+0.500
+0.710
+0.252
+0.836
+0.235
+0.582
+0.443
+0.586
+0.522
+0.865
+0.256
+0.788
+0.234
+0.669
+0.336
+AST-PB (1)
+0.483
+0.595
+0.537
+0.461
+0.498
+0.581
+0.458
+0.445
+0.673
+0.545
+0.521
+0.593
+0.479
+0.71
+0.599
+0.671
+0.766
+0.654
+0.542
+0.571
+AST-PB (5)
+0.509
+0.536
+0.547
+0.464
+0.510
+0.617
+0.393
+0.425
+0.528
+0.594
+0.522
+0.63
+0.671
+0.753
+0.671
+0.720
+0.776
+0.582
+0.550
+0.573
+AST-PB (10)
+0.516
+0.498
+0.552
+0.486
+0.533
+0.626
+0.405
+0.408
+0.570
+0.598
+0.530
+0.666
+0.695
+0.773
+0.647
+0.791
+0.765
+0.597
+0.562
+0.580
+AST-PB (10HT)
+0.560
+0.549
+0.575
+0.528
+0.545
+0.762
+0.537
+0.562
+0.634
+0.688
+0.561
+0.698
+0.751
+0.864
+0.744
+0.886
+0.809
+0.762
+0.621
+0.677
+SOTA [24]
+0.678
+0.683
+0.657
+0.641
+0.675
+0.712
+0.748
+0.715
+0.695
+0.808
+0.636
+0.854
+0.981
+0.919
+0.744
+0.704
+0.675
+0.678
+0.710
+0.737
+entire dataset containing both source and target domains (see
+the TGT HMean results for AST-PB (10) and AE (all) in Ta-
+ble 3 and Table 4, values highlighted with bold and underline).
+This suggests that our approach can rapidly adapt to domain
+shifts by simply swapping the support set, while still delivering
+robust performance.
+Furthermore, we show the state-of-the-art (SOTA) meth-
+ods [24] from DCASE leaderboard in Table 3 and 4, where they
+also leverage pre-trained audio encoders. However, their bet-
+ter performance (especially in the TGT domain) comes from
+fine-tuning with pseudo labels, which requires additional train-
+ing steps. Using similar pre-training and fine-tuning schemes
+of audio encoders for the proposed AST-PB approach can be a
+promising research direction.
+4.4. Does Adding More Shots Help?
+We found that adding more shots beyond 10 does not seem to
+benefit AST-PB as shown in Figure 3, the average performance
+tends to saturate while the STD decreases. We consider that
+it might because the comparisons between all the sub-patches
+between the support sets and query is getting noisier when the
+number of comparisons grows. This suggests that the quality
+of support set samples is more favorable than their quantity,
+with a few representative prototypes being more critical. An-
+other interesting future direction would be to explore intelligent
+sampling strategies for selecting a better support set, such as
+importance sampling [42].
+Figure 3: Number of few-shot samples as the support set versus
+AUC in Gearbox and ToyTrain from DCASE-Dev dataset.
+Figure 4: Visualization example of anomaly segmentation.
+4.5. Anomaly Sound Segmentation
+One additional advantage of the proposed approach is that it
+can localize spatio-temporal anomalies as we compute anomaly
+score per sub-patch. The overlay in the bottom of Figure 4
+shows the most different patches when compared to the support
+sets. We can clearly see that the anomaly pattern in about 7s is
+captured. The overlay particularly emphasizes the energy sweep
+across the entire frequency region, with these regions contribut-
+ing significantly to the final anomaly score.
+5. Conclusions
+In this work, we proposed a few-shot patch-based difference ap-
+proach for anomaly sound detection and segmentation. Our ap-
+proach relaxes the assumptions regarding normal and anomaly
+samples during training, and can adapt to new domains with
+minimal samples. For future work, we aim to explore sampling
+methods for selecting support sets and find representative sub-
+patches for different machine anomalies. We also plan to intro-
+duce a data-driven network to predict anomaly scores based on
+the similarity maps, and design losses for pre-training and fine-
+tuning AST encoders to further emphasize sample differences.
+3387
+
+6. References
+[1] Y. Tagawa, R. Maskeli¯unas, and R. Damaˇseviˇcius, “Acoustic
+anomaly detection of mechanical failures in noisy real-life factory
+environments,” Electronics, 2021.
+[2] P. Tanuska, L. Spendla, M. Kebisek, R. Duris, and M. Stremy,
+“Smart anomaly detection and prediction for assembly process
+maintenance in compliance with industry 4.0,” Sensors, 2021.
+[3] H. Chen, Y. Song, Z. Zhuo, Y. Zhou, Y.-H. Li, H. Xue, and
+I. McLoughlin, “An effective anomalous sound detection method
+based on representation learning with simulated anomalies,” in
+ICASSP, 2023.
+[4] H. Zhang, J. Guan, Q. Zhu, F. Xiao, and Y. Liu, “Anomalous
+sound detection using self-attention-based frequency pattern anal-
+ysis of machine sounds,” in INTERSPEECH, 2023.
+[5] T. Fernando, H. Gammulle, S. Denman, S. Sridharan, and
+C. Fookes, “Deep learning for medical anomaly detection–a sur-
+vey,” ACM Computing Surveys (CSUR), 2021.
+[6] K. S. Alqudaihi, N. Aslam, I. U. Khan, A. M. Almuhaideb, S. J.
+Alsunaidi, N. M. A. R. Ibrahim, F. A. Alhaidari, F. S. Shaikh,
+Y. M. Alsenbel, D. M. Alalharith et al., “Cough sound detection
+and diagnosis using artificial intelligence techniques: challenges
+and opportunities,” IEEE Access, 2021.
+[7] K. Suefusa, T. Nishida, H. Purohit, R. Tanabe, T. Endo, and
+Y. Kawaguchi, “Anomalous sound detection based on interpola-
+tion deep neural network,” in ICASSP, 2020.
+[8] H. Purohit, R. Tanabe, K. Ichige, T. Endo, Y. Nikaido, K. Suefusa,
+and Y. Kawaguchi, “Mimii dataset: Sound dataset for malfunc-
+tioning industrial machine investigation and inspection,” DCASE
+Workshop, 2019.
+[9] A. Jiang, W.-Q. Zhang, Y. Deng, P. Fan, and J. Liu, “Unsuper-
+vised anomaly detection and localization of machine audio: A
+gan-based approach,” in ICASSP, 2023.
+[10] Z. Fang, X. Wang, H. Li, J. Liu, Q. Hu, and J. Xiao, “Fastrecon:
+Few-shot industrial anomaly detection via fast feature reconstruc-
+tion,” in CVPR, 2023.
+[11] G. Pang, C. Shen, and A. Van Den Hengel, “Deep anomaly detec-
+tion with deviation networks,” in ACM SIGKDD, 2019.
+[12] H. Purohit, R. Tanabe, T. Endo, K. Suefusa, Y. Nikaido, and
+Y. Kawaguchi, “Deep autoencoding gmm-based unsupervised
+anomaly detection in acoustic signals and its hyper-parameter op-
+timization,” DCASE Workshop, 2020.
+[13] R. M¨uller, F. Ritz, S. Illium, and C. Linnhoff-Popien, “Acoustic
+anomaly detection for machine sounds based on image transfer
+learning,” ICAART, 2021.
+[14] Y. Koizumi et al., “Description and discussion on dcase2020 chal-
+lenge task2: Unsupervised anomalous sound detection for ma-
+chine condition monitoring,” DCASE Workshop, 2020.
+[15] P. Primus, “Reframing unsupervised machine condition monitor-
+ing as a supervised classification task with outlier-exposed classi-
+fiers,” Tech. Rep., DCASE2020 Challenge, 2020.
+[16] J. Jeong, Y. Zou, T. Kim, D. Zhang, A. Ravichandran, and
+O. Dabeer, “Winclip: Zero-/few-shot anomaly classification and
+segmentation,” in CVPR, 2023.
+[17] Q. Zhou, G. Pang, Y. Tian, S. He, and J. Chen, “Anomalyclip:
+Object-agnostic prompt learning for zero-shot anomaly detec-
+tion,” in ICLR, 2024.
+[18] Z. Gu, B. Zhu, G. Zhu, Y. Chen, M. Tang, and J. Wang, “Anoma-
+lygpt: Detecting industrial anomalies using large vision-language
+models,” in AAAI, 2024.
+[19] J. Zhu and G. Pang, “Toward generalist anomaly detection via
+in-context residual learning with few-shot sample prompts,” in
+CVPR, 2024.
+[20] K. Dohi et al., “Description and discussion on dcase 2023 chal-
+lenge task 2: First-shot unsupervised anomalous sound detection
+for machine condition monitoring,” DCASE Workshop, 2023.
+[21] T. Nishida et al., “Description and discussion on DCASE2024
+challenge task 2: First-shot unsupervised anomalous sound detec-
+tion for machine condition monitoring,” DCASE Workshop, 2024.
+[22] N. Harada, D. Niizumi, Y. Ohishi, D. Takeuchi, and M. Yasuda,
+“First-shot anomaly sound detection for machine condition moni-
+toring: A domain generalization baseline,” in EUSIPCO, 2023.
+[23] A. I. Mezza, G. Zanetti, M. Cobos, and F. Antonacci, “Zero-shot
+anomalous sound detection in domestic environments using large-
+scale pretrained audio pattern recognition models,” in ICASSP,
+2023.
+[24] Z. Lv et al., “Aithu system for first-shot unsupervised anomalous
+sound detection,” Tech. Rep., DCASE2024 Challenge, 2024.
+[25] A. Jiang, B. Han, Z. Lv, Y. Deng, W.-Q. Zhang, X. Chen, Y. Qian,
+J. Liu, and P. Fan, “Anopatch: Towards better consistency in ma-
+chine anomalous sound detection,” in INTERSPEECH, 2024.
+[26] Y. Koizumi, S. Murata, N. Harada, S. Saito, and H. Uematsu,
+“Sniper: Few-shot learning for anomaly detection to minimize
+false-negative rate with ensured true-positive rate,” in ICASSP,
+2019.
+[27] Y. Koizumi, M. Yasuda, S. Murata, S. Saito, H. Uematsu, and
+N. Harada, “Spidernet: Attention network for one-shot anomaly
+detection in sounds,” in ICASSP, 2020.
+[28] B. Chen, L. Bondi, and S. Das, “Learning to adapt to domain
+shifts with few-shot samples in anomalous sound detection,” in
+ICPR, 2022.
+[29] Z. Wang, Y. Zhou, R. Wang, T.-Y. Lin, A. Shah, and S. N. Lim,
+“Few-shot fast-adaptive anomaly detection,” NeurIPS, 2022.
+[30] C. Huang, H. Guan, A. Jiang, Y. Zhang, M. Spratling, X. Wang,
+and Y. Wang, “Few-shot anomaly detection via category-agnostic
+registration learning,” IEEE TNNLS, 2024.
+[31] O. Vinyals, C. Blundell, T. Lillicrap, D. Wierstra et al., “Matching
+networks for one shot learning,” NeurIPS, 2016.
+[32] J. Snell, K. Swersky, and R. Zemel, “Prototypical networks for
+few-shot learning,” NeurIPS, 2017.
+[33] P. Saengthong and T. Shinozaki, “Deep generic representations
+for domain-generalized anomalous sound detection,” in ICASSP,
+2025.
+[34] Y. Gong, Y.-A. Chung, and J. Glass, “Ast: Audio spectrogram
+transformer,” in INTERSPEECH, 2021.
+[35] A. Dosovitskiy, “An image is worth 16x16 words: Transformers
+for image recognition at scale,” in ICLR, 2021.
+[36] S. Ghosh et al., “GAMA: A large audio-language model with ad-
+vanced audio understanding and complex reasoning abilities,” in
+EMNLP, 2024.
+[37] Y. Gong et al., “Listen, think, and understand,” in ICLR, 2024.
+[38] K. Dohi, T. Nishida, H. Purohit, R. Tanabe, T. Endo, M. Ya-
+mamoto, Y. Nikaido, and Y. Kawaguchi, “MIMII DG: Sound
+dataset for malfunctioning industrial machine investigation and
+inspection for domain generalization task,” DCASE Workshop,
+2022.
+[39] N. Harada, D. Niizumi, D. Takeuchi, Y. Ohishi, M. Yasuda, and
+S. Saito, “ToyADMOS2: Another dataset of miniature-machine
+operating sounds for anomalous sound detection under domain
+shift conditions,” DCASE Workshop, 2021.
+[40] S. Ghaffarzadegan, L. Bondi, H.-H. Wu, S. Munir, K. J. Shields,
+S. Das, and J. Aracri, “Active learning for abnormal lung sound
+data curation and detection in asthma,” in INTERSPEECH, 2023.
+[41] N. Harada, D. Niizumi, D. Takeuchi, Y. Ohishi, and M. Yasuda,
+“First-shot anomaly detection for machine condition monitoring:
+A domain generalization baseline,” in EUSIPCO, 2023.
+[42] S. T. Tokdar and R. E. Kass, “Importance sampling: a review,”
+Wiley Interdisciplinary Reviews: Computational Statistics, 2010.
+3388

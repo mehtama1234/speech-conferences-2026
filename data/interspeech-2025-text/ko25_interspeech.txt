@@ -1,0 +1,660 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+Improving Generalization of End-to-End ASR through Diversity and
+Independence Regularization
+Ye-Eun Ko1, Mun-Hak Lee1, Dong-Hyun Kim1, Joon-Hyuk Chang1,†
+1Department of Electronic Engineering, Hanyang University, Seoul, Republic of Korea
+{yee772, lullaby0804, dlstjd1477, jchang}@hanyang.ac.kr
+Abstract
+Automatic speech recognition (ASR) has been driven by rep-
+resentative end-to-end model architectures, including connec-
+tionist temporal classification (CTC), attention-based encoder-
+decoder (AED), and recurrent neural network transducer (RNN-
+T). However, these models are prone to overfitting during train-
+ing, which degrades their generalization performance. In this
+paper, we propose a novel regularization technique applicable
+to various ASR models: diversity loss and independence loss.
+Diversity loss reduces the similarity between feature represen-
+tations, encouraging the model to learn diverse patterns. Inde-
+pendence loss minimizes the covariance between feature vec-
+tors, ensuring that they contain independent information and re-
+ducing redundancy. We apply these techniques to CTC, AED,
+and RNN-T models and demonstrate that the proposed regular-
+ization method effectively improves the model generalization
+performance and robustness through extensive experiments.
+Index Terms: speech recognition, diversity loss, independence
+loss, regularization
+1. Introduction
+Speech recognition technology has transitioned from traditional
+GMM-HMM models [1] to modern end-to-end (E2E) neu-
+ral networks, including connectionist temporal classification
+(CTC) [2], attention-based encoder–decoder (AED) [3], and re-
+current neural network transducer (RNN-T) [4] models. These
+approaches achieve outstanding performance without intricate
+preprocessing, yet larger models are susceptible to overfitting
+[5]. CTC assumes conditional independence and uses a blank
+token for length mismatches [2], but its lack of explicit align-
+ment restricts complex pattern modeling and context under-
+standing [5, 6]. AED focuses attention effectively but requires
+vast training data due to its large parameter space [3]. RNN-T
+supports flexible alignment for online use but can over-optimize
+noisy or long utterances [4]. Overfitting worsens when internal
+feature representations fixate too narrowly on specific speech
+patterns or acoustic conditions. Although speech signals nat-
+urally contain repeated phonemes and similar acoustic events,
+excessive similarity among feature vectors biases the model and
+undermines generalization. Controlling this redundancy while
+promoting diverse and independent features remains essential.
+To address the overfitting challenge, this paper pro-
+poses a diversity and independence regularization strategy
+for CTC, AED, and RNN-T models. Specifically, two loss
+terms—diversity loss and independence loss—moderate the co-
+sine similarity and covariance among encoder feature vectors.
+The diversity loss reduces similaritiy between feature vectors
+† Corresponding author.
+within an utterance to broaden the feature representation space,
+whereas the independence loss reduces covariance between fea-
+ture vectors to prevent overlap across dimensions. Experiments
+using our approach on multiple datasets with various noise
+levels, including conversational speech, demonstrate consistent
+reductions in word error rate (WER). On KsponSpeech and
+CHiME-3, our method achieves a notable relative error reduc-
+tion rate (RERR), underscoring its robustness against challeng-
+ing acoustic conditions. Moreover, our method introduces min-
+imal computational overhead as it simply introduces two addi-
+tional loss terms without altering the original network structure.
+The main contributions of this paper are as follows:
+• We propose an architecture agnostic regularization technique
+based on diversity and independence loss, which integrates
+seamlessly into various E2E ASR models to mitigate overfit-
+ting.
+• Our regularization method incurs negligible computational
+overhead, as it solely introduces additional loss terms dur-
+ing training without altering the model architecture, ensuring
+efficient and scalable integration.
+• We validate the effectiveness of our approach on datasets
+with high background noise and complex conversational
+speech, demonstrating improved model robustness and gen-
+eralization.
+2. Related works
+Various methods have been proposed to prevent overfitting and
+stabilize training. Representative techniques include dropout [7]
+and batch normalization [8], which mitigate excessive reliance
+on specific paths or channels by regulating parameter variance
+at the neuron or channel level. Recently, approaches that reduce
+redundancy among feature vectors to learn richer representa-
+tions have drawn attention [9,10], alongside work on regulariza-
+tion strategies aimed at increasing model diversity [11,12]. For
+example, VICReg [13] integrates control of feature variance,
+invariance, and covariance in self-supervised learning to guide
+models toward diverse representations. Studies have also exam-
+ined feature diversity and decorrelation in audio representation
+learning to prevent model collapse [14]. Input-level augmen-
+tations such as SpecAugment [15] and Frame-Level SpecAug-
+ment [16] similarly target feature redundancy.
+In CTC-based ASR architectures, several methods target
+overfitting and improved training regularization [17–20]. For in-
+stance, Mask CTC [21] mitigates overfitting by masking parts of
+the input sequence, encouraging the model to learn diverse pat-
+terns while partially addressing the conditional independence
+assumption in CTC. Improved Mask-CTC [22] enhances this
+approach with a conformer-based encoder and dynamic length
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+3578
+10.21437/Interspeech.2025-1309
+
+Figure 1: Block schematic of the E2E ASR models incorporating diversity and independence regularization during training.
+prediction (DLP) to mitigate deletion and insertion errors in
+the CTC output . A similar line of work applies auxiliary CTC
+losses to intermediate layers for performance gains [23]. For
+AED models, reducing redundancy among character-level fea-
+ture vectors lower the word error rate (WER) [24]. RNN-T mod-
+els have also incorporated regularization methods to address
+sequential alignment [25]. However, most existing regulariza-
+tion techniques are specialized for certain model architectures
+or masking processes, or focus on controlling feature variance
+and covariance in self-supervised learning environments.
+3. Proposed method
+To improve the representational capability of speech recogni-
+tion models, our regularization approach introduces two loss
+terms during training—one to increase feature diversity and the
+other to reduce redundancy across dimensions. This regulariza-
+tion promotes the learning of more expressive representations in
+feature space, enabling the model to capture a broader range of
+speech patterns more effectively. The regularization term con-
+sists of the diversity loss and the independence loss, which are
+combined with the ASR loss to define the final objective func-
+tion. We implement and evaluate our regularization scheme on
+CTC, AED, and RNN-T models, as illustrated in Figure 1.
+3.1. Diversity loss
+Speech signals exhibit high correlations between adjacent sam-
+ples, which limits the representational power of neural net-
+works [26]. Diversity loss reduces similarity among feature vec-
+tors within an utterance, mitigating correlation between adja-
+cent samples. This encourages learned representations to cap-
+ture a broader range of information and perspectives, ultimately
+enhancing the model’s capacity for nuanced feature extraction.
+Diversity loss is calculated based on the cosine similarity be-
+tween pairs of normalized feature vectors ci and cj extracted
+from the encoded feature C = {c1, . . . , cN}, where N denotes
+the sequence length. Since cosine similarity can be negative, the
+loss function applies its absolute value. The diversity loss Ldiv
+is then defined as:
+Ldiv =
+2
+N(N −1)
+X
+i̸=j
+|cos(ci, cj)|,
+(1)
+cos(ci, cj) =
+ci · cj
+∥ci∥∥cj∥.
+(2)
+The notation P
+i̸=j indicates summation over all pairs i, j
+where i̸ = j, with i and j representing distinct indices of fea-
+ture vectors extracted from a given utterance. cos(ci, cj) repre-
+sents the cosine similarity between feature vector pairs ci and
+cj, where ci ·cj is the dot product of vectors ci and cj, and ∥ci∥
+is the norm of vector ci. To ensure that self-similarity is not pe-
+nalized, our approach excludes diagonal elements of the cosine
+similarity matrix when computing diversity loss.
+3.2. Independence loss
+Independence loss encourages the learned feature vectors to
+contain independent information. The goal is to reduce the in-
+formation redundancy by minimizing the covariance between
+feature vectors. This is achieved by minimizing the off-diagonal
+elements of the covariance matrix calculated from the feature
+vectors. Independence loss Lind is defined as follows:
+Lind =
+X
+i̸=j
+(cov(ci, cj))2 ,
+(3)
+where cov(ci, cj) represents the covariance between feature
+vectors ci and cj, which is calculated as:
+cov(ci, cj) = 1
+K
+K
+X
+k=1
+(cik −¯ci)(cjk −¯cj),
+(4)
+where k ∈{1, . . . , K} represents the dimension index within
+the feature vector and K represents the total number of dimen-
+sions. Additionally, cik and cjk refer to the k-th elements of
+the feature vectors ci and cj, respectively. The terms ¯ci and
+¯cj represent the mean values of the feature vectors ci and cj,
+respectively. Covariance measures the strength of the linear re-
+lationship between two variables, with higher values indicat-
+ing a stronger linear relationship. Therefore, by minimizing the
+3579
+
+square of the covariance, the model is encouraged to ensure that
+the feature vectors contain independent information.
+3.3. Final Loss Function
+For model optimization, we employ a combined objective func-
+tion that integrates diversity loss Ldiv and independence loss
+Lind with the ASR loss LASR, which varies depending on the
+E2E model architecture, such as the CTC loss, AED loss, or
+RNN-T loss. The total loss function Ltotal is defined as follows:
+Ltotal = LASR + λdivLdiv + λindLind,
+(5)
+where λdiv and λind are the weights for diversity loss and inde-
+pendence loss, respectively. To observe performance changes,
+we experimented by varying these weights from 0.1 to 1.0.
+4. Experiments
+4.1. Datasets
+We conducted experiments on the LibriSpeech [27], TEDLIUM
+Release 2 (TEDLIUM2) [28], CHiME-3 [29], and Kspon-
+Speech [30] datasets. The primary experiments for CTC, AED,
+and RNN-T models were performed on the LibriSpeech train-
+ing dataset, which contains 960 hours of English speech data.
+Model evaluation was conducted using the test-clean, and test-
+other subsets. For the CTC model, additional experiments
+were conducted on TEDLIUM2, CHiME-3, and KsponSpeech
+datasets. TEDLIUM2 consists of 207 hours of transcribed
+TED talk recordings, and we utilized the dev and test sets
+for evaluation. KsponSpeech provides 965 hours of Korean
+conversational speech, with evaluation subsets (eval-clean and
+eval-other) categorized based on perplexity. KsponSpeech is a
+large-scale Korean conversational dataset that includes repeated
+words and phonemes, and frequent context shifts. As a result,
+it inherently exhibits high redundancy among feature vectors
+within an utterance. CHiME-3 contains noisy speech recorded
+in various indoor and outdoor environments, with 9,137 training
+utterances and dt and et subsets provided for evaluation.
+4.2. Experimental Setup
+Toolikts. We trained the CTC, AED, and RNN-T models us-
+ing frameworks optimized for each architecture: Fairseq [31]
+for CTC, ESPnet [32] for AED, and Icefall for RNN-T.
+Training details. CTC models were fine-tuned end-to-end us-
+ing a pretrained wav2vec 2.0 model [33] using the CTC loss and
+the Adam optimizer with a learning rate of 1e-5. For AED, we
+trained models with a conformer-transformer architecture, com-
+prising a 12-block conformer encoder (512 output dimensions,
+four attention heads, 2048 feed-forward dimensions), along
+with a 6-block transformer decoder. AED model optimization
+was performed using the Adam optimizer with a learning rate
+of 0.0025. RNN-T models were trained using a conformer en-
+coder, an LSTM decoder, and a Noam-scheduler-based opti-
+mizer with a learning rate factor of 2.5 for 35 epochs. The best
+checkpoints for all architectures were selected based on the low-
+est validation WER.
+Evaluation. Model performance was evaluated using WER,
+and we additionally employed the RERR for comparisons with
+existing methods. RERR is calculated by comparing the base-
+line WER with the WER of the proposed method, and then aver-
+aging over both development and test sets. All evaluations were
+performed using viterbi, beam search, and greedy search decod-
+ing, with WER measured without language models.
+Figure 2: Representation distributions of the baseline CTC
+model (a) and the proposed model with diversity and indepen-
+dence losses (b) on the CHiME dataset.
+Table 1: WER(%) evaluations of CTC, AED, and RNN-T models
+on the LibriSpeech test-clean and test-other subsets.
+Model
+Method
+λdiv
+λind
+LibriSpeech
+RERR
+test-clean
+test-other
+CTC
+Baseline
+-
+-
+4.50
+10.52
+-
+Proposed
+1.0
+1.0
+4.39
+10.33
+2.13%
+Proposed
+0.1
+1.0
+4.34
+10.21
+3.25%
+Proposed
+1.0
+0.1
+4.35
+10.29
+2.76%
+AED
+Baseline
+-
+-
+2.75
+6.53
+-
+Proposed
+1.0
+1.0
+2.60
+6.39
+3.80%
+Proposed
+0.1
+1.0
+2.65
+6.44
+2.51%
+Proposed
+1.0
+0.1
+2.63
+6.42
+3.02%
+RNN-T
+Baseline
+-
+-
+3.27
+7.86
+-
+Proposed
+1.0
+1.0
+3.09
+7.52
+4.96%
+Proposed
+0.1
+1.0
+3.13
+7.55
+4.11%
+Proposed
+1.0
+0.1
+3.14
+7.54
+4.02%
+5. Results
+5.1. Effectiveness in various E2E ASR models
+Table 1 presents the WER and RERR for the test-clean and test-
+other sets of the CTC, AED, and RNN-T models trained on
+960 hours of LibriSpeech training dataset. Experiments were
+conducted with three sets of loss weights: λdiv = 1.0, λind =
+1.0; λdiv = 0.1, λind = 1.0; and λdiv = 1.0, λind = 0.1.
+Across all of the E2E model architectures, our proposed di-
+versity–independence regularization method led to significant
+WER reductions, with the highest RERR of 4.96% observed
+in the RNN-T model. CTC and AED models also showed sub-
+stantial improvements, achieving RERR values between 2.13%
+and 3.80%, demonstrating the model-agnostic nature of our
+approach. Furthermore, performance imporvements were ob-
+served even with a low weight of 0.1 for either λdiv or λinv,
+indicating that these regularization terms enhance model perfor-
+mance without requiring large weight values. The effectiveness
+of our approach stems from maximizing entropy of individual
+data samples, which broadens the representation space and dis-
+perses representation vectors, as illustrated in Figure 2.
+5.2. Robustness to noisy and out-of-distribution data
+To evaluate the robustness and generalization of our method,
+we conducted experiments on both noisy and out-of-distribution
+(OOD) datasets. For noise robustness evaluation, we used
+the KsponSpeech dataset, which consists of spontaneous Ko-
+rean speech with disfluencies and colloquial expressions. The
+KsponSpeech results in Table 2 shows that our method con-
+sistently outperformed the baseline CTC model across all loss
+3580
+
+Table 2: WER(%) results of CTC models on the KsponSpeech
+evaluation subsets, eval-clean (clean) and eval-other (noisy).
+Method
+KsponSpeech
+RERR
+eval-clean
+eval-other
+Baseline
+29.33
+35.32
+-
+Proposed (λdiv=1.0, λind=1.0)
+27.21
+33.44
+6.28%
+Proposed (λdiv=0.1, λind=1.0)
+27.62
+33.61
+5.34%
+Proposed (λdiv=1.0, λind=0.1)
+27.91
+33.76
+4.63%
+Table 3: OOD WER(%) evaluation results for CTC mod-
+els trained on different datasets (CHiME-3, LibriSpeech,
+TEDLIUM2), with evaluation conducted on CHiME-3 valida-
+tion sets.
+Train Set
+Method
+CHiME-3
+RERR
+dt
+et
+CHiME-3
+Baseline
+13.34 30.63
+-
+Proposed (λdiv=1.0, λind=1.0) 12.95 30.10 2.33%
+Proposed (λdiv=0.1, λind=1.0) 12.96 30.06 2.35%
+Proposed (λdiv=1.0, λind=0.1) 13.04 30.17 1.88%
+LibriSpeech
+Baseline
+27.67 52.19
+-
+Proposed (λdiv=1.0, λind=1.0) 27.21 50.97 2.00%
+Proposed (λdiv=0.1, λind=1.0) 27.19 50.94 2.06%
+Proposed (λdiv=1.0, λind=0.1) 27.24 51.01 1.91%
+TEDLIUM2
+Baseline
+27.72 58.70
+-
+Proposed (λdiv=1.0, λind=1.0) 27.64 57.54 1.13%
+Proposed (λdiv=0.1, λind=1.0) 27.63 57.52 1.17%
+Proposed (λdiv=1.0, λind=0.1) 27.65 57.63 1.04%
+Table 4: WER(%) comparison with existing methods using the
+CTC model, with both training and evaluation conducted on the
+TEDLIUM2 dataset.
+Method
+TEDLIUM2
+RERR
+dev
+test
+Baseline
+8.86±0.048
+8.51±0.042
+-
+Mask-CTC [21]*
+8.78
+8.45
+0.80 %
+Improved Mask-CTC [22]*
+8.72
+8.43
+1.26 %
+Proposed (λdiv=1.0, λind=1.0)
+8.59±0.009
+8.35±0.013
+2.46%
+Proposed (λdiv=0.1, λind=1.0)
+8.58±0.028
+8.31±0.045
+2.76%
+Proposed (λdiv=1.0, λind=0.1)
+8.63±0.015
+8.38±0.012
+2.06%
+* Results reproduced from our experiments.
+weight settings, demonstrating its ability to handle noisy condi-
+tions effectively. The generalization performance was validated
+using the CHiME-3 evaluation subsets, where the models were
+trained on CHiME-3, LibriSpeech, and TEDLIUM2, respec-
+tively. As shown in Table 3, our approach consistently yielded
+RERR improvements across all OOD settings, showcasing its
+effectiveness in adapting to previously unseen acoustic condi-
+tions. Furthermore, since CHiME-3 includes speech recorded in
+noisy and reverberant environments, further validate the noise
+robustness of our method.
+Table 5: WER(%) evaluation of ablation studies on the CTC
+model trained and evaluated on the TEDLIUM2 dataset.
+Method
+TEDLIUM2
+RERR
+dev
+test
+Baseline
+8.86
+8.51
+-
++ Independence
+8.72
+8.46
+1.08%
++ Diversity
+8.69
+8.39
+1.66%
++ Independence & Diversity
+8.58
+8.31
+2.76%
+5.3. Comparison with other regularization methods
+We evaluated our method against existing regularization tech-
+niques, including Mask-CTC [21] and Improved Mask-CTC
+[22], using the CTC model on TEDLIUM2. As shown in Ta-
+ble 4, our approach achieved the highest RERR of 2.76%, sur-
+passing Mask-CTC (0.80%) and Improved Mask-CTC (1.26%),
+confirming its superior effectiveness. To ensure result reliability,
+we conducted three independent runs and reported 95% confi-
+dence intervals in Table 4, providing a statistically robust com-
+parison. These intervals account for variability across runs, con-
+firming that the improvements are not due to chance but repre-
+sent a meaningful advantage. Moreover, this study is the first to
+introduce and compare regularization techniques for stabilizing
+E2E ASR models, laying the groundwork for future research on
+improving generalization and robustness.
+5.4. Ablation studies
+Ablation studies on the TEDLIUM2 dataset assessed the in-
+dividual and combined effects of diversity and independence
+regularization. Table 5 compares the baseline wav2vec 2.0
+CTC model with models applying each regularization method
+separately and together. Applying independence regularization
+alone, with λdiv=0.1 and λind=1.0, resulted in an RERR of
+1.08%, demonstrating its effectiveness in improving model gen-
+eralization. Similarly, diversity regularization alone led to an
+RERR of 1.66%, highlighting its role in enhancing feature rep-
+resentations. When both regularization techniques were applied
+together, the model achieved the best performance, with an
+RERR of 2.76%. These results indicate that both techniques im-
+prove performance independently while offering complemen-
+tary and orthogonal benefits when combined.
+6. Conclusion
+In this paper, we proposed a novel regularization approach
+to improve E2E ASR models by introducing feature diversity
+and independence losses. Our method enables the model to
+learn richer and more expressive features, ultimately enhancing
+recognition accuracy. The proposed regularization effectively
+mitigates overfitting and significantly improves generalization,
+contributing to robustness across diverse speech conditions.
+7. Acknowledgements
+This work was supported by the National Research Foundation
+of Korea (NRF) grant funded by the Korea government (MSIT)
+(RS-2025-00557944)
+3581
+
+8. References
+[1] L. R. Rabiner, “A tutorial on hidden markov models and selected
+applications in speech recognition,” IEEE, vol. 77, no. 2, pp. 257–
+286, 1989.
+[2] A. Graves, S. Fern´andez, F. Gomez, and J. Schmidhuber, “Con-
+nectionist temporal classification: Labelling unsegmented se-
+quence data with recurrent neural networks,” in Proc. Interna-
+tional Conference on Machine Learning (ICML), pp. 369–376,
+2006.
+[3] J. Chorowski, D. Bahdanau, K. Cho, and Y. Bengio, “End-to-
+end continuous speech recognition using attention-based recurrent
+NN: First results,” arXiv Preprint, vol. arXiv:1412.1602, 2014.
+[4] N.
+Jaitly
+et
+al.,
+“A
+neural
+transducer,”
+arXiv
+Preprint,
+vol. arXiv:1511.04868, 2015.
+[5] A. Graves, A. R. Mohamed, and G. Hinton, “Speech recogni-
+tion with deep recurrent neural networks,” in Proc. IEEE Inter-
+national Conference on Acoustics, Speech and Signal Processing
+(ICASSP), pp. 6645–6649, 2013.
+[6] A. Hannun et al., “Deep speech: Scaling up end-to-end speech
+recognition,” arXiv Preprint, vol. arXiv:1412.5567, 2014.
+[7] N. Srivastava et al., “Dropout: A simple way to prevent neural
+networks from overfitting,” The Journal of Machine Learning Re-
+search, vol. 15, no. 1, pp. 1929–1958, 2014.
+[8] S. Ioffe and C. Szegedy, “Batch normalization: Accelerating deep
+network training by reducing internal covariate shift,” in Proc. In-
+ternational Conference on Machine Learning (ICML), pp. 448–
+456, 2015.
+[9] P. Malviya and A. V. Sudhakar, “Feature diversity in self-
+supervised learning,” arXiv Preprint, vol. arXiv:2209.01275,
+2022.
+[10] T. Wang and P. Isola, “Understanding contrastive representation
+learning through alignment and uniformity on the hypersphere,”
+in Proc. International Conference on Machine Learning (ICML),
+pp. 9929–9939, 2020.
+[11] C. Shui et al., “Diversity regularization in deep ensembles,” arXiv
+Preprint, vol. arXiv:1802.07881, 2018.
+[12] W. Zhang, J. Jiang, Y. Shao, and B. Cui, “Efficient diversity-driven
+ensemble for deep neural networks,” in Proc. International Con-
+ference on Data Engineering (ICDE), pp. 73–84, 2020.
+[13] A. Bardes, J. Ponce, and Y. LeCun, “Vicreg: Variance-invariance
+covariance regularization for self-supervised learning,” in Proc.
+International Conference on Learning Representations (ICLR),
+2022.
+[14] B. Nguyen, S. Uhlich, and F. Cardinaux, “Improving self-
+supervised learning for audio representations by feature diver-
+sity and decorrelation,” in Proc. IEEE International Conference
+on Acoustics, Speech and Signal Processing (ICASSP), pp. 1–5,
+2023.
+[15] D. S. Park et al., “Specaugment: A simple data augmenta-
+tion method for automatic speech recognition,” in Proc. INTER-
+SPEECH, pp. 2613–2617, 2019.
+[16] X. Li, Y. Zhang, X. Zhuang, and D. Liu, “Frame-level specaug-
+ment for deep convolutional neural networks in hybrid ASR sys-
+tems,” in Proc. IEEE Spoken Language Technology Workshop
+(SLT), pp. 209–214, 2021.
+[17] J. Heymann, K. C. Sim, and B. Li, “Improving CTC using stim-
+ulated learning for sequence modeling,” in Proc. IEEE Interna-
+tional Conference on Acoustics, Speech and Signal Processing
+(ICASSP), pp. 5701–5705, 2019.
+[18] Y. Zhang et al., “Towards end-to-end speech recognition with
+deep convolutional neural networks,” in Proc. INTERSPEECH,
+pp. 410–414, 2016.
+[19] D. Gao et al., “Learning from flawed data: Weakly supervised
+automatic speech recognition,” in Proc. IEEE Automatic Speech
+Recognition and Understanding Workshop (ASRU), pp. 1–8,
+2023.
+[20] D.-H. Kim and J.-H. Chang, “Mitigating overfitting in structured
+pruning of ASR models with gradient-guided parameter regular-
+ization,” in Proc. INTERSPEECH, pp. 4493–4497, 2024.
+[21] Y. Higuchi et al., “Mask CTC: Non-autoregressive end-to-end
+ASR with CTC and mask predict,” in Proc. INTERSPEECH,
+pp. 3655–3659, 2021.
+[22] Y. Higuchi et al., “Improved mask-CTC for non-autoregressive
+end-to-end ASR,” in Proc. IEEE International Conference on
+Acoustics, Speech and Signal Processing (ICASSP), pp. 8363–
+8367, 2021.
+[23] J. Nozaki and T. Komatsu, “Relaxing the conditional indepen-
+dence assumption of CTC-based ASR by conditioning on inter-
+mediate predictions,” in Proc. INTERSPEECH, pp. 3735–3739,
+2021.
+[24] Z. Meng, Y. Gaur, J. Li, and Y. Gong, “Character-aware attention-
+based end-to-end speech recognition,” in Proc. IEEE Auto-
+matic Speech Recognition and Understanding Workshop (ASRU),
+pp. 949–955, 2019.
+[25] Z. Tian, J. Yi, J. Tao, Y. Bai, and Z. Wen, “Self-attention transduc-
+ers for end-to-end speech recognition,” in Proc. INTERSPEECH,
+pp. 4395–4399, 2019.
+[26] A. Baevski et al., “Data2vec: A general framework for self-
+supervised learning in speech, vision and language,” in Proc. In-
+ternational Conference on Machine Learning (ICML), pp. 1298–
+1312, 2022.
+[27] V. Panayotov, G. Chen, D. Povey, and S. Khudanpur, “Lib-
+rispeech: An ASR corpus based on public domain audio books,”
+in Proc. IEEE International Conference on Acoustics, Speech and
+Signal Processing (ICASSP), pp. 5206–5210, 2015.
+[28] A. Rousseau, P. Del´eglise, and Y. Esteve, “Enhancing the TED-
+LIUM corpus with selected data for language modeling and more
+ted talks,” in Proc. The Ninth International Conference on Lan-
+guage Resources and Evaluation (LREC), pp. 3935–3939, 2014.
+[29] J. Barker, R. M. E. Vincent, , and S. Watanabe, “The third
+‘CHiME’speech separation and recognition challenge: Dataset,
+task and baselines,” in Proc. of IEEE Workshop on Automatic
+Speech Recognition and Understanding (ASRU), p. 504–511,
+2015.
+[30] J. U. Bang et al., “KsponSpeech: Korean spontaneous speech cor-
+pus for automatic speech recognition,” Applied Sciences, vol. 10,
+no. 19, p. 6936, 2020.
+[31] M. Ott et al., “Fairseq: A fast, extensible toolkit for sequence mod-
+eling,” in Proc. the 2019 Conference of the North American Chap-
+ter of the Association for Computational Linguistics (NAACL),
+pp. 48–53, 2019.
+[32] S. Watanabe et al., “ESPnet: End-to-end speech processing
+toolkit,” in Proc. INTERSPEECH, pp. 2207–2211, 2018.
+[33] A. Baevski, Y. Zhou, A. Mohamed, and M. Auli, “Wav2vec 2.0:
+A framework for self-supervised learning of speech representa-
+tions,” in Proc. Advances in Neural Information Processing Sys-
+tems (NeurIPS), vol. 33, pp. 12449–12460, 2020.
+3582
+

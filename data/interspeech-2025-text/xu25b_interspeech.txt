@@ -1,0 +1,670 @@
+Position also matters! Separating Same Instruments in String Quartet using
+Timbral and Positional Cues
+Yuetonghui Xu1, Yiwen Wang2, Xihong Wu2, Xiaobing Li1, Feng Yu1
+1Department of Music AI and Music IT, Central Conservatory of Music, China
+2School of Intelligence Science and Technology, Peking University, China
+{22a057, lxiaobing, yfeng}@mail.ccom.edu.cn, pku wyw@pku.edu.cn, wxh@cis.pku.edu.cn
+Abstract
+String quartets inherently face challenges such as funda-
+mental frequency overlap, similar timbres, and complex acous-
+tic environments, making existing source separation methods
+relying solely on timbral characteristics less effective. This pa-
+per proposes a novel approach that enhances separation perfor-
+mance by encoding timbral and spatial positional cues to guide
+a neural network for source separation. To evaluate our method,
+we created a dataset of string quartet recordings with realistic
+reverberation with two different seating arrangements. Experi-
+ments demonstrate that our approach outperforms current state-
+of-the-art (SOTA) methods in source separation, achieving su-
+perior performance even in seating arrangements different from
+training, thus highlighting the importance of our timbral and
+positional encoding in improving separation quality and gener-
+alizability.
+Index Terms: music source separation, classical music, string
+quartet, conditional source separation
+1. Introduction
+Music source separation (MSS) has made significant progress
+with the advent of deep learning, enabling the extraction of in-
+dividual sound sources from complex audio mixtures [1, 2, 3, 4,
+5, 6]. However, the current development in this field has been
+heavily influenced by the limitations of existing datasets, such
+as MUSDB18-HQ [7], MedleyDB [8], and FMA [9], which pri-
+marily feature modern pop and rock music styles. As a result,
+most music source separation research is focused on the Sony
+De-mixing Challenge [10], where the goal is to separate indi-
+vidual stems—such as vocals, bass, drums, and other instru-
+ments—after they have been mixed and subjected to various
+non-linear effects like gain, delay, and reverb. In practice, it
+has been proven feasible using advanced deep learning archi-
+tectures, such as BS-Roformer [6], Demucs [3], and Band-split
+RNN [11]. However, these methods typically rely on separating
+stems based on distinct timbres, thus losing their effectiveness
+when it comes to separating instruments with similar timbres.
+In chamber music, due to the demands of composition,
+there exists multiple instances of homogeneous musical instru-
+ments(e.g., more than one violin) and instruments from the
+same family (e.g., the violin family, including violins, violas,
+and cellos). These instruments share similar physical structures,
+leading to close timbres and significant spectral overlap, which
+greatly increases the difficulty of source separation [12]. More-
+over, unlike the linear summation inverse operations used in pop
+or rock music separation, the natural reverberation in concert
+halls introduces a nonlinear mixing process [13, 14, 15]. This
+nonlinearity further complicates the source separation task.
+Separating sources in chamber music settings offers several
+promising practical applications. It can enhance the quality and
+efficiency of live recordings by improving post-production ca-
+pabilities, allowing selective re-recording of specific parts, and
+reducing overall recording costs. Additionally, it holds the po-
+tential for transforming traditional stereo recordings into im-
+mersive 3D surround sound experiences by accurately extract-
+ing individual sound sources [16]. From a social welfare per-
+spective, it could also benefit individuals with hearing loss by
+enabling personalized adjustments of instrument volumes, as
+demonstrated in projects like the Cadenza initiative [17]. These
+practical applications highlight the need for more advanced sep-
+aration methods tailored to the unique acoustic challenges of
+chamber music, such as those presented by string quartets.
+Motivated by above, in this paper, we focus on string quar-
+tet(consisting of two violins, a viola and a cello), the typical sit-
+uation of chamber music, to explore source separation with sim-
+ilar timbre instruments under complex reverberant conditions.
+As shown in Figure 1, although the arrangement of these instru-
+ments is uncertain, the position candidates are fixed, which pro-
+vides valuable positional cues that can be leveraged to improve
+separation performance. Specifically, we incorporate timbral
+and positional cues to guide a neural network for source separa-
+tion, achieving results of each instrument in the string quartet,
+which as far as we know, has not been investigated yet. Our
+main contributions are as follows:
+• We introduce a new dataset: String Quartet with Reverbera-
+tion Set (SQR Set) by collecting data for string quartets, com-
+prising data synthesized using a Sound Library (for training
+and validation) and individual instrument audio recordings
+(for testing), and simulated real performance seating scenes
+using real-world sampled B-format hall reverb with two kinds
+of seating arrangements.
+• We develop a source separation system that can separate ho-
+mogeneous musical instruments by incorporating timbre and
+positional cues into a modulation network, demonstrating its
+effectiveness in handling complex acoustic environments.
+• We train our proposed method only on one seating arrange-
+ment and test it on another. The experimental results demon-
+strate that the separation performance of our method remains
+almost unaffected. In contrast, other state-of-the-art (SOTA)
+methods used for comparison showed almost no applicability
+in this scenario. This validates the effectiveness and general-
+izability of our method.
+The remainder of this paper is organized as follows: Section
+2 reviews related work in music source separation. Section 3
+presents our proposed method, detailing timbral and positional
+information dynamic embedding. Section 4 describe the ex-
+perimental setup and evaluate the performance of our method.
+Section 5 concludes the paper.
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+3105
+10.21437/Interspeech.2025-130
+
+Figure 1: String Quartet Seating Arrangement Types
+2. Related Works
+2.1. Music Source Separation
+Music source separation aims to extract different sound sources
+from a single audio mixture. Current methods for music source
+separation can be broadly categorized into three approaches
+based on how the model relates to the sources:
+• Individual Model for Each Source: This approach trains a
+separate model for each source, resulting in multiple models
+corresponding to the number of sources. While this method
+can be highly effective for specific sources, it is computation-
+ally expensive and not scalable for many sources. Examples
+include BS-RoFormer [18] and Band-Split RNN [4].
+• Shared Model for All Sources:
+A single model sepa-
+rates all sources simultaneously, outputting multiple tracks
+in one pass. This method is more scalable and efficient but
+may struggle with distinguishing between sources when their
+characteristics are highly similar. Demucs [1] and its subse-
+quent improvements [19, 3] exemplify this approach.
+• Shared Model with Conditional Control for Each Source:
+In this approach, a single model is employed for all sources,
+but it outputs different source tracks by applying specific
+conditions. This method allows for flexibility and improved
+separation quality by leveraging prior knowledge or context
+about the sources. Examples include MSI [20] and LaSAFT
+[21].
+2.2. Chamber Ensemble Source Separation
+Research on source separation for chamber music is relatively
+limited.
+Lin et al.
+propose a conditional source separation
+method using the timbre of the target instrument as a query
+based on the URMP dataset [20, 22]. However, this method
+cannot separate multiple instruments of the same type within
+a recording and is limited to single-channel data. Sarker et al.
+introduce EnsembleSet, a dual-channel dataset for chamber mu-
+sic generated from MIDI files [23], which retains spatial place-
+ment information of instruments. However, subsequent studies
+merge this dual-channel data into a single channel, failing to
+fully utilize spatial cues, leading to reduced separation perfor-
+mance in overlapping pitch and similar timbre scenarios [24].
+Additionally, both studies only address the separation of two
+sound sources and do not explore more complex multi-source
+scenarios.
+3. Proposed Method
+In Section 2.1, we outline three types of sound source separation
+methods. The first approach, which involves training a separate
+model for each instrument, costs many resources. The second
+approach uses a shared model for all sources but lacks the ability
+to effectively encode positional information and suffers from
+performance degradation as the number of outputs increases.
+In contrast, the third approach allows dynamic modulation of
+the network by incorporating positional encoding as a control
+condition, enabling the network to produce the corresponding
+instrument audio for a specific target position. Therefore, we
+adopt the third method for our network design in this study.
+3.1. Main Architecture
+As shown in Fig. 2, our network is based on a 7-blocked U-Net-
+like architecture [25] designed for multi-instrument separation
+using positional information. The input is a complex spectro-
+gram with separate real and imaginary parts, preserving phase
+information [26] to leverage both magnitude and phase cues for
+accurate source separation.
+The encoder begins with a 1 × 2 convolution block to ad-
+just the input channel dimension, followed by ReLU for non-
+linearity. It includes multiple down-sampling layers that reduce
+the resolution of feature maps, 2D convolutional layers to cap-
+ture local patterns, and batch normalization layers to stabilize
+training. The decoder mirrors the encoder with up-sampling
+layers to restore feature map resolution and skip connections to
+retain spatial information across scales. The final 1×2 convolu-
+tion block outputs the target spectrogram, preserving both real
+and imaginary components. Down-sampling and up-sampling
+layers handle resolution changes, while smaller convolutional
+filters capture fine temporal details. For the convolution blocks,
+we adapt TFC-TDF blocks inspired by [26], as is shown to be
+able to extract time-frequency features. We set number of inter-
+nal layers to 5, with kernel size 3 × 3 densely connected, and
+the growth rate [27] is set to be 24.
+3.2. Timbral and Positional Cue Embedding Module
+The timbral and positional cue embedding module encodes the
+timbral and spatial information of each instrument in the mix-
+ture. As shown in the right part of Fig 2, we number the po-
+sitional candidates and timbral candidates in the string quartets
+respectively. The position number corresponds to the order in
+the array [’pos1’, ’pos2’, ’pos3’, ’pos4’] (0, 1, 2 or 3), and the
+timbre number corresponds to the order in [’V iolin’, ’V iola’,
+’Cello’] (0, 1, 2). We pass the values of the positional and tim-
+bral information numbers through an embedding generator to
+generate a 32-dimensional embedding vector, and then multiply
+the generated weights by 0.5 and add them together. Then the
+result is used to modulate the weights of the Gated Point-wise
+Convolutional Modulation(GPoCMs) introduced in section 3.3
+at various levels of the decoder. This process conditions the
+network to focus on the target source. The Condition Generator
+produces a set of condition weights, β1, β2, . . . , βC, which are
+applied to the decoder’s feature maps via GPoCM, dynamically
+adjusting the network’s focus based on the positional cues of
+the target source.
+3.3. Gated Point-wise Convolutional Modulation
+Inspired by [28], the Gated Point-wise Convolutional Modula-
+tion (GPoCM) is introduced in our work, which extends the idea
+of Feature-wise Linear Modulation (FiLM) by incorporating a
+gating mechanism that enhances the flexibility and expressive-
+ness of the modulation process [29]. GPoCM integrates gating
+mechanisms with inter-channel operations to dynamically con-
+trol the feature maps at different decoder layers, based on the
+positional cues embedded by the Condition Generator.
+PoCM(Di
+c|ωi
+c, βi
+c) =
+X
+j
+ωi
+cjDi
+j + βi
+c,
+(1)
+3106
+
+Figure 2: Our proposed method. The left side shows a U-Net structure, and the right side shows the Condition Module. We encode the
+positional information and timbral information and average the embeddings. Then we generate the condition to control the output of
+the left U-Net through GPoCM.
+where βc and ωc reprensents the position-based weights in-
+troduction in 3.2, Di
+c is the output of the i-th decoder. After
+the channel-wise linear combination, Sigmoid-gated point-wise
+convolutional modulation is use as
+GPoCM(Di
+c|ωi
+c, βi
+c) = σ(PoCM(Di
+c|ωi
+c, βi
+c))
+K
+Di
+c,
+(2)
+with σ reprensents the Sigmoid function and J refers to the
+Hadamard product.
+This modulation allows the network to adjust its focus on
+different spatial regions adaptively, improving its ability to sep-
+arate target instruments.
+4. Experiments
+4.1. Dataset
+Given that there is currently a lack of string quartet datasets
+with clean stems and real hall reverberation, we introduce a
+new dataset: String Quartet with Reverberation Set(SQR Set),
+with each track is stereo, sampled at 44100 Hz, consisting of
+the mixture and four sources: V iolin1, V iolin2, V iola and
+Cello. This dataset simulates the spatial situation of two com-
+mon string quartet seating arrangements in the presence of real
+hall reverberation. Our dataset has been uploaded to zenodo:
+https://zenodo.org/records/14793971.
+Stems Collection:
+It is difficult to obtain clean stem
+ground truth for live recorded chamber music string quartets,
+as bleeding from other instruments cannot be avoided when
+recording simultaneously.
+Thus we find string quartet parts
+from EnsembleSet[23] (synthetic data) and URMP[22] (real
+recorded data). EnsembleSet is a dataset for chamber music
+rendered from MIDI files using a highly realistic orchestral
+sample library by Spitfire Audio called ”BBC Symphony Or-
+chestra”(BBCSO), having 18 unique multi-mic recordings and
+2 professional mixes. Here we utilize its ”Mix 2” parts and take
+the average value of two channels to generate the single chan-
+nel data. URMP has mono recordings of isolated instruments in
+anechoic conditions.
+Seating Arrangement: The string quartet consists of two
+violins, a viola, and a cello. When performing in string quar-
+tets, musicians usually sit in a semi-circle so that all of the mu-
+sicians can see each other. Being able to see each other helps
+the musicians hear each other so they can better keep time and
+know where everyone is. However, the order in which they sit
+has changed over time[30]. Through the 19th century, the musi-
+cians were organized in the order of first violin, cello, viola, and
+second violin, as shown in Fig 1-(a). In contemporary times, the
+most common seating arrangement for string quartets is shown
+in Fig 1-(b).
+Hall Reverberation Simulation: To simulate real hall
+reverberation, we take these one-channeled audio and cre-
+ate stereo versions in halls using convolution reverb by am-
+bisonic b-format impulse response ”s1r2.wav” from the Openair
+Database1.
+Train, Validation and Test Set:
+Our training set in-
+cludes data generated only using 65 songs from the Ensemble-
+set with seating arrangement type #2, having a total duration
+of 17002.73 seconds. The validation set is made with the rest
+6 songs from the Ensembleset with type #1 and #2 and dura-
+tion is 1618.9 * 2 = 3237.8 seconds. The test set is formulated
+using URMP with type #1 and #2 and duration is 781.233 * 2
+= 1562.466 seconds. To ensure fairness to each track, we per-
+formed RMS normalization on the volume of the four stems in
+the same song during data synthesis.
+4.2. Experimental Setup
+For our model, we train it using Adam with learning rate
+lr=0.0005 to minimize the mean squared error between the
+ground-truth STFT output and the estimated with max epochs
+of 1000. We don’t use any data augmentation methods. For
+validation and test, we use SDR[31] as the evaluation metric
+and evaluate the mean absolute error of the target signal and
+the estimated. We use the median SDR(unit: dB) value over all
+the test set tracks for each run and report the mean SDR over
+three runs. For all models in our study, we use FFT window
+size of 2048 and hop size of 1024 for spectrogram. For the con-
+dition module, we tried different combinations of information
+injection places. We find that we give timbral information to
+1https://www.openair.hosted.york.ac.uk/
+3107
+
+Table 1: An ablation study: dedicated means U-Nets for single source separation, trained separately. One-conditioned means encoding
+with only the stem name. ’Ours’ is our proposed model. Lines marked with ’*’ denote results are evaluated with different seating
+arrangement as training. Otherwise, the same seating arrangement is used. The evaluation method is SDR and unit is dB.
+Model
+Validation
+Test
+V iolin1
+V iolin2
+V iola
+Cello
+V iolin1
+V iolin2
+V iola
+Cello
+dedicated
+11.68
+10.77
+10.74
+11.32
+9.69
+3.63
+3.14
+7.97
+dedicated*
+8.98
+0.18
+4.53
+0.35
+9.65
+-0.36
+0.57
+-0.05
+one-conditioned
+10.78
+10.33
+9.47
+10.56
+2.42
+0.73
+1.28
+5.26
+one-conditioned*
+8.77
+5.79
+6.72
+4.73
+2.80
+-0.16
+0.16
+2.50
+ours
+11.88
+11.83
+10.58
+13.06
+7.94
+6.24
+7.35
+7.63
+ours*
+11.26
+8.26
+9.04
+8.11
+7.85
+6.01
+7.25
+7.57
+Table 2: A comparison of SDR performance of our models with other systems. Lines marked with ’*’ denote results are evaluated with
+different seating arrangement as training. Otherwise, the same seating arrangement is used. The evaluation method is SDR and unit is
+dB.
+Model
+Validation
+Test
+Model Size
+V iolin1
+V iolin2
+V iola
+Cello
+V iolin1
+V iolin2
+V iola
+Cello
+BS-Roformer[6]
+17.18
+14.07
+13.42
+15.99
+13.35
+6.02
+5.76
+11.81
+95M (* 4)
+BS-Roformer*
+14.29
+-0.68
+6.24
+-0.83
+12.89
+-0.59
+2.92
+-0.62
+HTDemucs[3]
+14.31
+13.09
+12.76
+14.80
+4.39
+1.27
+2.79
+8.93
+161M
+HTDemucs*
+5.44
+2.27
+0.90
+-0.12
+5.86
+-0.25
+-1.96
+-0.74
+ours
+11.88
+11.83
+10.58
+13.06
+7.94
+6.24
+7.35
+7.63
+46M
+ours*
+11.26
+8.26
+9.04
+8.11
+7.85
+6.01
+7.25
+7.57
+the encoder, positional information to the decoder and half po-
+sitional and half timbral information to the middle part has the
+best performance.
+4.3. Results
+We perform an ablation study to validate the effectiveness of
+our proposed method. The group ”dedicated” means U-Nets
+for the single source separation, trained separately. The U-Net
+structure here is the same as the U-Net setting in our proposed
+method, but the ”Condition Module” and ”GPoCM” parts are
+not added. The ”one-conditioned” group has a similar condi-
+tional control model to our proposed method, except its condi-
+tion vector is generated by one condition. Sepcifically, we en-
+code the four tracks by the track name, that is, the four tracks are
+numbered 0, 1, 2, and 3 respectively according to the order of
+the names of the four tracks in the array [’V iolin1’, ’V iolin2’,
+’V iola’, ’Cello’]. Results of our ablation study are shown in
+Table 1. The ”validation” group means the results are evalu-
+ated on the validation set and the ”test” group on the test set.
+For each model, we evaluated them with the same seating ar-
+rangement situation as training(type #2, no mark) and the dif-
+ferent(type #1, marked with ”*” in the model column). All three
+methods work well when the data distribution is the same as the
+training dataset. For all methods, results on the validation set
+are better than those on the test set. This is due to the difference
+in data distribution between real recordings and synthesized au-
+dio. By observing groups marked with ”*”, we find the per-
+formance of ”V iolin2” and ”Cello” in the ”dedicated” model
+trained independently for each instrument dropped significantly,
+because the positions of these two instruments changed, while
+the remaining ”V iolin1” and ”V iola” drop not that severe. The
+”one-conditioned” model performance drops but is better than
+the dedicated one, indicating that conditional encoding based
+on the sub-tracks has a certain effect. Our method appears to be
+more robust.
+Also, we compare our proposed method with existing state-
+of-the-art music source separation models2: BS-Roformer [6]
+and HTDemucs [3] as mentioned in section 2.1. Each of the
+contrast method has been trained for 1000 epoch and we con-
+firm that has been fully converged by observing the change in
+loss. For BS-Roformer, we train one model for each source with
+batch size of 10 and learning rate of 0.00005. Results are shown
+in Table 2. Similar to the results in Table 1, SOTA methods
+achieve good results in the same scenario as training, but they
+require three to four times the number of parameters of ours and
+their performances degrade significantly after the data type and
+acoustic scene change. Our method performs better when the
+scene changes3.
+5. Conclusions
+In this work, we propose a method for source separation for
+string quartets using timbral and positional cues in a condi-
+tional modulation network which overcomes the limitations of
+existing methods. We propose a new dataset of string quartet
+recordings with realistic reverberation with two different seat-
+ing arrangements. Experimental results demonstrate the effec-
+tiveness of this method in separating individual instruments and
+highlight the value of spatial cues in music source separation.
+2The
+implementation
+of
+these
+two
+methods
+refers
+to
+https://github.com/ZFTurbo/Music-Source-Separation-Training.
+3Audio
+demos
+are
+available
+at:
+https://logicino.github.io/SeparatingSameInstrumentsInStringQuartet/
+3108
+
+6. Acknowledgements
+This work was supported by the following funding sources:
+Special Program of National Natural Science Foundation of
+China (Grant No. T2341003); Advanced Discipline Construc-
+tion Project of Beijing Universities; Major Program of National
+Social Science Fund of China (Grant No. 21ZD19).
+7. References
+[1] A. D´efossez, N. Usunier, L. Bottou, and F. Bach, “Music
+source separation in the waveform domain,” arXiv preprint
+arXiv:1911.13254, 2019.
+[2] O. Slizovskaia, G. Haro, and E. G´omez, “Conditioned source sep-
+aration for musical instrument performances,” IEEE/ACM Trans-
+actions on Audio, Speech, and Language Processing, vol. 29, pp.
+2083–2095, 2021.
+[3] S. Rouard, F. Massa, and A. D´efossez, “Hybrid transformers for
+music source separation,” in ICASSP 23, 2023.
+[4] Y. Luo and J. Yu, “Music source separation with band-split rnn,”
+IEEE/ACM Transactions on Audio, Speech, and Language Pro-
+cessing, vol. 31, pp. 1893–1901, 2023.
+[5] J. Chen, S. Vekkot, and P. Shukla, “Music source separation based
+on a lightweight deep learning framework (dttnet: Dual-path tfc-
+tdf unet),” in ICASSP 2024-2024 IEEE International Conference
+on Acoustics, Speech and Signal Processing (ICASSP).
+IEEE,
+2024, pp. 656–660.
+[6] W.-T. Lu, J.-C. Wang, Q. Kong, and Y.-N. Hung, “Music source
+separation with band-split rope transformer,” in ICASSP 2024-
+2024 IEEE International Conference on Acoustics, Speech and
+Signal Processing (ICASSP).
+IEEE, 2024, pp. 481–485.
+[7] Z. Rafii, A. Liutkus, F.-R. St¨oter, S. I. Mimilakis, and R. Bittner,
+“MUSDB18-HQ - an uncompressed version of musdb18,”
+Dec. 2019. [Online]. Available: https://doi.org/10.5281/zenodo.
+3338373
+[8] R. M. Bittner, J. Salamon, M. Tierney, M. Mauch, C. Cannam,
+and J. P. Bello, “Medleydb: A multitrack dataset for annotation-
+intensive mir research.” in ISMIR, vol. 14, 2014, pp. 155–160.
+[9] M. Defferrard, K. Benzi, P. Vandergheynst, and X. Bresson,
+“FMA: A dataset for music analysis,” in 18th International
+Society for Music Information Retrieval Conference (ISMIR),
+2017. [Online]. Available: https://arxiv.org/abs/1612.01840
+[10] Y. Mitsufuji, G. Fabbro, S. Uhlich, F.-R. St¨oter, A. D´efossez,
+M. Kim, W. Choi, C.-Y. Yu, and K.-W. Cheuk, “Music demixing
+challenge 2021,” Frontiers in Signal Processing, vol. 1, p. 808395,
+2022.
+[11] Y. Luo and J. Yu, “Music source separation with band-split rnn,”
+2022. [Online]. Available: https://arxiv.org/abs/2209.15174
+[12] I. Corbett, Mic it!: microphones, microphone techniques, and
+their impact on the final mix.
+Routledge, 2020.
+[13] G. Mariani, I. Tallini, E. Postolache, M. Mancusi, L. Cosmo,
+and E. Rodol`a, “Multi-source diffusion models for simultaneous
+music generation and separation,” 2024. [Online]. Available:
+https://arxiv.org/abs/2302.02257
+[14] S. Sarkar, E. Benetos, and M. Sandler, “Ensembleset,” May 2022.
+[Online]. Available: https://doi.org/10.5281/zenodo.6519024
+[15] J. R. Hershey, Z. Chen, J. Le Roux, and S. Watanabe, “Deep clus-
+tering: Discriminative embeddings for segmentation and separa-
+tion,” in 2016 IEEE international conference on acoustics, speech
+and signal processing (ICASSP).
+IEEE, 2016, pp. 31–35.
+[16] HMSCore,
+“Create
+3d
+audio
+effects
+with
+audio
+source
+separation
+and
+spatial
+audio,”
+[Online].
+Available:
+https://www.reddit.com/r/HMSCore/comments/wmb41r/
+create 3d audio effects with audio source/, 2022.
+[17] C. Challenge, “Cadenza challenge: Enhancing hearing aid tech-
+nology,” [Online]. Available: https://cadenzachallenge.org/.
+[18] W.-T. Lu, J.-C. Wang, Q. Kong, and Y.-N. Hung, “Music source
+separation with band-split rope transformer,” 2023. [Online].
+Available: https://api.semanticscholar.org/CorpusID:261556702
+[19] A. D´efossez, “Hybrid spectrogram and waveform source separa-
+tion,” arXiv preprint arXiv:2111.03600, 2021.
+[20] L. Lin, Q. Kong, J. Jiang, and G. Xia, “A unified model for zero-
+shot music source separation, transcription and synthesis,” in Pro-
+ceedings of 22st International Conference on Music Information
+Retrieval, ISMIR, 2021.
+[21] W. Choi, M. Kim, J. Chung, and S. Jung, “Lasaft: Latent source
+attentive frequency transformation for conditioned source sepa-
+ration,” in ICASSP 2021 - 2021 IEEE International Conference
+on Acoustics, Speech and Signal Processing (ICASSP), 2021, pp.
+171–175.
+[22] B. Li, X. Liu, K. Dinesh, Z. Duan, and G. Sharma, “Creating
+a multitrack classical music performance dataset for multimodal
+music analysis: Challenges, insights, and applications,” Trans.
+Multi., vol. 21, no. 2, p. 522–535, feb 2019. [Online]. Available:
+https://doi.org/10.1109/TMM.2018.2856090
+[23] S. Sarkar, E. Benetos, M. Sandler et al., “Ensembleset: A new
+high-quality synthesised dataset for chamber ensemble separa-
+tion,” 2022.
+[24] S. Sarkar, L. Thorpe, E. Benetos, and M. Sandler, “Leveraging
+synthetic data for improving chamber ensemble separation,” 10
+2023, pp. 1–5.
+[25] O. Ronneberger, P. Fischer, and T. Brox, “U-net: Convolutional
+networks for biomedical image segmentation,” in Medical image
+computing and computer-assisted intervention–MICCAI 2015:
+18th international conference, Munich, Germany, October 5-9,
+2015, proceedings, part III 18.
+Springer, 2015, pp. 234–241.
+[26] W. Choi, M. Kim, J. Chung, D. Lee, and S. Jung, “Investigat-
+ing u-nets with various intermediate blocks for spectrogram-based
+singing voice separation,” arXiv preprint arXiv:1912.02591,
+2019.
+[27] G. Huang, Z. Liu, L. Van Der Maaten, and K. Q. Weinberger,
+“Densely connected convolutional networks,” in Proceedings of
+the IEEE conference on computer vision and pattern recognition,
+2017, pp. 4700–4708.
+[28] W. Choi, M. Kim, J. Chung, and S. Jung, “Lasaft:
+Latent
+source attentive frequency transformation for conditioned source
+separation,” 2021. [Online]. Available: https://arxiv.org/abs/2010.
+11631
+[29] E. Perez, F. Strub, H. De Vries, V. Dumoulin, and A. Courville,
+“Film: Visual reasoning with a general conditioning layer,” in
+Proceedings of the AAAI conference on artificial intelligence,
+vol. 32, no. 1, 2018.
+[30] R. Stowell, “The cambridge companion to the string quartet,”
+Notes, vol. 61, no. 3, pp. 1–1, 2004.
+[31] E. Vincent, R. Gribonval, and C. Fevotte, “Performance measure-
+ment in blind audio source separation,” IEEE Transactions on Au-
+dio, Speech, and Language Processing, vol. 14, no. 4, pp. 1462–
+1469, 2006.
+3109

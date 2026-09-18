@@ -1,0 +1,623 @@
+Towards Robust Speaker Recognition against Intrinsic Variation with
+Foundation Model Few-shot Tuning and Effective Speech Synthesis
+Zhiyong Chen*14, Shuhang Wu*1, Xinnuo Li2, Zhiqi Ai1, Shugong Xu3
+1Shanghai University, China
+2New York University, USA
+3Xi’an Jiaotong Liverpool University, China
+4Hithink RoyalFlush AI Research Institute, China
+{zhiyongchen, shuhangwu, aizhiqi-work }@shu.edu.cn, shugong.xu@xjtlu.edu.cn
+Abstract
+Speaker recognition is essential for secure authentication and
+personalized voice assistants in smart home settings, but it faces
+challenges due to intrinsic speaker variability, such as aging and
+emotional fluctuations. Existing methods often rely on pretrain-
+ing and require extensive data. To address these challenges,
+we propose a framework for time-varying and emotion-robust
+open-set identification (OSI) for smart home environments, uti-
+lizing few-shot foundation enrollment-time tuning and style-
+rich zero-shot text-to-speech (TTS) systems. We explore best
+practices for synthetic data selection and suitable open-set
+outlier-focused loss functions. Our proposed method improves
+handling emotional and aging variations in target speakers, en-
+hancing robustness to intrinsic variability while maintaining re-
+silience to unknown outliers. Experiments demonstrate strong
+generalization across multiple time-varying and emotionally
+rich benchmarks.
+Index Terms: speaker recognition, speaker identification, few-
+shot learning, speech synthesis, robust recognition
+1. Introduction
+Speaker recognition is a crucial task that identifies a speaker
+from their voice, playing a vital role in secure authentication
+systems and personalized voice assistants in smart home. How-
+ever, achieving robust performance in real-world scenarios re-
+mains challenging due to the inherent variability in speaker
+voice prints. While environmental noise and mismatched
+recording devices are known to degrade system performance,
+intrinsic speaker variations—such as aging and emotional fluc-
+tuations—can be just as disruptive. As speakers undergo physi-
+ological changes or emotional shifts, their voice characteristics
+(e.g., pitch, energy, prosody) change over time, undermining
+recognition accuracy.In some cases, repeated enrollment under
+different conditions has been used to mitigate these issues [1],
+but such approaches are often complicated and do not fully ad-
+dress the underlying variability.
+Most existing studies on speaker recognition focus on en-
+hancing robustness against device and environmental variabil-
+ity, often relying on large-scale pretraining with diverse speak-
+ers [2]. However, comparatively less attention has been given
+to managing intrinsic speaker variability, especially over time
+for a specific group of targets , which is particularly useful in
+smart home settings [3] (or open-set speaker identification OSI).
+V oice changes related to aging or emotional states remain a
+significant hurdle for short-term, continuous, or time-varying
+recognition tasks in these settings, where the goal is to robustly
+recognize all speakers despite variations. Existing methods for
+*Contributed equally to this work.
+age-invariant [4] or emotion-invariant representations often re-
+quire extensive enrollment data and intensive training, making
+them impractical for real-world applications.
+To address these challenges, we propose a novel framework
+for time-varying and emotion-robust speaker recognition during
+the enrollment stage using few-shot fine-tuning for target speak-
+ers. Rather than relying on exhaustive domain-specific pretrain-
+ing, our approach uses speaker-specific zero-shot text-to-speech
+(TTS) systems to generate synthetic speech that captures the tar-
+get speaker’s varying emotional states and intrinsic vocal char-
+acteristics. This is particularly beneficial for groups of target
+speakers in enrollment scenarios. We then perform few-shot
+open-set fine-tuning with text-independent enrollment data, re-
+ducing the number of required utterances to as few as three,
+and explore the best practices for utilizing this augmented data.
+Through this process, we significantly enhance the system’s ro-
+bustness to intrinsic speaker variability.
+Our major contributions are as follows:
+• We demonstrate that recent zero-shot timbre-controllable
+speech synthesis techniques, combined with a synthetic data
+sampling control policy and training methodology, can effec-
+tively address intrinsic speaker variations and achieve robust
+speaker recognition in smart home OSI settings.
+• We propose an open-set enrollment fine-tuning strategy that
+integrates synthetic and real data to improve speaker recog-
+nition OSI performance. This approach requires only lim-
+ited enrollment samples while remaining focused on the tar-
+get speaker and robust to outliers.
+• We thoroughly evaluate our proposed method across several
+challenging tasks, including time-varying and emotionally
+rich evaluation benchmarks, showcasing its generalization
+capabilities in real-world speaker recognition scenarios.
+2. Related Work
+Recent research has largely focused on learning intrinsic-
+invariant speaker representations. For instance, [5, 6] intro-
+duced an emotion-robust framework that utilizes pretrained
+emotion-specific extractors and pretraining techniques for
+emotion-robust embeddings. For aging-robust speaker recog-
+nition, methods such as those in [1, 4, 7, 8] apply cross-
+aging learning techniques to improve speaker recognition per-
+formance over time. Most existing methods primarily focus on
+pretraining with cross-domain data for robustness or using tem-
+plate updating as a remedy for shifts in speaker characteristics.
+Several studies have also explored the use of speech syn-
+thesis to strengthen speaker recognition. Previous research
+has examined data augmentation for text-dependent verification
+[9, 10] and accent recognition pretraining [11]. Earlier TTS sys-
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+1118 10.21437/Interspeech.2025-42
+SpeakerRPL Loss
+Adapted
+Embedding
+Space
+Timbre Controllable 
+Speech Synthesis
+Control Speaker Timbre
+ERes2Net/WavLM
+Speaker
+Embedding Extractor
+Speaker
+Adapter
+Speaker Foundation Model
+Synthesized Speakers AudiosVariant Text
+Synthetic Data Controlling Policy
+Unknown Speakers
+Synthesis
+Target Speakers
+Augmentation
+Variant Style
+Enrollment Few Targets Data
+Targets
+Synthetic Unknowns
+Auto-focus 
+All Outliers
+All Outlier
+Speakers
+Reciprocal Point
+Other 
+Target
+Speakers
+What is a target speaker?
+and
+What is not a target speaker?
+Target
+Speaker
+maximum 
+distance
+Synthesis with Controlling PolicyUncontrolled Synthesis
+Target Speakers
+Augmentation
+Unknown Speakers
+Synthesis
+Figure 1: Overall architecture (left) and controlling policy for synthetic data (right).
+tems have been applied to text-independent d-vector pretraining
+[12]. Additionally, parallel research in Spoofing-Aware Speaker
+Verification (SASV) [13, 14] has investigated the use of older-
+generation TTS systems, although these systems typically suffer
+from limited speech quality and style richness [15, 16].
+While much work has been done on open-set identifica-
+tion [17, 18] and few-shot learning for speaker identification
+[19, 20], [21] investigates few-shot enrollment-time open-set
+learning on foundation models. However, this work is limited
+to text-dependent scenarios and does not fully explore the chal-
+lenges of intrinsic speaker variability . In this work, we delve
+deeper into text-independent speaker recognition, utilizing ef-
+fective and generalized foundation models, an optimal control
+policy for synthetic data, and a comprehensive comparison of
+open-set training losses to establish best practices.
+3. Methods
+3.1. Robust speaker recognition via speech synthesis and
+enrollment-time few-shot tuning
+In our framework, we utilize both the enrollment dataset,
+Denroll, and synthetic data, Dsyn, generated by zero-shot
+TTS for target speakers and perform enrollment-time tuning
+(see Figure 1). We construct an enhanced enrollment set
+Denroll+ = Denroll∪Dsyn, and optimize the open-set iden-
+tification (OSI) recognition risk functions [22] to improve per-
+formance over the baseline foundation models. Specifically, we
+define the recognition risk as
+R(fθ) =Rtarget
+ 
+fθ, Dtargets
+test
+
++Ro
+ 
+fθ, Doutliers
+test
+
+, (1)
+whereRtarget (·) is the risk computed over target speakers,
+Ro(·) is the open-set risk computed over outlier samples, and
+Dtargets
+test andDoutliers
+test denote the target and outlier test sets,
+respectively.fθ is the learnable speaker modeling function. Our
+objective is to minimize the recognition risk conditioned on the
+enhanced enrollment set:f∗
+θ = arg minfθR(fθ|Denroll+).
+To adapt the original foundation models for speaker recog-
+nition, we employ a post-adapter with learnable θ during train-
+ing:
+emb :=Fadapted(x) = Adapterθ
+ 
+F (x)
+
+, (2)
+whereF (·) andFadapted(·) denote the original and adapted em-
+beddings, respectively.
+3.2. Synthetic data selection with controlling policy
+To effectively leverage the proposed synthetic data, a well-
+designed controlling policy for selecting Dsyn is essential.
+We propose two key sampling rules, as illustrated in Figure 1
+(right).
+For each target speaker, we select synthetic samples that
+closely match the corresponding enrollment data. Specifically,
+for speakerk, we define the synthetic data as Dk
+syn ={xk
+syn|
+dist(xk
+syn,xk
+enroll) < ϵ}, where ϵ is a threshold that ensures
+the selected synthetic samples are sufficiently similar to any of
+speakerk’s enrollment dataxk
+enroll. This strategy ensures that
+the speaker model is well-adapted to the target speaker’s char-
+acteristics. In the implementation, we use a nearest-N method
+for this selection.
+In addition to target control, we propose a method for se-
+lecting synthetic samples that emphasize the non-target, un-
+known speakers, which is crucial for improving performance.
+We construct synthetic samples for a new speakerk′ asDk′
+syn =
+{xk′
+syn| dist(xk′
+syn,xenroll) > σ}, whereσ is a threshold cho-
+sen to ensure that the selected synthetic samples are sufficiently
+distinct from any of the enrollment dataxenroll. This constraint
+helps the model better differentiate between target and unknown
+speakers, enhancing the overall robustness of the system.Dsyn
+is the combination of all the above parts.
+3.3. Tuning with outliers focusing loss functions
+In fine-tuning, to focus on target variations while maintaining
+proper attention to outliers, we introduce an open-set training
+approach that models “otherness” (Figure 1). The core of this
+approach is the use of reciprocal points to model the “otherness”
+of speakers. Let Rk represent the reciprocal points for speaker
+k. The goal is to maximize the distance from Rk.
+For each speaker’s enhanced enrollment dataDenroll+ (in-
+cluding synthetic unknown speakers), training is conducted us-
+ing the speaker reciprocal point loss. The learning loss com-
+bines reciprocal points loss and prototype loss, for speakerk:
+Lrpl =− log exp(−embk·Rk)PK
+k=1 exp(−embk·Rk) + max
+
+||embk− Rk||− radius, 0
+
+(3)
+Lproto =− log exp(embk· Ck)PK
+k=1 exp(embk· Ck)
+(4)
+where Ck represents the prototype center points (the mean of
+each target’s embeddings). Rk andradius are learned param-
+eters. The combination of these losses results in the proposed
+1119
+training loss for SpeakerRPL:
+LSpeakerRPL =Lrpl +Lproto (5)
+Other comparing training targets include prototype loss [23],
+normal loss [24], and angular-based softmax loss [25, 26]. We
+also refer to [27] for adapting the open-set logitnorm-based loss.
+Notably, the learning losses of SpeakerRPL and logitnorm are
+both outlier auto-focusing losses, meaning they do not require
+special handling for outliers, making them easier to implement.
+4. Experiments
+4.1. Experimental setting
+4.1.1. Datasets and benchmarks (Table 1)
+• ESD: It contains 10 English and 10 Mandarin speakers, with
+350 utterances for each emotion per speaker across 5 distinct
+emotional settings [28]. The data is relatively clean for each
+speaker. Enrollment samples are all selected from the neu-
+tral state and testing ones from 4 emotional states (happiness,
+anger, sadness and surprise).
+• IEMOCAP: It includes 10 speakers with more pronounced
+emotional variation based on dramatic scripts or free expres-
+sions [29]. We choose the script session which includes 5
+target emotions. Each speaker has 500 utterance on aver-
+age, covering all types of variations. The dataset selected
+from plays is relatively noisy and emotional, capturing more
+speaker intrinsic shifts. As in the ESD setup, neutral speech
+are only for enrollment, and emotional ones for testing.
+• V oxCeleb2: Sourced from Youtube, this dataset includes a
+broad range of real-world samples of various speakers. The
+training part is following the V oxwatch [3] settings for focus
+on target speaker group OSI. The watch list is setting to 5 for
+smart home (and also for all other datasets).
+• SpeakerAging: A self-collected dataset1, focusing on time-
+varying effects, with data sourced from both YouTube and
+Bilibili. We select a subset of 15 speakers exhibiting sig-
+nificant short-term aging variation. Each speaker contributes
+over 1500 samples, with a balanced distribution across all
+weekly time spans. Only enrolled at 0 month, the testing set
+is evaluated at four time spans: 0, 4, 8, and 12 months.
+All data, evaluation benchmarks and code are open-sourced1.
+4.1.2. Core Learning Settings
+The training set includes 3 enrollment samples for 5 target
+speakers (5-watchlist [3]) and K-splits to cover all target speak-
+ers in the dataset, with other speakers treated as outliers. Syn-
+thetic samples are selected from 1000 sentences (similar content
+type) in each dataset (selecting N nearest for each, Sec 3.2), syn-
+thesized by GPTSoVITS-v2 or FishSpeech-v1.4. Additionally,
+the Denroll+ set includes synthetic samples for 12 unknown
+speakers, selected from 200 speakers in LibriTTS [30] based
+on the selection policy (Section 3.2), and are treated as nor-
+mal speakers. Few hyperparameters are needed: σ is set high,
+using the farthest synthetic unknown speakers compared to all
+targets. Rk and radius are learned, with MLP post-adapter (the
+most effective tuning architecture in our experiments). Stan-
+dard training settings are applied, and all other details are fully
+demonstrated1.
+1https://github.com/zhiyongchenGREAT/
+Few-shot-Robust-Speaker-TTS
+Table 1: The statistics of evaluation dataset.
+Dataset speaker number target speakers trials outliers trials total split
+V ox-O (Watchlist=40) 40 37,661 - -
+V ox2-V oxwatch [3] (Watchlist=5) 118 748,200 1,811,100 10
+ESD-EN (Watchlist=5) 10 105,000 105,000 3
+IEMOCAP (Watchlist=5) 10 44,085 44,085 3
+SpeakerAging (Watchlist=5) 15 94,875 138,750 3
+4.1.3. Metrics
+The metric of this method include thereshold independent met-
+ric open-set classification rate (OSCR) [21, 22], equal error
+rate (EER) and minDCF [3, 31]. OSCR specifically addresses
+open-set thresholding—distinguishing unknowns from known
+speakers and ensuring correct classification of known speak-
+ers—whereas EER/minDCF provides a broader performance
+measure without explicitly focusing on unknown classes.
+4.2. Results
+The experimental results using the proposed method are pre-
+sented in Table 2 with the ERes2NetV2 foundation model [31].
+In these experiments, the training target was optimized using the
+emotional speaker dataset [28, 29]. Without any data augmenta-
+tion, direct enrollment and compare embedding ( 1 ) show un-
+stable performance across all datasets, largely due to significant
+intrinsic speaker variations. Initially, we applied target speaker
+data augmentation directly during enrollment ( 2 3 ). How-
+ever, regardless of whether the controlling policy was used dur-
+ing training, the performance of direct enrollment degraded. For
+the fine-tuning–based method, we compared different sampling
+controlling policies with SpeakerRPL loss (starting from 4 ).
+Several observations emerged:
+1. Enrollment only: Fine-tuning solely with 3 target enroll-
+ment data degrades performance ( 4 ).
+2. Target speaker data augmentation: While augmentating
+target speaker data benefits when tuning compared to using
+only the enrollment, it also tends to overfit ( 5 ).
+3. Synthetic unknown speakers: Incorporating unknown syn-
+thetic speakers during training is effective (6 ) and can there-
+fore outperform the direct baseline 1 .
+4. Targets augmentation and unknown speakers: Training
+with both target data augmentation and unknown synthetic
+speakers (even without controlling policy) further enhances
+performance ( 7 ).
+5. Controlling unknown speakers: Based on 8 , controlling
+the unknown synthetic speakers leads to large additional im-
+provements ( 8 ).
+6. Optimal Full-Controlling Policy: The combination of con-
+trolling policy to both targets and unknown speakers yields
+the overall best performance ( 14 ).
+The sampling and controlling strategy is critical across all
+dataset evaluations. Additionally, we compare training losses
+for few-shot learning ( 9 - 14 ), where the proposed Speaker-
+RPL open-set recognition loss consistently performs well, par-
+ticularly with a focus on outliers, in EER, minDCF metrics, and
+OSCR. These findings align with the results in Table 4 using the
+WavLM-TDNN models [32]. Furthermore, when applying the
+proposed method to the SpeakerAging dataset (Table 3), we en-
+rolled speakers only at the first time point and evaluated across
+subsequent time points. The proposed method consistently out-
+performs all baselines.
+Figure 2 shows the effect of varying the number of un-
+known speakers and synthetic data samples (both target and
+unknown). While performance saturates as these numbers in-
+1120
+Table 2: Experimental results of emotional robust/wild speaker recognition based on ERes2NetV2.
+Method / Dataset ESD (3-split eval) IEMOCAP (3-split eval) V ox2-V oxwatch (10-split eval)
+EER(%)↓ minDCF(%)↓ OSCR(%)↑ EER(%)↓ minDCF(%)↓ OSCR(%)↑ EER(%)↓ minDCF(%)↓ OSCR(%)↑
+1 ERes2NetV2 direct enrollment only (V ox-O EER=0.57%) [31] 5.83 0.31 92.65 12.57 0.43 82.76 6.29 0.29 92.56
+2 +random target dataaug 6.79 0.37 91.42 14.10 0.57 79.90 9.15 0.42 87.21
+3 +controlling target dataaug 7.21 0.38 90.81 14.46 0.56 79.56 8.32 0.40 88.65
+4 SpeakerRPL enrollment only 8.41 0.49 80.87 12.52 0.42 74.60 8.04 0.31 87.72
+5 +random target dataaug 6.72 0.46 81.76 11.33 0.41 75.63 10.04 0.35 84.50
+6 +unknown (controlling unknown) 5.78 0.21 82.09 5.78 0.21 82.08 5.19 0.20 86.03
+7 +non-controlling (random target/random unknown) 4.39 0.16 87.49 6.84 0.26 74.52 4.35 0.18 86.81
+8 +partial-controlling (random target/controlling unknown) 2.28 0.14 92.31 5.08 0.20 80.04 4.19 0.18 87.62
+9 Softmax full-controlling [24] 2.13 0.15 92.42 5.50 0.23 75.99 4.13 0.17 89.22
+10 AM-Softmax full-controlling [25] 2.92 0.13 87.91 5.11 0.21 75.42 4.93 0.18 86.37
+11 AAM-Softmax full-controlling [26] 3.69 0.15 86.01 6.06 0.23 76.89 3.66 0.16 88.97
+12 Prototype full-controlling [23] 3.84 0.22 88.68 7.59 0.32 67.53 5.26 0.21 84.03
+13 LogitNorm full-controlling [27] 2.40 0.17 91.02 5.43 0.23 77.66 4.11 0.17 88.59
+14 SpeakerRPL full-controlling 2.14 0.13 93.67 4.34 0.20 84.61 2.80 0.17 93.49
+Table 3: Experimental results of time-varying robust speaker recognition based on ERes2NetV2.
+Method 0 months (enrollment/test) 4 months (test only) 8 months (test only) 12 months (test only)
+EER(%)↓ minDCF(%)↓ OSCR(%)↑ EER(%)↓ minDCF(%)↓ OSCR(%)↑ EER(%)↓ minDCF(%)↓ OSCR(%)↑ EER(%)↓ minDCF(%)↓ OSCR(%)↑
+ERes2NetV2 direct enrollment only [31] 3.60 0.20 93.13 4.84 0.39 86.34 5.33 0.37 85.28 6.79 0.54 80.20
++controlling target dataaug 4.82 0.26 92.77 5.62 0.42 85.57 6.71 0.40 84.45 7.39 0.53 80.21
+Softmax full-controlling [24] 2.33 0.11 93.36 2.15 0.16 86.58 3.25 0.18 84.34 3.45 0.24 79.18
+AM-Softmax full-controlling [25] 3.05 0.10 92.41 2.81 0.12 85.44 2.55 0.11 84.96 3.58 0.16 78.15
+AAM-Softmax full-controlling [26] 3.84 0.13 87.32 3.84 0.17 79.20 3.92 0.17 77.86 4.81 0.21 74.18
+Prototype full-controlling [23] 2.07 0.11 95.41 2.52 0.16 88.01 3.58 0.18 84.69 3.31 0.22 80.15
+LogitNorm full-controlling [27] 1.69 0.11 94.72 2.08 0.15 87.04 3.02 0.16 85.24 2.83 0.20 80.58
+SpeakerRPL full-controlling 1.48 0.09 95.54 1.88 0.11 88.31 2.49 0.09 87.13 2.30 0.09 81.59
+Table 4: Experimental results of emotional robust speaker
+recognition on WavLM-TDNN.
+Method / Dataset ESD (3-split eval) IEMOCAP (3-splt eval)
+EER(%)↓ minDCF(%)↓ EER(%)↓ minDCF(%)↓
+WavLM-TDNN direct enrollment only (V ox-O EER=0.84%) [32] 14.81 0.89 19.12 0.74
++controlling target dataaug 23.01 0.96 19.97 0.80
+SpeakerRPL enrollment only 15.72 0.95 16.67 0.87
+target dataaug 16.32 0.89 18.10 0.93
+non-controlling (random target/random unknown) 12.73 0.65 15.88 0.86
+Softmax full-controlling [24] 12.29 0.62 14.40 0.66
+Prototype full-controlling [23] 11.34 0.74 28.65 0.91
+SpeakerRPL full-controlling 8.74 0.53 12.99 0.62
+Table 5: Impact of synthetic strategy comparison on ESD.
+Method EER(%) ↓ minDCF(%)↓ OSCR(%)↑
+ERes2NetV2 direct enrollment only [31] 5.83 0.31 92.65
+ERes2NetV2 direct +FishSpeechV1.4 [16] 8.88 0.46 87.11
+ERes2NetV2 direct +GPTSoVITS [15] 6.79 0.37 91.42
+SpeakerRPL +FishSpeechV1.4 3.76 0.14 88.74
+SpeakerRPL +GPTSoVITS 2.14 0.13 93.67
+Figure 2: Ablation study on the influence of the number of un-
+known synthetic speakers and target synthetic enrollment.
+ESD IEMOCAP Vox2-test SpeakerAging
+Baseline Direct Enroll
+Proposed Tuning (SpeakerRPL Controlling)
+Positive Trials
+Negative 
+Trials (Targets)
+Negative 
+Trials (Outliers)
+Figure 3: Score distribution comparison (zoom in for details).
+ESD IEMOCAP SpeakerAging VoxCeleb
+0.00
+0.05
+0.10
+0.15
+0.20
+0.25
+0.30
+0.35Normalized Pitch Variance (mean)
+Comparison of TTS style richness and tension (Pitch variance, higher is better)
+ESD IEMOCAP SpeakerAging VoxCeleb
+0.0
+0.5
+1.0
+1.5
+2.0
+2.5
+3.0
+3.5Predicted P808-MOS (mean)
+TTS audio quality comparison (Predicted P808-MOS, higher is better)
+Real Enroll GPTSoVits-v2 FishSpeech-v1.4
+Figure 4: Comparison of TTS style and quality metrics (zoom in
+for details).
+crease, all increases result in improvements over the direct en-
+rollment baseline. Figure 3 illustrates the trial score distribu-
+tions, showing a distinct separation between target and outlier
+speakers when using the proposed method compared to the “di-
+rect” method. In Table 5, we compare different training settings
+with various speech synthesis models. Notably, the GPTSo-
+VITS model in a zero-shot setting performs well, outperforming
+the state-of-the-art FishSpeech model. This improvement is pri-
+marily attributed to GPTSoVITS’ enhanced speech style rich-
+ness, which effectively handles the speech variability present
+across all evaluation datasets. This contributed more signif-
+icantly than audio quality (P808MOS) [33], which is almost
+identical for both TTS systems, as shown in Figure 4.
+5. Conclusions
+We propose a robust intrinsic speaker recognition system for
+open-set identification in smart home scenarios, leveraging
+speech synthesis and enrollment-time few-shot tuning. Our
+findings demonstrate that an optimal synthetic data selec-
+tion policy and suitable open-set outlier-focused loss func-
+tions are critical for performance. We show that the pro-
+posed SpeakerRPL-Controlling Policy outperforms alternative
+approaches. Overall, the method improves training by better
+handling emotional and aging variations in target speakers, en-
+hancing robustness to intrinsic speaker variability while main-
+taining resilience to unknown outliers. Experimental results un-
+derscore the significant value of state-of-the-art, style-rich TTS
+systems for speaker recognition tasks.
+1121
+6. References
+[1] X. Qin, N. Li, S. Duan, and M. Li, “Investigating long-term and
+short-term time-varying speaker verification,” IEEE/ACM Trans-
+actions on Audio, Speech, and Language Processing, 2024.
+[2] R. Tao, Z. Shi, Y . Jiang, T. Liu, and H. Li, “V oice conversion aug-
+mentation for speaker recognition on defective datasets,” arXiv
+preprint arXiv:2404.00863, 2024.
+[3] R. Peri, S. O. Sadjadi, and D. Garcia-Romero, “V oxWatch:
+An open-set speaker recognition benchmark on V oxCeleb,” Jun.
+2023, arXiv:2307.00169 [cs, eess].
+[4] X. Qin, N. Li, W. Chao, D. Su, and M. Li, “Cross-age speaker
+verification: Learning age-invariant speaker embeddings,” in In-
+terspeech 2022, 2022, pp. 1436–1440.
+[5] J. Tian, X. Hu, and X. Xu, “Learning emotion-invariant speaker
+representations for speaker verification,” in ICASSP 2024 - 2024
+IEEE International Conference on Acoustics, Speech and Signal
+Processing (ICASSP), 2024, pp. 10 611–10 615.
+[6] D. Li, Z. Yang, J. Liu, H. Yang, and Z. Wang, “Emotion em-
+bedding framework with emotional self-attention mechanism for
+speaker recognition,” Expert Syst. Appl. , vol. 238, p. 122244,
+2023.
+[7] F. Zhang, W. Zhou, Y . Liu, W. Geng, Y . Shan, and C. Zhang,
+“Disentangling age and identity with a mutual information mini-
+mization for cross-age speaker verification,” in Interspeech 2024,
+2024, pp. 3789–3793.
+[8] V . P. Singh, M. Sahidullah, and T. Kinnunen, “Speaker verification
+across ages: Investigating deep speaker embedding sensitivity to
+age mismatch in enrollment and test speech,” inInterspeech 2023,
+2023, pp. 1948–1952.
+[9] C. Du, B. Han, S. Wang, Y . Qian, and K. Yu, “Synaug: Synthesis-
+based data augmentation for text-dependent speaker verification,”
+in ICASSP 2021-2021 IEEE International Conference on Acous-
+tics, Speech and Signal Processing (ICASSP) . IEEE, 2021, pp.
+5844–5848.
+[10] H. Huang, X. Xiang, F. Zhao, S. Wang, and Y . Qian, “Unit selec-
+tion synthesis based data augmentation for fixed phrase speaker
+verification,” in ICASSP 2021-2021 IEEE International Con-
+ference on Acoustics, Speech and Signal Processing (ICASSP) .
+IEEE, 2021, pp. 5849–5853.
+[11] Y . Qian, X. Gong, and H. Huang, “Layer-wise fast adaptation for
+end-to-end multi-accent speech recognition,” IEEE/ACM Trans-
+actions on Audio, Speech, and Language Processing, vol. 30, pp.
+2842–2853, 2022.
+[12] X. Qin, Y . Yang, Y . Shi, L. Yang, X. Wang, J. Wang, and M. Li,
+VC-AUG: Voice Conversion Based Data Augmentation for Text-
+Dependent Speaker Verification, 05 2023, pp. 227–237.
+[13] Y . Zhang, Z. Li, J. Lu, W. Wang, and P. Zhang, “Synthetic speech
+detection based on the temporal consistency of speaker features,”
+IEEE Signal Processing Letters, vol. 31, pp. 944–948, 2024.
+[14] Z. Li, M. Li, P. Zhang, Y . Ren, Z. Cai, and H. Nishizaki, “The
+slt 2024 source speaker tracing challenge (sstc 2024) evaluation
+plan.”
+[15] Rvc-Boss, “GitHub - RVC-Boss/GPT-SoVITS: 1 min voice data
+can also be used to train a good TTS model! (few shot voice
+cloning).” [Online]. Available: https://github.com/RVC-Boss/
+GPT-SoVITS
+[16] S. Liao, Y . Wang, T. Li, Y . Cheng, R. Zhang, R. Zhou, and
+Y . Xing, “Fish-speech: Leveraging large language models for ad-
+vanced multilingual text-to-speech synthesis,” 2024.
+[17] W.-H. Heo, J. Maeng, Y . Kang, and N. Cho, “Centroid estima-
+tion with transformer-based speaker embedder for robust target
+speaker extraction,” in Proc. Interspeech 2024, 2024, pp. 4333–
+4337.
+[18] Q.-H. Nguyen, N. Le Minh, and M. Unoki, “Speaker verification
+using distance based on principal component analysis for house-
+hold scenario adaptation,” in2023 RIVF International Conference
+on Computing and Communication Technologies (RIVF). IEEE,
+2023, pp. 441–446.
+[19] K. C. Kishan, Z. Tan, L. Chen, M. Jin, E. Han, A. Stolcke,
+and C. Lee, “OpenFEAT: Improving Speaker Identification by
+Open-Set Few-Shot Embedding Adaptation with Transformer,” in
+ICASSP 2022 - 2022 IEEE International Conference on Acous-
+tics, Speech and Signal Processing (ICASSP) , 2022, pp. 7062–
+7066, iSSN: 2379-190X.
+[20] Y . Li, H. Chen, W. Cao, Q. Huang, and Q. He, “Few-Shot Speaker
+Identification Using Lightweight Prototypical Network With Fea-
+ture Grouping and Interaction,” IEEE Transactions on Multime-
+dia, pp. 1–12, 2023.
+[21] Z. Chen, Z. Ai, X. Li, and S. Xu, “Enhancing open-set speaker
+identification through rapid tuning with speaker reciprocal points
+and negative sample,” in2024 IEEE Spoken Language Technology
+Workshop (SLT). IEEE, 2024, pp. 1144–1149.
+[22] G. Chen, P. Peng, X. Wang, and Y . Tian, “Adversarial Reciprocal
+Points Learning for Open Set Recognition,”IEEE Transactions on
+Pattern Analysis and Machine Intelligence, pp. 1–1, 2021, arXiv:
+2103.00953.
+[23] Y . Li, H. Chen, W. Cao, Q. Huang, and Q. He, “Few-shot speaker
+identification using lightweight prototypical network with fea-
+ture grouping and interaction,”IEEE Transactions on Multimedia,
+2023.
+[24] Q.-B. Hong, C.-H. Wu, H.-M. Wang, and C.-L. Huang, “Com-
+bining deep embeddings of acoustic and articulatory features
+for speaker identification,” in ICASSP 2020-2020 IEEE Interna-
+tional Conference on Acoustics, Speech and Signal Processing
+(ICASSP). IEEE, 2020, pp. 7589–7593.
+[25] W. Lin and M.-W. Mak, “Robust speaker verification using
+deep weight space ensemble,”IEEE/ACM Transactions on Audio,
+Speech, and Language Processing, vol. 31, pp. 802–812, 2023.
+[26] L. Zhang, Z. Chen, and Y . Qian, “Adaptive large margin fine-
+tuning for robust speaker verification,” in ICASSP 2023 - 2023
+IEEE International Conference on Acoustics, Speech and Signal
+Processing (ICASSP), 2023, pp. 1–5.
+[27] H. Wei, R. Xie, H. Cheng, L. Feng, B. An, and Y . Li, “Mitigat-
+ing Neural Network Overconfidence with Logit Normalization,”
+in Proceedings of the 39th International Conference on Machine
+Learning. PMLR, Jun. 2022, pp. 23 631–23 644, iSSN: 2640-
+3498.
+[28] K. Zhou, B. Sisman, R. Liu, and H. Li, “Seen and unseen emo-
+tional style transfer for voice conversion with a new emotional
+speech dataset,” in ICASSP 2021-2021 IEEE International Con-
+ference on Acoustics, Speech and Signal Processing (ICASSP) .
+IEEE, 2021, pp. 920–924.
+[29] C. Busso, M. Bulut, C.-C. Lee, A. Kazemzadeh, E. Mower,
+S. Kim, J. N. Chang, S. Lee, and S. S. Narayanan, “Iemocap:
+Interactive emotional dyadic motion capture database,”Language
+resources and evaluation, vol. 42, pp. 335–359, 2008.
+[30] Y . Koizumi, H. Zen, S. Karita, Y . Ding, K. Yatabe, N. Morioka,
+M. Bacchiani, Y . Zhang, W. Han, and A. Bapna, “Libritts-r: A re-
+stored multi-speaker text-to-speech corpus,” in Interspeech 2023,
+2023, pp. 5496–5500.
+[31] Y . Chen, S. Zheng, H. Wang, L. Cheng, Q. Chen, and J. Qi, “An
+enhanced res2net with local and global feature fusion for speaker
+verification,” arXiv preprint arXiv:2305.12838, 2023.
+[32] S. Chen, C. Wang, Z. Chen, Y . Wu, S. Liu, Z. Chen, J. Li,
+N. Kanda, T. Yoshioka, X. Xiao, J. Wu, L. Zhou, S. Ren,
+Y . Qian, Y . Qian, J. Wu, M. Zeng, X. Yu, and F. Wei, “WavLM:
+Large-Scale Self-Supervised Pre-Training for Full Stack Speech
+Processing,” arXiv:2110.13900 [cs, eess] , Jan. 2022, arXiv:
+2110.13900.
+[33] C. K. Reddy, V . Gopal, and R. Cutler, “Dnsmos: A non-intrusive
+perceptual objective speech quality metric to evaluate noise sup-
+pressors,” in ICASSP 2021-2021 IEEE International Conference
+on Acoustics, Speech and Signal Processing (ICASSP) . IEEE,
+2021, pp. 6493–6497.
+1122

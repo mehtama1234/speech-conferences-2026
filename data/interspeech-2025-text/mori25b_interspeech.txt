@@ -1,0 +1,716 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+Dialogue Response Prefetching Based on Semantic Similarity and
+Prediction Conﬁdence of Language Model
+Kiyotada Mori1,2, Seiya Kawano2,1, Angel Fernando Garcia Contreras2, Koichiro Yoshino3,2,1
+1Nara Institute of Science and Technology, Japan
+2Guardian Robot Project, RIKEN, Japan
+3Tokyo Institute of Technology, Japan
+mori.kiyotada.mh5@naist.ac.jp, seiya.kawano@riken.jp, angel.garciacontreras@riken.jp,
+yoshino.k.ai@m.titech.ac.jp
+Abstract
+Prefetching of dialogue responses has been investigated to re-
+duce user-perceived latency (UPL), which refers to the user’s
+waiting time before receiving the system’s response, in spoken
+dialogue systems. To reduce the UPL, it is necessary to predict
+complete user utterances before the end of the user’s speech,
+typically by language models, to prepare prefetched dialogue
+responses. In this study, we proposed a prediction conﬁdence
+model (PCM) that determines whether prefetching is possible
+or not by estimating the semantic similarity between the pre-
+dicted complete user utterance and the complete user utterance.
+We evaluated our PCM based on the differences between the
+predicted complete user utterance and the complete user utter-
+ance.
+Index Terms: Dialogue System, Automatic Speech Recogni-
+tion, Latency, Prefetching
+1. Introduction
+With the progress of research into speech recognition and dia-
+logue response generation, cascade-type spoken dialogue sys-
+tems (SDSs) are becoming more widely used. Cascade-based
+SDSs generate spoken responses following two steps [1]. An
+automatic speech recognition (ASR) model transcribes a user’s
+speech. A dialogue model generates a response from the tran-
+scription. In this sequence, the SDSs generate the response af-
+ter end-of-sentence/speech (EOS), which is determined by the
+voice activity detection (VAD) model of ASR. However, this
+framework causes response delays because the user must wait
+for the system to generate a response after the user’s utterance
+has ended, which decreases the naturalness of an SDS [2].
+Speech response prefetching, which prepares dialogue re-
+sponses before a user has ﬁnished speaking, has been proposed
+to solve this problem [3, 4]. If prefetching is successful, the
+system can respond immediately after detecting EOS. One of
+the current response prefetching procedures assumes incremen-
+tal speech recognition and uses a language model to predict
+complete user utterances from partially recognized utterances.
+The language model used to predict complete user utterances
+is called the prediction model. It addresses the delay problem
+by preparing the system’s speech response in advance for the
+predicted complete user utterance. The system uses a language
+model to predict the conﬁdence score for the predicted complete
+utterance to determine the prefetching timing. The language
+model implemented to determine prefetching timing is called a
+prediction conﬁdence model (PCM).
+Existing PCMs are modeled to use conﬁdence scores for
+predicting the subsequent user utterance at the character or word
+level. However, when considering the actual system response
+generation, it is important to capture the intent of the user ut-
+Figure 1: Comparison of proposed PCM with conventional
+PCM in related work
+terance and prepare an appropriate response in advance rather
+than perfectly predicting every word of the user utterance [5]. In
+other words, prefetching success depends on whether the user’s
+intent is captured and an appropriate response is prepared.
+In this study, we reﬁned PCMs to use the semantic mean-
+ing of a user utterance. We trained the PCM using the seman-
+tic similarity between complete user utterances and predicted
+user utterances by a prediction model rather than estimating the
+literal matching between them. In addition, we deﬁned suc-
+cessful prefetching as the ability to generate a system response
+from the predicted user utterance that is of comparable quality
+to that generated from the complete user utterance, rather than
+merely considering the successful prediction of the user utter-
+ance, as done in existing research. The operation of our concept
+is compared with that of existing work in Fig. 1. In the con-
+ventional PCM if the predicted complete utterance is ”What is
+the weather” and the complete user utterance is ”What is the
+weather like today?”, it is a negative example for training a
+PCM because the predicted user utterance does not contain the
+word ”like today?”. On the other hand, it is a positive example
+for training our PCM because such utterances are considered
+semantically similar.
+In constructing our PCM, we investigated the relationship
+between the predicted and complete user utterances in terms
+of semantic similarity, based on BERT scores and the suc-
+cess rate of prefetching. We compared our PCM with exist-
+ing prefetching systems that operate on the word level match-
+ing between predicted and complete user utterances. We exam-
+ined our framework using task-oriented dialogue (TOD) bench-
+marks: MultiWOZ [6], Spoken-MultiWOZ (SpokenWOZ) [7],
+and Japanese MultiWOZ (JMultiWOZ) [8].
+These different
+benchmarks were used because PCMs may show different be-
+haviors depending on language structure and the head position
+of the language. We experimented using gold transcriptions
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+3045
+10.21437/Interspeech.2025-600
+
+rather than the actual ASR hypothesis with errors, assuming that
+the speech recognition accuracy was sufﬁciently high.
+Our contributions are as follows.
+1. We constructed a PCM based on the semantic similarity be-
+tween predicted and complete user utterances.
+2. We examined the proposed semantic PCM and conﬁrmed that
+it could prefetch natural responses more quickly than existing
+word-level models.
+3. We experimented on several TOD datasets and conﬁrmed the
+differences between English and Japanese languages.
+2. Preliminaries
+2.1. Problem Deﬁnition
+Personalized Predictive ASR [9] proposed a pipeline method
+that prefetches a spoken response and reduces user-perceived
+latency (UPL). The deﬁnition of UPL is shown in Equation (1).
+TUPL =
+{
+max(TEP, TPF + TResponse)
+(Successful)
+TEP + TResponse
+(Failed).
+(1)
+TEP is the time for EOS detection. TResponse is the time for
+the system’s response generation, and TPF is the time for the
+system’s response generation after the PCM decides to prefetch
+the response. The goal of dialogue response prefetching is to
+minimize TUPL while maintaining the quality of prefetched re-
+sponses. When the deﬁnition of any prefetching success is sat-
+isﬁed before the EOS by ∆T, TPF = −∆T is deﬁned. ∆T is
+the time gain from this prefetching, which the previous authors
+called prediction gain. Minimizing TUPL thus means maximiz-
+ing the prediction gain.
+The prediction model and the PCM are deﬁned as:
+ˆyfull,t ≈argmax
+yfull
+P(yfull|ˆyt),
+(2)
+P(ˆyfull,t = ˆyfull).
+(3)
+ˆyt is the partial user utterance at time t, while yfull and ˆyfull
+respectively indicate the complete user utterance and the ﬁnal
+ASR hypothesis corresponding to the complete user utterance.
+ˆyfull,t is the predicted utterance of ˆyt to ˆyfull. In this study, we
+assume that the speech recognition accuracy is sufﬁciently high
+so that ˆyfull = yfull.
+In this framework, the system incrementally recognizes the
+user’s speech and then predicts the complete user utterance from
+the recognized part using a prediction model. PCM is applied to
+the predicted user utterance to estimate the probability that the
+predicted user utterance and the complete user utterance match.
+The system response is prefetched if this probability exceeds the
+threshold before detecting EOS; otherwise, the system response
+is generated when EOS is detected.
+2.2. Look-ahead techniques
+The look-ahead technique [10] assumes that UPL can be re-
+duced by preparing candidate user utterances that might appear
+in the dialogue context before the user speaks. By considering
+the measured semantic similarity of the user utterance candi-
+dates prepared in advance and the user utterances obtained from
+ASR, it became possible to reduce the time cost of decoding
+for dialogue response generation. This method predicted 20%
+of the user utterances in the Dialogue Robot Competition 2022
+[11], where humans evaluated more than 80% of the prefetched
+system responses as natural.
+If we reﬁned a PCM’s output based on semantic similarity
+rather than word-level matching, we could expect an improve-
+ment in prediction gain similar to this model’s success.
+3. PCM Based on Semantic Similarity
+Since the existing PCM has a strict criterion of exact word-
+string matching, there was a problem where prefetching often
+failed. Therefore, we reﬁned our PCM to estimate the probabil-
+ity that the semantic similarity between the predicted utterance
+and the complete utterance is greater than a threshold. The def-
+inition of our PCM is given in Equation (4).
+P (S-BERT(ˆyfull,t, ˆyfull) > T) ,
+(4)
+where S-BERT is the Sentence BERT (stsb-xlm-r-multilingual)
+[12] and T is a threshold.
+Our PCM was constructed by following labels deﬁned in
+the experiment to ﬁne-tune the CLS vector of BERT (bert-base-
+multilingual-uncased) [13]. We conﬁrmed the following two
+points in the experiment for this redeﬁnition.
+1. What is the optimal threshold T?
+2. Can our PCM prefetch responses that are comparable to re-
+sponses to complete user utterances?
+4. Experiment
+4.1. Dataset
+MultiWOZ and JMultiWOZ were used to train and evaluate the
+PCMs for English and Japanese, respectively. SpokenWOZ was
+used to measure prediction gain from the time stamp of each
+word. The following shows the procedure for constructing the
+training data set. The difference between English and Japanese
+datasets is whether characters or words are used as the unit of
+time t.
+1. Separate each user utterance of the MultiWOZ into words.
+2. According to each word input from the beginning, a predic-
+tion model predicts a complete user utterance.
+3. For the complete user utterance, a language model ( the same
+model used as the prediction model in this experiment) gen-
+erates four system responses.
+The English and Japanese prediction models were Qwen
+(Qwen2.5-14B-Instruct) [14] trained on MultiWOZ and JMul-
+tiWOZ, respectively. These have been ﬁne-tuned using Low-
+Rank Adaptation (LoRA) [15] on the user utterances of vali-
+dation datasets. The inputs are the belief state, up to 4 past
+dialogue utterances, partial utterances, and a response exam-
+ple. Utterances that do not have dialogue history are not used
+because they become difﬁcult to predict. At this time, the hy-
+perparameters are as follows: epochs are 1, the learning rate is
+2e-4, the batch size is 32, the LoRA rank is 16, the optimization
+function is Adam 8 bit, the maximum number of input tokens is
+2048, and the temperature is 1.
+The following elements were used in the training dataset for
+the PCM:
+• ˆrfull,t: System response generated by the prediction model
+for ˆyfull,t when ˆyfull̸ = ˆyt
+• ˆrfull: 4 system responses generated by the prediction model
+for ˆyfull.
+• rfull: System response in the test dataset for ˆyfull
+3046
+
+• hdialogue: Up to four past utterances before ˆyfull
+Four ˆrfull were used only for response evaluation with multiple
+references. Otherwise, one randomly sampled ˆrfull was used
+for evaluation, as explained below.
+4.2. Labels
+To train and evaluate the PCM, we generated two types of la-
+bels: lsbertT and lliteral. lsbertT is a label that is positive when
+S-BERT(ˆyfull,t, ˆyfull) > T, and negative otherwise. In this
+experiment, T = {0.75, 0.80, 0.85, 0.90, 0.95}. On the other
+hand, lliteral is a label that is positive when yfull,t = yfull and
+negative otherwise. This label is based on the same deﬁnition
+of successful prefetching used in the original PCM.
+4.3. Training
+The PCMs for English and Japanese were ﬁne-tuned on the user
+utterances (50 dialogues) from the test datasets of MultiWOZ,
+SpokenWOZ, and JMultiWOZ, respectively. The input features
+for the PCMs are hdialogue, ˆyt, and ˆyfull,t. The hyperparame-
+ters used for training the PCM are as follows: epoch is 1, the
+learning rate is 2e −5, the batch size is 16, the loss function is
+Focal Loss (γ = 2.0) [16], and the output layer is the Softmax
+function.
+4.4. Evaluation
+We evaluated English and Japanese PCMs based on the user
+utterances in the test data sets, which were not used during
+training, of MultiWOZ/SpokenWOZ and JMultiWOZ, respec-
+tively. The punctuation in ˆyfull,t and ˆyfull of SpokenWOZ was
+removed because the writing style of SpokenWOZ did not fol-
+low written text, such as written ﬁllers with commas or with-
+out commas. To evaluate the PCMs, we had to consider three
+points: the success or failure of training, the prediction gain, and
+the naturalness of the prefetched system responses, as evaluated
+by both machines and humans.
+4.4.1. Automatic Evaluation
+The success or failure of the PCM training was evaluated using
+the following three indicators.
+• Successful Prefetch Rate (SPR): The percentage of utterance
+in which the PCM determines that a prediction was success-
+ful for the ﬁrst time, and the deﬁnition of successful prefetch-
+ing is met
+• Failed Prefetch Rate (FPR): The percentage of utterance in
+which the PCM determines that a prediction was successful
+for the ﬁrst time, but the deﬁnition of successful prefetching
+is not met
+• Non-Prefetch Rate (NPR): The percentage of utterances in
+which the PCM does not determine that a prediction was suc-
+cessful until the EOS
+The prediction gain obtained by the PCM was evaluated using
+the following three indicators.
+• P-Gain (%):
+The average proportion of utterances from
+EOS to prefetching, representing the prediction gain when
+prefetching is successful
+• P-Gain (ms): The average utterance duration (time) from
+EOS to prefetching, representing the prediction gain when
+prefetching is successful; this was measured only from PCMs
+trained on SpokenWOZ
+• C-Gain: Difference in number of characters between ˆyt and
+ˆyfull when prefetching is successful
+The machine evaluation of the prefetched system response
+group was performed using the following ﬁve indicators.
+Athena-RR [17] was used as the response ranking model.
+• Total: Number of successful prefetching
+• Comp: Percentage of ˆrfull̸ = ˆrfull,t when prefetching is suc-
+cessful
+• S-BERT: Maximum semantic similarity between ˆrfull,t and
+the four ˆrfull,n, deﬁned as
+max
+n=1,2,3,4S-BERT(ˆrfull,t, ˆrfull,n)
+• ROUGE: Maximum F1 score for ROUGE-1 between ˆrfull,t
+and four ˆrfull,n, deﬁned as
+max
+n=1,2,3,4ROUGE(ˆrfull,t, ˆrfull,n)
+• PR < R: Proportion evaluations by Athena-RR where ˆrfull is
+evaluated more highly than ˆrfull,t, given hdialogue, ˆyfull, and
+rfull as input when ˆrfull̸ = ˆrfull,t
+Since Athena-RR only supports English, the input for eval-
+uating the Japanese PCM was translated into English using
+GPT3.5 Turbo [18].
+4.4.2. Human Evaluation
+We conﬁrmed that prefetched responses were not out of con-
+text in dialogue, an essential requirement for dialogue.
+We
+conducted the human evaluation of the English and Japanese
+responses in the prefetched system response group using the
+following procedure. For Japanese response evaluation, three
+native Japanese subjects were recruited. For English response
+evaluation, nine subjects with English proﬁciency of CEFR B2
+[19] or higher were recruited. Each Japanese and English sam-
+ple was evaluated by three subjects. The experimental proce-
+dure is outlined below.
+1. 300 responses are randomly sampled from pairs of ˆrfull,t and
+ˆrfull. The two responses are shufﬂed so that the participants
+cannot distinguish which one is prefetched.
+2. A participant evaluates ˆrfull,t and ˆrfull in terms of naturalness
+on a 5-point scale (1: not natural at all, 2: not very natural, 3:
+neither good nor bad, 4: quite natural, 5: extremely natural).
+3. A participant compares the responses to determine which is
+more natural for hdialogue and ˆyfull, allowing for a 3-point
+scale with options PR<R: ˆrfull,t < ˆrfull, PR>R: ˆrfull,t >
+ˆrfull, and PR=R: ˆrfull,t = ˆrfull.
+The naturalness ratings were integrated using the average
+score, while the comparative evaluations were integrated based
+on the mode. If the comparative evaluations by the subjects
+were split among PR<R, PR>R, and PR=R, the result was
+standardized as PR=R for consistency. We did not show rfull
+to subjects because our response evaluation was not intended to
+compare human response quality with a language model’s re-
+sponse quality but rather to conﬁrm whether sufﬁcient response
+quality could be maintained.
+5. Results
+The machine evaluation results are shown in Tables 1 and 2.
+Multi, JMulti, and Spoken refer to the evaluation datasets Multi-
+WOZ, JMultiWOZ, and SpokenWOZ, respectively. The strings
+sbert* and literal represent the labels used to train PCMs.
+From Table 1, we can see that the P-Gain of PCMs ﬁne-
+tuned with lsbertT is about twice that of the PCM ﬁne-tuned
+with lliteral. Table 2 shows that the prediction gain of the pro-
+posed PCMs exceeds 400 ms, even in the case of T = 0.95. The
+3047
+
+Table 1: Prediction and response evaluation of PCMs trained by MultiWOZ and JMultiWOZ
+Model
+SPR
+FPR
+NPR
+P-Gain (%) ↑
+C-Gain ↑
+Total
+Comp
+ROUGE ↑
+S-BERT ↑
+PR<R
+Multilsbert075
+0.25
+0.25
+0.51
+0.51
+20.71
+2761
+0.99
+0.46
+0.68
+0.50
+Multilsbert080
+0.25
+0.24
+0.51
+0.51
+20.71
+2674
+0.99
+0.48
+0.68
+0.51
+Multilsbert085
+0.22
+0.27
+0.52
+0.36
+14.80
+2329
+0.98
+0.50
+0.69
+0.50
+Multilsbert090
+0.19
+0.29
+0.52
+0.28
+11.39
+2029
+0.97
+0.53
+0.71
+0.49
+Multilsbert095
+0.14
+0.33
+0.52
+0.28
+11.39
+1491
+0.97
+0.55
+0.73
+0.49
+Multilliteral
+0.09
+0.35
+0.56
+0.12
+4.29
+892
+0.96
+0.56
+0.74
+0.48
+JMultilsbert075
+0.33
+0.17
+0.50
+0.61
+16.97
+1051
+0.95
+0.65
+0.73
+0.54
+JMultilsbert080
+0.31
+0.18
+0.51
+0.58
+15.71
+1000
+0.95
+0.67
+0.76
+0.53
+JMultilsbert085
+0.29
+0.20
+0.51
+0.53
+13.97
+940
+0.95
+0.68
+0.77
+0.52
+JMultilsbert090
+0.26
+0.24
+0.51
+0.49
+12.59
+815
+0.95
+0.70
+0.78
+0.53
+JMultilsbert095
+0.20
+0.29
+0.50
+0.47
+11.47
+657
+0.95
+0.73
+0.81
+0.49
+JMultilliteral
+0.19
+0.30
+0.51
+0.18
+4.40
+582
+0.95
+0.76
+0.85
+0.49
+Table 2: Prediction and response evaluation of PCMs trained by SpokenWOZ
+Model
+SPR
+FPR
+NPR
+P-Gain (%) ↑
+P-Gain (ms) ↑
+C-Gain ↑
+Total
+Comp
+ROUGE ↑
+S-BERT ↑
+PR<R
+Spokenlsbert075
+0.26
+0.19
+0.55
+0.32
+1061.25
+9.36
+5677
+1.00
+0.40
+0.57
+0.50
+Spokenlsbert080
+0.25
+0.20
+0.56
+0.28
+914.14
+8.16
+5265
+1.00
+0.41
+0.58
+0.49
+Spokenlsbert085
+0.20
+0.24
+0.56
+0.27
+813.92
+7.34
+4316
+0.99
+0.42
+0.59
+0.49
+Spokenlsbert090
+0.20
+0.22
+0.58
+0.21
+609.18
+5.65
+4007
+0.99
+0.43
+0.60
+0.49
+Spokenlsbert095
+0.18
+0.21
+0.61
+0.16
+419.20
+4.12
+3532
+0.99
+0.44
+0.61
+0.49
+Spokenlliteral
+0.14
+0.18
+0.67
+0.04
+93.74
+0.99
+2340
+1.00
+0.46
+0.62
+0.50
+Figure 2: 5-point scale evaluation on response naturalness
+PR<R suggests that the response groups prefetched by the PCM
+trained with an appropriate semantic similarity threshold T can-
+not be distinguished from the actual response groups. When
+T = {0.90, 0.95}, PR<R is less than 0.50 for the PCM trained
+on MultiWOZ, and when T = 0.95, PR<R is less than 0.50 for
+the PCM trained on JMultiWOZ. On the other hand, the seman-
+tic similarity and ROUGE evaluations show that the responses
+deteriorate as T decreases. Looking at the range of T where
+PR<R is less than 0.50, the results suggested that Japanese re-
+quires a higher semantic similarity threshold than English to
+maintain the quality of the prefetched response group.
+The
+difference is probably due to the syntactic nature of Japanese,
+where the end of a sentence is likely to be the head.
+Figure 2 and Table 3 present the human response evaluation
+results of Multilsbert090 and JMultilsbert095, where PR<R was
+smaller than 0.50 for the ﬁrst time at the minimum T. For En-
+glish response naturalness, the prefetched response had an aver-
+age score µ: 4.17 (variance σ2: 0.54), and the actual response
+had µ = 4.25 (σ2 = 0.49). For Japanese response naturalness,
+Table 3: Comparison Evaluation on response naturalness
+Model
+PR<R
+PR>R
+PR=R
+Multilsbert090
+0.20
+0.30
+0.50
+JMultilsbert095
+0.08
+0.11
+0.81
+the prefetched response had µ = 4.28 (σ2 = 1.08), and the
+actual response had µ = 4.42 (σ2 = 0.76). The Pearson cor-
+relation between the actual and prefetched response histograms
+with 8 bins was 0.996 for English and 0.999 for Japanese. It
+was shown that the English PCM could prefetch responses that
+humans would perceive as natural if T was set to 0.95 or higher,
+while the Japanese PCM achieved similar results when T was
+set to 0.90 or higher. Table 3 shows that in the comparison
+evaluations of both English and Japanese responses, PR<R is
+below 0.50, suggesting that humans are not able to distinguish
+between the prefetched responses and actual responses.
+6. Discussion and Conclusion
+We proposed a PCM to estimate the probability of the semantic
+similarity between the predicted utterance and the complete ut-
+terance. As a result, we showed that our PCM greatly reduces
+user-perceived latency while also maintaining the quality of the
+system’s prefetched response. However, in some settings, the
+response to a prefetched utterance may be poorer than the re-
+sponse to a full user utterance. The decision to prefetch dynam-
+ically for these examples is a topic for future work. Our exper-
+iment also shows language-dependent differences in the appro-
+priate semantic similarity threshold for our PCM. The Japanese
+PCM required a higher semantic similarity threshold to main-
+tain natural response quality compared to the English PCM.
+Although our PCM achieves a higher prediction gain than
+existing PCMs under ideal conditions, a more realistic analysis,
+considering non-ideal factors such as ASR errors, and response
+generation time, is necessary for practical applications.
+3048
+
+7. Acknowledgement
+A part of this work was supported by JST MOONSHOT Grant
+Number JPMJMS2236 and JSPS KAKENHI 22K17958.
+8. References
+[1] S. Ji, Y. Chen, M. Fang, J. Zuo, J. Lu, H. Wang, Z. Jiang, L. Zhou,
+S. Liu, X. Cheng et al., “Wavchat: A survey of spoken dialogue
+models,” arXiv preprint arXiv:2411.13577, 2024.
+[2] D. Jacoby, T. Zhang, A. Mohan, and Y. Coady, “Human latency
+conversational turns for spoken avatar systems,” arXiv preprint
+arXiv:2404.16053, 2024.
+[3] H. Kamioka, S. Maeda, and M. Hashimoto, “Response delay re-
+duction in large language model-based dialogue systems,” Journal
+of Machine Intelligence and Data Science (JMIDS), vol. 5, 2024.
+[4] O. Zink, Y. Higuchi, C. Mullov, A. Waibel, and T. Kobayashi,
+“Predictive speech recognition and end-of-utterance detection to-
+wards spoken dialog systems,” CoRR, 2024.
+[5] G. Skantze, “Exploring human error recovery strategies: Impli-
+cations for spoken dialogue systems,” Speech Communication,
+vol. 45, no. 3, pp. 325–341, 2005.
+[6] X. Zang, A. Rastogi, S. Sunkara, R. Gupta, J. Zhang, and J. Chen,
+“Multiwoz 2.2: A dialogue dataset with additional annotation cor-
+rections and state tracking baselines,” in Proceedings of the 2nd
+Workshop on Natural Language Processing for Conversational
+AI, ACL 2020, 2020, pp. 109–117.
+[7] S. Si, W. Ma, H. Gao, Y. Wu, T.-E. Lin, Y. Dai, H. Li, R. Yan,
+F. Huang, and Y. Li, “Spokenwoz: A large-scale speech-text
+benchmark for spoken task-oriented dialogue agents,” Advances
+in Neural Information Processing Systems, vol. 36, 2024.
+[8] A. Ohashi, R. Hirai, S. Iizuka, and R. Higashinaka, “Jmulti-
+woz: A large-scale japanese multi-domain task-oriented dialogue
+dataset,” in Proceedings of the 2024 Joint International Con-
+ference on Computational Linguistics, Language Resources and
+Evaluation (LREC-COLING 2024), 2024, pp. 9554–9567.
+[9] A. Schwarz, D. He, M. Van Segbroeck, M. Hethnawi, and A. Ras-
+trow, “Personalized predictive asr for latency reduction in voice
+assistants,” in INTERSPEECH 2023, 2023, pp. 745–749.
+[10] M. Ohagi, T. Mizumoto, and K. Yoshikawa, “Investigation of
+look-ahead techniques to improve response time in spoken dia-
+logue system,” in INTERSPEECH 2024, 2024, pp. 3580–3584.
+[11] R. Higashinaka,
+T. Minato,
+H. Nishizaki,
+and T. Nagai,
+“Proceedings of the dialogue robot competition 2022,” Jan 2025.
+[Online]. Available: https://sites.google.com/view/drc2022
+[12] N.
+Reimers
+and
+I.
+Gurevych,
+“Sentence-bert:
+Sentence
+embeddings using siamese bert-networks,” in Proceedings of the
+2019 Conference on Empirical Methods in Natural Language
+Processing.
+Association for Computational Linguistics, 11
+2019. [Online]. Available: http://arxiv.org/abs/1908.10084
+[13] J. Devlin, M. Chang, K. Lee, and K. Toutanova, “BERT:
+pre-training of deep bidirectional transformers for language
+understanding,” CoRR, vol. abs/1810.04805, 2018. [Online].
+Available: http://arxiv.org/abs/1810.04805
+[14] Q. Team, “Qwen2.5: A party of foundation models,” September
+2024. [Online]. Available: https://qwenlm.github.io/blog/qwen2.
+5/
+[15] E. J. Hu, Y. Shen, P. Wallis, Z. Allen-Zhu, Y. Li, S. Wang,
+L. Wang, and W. Chen, “Lora: Low-rank adaptation of large lan-
+guage models,” arXiv preprint arXiv:2106.09685, 2021.
+[16] T.-Y. Ross and G. Doll´ar, “Focal loss for dense object detection,”
+in proceedings of the IEEE conference on computer vision and
+pattern recognition, 2017, pp. 2980–2988.
+[17] V. Harrison, R. Rajasekaran, and M. Walker, “A transformer-
+based response evaluator for open-domain spoken conversation,”
+arXiv preprint arXiv:2302.04424, 2023.
+[18] T. Brown, B. Mann, N. Ryder, M. Subbiah, J. D. Kaplan, P. Dhari-
+wal, A. Neelakantan, P. Shyam, G. Sastry, A. Askell et al., “Lan-
+guage models are few-shot learners,” Advances in neural informa-
+tion processing systems, vol. 33, pp. 1877–1901, 2020.
+[19] C. of Europe. Council for Cultural Co-operation. Education Com-
+mittee. Modern Languages Division, Common European frame-
+work of reference for languages: Learning, teaching, assessment.
+Cambridge University Press, 2001.
+3049
+

@@ -1,0 +1,589 @@
+NIRANTAR: Continual Learning with New Languages and Domains on
+Real-world Speech Data
+Tahir Javed1, Kaushal Bhogale 1, Mitesh M. Khapra 1
+1AI4Bharat, Indian Institute of Technology Madras, India
+{tahir, cs22d006, miteshk }@cse.iitm.ac.in
+Abstract
+We introduce Nirantar 1, a comprehensive framework
+for evaluating continual learning (CL) in multilingual and
+multi-domain ASR. Designed to reflect real-world CL chal-
+lenges, Nirantar leverages data collected incrementally across
+22 languages and 208 districts in India through natural
+episodes. This enables evaluation across Language-Incremental
+(LIL), Domain-Incremental (DIL), and the novel Language-
+Incremental Domain-Incremental Learning (LIDIL) scenarios.
+Unlike prior work that relies on simulated episodes, Nirantar
+presents dynamic, non-uniform language and domain shifts,
+making it an ideal testbed for CL research. With 3250 hours of
+human-transcribed speech, including 1720 hours newly intro-
+duced in this work, our framework enables systematic bench-
+marking of CL methods. We evaluate existing approaches and
+demonstrate that no single method performs consistently well,
+underscoring the need for more robust CL strategies.
+Index Terms: speech recognition, continual learning
+1. Introduction
+There is a growing trend towards training massive multilingual
+speech models on large datasets [1, 2] aggregated across multi-
+ple languages [3, 4, 5]. Given the high computational demands,
+continual training is essential as new datasets covering addi-
+tional languages, domains, or demographics are introduced over
+time [1, 6]. To address this, continual learning (CL) techniques
+have emerged [7, 8], allowing efficient model updates while pre-
+serving prior knowledge across instance incremental learning ,
+task incremental learning , and domain incremental learning .
+However, most CL datasets [9, 10] , are synthetically created,
+lacking natural episodes, making them unsuitable for real-world
+CL evaluation. More recent real-world benchmarks [11, 12, 13]
+focus on either task or domain incremental learning but fail to
+address both simultaneously.
+In this work, we release a real-world CL playground by
+building on the IndicV oices [14] initiative. We extend this effort
+by expanding coverage, increasing data volume, and introduc-
+ing new domains for a more comprehensive multilingual dataset
+covering 22 low-resource Indian languages and 400 districts.
+Our data collection happens in batches, with each batch tar-
+geting specific districts and languages. Each district is treated
+as a distinct domain due to its unique vocabulary, accents, and
+local interests. For instance, speakers from Srinagar may dis-
+cuss snow-capped mountains, while those from Assam may talk
+about tea plantations. From each district, 20 to 50 hours of read,
+extempore, and conversational speech is collected, covering di-
+verse topics such as farming, education, tourism, politics, etc.
+1Nirantar means continual in Hindi.
+https://github.com/AI4Bharat/Nirantar
+Figure 1: Illustration of Language-Incremental Domain-
+Incremental Learning: A practical scenario showing the ad-
+dition of both new languages and domains in each episode of
+speech data collection.
+The episodic nature of this data collection, with periodic
+gaps between batches, creates a natural setting for continual
+learning (CL). Leveraging this, we introduce Nirantar, a CL
+framework designed for three scenarios: Language-Incremental
+(LIL), Domain-Incremental (DIL), and the novel Language-
+Incremental Domain-Incremental Learning (LIDIL) introduced
+as a part of this work (See Figure 1). Nirantar consists of 3,250
+hours of human-transcribed speech, including 1,530 hours from
+IndicV oices and 1,720 newly collected hours as a part of this
+work. The training data is divided into 12 episodes, each intro-
+ducing new languages, domains, or both. The evaluation set in-
+cludes 15 minutes of diverse speech per domain-language pair,
+continuously updated as new data is collected, making it a live,
+evolving benchmark for CL research. Nirantar covers 22 lan-
+guages from 4 language families, spanning medium-resource
+(e.g., Tamil, Bengali), low-resource (e.g., Marathi, Urdu), and
+extremely low-resource (e.g., Sindhi, Bodo) languages. The
+insights from Nirantar would thus be relevant to other low-
+resource language groups and diverse language families.
+We evaluate several CL approaches on Nirantar, includ-
+ing replay-based methods like Experience Replay [15] and
+regularization-based methods such as Elastic Weight Consoli-
+dation [16] and Memory-aware Synapse [17]. These methods
+exhibit varying performance across the three CL scenarios, un-
+derscoring the need for more robust techniques that perform
+consistently in multilingual and multidomain settings. Addi-
+tionally, we find that architecture-based CL methods, which re-
+quire adding parameters to the backbone model, are impractical
+in real-world scenarios. For instance, supporting 22 languages
+and 208 domains in Nirantar would necessitate adding a new
+adapter per language and domain, leading to excessive model
+complexity and scalability issues. This observation raises con-
+cerns about the feasibility of such methods for large-scale CL
+applications. To facilitate further research, we have made all
+code, data, and models available1 under the CC-BY-4.0 license.
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+918 10.21437/Interspeech.2025-2714
+2. Related work
+Continual Learning (CL) in ASR has been explored mainly in
+Language-Incremental and Domain-Incremental Learning [18].
+Prior work includes domain-specific ASR sub-models [19] and
+monolingual hybrid CTC-transformer adaptation [20], both fo-
+cusing on domain-incremental setups. CL-MASR [21] ex-
+amines CL strategies in a multilingual setting, emphasizing
+language-incremental learning. However, real-world scenarios
+remain similar to ours remain underexplored. While the NIC
+setting [22, 23] addresses new instances and classes, our work
+is the first to provide a robust framework for multilingual and
+multi-domain continual learning for ASR. Figure 3 compares
+Nirantar to other ASR datasets and shows that none of the exist-
+ing datasets support all the 3 scenarios considered in this work.
+Existing CL approaches fall into three categories [24].
+First, regularization-based methods, such as Elastic Weight
+Consolidation (EWC) [16] and Memory-aware Synapses
+(MAS) [17], limit large weight updates to retain prior knowl-
+edge. Second, replay-based approaches like Experience Replay
+(ER) [15] and its variants, including Dark Experience Replay
+(DER) [25] and A-GEM [26], store past examples to mitigate
+forgetting. Third, architecture-based methods, such as Adapters
+[27], Progressive Neural Networks (PNNs) [28] and PackNet
+[29], allocate dedicated parameters for new tasks. We evalu-
+ate a representative set of these approaches on Nirantar and find
+that no single method performs consistently well.
+3. N IRANTAR : CL on Real-World Data
+This section introduces Nirantar, a playground for continual
+learning in ASR with new languages and domains. We now
+introduce definitions which will be used through the paper.
+3.1. Definitions
+Data Batch (B): A data batch, represented as an ordered tuple
+B = (l,d ), is the outcome of a single data collection activity
+for a domaind of languagel, wherel∈L andd∈D . In ASR,
+each data batch comprises of (x,y ) pairs, wherex denotes the
+raw speech signal andy represents the corresponding transcript.
+Episode (E): An episode consists of one or more data batches
+(B) collected in parallel and is defined as a set of data batches:
+E ={(l,d )|l∈L,d∈D}
+Timeline (T ): A timelineT is defined as an ordered sequence
+of episodes T =⟨E0,..,E t,..,E τ⟩ where each Et represents
+an episode at time stept, andτ denotes the total no. of episodes.
+Model (m): A model m is a learnt mapping y = m(x) by
+training on a collection of data batches.
+Continual Learning Method (c): Given a timeline T , and a
+base modelm0, the continual learning method c(·) produces a
+modelmτ iteratively:mt =c(Et,mt−1), 1≤t≤τ
+3.2. Continual Learning Scenarios
+Language Incremental Learning (LIL): In the LIL scenario,
+each episode introduces a new language. Specifically, at time
+stept, episode Et consists of all data batches associated with
+languageLt, i.e.,Et ={(Lt,d )|d∈D} ∀ t∈τ,Lt∈L
+Domain Incremental Learning (DIL): In this scenario, all lan-
+guages (L) are introduced in base episode E0 ={(l,d )|∪ l =
+L}. In subsequent episodesEt where 1≤t≤τ, only new do-
+mains are added, while the set of languages remains unchanged.
+Language-Incremental Domain-Incremental Learning
+(LIDIL): In this scenario, both new languages and new
+Table 1: Table comparing different publicly available datasets
+and their usability in different CL scenarios. (Tr = Transcrip-
+tion, F A = F orce Aligned, PL = Pseudo Labelled, M = Manual,
+#L = Languages, #D = Domains)
+Dataset #L #D #H Audio
+Source Tr Scenario
+LIL DIL LIDIL
+LibriSpeech 1 - 1000 Audiobooks FA ✗ ✗ ✗
+GigaSpeech 1 23 10000 YouTube FA ✗ ✓ ✗
+V oxPopuli 16 - 1800 Parliament
+Recordings FA ✓ ✗ ✗
+TED-LIUM 1 - 452 TED talks FA ✗ ✗ ✗
+Spoken Wikipedia 3 - 1005 Crowd
+sourcing FA ✓ ✗ ✗
+Multilingual-TEDx 8 - 765 TED Talks FA ✓ ✗ ✗
+Multilingual
+LibriSpeech 8 - 44500 Audiobooks FA ✓ ✗ ✗
+GigaSpeech 2 3 - 22015 YouTube PL ✓ ✗ ✗
+Switchboard 1 - 260 Human M ✗ ✗ ✗
+CommonV oice 131 - 21594 Human M ✓ ✗ ✗
+FLEURS 102 - 1400 Human M ✓ ✗ ✗
+MSR[30] 3 - 150 Human M ✓ ✗ ✗
+OpenSLR [31] 6 - 1247 Human M ✓ ✗ ✗
+MSD [32] 6 - 35 Human M ✓ ✗ ✗
+MUCS [33] 3 - 350 Human M ✓ ✗ ✗
+IndicSUPERB [34] 12 - 1684 Human M ✓ ✗ ✗
+Shrutilipi [35] 12 - 6457 Newsonair FA ✓ ✗ ✗
+Graamvaani [36] 1 - 108 Human M ✗ ✗ ✗
+IIIS-Mile [37] 2 - 500 Human M ✓ ✗ ✗
+V¯aksa˜ncayah [38] 1 - 78 Human M ✗ ✗ ✗
+IIIT-H ISD [39] 7 - 11 Human M ✓ ✗ ✗
+MSR - IITB[40] 1 - 109 Human M ✗ ✗ ✗
+NPTEL [41] 8 - 6400 YouTube FA ✓ ✗ ✗
+IndicTTS [42] 13 - 225 Human M ✓ ✗ ✗
+Svarah [43] 1 37 10 Human M ✗ ✓ ✗
+SPRING-INX [6] 10 - 3302 Human M ✓ ✗ ✗
+SPIRE-SIES [44] 1 13 23 Human PL ✗ ✓ ✗
+Lahaja [45] 1 83 12.5 Human M ✗ ✓ ✗
+Nirantar 22 208 3250 Human M ✓ ✓ ✓
+districts are introduced over time ( E0 to Eτ ). Episodes are
+formed by arbitrary collections of batches, and any sequence of
+these episodes forms a timeline.
+3.3. Dataset Description
+Expanding on the IndicV oices[14] effort, we introduce Nirantar,
+designed for training and evaluating ASR systems in a continual
+learning (CL) setting. In addition to the initial 1530 hours from
+IndicV oices, we collect an additional 1720 hours using the same
+procedure covering a total of 22 languages and 208 districts.
+The data includes read, extempore, and conversational speech
+from diverse speakers, ensuring fair representation across age
+groups, genders, educational backgrounds, locations, and occu-
+pations. Data collection occurred in phases, with each phase
+covering one or more languages from different districts. Local
+coordinators mobilized 100-150 participants per district, obtain-
+ing consent and compensating them for their time. Participants
+engaged in three tasks: answering tailored questions on multi-
+ple domains and topics of interest, simulating voice assistant in-
+teractions, and engaging in two-party telephony conversations.
+Data was transcribed by an in-house team following a rigorous
+quality control process. Each district’s data forms a batch, and
+multiple batches aggregate into episodes, introducing variations
+in accents, vocabulary, and conversational topics. Nirantar thus
+leverages the natural influx of audio data in batches and splices
+the audio speech data across multiple timelines, one each for
+LIL, DIL, LIDIL. The creation of the timelines is highlighted
+in Section 3.4. Table 2 presents the statistics of data across lan-
+guages. Figure 2 shows the cumulative evolution of vocabulary
+and domains in Nirantar. For creating the test data, we sample
+919
+Table 2: Number of hours (#H), speakers (#Sp), and domains
+(#D) in Nirantar, along with the ISO codes for the languages.
+Language iso #H #Sp #D Language iso #H #Sp #D
+Assamese as 241 985 14 Manipuri mni 42 166 3
+Bengali bn 209 733 11 Marathi mr 118 447 10
+Bodo brx 291 1061 4 Nepali ne 252 780 4
+Dogri doi 116 495 5 Odia or 124 473 9
+Gujarati gu 20 72 4 Punjabi pa 124 344 6
+Hindi hi 138 490 12 Sanskrit sa 70 222 17
+Kannada kn 96 530 13 Santali sat 164 433 8
+Konkani kok 103 245 4 Sindhi sd 27 240 4
+Kashmiri ks 106 515 10 Tamil ta 238 1242 19
+Maithili mai 248 726 9 Telugu te 221 767 28
+Malayalam ml 170 504 10 Urdu ur 124 564 10
+Figure 2: Evolution of vocabulary and domains across episodes
+a maximum of 15 minutes from each of the domains resulting
+in a total of 50 hours across languages. Since the test data con-
+tains samples from every district, we can evaluate the forward
+and backward transfer of CL approaches.
+3.4. Continual Learning Playground
+Nirantar comprises of three distinct timelines corresponding to
+LIL, DIL and LIDIL scenarios respectively (see Table 3). Next,
+we present the process of creation of the timelines.
+Base episode (E0): In a practical scenario, the base model (m0)
+will be trained after a seed amount of data is collected. We
+consider a good starting point for the base episode ( E0) when
+data batches are collected for half of the languages and half of
+the domains in each language. Specifically, for LIDIL, we select
+the 11 languages with the most hours in Table 2, and sample half
+their domains to createE0. For LIL, we start with the same set
+of 11 languages having all domains of the respective languages.
+For DIL, we start with all 22 languages, and randomly sample
+half of the number of domains in each language.
+Incremental episodes (Eτ≥1): We create timelines with τ =
+11. In LIL, each episode adds all data batches of a single lan-
+guage, with languages introduced in random order. For DIL and
+LIDIL, data batches are randomly assigned to episodes, ensur-
+ing uniform distribution of data batches while still maintaining
+non-uniformity in training hours across episodes (see Table 3).
+In DIL, all languages appear in Episode 0, whereas in LIDIL,
+only half do, enabling incremental addition of both languages
+and domains in subsequent episodes.
+Given this playground, our goal is to identify an optimal contin-
+ual learning approachc∗ for a given timelineT and base model
+m0. Formally c∗ = minc∈CV (c|T,m ), whereV is a metric
+that evaluates the approach, andC is a set of CL approaches.
+4. Experimental setup
+4.1. Continual Learning Methods
+Below, we list down all the approaches considered in this work.
+Incremental Finetuning (Inc. FT): Given a base model m0,
+we sequentially finetune modelsm1≤t≤τ using the data batches
+Table 3: Statistics showing district counts per language in LIL,
+DIL and LIDIL scenarios. Each cell carries the number of dis-
+tricts added for a given language (row) at episode (Ep).
+LIL DIL LIDIL
+Ep 0 1 2 3 4 5 6 7 8 9 10 11 0 1 2 3 4 5 6 7 8 9 10 11 0 1 2 3 4 5 6 7 8 9 10 11
+as 14 - - - - - - - - - - - 7 - 1 1 1 - 1 - 1 - - 2 7 - - 1 - - 2 - - 1 3 -
+bn 11 - - - - - - - - - - - 5 - - - - - - 1 - 1 - 4 5 - - - 1 1 1 2 - - - 1
+brx 4 - - - - - - - - - - - 2 - - - - 1 - - - 1 - - 2 - - - - - 1 - - - - 1
+doi - 5 - - - - - - - - - - 2 1 - 1 - - - 1 - - - - - - 2 - - - - 2 - - - 1
+gu - - - 4 - - - - - - - - 2 - - - 1 1 - - - - - - - - - - - - 1 1 - 1 - 1
+hi 12 - - - - - - - - - - - 6 - - 1 1 - - - 2 - - 2 6 1 - - - 1 1 1 - - 1 1
+kn - - - - - - - - 13 - - - 6 3 - - - 1 - - 1 - 1 1 - - 2 1 2 1 1 - 2 1 2 1
+kok - - - - - 4 - - - - - - 2 - - - - - - 1 - - 1 - - - - - - - - - - 1 2 1
+ks - - 10 - - - - - - - - - 5 1 1 - - - 1 1 - 1 - - - 3 1 - 1 - - 1 - - 1 3
+mai 9 - - - - - - - - - - - 4 - 1 - 1 - - - - - - 3 4 - 1 - 2 1 - - 1 - - -
+ml 10 - - - - - - - - - - - 5 1 1 1 - - - - - 1 1 - 5 1 - - - - 2 - - - 2 -
+mni - - - - - - - - - 3 - - 1 - - - 1 - - - - - - 1 - - - - 1 - - 1 - - 1 -
+mr - - - - - - - 10 - - - - 5 1 2 - - - - - - - 1 1 - 1 - 1 1 1 - - - 4 1 1
+ne 4 - - - - - - - - - - - 2 1 1 - - - - - - - - - 2 - - 1 - - - - - 1 - -
+or - - - - - - 9 - - - - - 4 - 1 1 - - - - - - - 3 - 2 - - - - - - 3 2 1 1
+pa 6 - - - - - - - - - - - 3 - - - - - - 2 1 - - - 3 - - - - - 1 - - 1 - 1
+sa - - - - - - - - - - 17 - 8 - - - - - - - - 1 1 7 - 2 2 3 1 3 1 - 1 2 1 1
+sat 8 - - - - - - - - - - - 4 - - - - - - - - - - 4 4 1 - - - - 1 1 - - 1 -
+sd - - - - - - - - - - - 4 2 - 2 - - - - - - - - - - 1 - 1 - 1 - 1 - - - -
+ta 19 - - - - - - - - - - - 9 1 - 1 1 1 - - 1 - 2 3 9 - 1 - 1 - 2 1 1 - - 4
+te 28 - - - - - - - - - - - 14 1 1 3 3 - 1 - 1 1 - 3 14 - - 2 3 2 1 2 1 1 2 -
+ur - - - - 10 - - - - - - - 5 - - - - 1 1 - 1 - - 2 - - - 1 1 - 1 2 1 - 3 1
+inEt, and initializing the weights ofmt using the trainedmt−1.
+Joint Finetuning (Joint FT): Similar to Inc. FT, we sequen-
+tially finetune m1≤t≤τ by initializing mt’s weights using the
+trained modelmt−1, but take the data batches fromSt
+i=0{Ei}.
+Elastic Weight Consolidation (EWC) [16]: EWC preserves
+important parameters from previous episodes by estimating pa-
+rameter importance using the Fisher information matrix (F) and
+adds a penalty term to the loss function during training on the
+current task. This penalty term, controlled by hyperparameters
+λ andα, balances between adapting to new tasks and retaining
+old knowledge. Following [21] we setλ to 5 andα to 0.5.
+Experience Replay (ER) [15]: Experience replay stores data
+from previous episodes in a memory buffer and replays them
+during the training of models on current episodes. Following
+[21], we sample 3% of data across each episode.
+Memory-aware Synapse (MAS) [17]: Like EWC, this method
+confines large model updates to weights. However, unlike the
+Fisher information matrix, it assesses parameter importance us-
+ing the average magnitude of gradients of the squared L2 norm
+of the learned function. Following [21], we setα andλ to 1 and
+0.5, respectively. These values determine the relative strength
+of the regularization term and the influence of previous tasks on
+updating parameter importance.
+Architecture based methods [27]: These methods add param-
+eters to the backbone network, but are unsuitable for DIL and
+LIDIL because the complexity grows as the number of episodes
+increases, with new parameters required for each language (22)
+and domain (208). Hence, we only use adapters for the LIL
+setup where we added up to 11 adapters (one for each new lan-
+guage). Adapters with a bottleneck dimension of 64 were added
+to each Conformer block of the Conformer-L model, introduc-
+ing an extra 1 million parameters per language.
+4.2. Training
+We train Conformer-L [46] models, consisting of 120M param-
+eters, as the encoder, with a hybrid CTC-RNNT [47] decoder.
+The model has 17 conformer blocks with 512 as the model di-
+mension. The output vocabulary is of size 256 per language,
+and is created by a Byte-Pair-Encoding (BPE) tokenizer. Each
+language consists of a separate decoder head. All our models
+are trained using the Nvidia’s NeMo library. The base mod-
+elsm0 and the Joint FT models were trained for 150,000 steps
+with a constant learning rate of 0.0001. Due to the skew in data
+920
+distribution across languages in our joint multilingual setup, we
+follow existing works [48] and use temperature sampling for
+better convergence. We trained the incremental models for 30K
+steps with half the learning rate. We trained the models using
+Adam optimizer with effective batch size of 8 audios per GPU.
+4.3. Metrics
+To evaluate different CL strategies, we use the following stan-
+dard metrics commonly used in CL literature [21]. However we
+use MER [49] instead of WER, as MER is bounded between 0
+to 1 and thus ensures a more standardised evaluation.
+AMER: Calculates the average Match Error Rate (MER) across
+all seen episodes.AMERt = 1
+t
+Pt
+i=1MERt,i ;t∈ [0,τ ]
+Forward Transfer (FWT): Captures how well the model lever-
+ages past knowledge to improve performance on new episodes.
+FWT t = MERinc.ft
+t −MERt,t; where MERinc.ft
+t refers
+to the MER obtained from the model trained on episodeEt.
+Backward Transfer (BWT) : Measures the effect of learning
+new tasks over the prior ones: negative values signal forgetting,
+while positive values indicate knowledge reinforcement.
+BWTt = 1
+t−1
+Pt−1
+i=1MERi,i−MERt,i ;t∈ [1,τ ]
+Intransigence Measure (IM): Evaluates the model’s ability to
+learn new tasks effectively, reflecting its plasticity. IMt =
+MERt,t−MERjointft
+t whereMERjointft
+t is the MER of
+the model trained jointly on episodes{E0,..,E t}.
+5. Results and Discussions
+LIL: Referring to Figure 3 (top), we observe a steady increase
+in AMER as new languages are introduced for Incremental FT,
+which is undesirable. Both regularization-based approaches,
+EWC and MAS, struggle to retain knowledge of previously
+learned languages, as shown by the trends in the Forward Trans-
+fer (FWT) across episodes. In contrast, ER significantly outper-
+forms them, even with a buffer size of just 3%, demonstrating
+the importance of replay in LIL. While ER demonstrates strong
+backward transfer (BWT) and positive intransigence, its poor
+forward transfer further emphasizes the need for CL approaches
+that better leverage knowledge from previous episodes. We also
+observe a sharp drop in the forward transfer and intransigence
+measures at episode 9. We hypothesize that this decline is due
+to the introduction of Manipuri, a Tibeto-Burman language with
+only 26 hours of data. The limited data and its notable dif-
+ferences from the Indo-Aryan and Dravidian language families
+observed in earlier episodes are likely factors contributing to
+this decline. Adapters outperform most CL approaches, except
+ER, in AMER and BWT by preventing forgetting with separate
+adapter layers per episode. However, their FWT is lower due to
+limited knowledge sharing, and their high Intransigence Mea-
+sure and growing parameter count (11M by the final episode)
+make them impractical for large-scale incremental settings.
+DIL: Referring to Figure 3 (middle), unlike LIL, we ob-
+serve that AMER reduces over episodes for two methods, MAS
+and ER. The reduction of AMER over episodes could be at-
+tributed to (i) current CL methods being able to adapt better to
+new domains than to new languages, and (ii) the slightly favor-
+able scenario in DIL, where the base model has already seen all
+the languages. All CL approaches demonstrate good forward
+transfer and intransigence measure in DIL. The observed per-
+formance change of only 1.5% is due to the randomness in the
+order of incoming data batches. This indicates that knowledge
+from previous domains is indeed helpful for new domains. Al-
+though MAS performs poorly in LIL, it shows good Forward
+Figure 3: Comparison of various CL methods: (top) Lan-
+guage Incremental Learning (LIL), (middle) Domain Incre-
+mental Learning (LIL) and (bottom) Language-Incremental
+Domain-Incremental Learning (LIDIL)
+and Backward Transfer in DIL, indicating that regularization-
+based methods are well-suited for domain-incremental learning.
+LIDIL: In Figure 3 (bottom), we observe across all meth-
+ods that the AMER first increases in the first 2 episodes similar
+to LIL, and then steadily decreases from episode 3 onwards,
+similar to DIL. This is due to the fact that many new languages
+are seen in the first 2 episodes, and the number of new languages
+gradually reduces after that. This demonstrates the unique hy-
+brid nature of this newly introduced continual learning scenario
+that encompasses characteristics from both the aforementioned
+scenarios, viz., LIL and DIL. We also observe that backward
+transfer for EWC and MAS improves over time, unlike the other
+methods, indicating gradual adaptation to previous tasks as new
+languages and domains are added. All methods show a posi-
+tive Intransigence Measure in LIDIL. Lastly, to verify impact
+of episode order, we tested three randomized sequences in the
+LIDIL scenario. Results showed consistent AMER and BWT
+scores, stable method rankings, and some variation in intransi-
+gence, suggesting certain episodic sequences are harder to train.
+Due to space constraints, these results are not included.
+Our experiments thus demonstrate that no single method
+consistently excels across all three scenarios, underscoring the
+need for more robust CL approaches to handle the real-world
+incremental learning challenges presented in Nirantar.
+6. Conclusion
+We presented Nirantar, a novel data framework designed to fa-
+cilitate training and evaluation of continual learning (CL) meth-
+ods in multilingual and multidomain settings. This dataset con-
+tains 3250 hours of human-transcribed speech data, including
+1720 hours released from this study, organized into 12 episodes
+featuring diverse language and domain combinations. Evalua-
+tions using established CL methods such as Elastic Weight Con-
+solidation, Memory-aware Synapse, and Experience Replay
+highlight the utility of the dataset across Language-Incremental
+(LIL), Domain-Incremental (DIL), and Language-Incremental
+Domain-Incremental Learning (LIDIL) scenarios. All associ-
+ated resources have been released1 under a CC-BY-4 license to
+support further research in this area.
+921
+7. References
+[1] R. Ardila et al. , “Common voice: A massively-multilingual
+speech corpus,” in LREC. European Language Resources As-
+sociation, 2020, pp. 4218–4222.
+[2] C. Wang et al. , “V oxpopuli: A large-scale multilingual speech
+corpus for representation learning, semi-supervised learning and
+interpretation,” in ACL/IJCNLP (1). ACL, 2021, pp. 993–1003.
+[3] L. Lugosch et al. , “Pseudo-labeling for massively multilingual
+speech recognition,” in ICASSP. IEEE, 2022, pp. 7687–7691.
+[4] A. Radford et al., “Robust speech recognition via large-scale weak
+supervision,” in ICML, vol. 202. PMLR, 2023, pp. 28 492–
+28 518.
+[5] Y . Zhang et al., “Google USM: scaling automatic speech recogni-
+tion beyond 100 languages,” CoRR, vol. abs/2303.01037, 2023.
+[6] N. R et al. , “SPRING-INX: A multilingual indian language
+speech corpus,” CoRR, vol. abs/2310.14654, 2023.
+[7] L. Wang et al. , “A comprehensive survey of continual learn-
+ing: Theory, method and application,” IEEE Trans. Pattern Anal.
+Mach. Intell., vol. 46, no. 8, pp. 5362–5383, 2024.
+[8] M. Mundt et al., “A wholistic view of continual learning with deep
+neural networks: Forgotten lessons and the bridge to active and
+open world learning,” Neural Networks , vol. 160, pp. 306–336,
+2023.
+[9] I. J. Goodfellow et al., “An empirical investigation of catastrophic
+forgeting in gradient-based neural networks,” in ICLR (Poster),
+2014.
+[10] F. Zenke et al., “Continual learning through synaptic intelligence,”
+in ICML, vol. 70. PMLR, 2017, pp. 3987–3995.
+[11] Z. Lin et al. , “The CLEAR benchmark: Continual learning on
+real-world imagery,” inNeurIPS Datasets and Benchmarks, 2021.
+[12] S. Rebuffi et al., “Learning multiple visual domains with residual
+adapters,” in NIPS, 2017, pp. 506–516.
+[13] X. Jin et al. , “Learn continually, generalize rapidly: Life-
+long knowledge accumulation for few-shot learning,” in EMNLP
+(Findings). ACL, 2021, pp. 714–729.
+[14] T. Javed et al., “Indicvoices: Towards building an inclusive mul-
+tilingual speech dataset for indian languages,” in ACL (Findings).
+ACL, 2024, pp. 10 740–10 782.
+[15] D. Rolnick et al. , “Experience replay for continual learning,” in
+NeurIPS, 2019, pp. 348–358.
+[16] H. Liu et al., “Overcoming catastrophic forgetting in graph neural
+networks,” in AAAI. AAAI Press, 2021, pp. 8653–8661.
+[17] R. Aljundi et al., “Memory aware synapses: Learning what (not)
+to forget,” inECCV (3), vol. 11207. Springer, 2018, pp. 144–161.
+[18] G. M. van de Ven et al. , “Three types of incremental learning,”
+Nat. Mac. Intell., vol. 4, no. 12, pp. 1185–1197, 2022.
+[19] S. Sadhu et al., “Continual learning in automatic speech recogni-
+tion,” in INTERSPEECH. ISCA, 2020, pp. 1246–1250.
+[20] H. Chang et al., “Towards lifelong learning of end-to-end ASR,”
+in Interspeech. ISCA, 2021, pp. 2551–2555.
+[21] L. D. Libera et al., “CL-MASR: A continual learning benchmark
+for multilingual ASR,” IEEE ACM Trans. Audio Speech Lang.
+Process., vol. 32, pp. 4931–4944, 2024.
+[22] V . Lomonaco et al. , “Core50: a new dataset and benchmark for
+continuous object recognition,” in CoRL, vol. 78. PMLR, 2017,
+pp. 17–26.
+[23] M. Ceccon et al., “Multi-label continual learning for the medical
+domain: A novel benchmark,” CoRR, vol. abs/2404.06859, 2024.
+[24] L. Wang et al. , “A comprehensive survey of continual learn-
+ing: Theory, method and application,” IEEE Trans. Pattern Anal.
+Mach. Intell., vol. 46, no. 8, pp. 5362–5383, 2024.
+[25] P. Buzzega et al., “Dark experience for general continual learning:
+a strong, simple baseline,” in NeurIPS, 2020.
+[26] A. Chaudhry et al., “Efficient lifelong learning with A-GEM,” in
+ICLR (Poster). OpenReview.net, 2019.
+[27] S. V . Eeckt et al., “Using adapters to overcome catastrophic for-
+getting in end-to-end automatic speech recognition,” in ICASSP.
+IEEE, 2023, pp. 1–5.
+[28] A. A. Rusu et al., “Progressive neural networks,” arXiv preprint
+arXiv:1606.04671, 2016.
+[29] A. Mallya et al., “Packnet: Adding multiple tasks to a single net-
+work by iterative pruning,” in CVPR. Computer Vision Founda-
+tion / IEEE Computer Society, 2018, pp. 7765–7773.
+[30] B. M. L. Srivastava et al. , “Interspeech 2018 low resource au-
+tomatic speech recognition challenge for indian languages,” in
+SLTU. ISCA, 2018, pp. 11–14.
+[31] O. Kjartansson et al. , “Crowd-sourced speech corpora for ja-
+vanese, sundanese, sinhala, nepali, and bangladeshi bengali,” in
+SLTU. ISCA, 2018, pp. 52–55.
+[32] F. He et al. , “Open-source multi-speaker speech corpora for
+building gujarati, kannada, malayalam, marathi, tamil and telugu
+speech synthesis systems,” in LREC. European Language Re-
+sources Association, 2020, pp. 6494–6503.
+[33] A. Diwan et al., “MUCS 2021: Multilingual and code-switching
+ASR challenges for low resource indian languages,” in Inter-
+speech. ISCA, 2021, pp. 2446–2450.
+[34] T. Javed et al., “Indicsuperb: A speech processing universal per-
+formance benchmark for indian languages,” in AAAI. AAAI
+Press, 2023, pp. 12 942–12 950.
+[35] K. S. Bhogale et al., “Effectiveness of mining audio and text pairs
+from public data for improving ASR systems for low-resource
+languages,” in ICASSP. IEEE, 2023, pp. 1–5.
+[36] A. Bhanushali et al., “Gram vaani ASR challenge on spontaneous
+telephone speech recordings in regional variations of hindi,” in
+INTERSPEECH. ISCA, 2022, pp. 3548–3552.
+[37] M. Ayyavu et al. , “Subword dictionary learning and segmenta-
+tion techniques for automatic speech recognition in tamil and kan-
+nada,” CoRR, vol. abs/2207.13331, 2022.
+[38] D. Adiga et al., “Automatic speech recognition in sanskrit: A new
+speech corpus and modelling insights,” in ACL/IJCNLP (Find-
+ings). ACL, 2021, pp. 5039–5050.
+[39] K. Prahallad et al. , “The IIIT-H indic speech databases,” in IN-
+TERSPEECH. ISCA, 2012, pp. 2546–2549.
+[40] B. Abraham et al., “Crowdsourcing speech data for low-resource
+languages from low-income workers,” in LREC. European Lan-
+guage Resources Association, 2020, pp. 2819–2826.
+[41] K. S. Bhogale et al., “Vistaar: Diverse benchmarks and training
+sets for indian language ASR,” inINTERSPEECH. ISCA, 2023,
+pp. 4384–4388.
+[42] A. Baby et al. , “Resources for Indian languages,” in CBBLR –
+Community-Based Building of Language Resources. Tribun EU,
+2016, pp. 37–43.
+[43] T. Javed et al., “Svarah: Evaluating english ASR systems on in-
+dian accents,” in INTERSPEECH. ISCA, 2023, pp. 5087–5091.
+[44] A. Singh et al. , “SPIRE-SIES: A spontaneous indian english
+speech corpus,” in O-COCOSDA. IEEE, 2023, pp. 1–6.
+[45] T. Javed et al. , “LAHAJA: A robust multi-accent benchmark
+for evaluating hindi ASR systems,” CoRR, vol. abs/2408.11440,
+2024.
+[46] A. Gulati et al., “Conformer: Convolution-augmented transformer
+for speech recognition,” in Interspeech. ISCA, 2020, pp. 5036–
+5040.
+[47] V . Noroozi et al., “Stateful conformer with cache-based inference
+for streaming automatic speech recognition,” in ICASSP. IEEE,
+2024, pp. 12 041–12 045.
+[48] M. Wu et al., “Uncertainty-aware balancing for multilingual and
+multi-domain neural machine translation training,” inEMNLP (1).
+Association for Computational Linguistics, 2021, pp. 7291–7305.
+[49] A. C. Morris et al., “From WER and RIL to MER and WIL: im-
+proved evaluation measures for connected speech recognition,” in
+INTERSPEECH. ISCA, 2004, pp. 2765–2768.
+922

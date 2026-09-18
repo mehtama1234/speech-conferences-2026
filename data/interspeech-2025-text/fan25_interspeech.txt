@@ -1,0 +1,867 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+Band-Split Self-supervised Mamba for Infant-centered Audio Analysis
+Xulin Fan1,2, Jialu Li2, Mark Hasegawa-Johnson1,2, Nancy L. McElwain2,3
+1Department of Electrical and Computer Engineering, University of Illinois, USA
+2Beckman Institute for Advanced Science and Technology, University of Illinois, USA
+3Department of Human Development and Family Studies, University of Illinois, USA
+xulinf2@illinois.edu, jialuli3@illinois.edu, jhasegaw@illinois.edu, mcelwn@illinois.edu
+Abstract
+Infant-worn audio recorders provide a valuable means to
+analyze an infant’s home environment and vocal interactions
+with family members.
+Recent advances in self-supervised
+learning on large unlabeled datasets and supervised training on
+limited annotated data have improved performance in this do-
+main. However, data scarcity remains a challenge. We intro-
+duce Band-Split SSAMBA (BS-SSAMBA), a self-supervised
+representation learning method that incorporates band-specific
+projections and a band-agnostic Mamba encoder to model tem-
+poral relationships across frequency bands. Designed for data-
+efficient learning, BS-SSAMBA effectively leverages both un-
+labeled and labeled in-domain data. Through extensive experi-
+ments on family audio recordings, we show that BS-SSAMBA
+outperforms vanilla SSAMBA and wav2vec2-based models,
+demonstrating its effectiveness for infant-centered audio tag-
+ging.
+Index Terms: infant-centered audio analysis, speaker diariza-
+tion, vocalization classification, self-supervised learning
+1. Introduction
+Infants communicate a wide range of needs and emotions
+through vocalizations, such as cries, fusses, and babbles. Care-
+givers’ timely and appropriate responses to infants’ vocal
+cues [1] and infant-caregiver vocal turn-taking [2] [3] have im-
+portant implications for social-emotional [4] [5], cognitive [6],
+and language [7] development. Because infants and mothers
+show meaningful differences in behavior, including vocaliza-
+tions, across lab and home contexts [8] [9] and because father-
+infant [10] and sibling-infant interactions [11] also play impor-
+tant roles in infant development, automated diarization of in-
+fants’ and family members’ vocalizations across daylong home
+recordings has the potential to transform scientific understand-
+ing of these early yet critical developmental processes. To ac-
+complish such diarization tasks, audio tagging has emerged as
+a powerful tool for labeling audio segments or frames with in-
+formation about who is speaking (e.g., infant, adult) and the
+type of vocalization (e.g., crying, babbling). Previous works on
+infant-centered audio have largely relied on fully supervised ap-
+proaches, such as infant vocalization classification [12, 13, 14],
+cry classification [15], and speaker diarization [16], but these
+methods often suffer from limited performance due to the
+scarcity of labeled data.
+Recent advances in self-supervised learning (SSL) are
+transforming how we tackle audio tagging, particularly in do-
+mains with limited labeled data. By leveraging large-scale unla-
+beled audio, models such as wav2vec2.0 [17], the Audio Spec-
+trogram Transformer (AST) [18], and Self-Supervised Audio
+Mamba (SSAMBA) [19] learn high-level representations before
+fine-tuning on small labeled datasets. Compared with purely
+supervised approaches, these SSL methods substantially reduce
+the amount of labeled data needed and often yield better per-
+formance. Furthermore, spectrogram-based methods like AST
+(and its self-supervised variant SSAST [20]) capture frequency-
+time structures effectively, yet often require large-scale data
+and can be computationally expensive when modeling long se-
+quences.
+On the other hand, SSAMBA uses a state space
+model [21] that scales linearly with sequence length, address-
+ing the complexity and memory challenges associated with long
+audio contexts.
+Despite these advances, audio tagging for infant-centered
+home audio recordings remains under-explored due to the
+scarcity of in-domain data. Some recent works using infant-
+centered recordings have begun to bridge this gap. For instance,
+Khan et al. [22] employed a pretrained AST model for environ-
+mental sound detection in the home, whereas Li et al. [23] lever-
+aged wav2vec2.0 pretraining and finetuning schemes to solve
+speaker diarization and vocalization classification for infants
+and parents. Both studies demonstrated the potential benefits
+of SSL in infant-centered tasks but faced challenges like model
+complexity and limited domain-specific data.
+In this paper, we propose a new method, Band-Split
+SSAMBA (BS-SSAMBA), to further advance SSL of audio rep-
+resentation for infant-centered family audio tagging. Below we
+outline our major contributions:
+1. We introduce Band-Split SSAMBA, a state space model
+(SSM) that disentangles spectrogram modeling into frequency
+modeling via band-specific projections and temporal modeling
+via a Mamba encoder. This design reduces the sequence length
+and difficulty of spectrogram modeling for the mamba encoder
+and facilitates better representation learning with limited in-
+domain data.
+2. We incorporate framewise feature conditioning, mak-
+ing important cross-band information easily accessible to the
+model during fine-tuning, improving efficiency while minimiz-
+ing computational overhead.
+3. We conduct extensive experiments on unlabeled and la-
+beled infant-centered audio recordings in the home. Through
+comparison with existing SSL methods, we validate the effec-
+tiveness of our band-split mechanism and framewise feature
+conditioning.
+2. Method
+Figure 1 shows our model architecture. Our approach builds
+upon SSAMBA [19], a self-supervised SSM designed for
+general-purpose audio tagging. SSAMBA retains the pretrain-
+ing and fine-tuning objectives of the earlier transformer-based
+SSAST model [20] but achieves greater efficiency due to the
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+2795
+10.21437/Interspeech.2025-504
+
+Band3 Proj
+Pretraining
+Mamba
+Encoder
+B3
+P0
+Band2 Proj
+Band1 Proj
+Pretrain
+Mask
+MASK
+P2
+E3,1
+P1
+E3,3
+P3
+MASK
+P4
+B2
+P0
+MASK
+P2
+E2,1
+P1
+E2,3
+P3
+MASK
+P4
+B1
+P0
+MASK
+P2
+E1,1
+P1
+E1,3
+P3
+MASK
+P4
+Pretrain
+Mask
+Pretrain
+Mask
+C3,0
+C3,2
+C3,1
+C3,3
+C3,4
+C2,0
+C2,2
+C2,1
+C2,3
+C2,4
+C1,0
+C1,2
+C1,1
+C1,3
+C1,4
+Pretrain
+Mask
+Pretrain
+Mask
+Pretrain
+Mask
+CLS Head
+REC Head
+CLS Head
+REC Head
+CLS Head
+REC Head
+Learnable Projections
+Gamma
+Beta
+ Meanpool
+Framewise 
+Feature Extractor
+Classifier
+Finetuning
+Subband Feature Extraction
+Residual Connection
+Figure 1: Pretraining and Finetuning stages of the Band-split SSAMBA Architecture
+linear-time complexity of SSMs.
+However, SSAMBA still
+struggles with data scarcity, particularly when both pretrain-
+ing and fine-tuning datasets are significantly smaller than those
+used in general-purpose audio tagging.
+To mitigate the effects of limited data and improve per-
+formance, we propose a hybrid approach that combines band-
+specific convolutional kernels and a unified temporal Mamba
+encoder, which is shared across frequency bands. This design
+enhances data efficiency and strengthens feature learning, mak-
+ing the model more robust in the case of limited in-domain data.
+Furthermore, we propose to incorporate framewise feature con-
+ditioning to mitigate the model’s lack of cross-band modeling
+ability.
+2.1. Spectrogram Representation
+The input audio waveform is first transformed into a 128-
+dimensional mel-spectrogram, providing a time-frequency rep-
+resentation of the signal. This transformation is performed us-
+ing the Short-Time Fourier Transform (STFT) with a 25 ms
+window and a 10 ms stride, producing a spectrogram matrix
+X of dimensions F × T, where F represents the number of
+frequency bins and T denotes the number of time frames. The
+spectrogram is then partitioned into overlapping subbands, re-
+sulting in a final structure of dimensions B×K×T, where B is
+the number of subbands and K is the number of frequency bins
+per subband. Finally, each subband spectrogram is further di-
+vided into 2D patches, forming patch sequences for downstream
+processing.
+2.2. Band-specific Projection
+To ensure that the Mamba encoder processes patch sequences
+from different subbands consistently, we employ linear projec-
+tion layers with independent weights for each band. These lay-
+ers map patches from different subbands into a unified embed-
+ding space, enabling a coherent representation across all sub-
+bands.
+2.3. Mamba Encoder
+To prepare the patch sequences for input into the Mamba en-
+coder, we prepend band-specific tokens to each sequence to in-
+dicate the corresponding band and apply a shared positional
+embedding. Specifically, for a patch sequence from band b,
+denoted as [Eb,1, Eb,2, Eb,3, . . . , Eb,T ], we prepend a band-
+specific token Bb and add a learnable positional embedding
+[P0, P1, P2, . . . , PT ] to the sequence. The final input sequence
+to the Mamba encoder is then represented as:
+[Bb + P0, Eb,1 + P1, Eb,2 + P2, . . . , Eb,T + PT ]
+The band token Bb allows Mamba to learn band-specific in-
+formation, while the positional embedding Pt helps Mamba to
+learn temporal relationships. Since temporal structures are con-
+sistent across different bands, we use a shared positional em-
+bedding sequence for all bands.
+The Mamba encoder consists of stacked bidirectional SSMs
+as proposed in Vision Mamba [24]. The bidirectional SSM pro-
+cesses patch sequences in both forward and backward direc-
+tions, effectively capturing temporal dependencies from both
+perspectives.
+2.4. Training Objectives
+During pretraining, we apply both generative and discriminative
+losses to patch sequences from each of the B frequency bands.
+We randomly select N indices from the total S patch positions
+in each band, denoted by the set M ⊂{1, . . . , S}, where S is
+the number of patches per band and N = |M|. The patches
+at these selected positions are masked across all bands. The
+masked tokens’ contextualized embeddings from the mamba
+encoder are passed to two prediction heads: a generative head
+and a classification head. The output of these heads are opti-
+mized via Mean Squared Error (MSE) (Lg) and InfoNCE losses
+(Ld), respectively.
+We define the combined loss as:
+L = Ld + λLg,
+where
+Ld = −1
+BN
+B
+X
+b=1
+X
+s∈M
+log
+ 
+exp
+ ˆcb,s · eb,s
+
+P
+j∈M exp
+ ˆcb,j · eb,j
+
+!
+,
+Lg =
+1
+BN
+B
+X
+b=1
+X
+s∈M
+
+
+ˆxb,s −xb,s
+
+
+2.
+Here, x, e, ˆc, and ˆx respectively denote the patch, the pro-
+jected patch embedding, the output of the classification head,
+and the output of the generative head. The subscripts b, s indi-
+cate the s-th patch along the temporal axis at band b.
+During fine-tuning, we form a single embedding ¯ci for the
+ith sample by meanpooling ˆcb,s across all bands in all the col-
+umn that is part of the labeled region. After incorporating the
+2796
+
+SPLIT
+# OF FAMILIES
+TOTAL
+SIL
+CXN
+F-ADS
+F-CDS
+M-ADS
+M-CDS
+FM-SNG
+C-BAB
+C-CRY
+C-FUS
+TRAINING
+51
+610.0
+378.4
+27.1
+37.6
+48.9
+18.4
+13.5
+7.9
+50.2
+6.8
+21.2
+VALIDATION
+5
+105.0
+72.5
+1.8
+5.5
+5.5
+3.1
+1.2
+1.0
+6.6
+0.2
+7.6
+TESTING
+5
+132.9
+89.8
+1.6
+5.3
+7.0
+4.5
+3.2
+1.6
+7.3
+4.9
+7.6
+Table 1: Detailed statistics of training, validation, and testing split for annotated data. Each column denotes the total durations for
+each class in minutes. Columns from left to right are number of families, total, silence (SIL), siblings (CXN), adult/child-directed speech
+of female adult (F-ADS/F-CDS), adult/child-directed speech of male adults (M-ADS/M-CDS), Singing/Rhythmic Speech of adults (FM-
+SNG), babbling (C-BAB), crying (C-CRY), and fussing (C-FUS) of focal child.
+framewise feature conditioning (discussed in Section 2.5), this
+embedding is fed into the final classifier.
+2.5. Framewise Feature Conditioning
+Although we successfully reduce the sequence length through
+band splitting, thereby decreasing the complexity of modeling
+long sequences, this approach also limits the model’s ability to
+capture cross-band relationships. For the audio tagging task of
+interest, certain framewise characteristics play a crucial role in
+distinguishing different classes in the home audio recordings.
+For example, because the recording device is worn by the in-
+fant, the distance to adult caregivers—and consequently, the
+volume of their voices—serves as a strong cue for distinguish-
+ing whether an adult is speaking to another adult or to the infant.
+Because Band-Split SSAMBA has a straightforward mech-
+anism for cross-band modeling, it may struggle to efficiently
+extract framewise features across all bands. To address this, we
+explicitly extract the framewise energy of the spectrogram and
+use it as an additional conditioning cue for the final classifier
+during fine-tuning. We adopt Featurewise Linear Modulation
+(FiLM, [25]) as our conditioning mechanism, which can be for-
+mulated as:
+γi = f(Ei)
+βi = g(Ei)
+F
+ ¯ci | Ei
+
+= (1 + γi) ⊙¯ci + βi.
+where ¯ci and Ei are 1-D vectors corresponding to the mean-
+pooled output of the Mamba encoder across patches in the
+central annotation area across all bands and the precomputed
+framewise energy of the i-th sample, respectively, and ⊙de-
+notes array multiplication. The functions f and g are learnable
+mappings that transform the framewise energy into modulation
+parameters, which are then applied to the Mamba encoder’s out-
+put after meanpooling denoted as ¯ci. These modulation param-
+eters, γi and βi, act as an adaptive affine transformation F on
+¯ci. The transformed embedding is subsequently fed into the
+final classification layer, with a residual connection from the
+original embedding retained.
+3. Experiments
+In this section, we present our experiments and dataset. We first
+describe our sample and data collection procedures, followed by
+our experimental results, comparisons with baseline methods,
+and ablations studies.
+3.1. Data
+For the experiments, we use audio recordings from 61 fami-
+lies with infants between 1 and 18 months of age (Mean=9.43
+months). Families were recruited from a midsized midwestern
+city in the United States and were predominantly White and na-
+tive English speakers. Multiple daylong home audio recordings
+(2-3 per family) were collected using LittleBeats™[26], an in-
+fant wearable device that records audio, cardiac, and motion
+METHOD
+PATCH STRIDE
+ACC MACRO-F1 KAPPA
+W2V-LB [23]
+NA
+NA
+0.814
+0.599
+0.655
+SSAMBA [19] 16X16 10X10
+0.792
+0.529
+0.599
+SSAMBA†
+16X16 16X16
+0.798
+0.533
+0.620
+SSAMBA†
+64X4
+64X4
+0.819
+0.581
+0.647
+SSAMBA†
+64X4
+32X4
+0.804
+0.554
+0.633
+BS-SSAMBA
+64X4
+32X4
+0.825
+0.609
+0.663
+Table 2: Main results and comparison between our proposed
+methods and baselines.
+For SSAMBA, STRIDE denotes the
+stride during finetuning only. For BS-SSAMBA, STRIDE de-
+notes both pretraining and finetuning stride as a result of band
+split. † denotes the SSAMBA variants which have different patch
+and stride setting than the one used in [19].
+data on a single platform.
+Following prior studies [23], our model undergoes pretrain-
+ing on a large unlabeled dataset before fine-tuning on a small
+set of labeled data. For pretraining, we use the same unlabeled
+dataset as in [23], comprising approximately 1,100 hours of Lit-
+tleBeats recordings. These recordings are segmented into non-
+overlapping 10-second samples.
+For supervised fine-tuning, we use around 14 hours of la-
+beled data from our sample of 61 families. Audio files vary-
+ing from 30 to 120 seconds in length were annotated for infant,
+adult, and sibling vocalizations by trained, certified research as-
+sistants using Praat software. The labeled dataset is divided
+into training, validation, and test sets, with the distribution of
+each split shown in Table 1. To ensure generalization, the fam-
+ilies in each split are mutually exclusive. Each labeled sample
+is a 10-second audio clip, where annotations specify the active
+speaker and vocalization type within the central 0.1-second in-
+terval. Such long context was proved beneficial for accurate
+frame-level tagging for naturalistic home recordings during our
+preliminary experiments. Tags are drawn from a set of 10 la-
+bels: {SIL, CXN, F-ADS, F-CDS, M-ADS, M-CDS, FM-SNG,
+C-BAB, C-CRY, C-FUS} with class names described in the
+caption of Table 1.
+3.2. Experimental Configuration
+We pretrain the models for 15 epochs using the Adam optimizer
+with a learning rate of 1 × 10−4 and a batch size of 32. We set
+λ = 10 as the weighting term for the pretraining loss and N =
+192 as the number of masked timesteps. Training was done on
+4 NVIDIA A100 GPUs where pretraining takes around 3 days.
+After pretraining, we fine-tune the model using binary cross-
+entropy loss with mixup training [27] (mixup ratio = 0.6) and
+SpecAugment (maximum frequency mask length = 48 frames).
+The same optimizer is used for fine-tuning. The model is fine-
+tuned for five epochs, and we select the checkpoint with the best
+kappa score for evaluation. We use the base configuration from
+SSAMBA [19] for our mamba encoder, consisting of 24 layers
+with an embedding dimension of 768.
+2797
+
+SIL
+CXN
+F-ADS
+F-CDS
+M-ADS
+M-CDS
+FM-SNG
+C-BAB
+C-CRY
+C-FUS
+Predicted Label
+SIL
+CXN
+F-ADS
+F-CDS
+M-ADS
+M-CDS
+FM-SNG
+C-BAB
+C-CRY
+C-FUS
+True Label
+94.88
+0.55
+2.07
+0.73
+0.51
+0.17
+0.06
+0.72
+0.04
+0.25
+18.51
+56.46
+17.27
+7.03
+0.10
+0.00
+0.00
+0.62
+0.00
+0.00
+17.69
+0.19
+61.19
+15.65
+3.99
+1.04
+0.00
+0.16
+0.00
+0.09
+21.75
+0.43
+19.70
+49.26
+2.24
+4.03
+0.69
+1.38
+0.36
+0.17
+19.87
+0.00
+3.09
+3.28
+64.48
+8.69
+0.00
+0.29
+0.00
+0.29
+27.93
+0.00
+3.09
+22.54
+28.09
+16.58
+0.00
+1.52
+0.00
+0.26
+16.21
+0.30
+1.22
+18.54
+3.95
+0.00
+59.27
+0.10
+0.00
+0.41
+17.02
+0.50
+0.64
+1.97
+0.29
+0.77
+0.09
+66.24
+0.00
+12.48
+6.59
+0.03
+0.41
+0.14
+0.00
+0.00
+0.00
+0.68
+66.52
+25.62
+8.05
+0.37
+0.61
+2.32
+0.00
+0.00
+0.24
+9.67
+21.64
+57.10
+Confusion Matrix (Percentage across Each Row)
+0
+20
+40
+60
+80
+Figure 2: Confusion Matrix for BS-SSAMBA for Test set
+METHOD
+FRAME COND
+ACC
+MACRO-F1 KAPPA
+BS-SSAMBA NO
+0.821
+0.597
+0.656
+BS-SSAMBA YES
+0.825
+0.609
+0.663
+Table 3: Ablation study on framewise feature conditioning.
+FRAME COND denotes whether we include framewise feature
+conditioning during the finetuning stage.
+3.3. Main Results
+We present our main results and comparisons with baseline
+methods in Table 2.
+As baselines, we include Wav2Vec2-
+LittleBeats (W2V-LB) [23] and SSAMBA [19]. All the models
+we compare have similar size: W2V-LB has 95M parameters,
+SSAMBA 101M parameters, BS-SSAMBA 102M parameters.
+For W2V-LB, we use the official released checkpoint,
+which was pretrained on the same unlabeled dataset, and then
+fine-tuned using our labeled data. The SSAMBA models are
+pretrained and finetuned with most of the hyperparameters as
+released in [19], except number of masked patches and data
+augmentation techniques. We evaluate variants with different
+patch sizes while keeping the percentage of masked patches
+fixed at 75% and use the same specaugment and mixup train-
+ing technique as used by BS-SSAMBA. We find that the de-
+fault 16×16 patch size yields suboptimal performance for both
+SSAMBA and BS-SSAMBA. The primary reason for this per-
+formance drop appears to be the lack of temporal resolution,
+which is crucial for our downstream task requiring label resolu-
+tion of 10 frames (0.1s).
+From the main results, we observe that BS-SSAMBA out-
+performs both W2V-LB and all tested SSAMBA variants across
+different patch sizes. Specifically, vanilla SSAMBA lags sig-
+nificantly behind W2V-LB, whereas BS-SSAMBA successfully
+closes this gap through the advantages introduced by the band-
+split method.
+Figure 2 shows the confusion matrix for BS-
+SSAMBA, with each entry representing the percentage of pre-
+dicted classes normalized by true labels. The model struggles
+to distinguish active vocalization from silence, likely due to
+background noises in the audio.
+In speaker diarization, M-
+CDS and CXN are often misclassified as the female caregiver,
+mainly due to the classifier’s bias towards majority class and the
+challenge of differentiating male child-directed speech from fe-
+male speech. For vocalization classification, key challenges in-
+clude distinguishing child-directed from adult-directed speech
+and misclassification between cry and fuss for the focal child.
+METHOD
+DEPTH EMB
+ACC MACRO-F1 KAPPA
+BS-SSAMBA† 12
+192
+0.813
+0.569
+0.641
+BS-SSAMBA† 12
+384
+0.816
+0.588
+0.640
+BS-SSAMBA
+24
+768
+0.825
+0.609
+0.663
+Table 4: Ablation study on model sizes. DEPTH and EMB re-
+spectively denote the number of mamba layers and the dimen-
+sion of the patch embedding. † denotes smaller models uses 3x
+learning rate for the final classification head during finetuning,
+as in [19]. The models from top to bottom respectively have 6M,
+16M, and 102M parameters during finetuning.
+METHOD
+N (PERCENT)
+ACC
+MACRO-F1 KAPPA
+BS-SSAMBA 64 (25%)
+0.808
+0.561
+0.627
+BS-SSAMBA 128 (50%)
+0.822
+0.605
+0.658
+BS-SSAMBA 192 (75%)
+0.825
+0.609
+0.663
+Table 5: Ablation study on number of masked timesteps (N).
+N(PERCENT) represents the number of time steps masked for
+each band, as an integer and as a percentage of the S = 256
+time steps.
+3.4. Ablation Studies
+In this section, we present several key ablation studies regarding
+BS-SSAMBA to evaluate the effect of different components and
+various hyperparameters.
+Impact of Framewise Feature Conditioning: Table 3 presents
+our ablation study on framewise feature conditioning. We test
+BS-SSAMBA with and without framewise feature conditioning
+during finetuning with other configurations fixed. The results
+reflect the effectiveness of incorporating our proposed condi-
+tioning methods into the BS-SSAMBA framework.
+Impact of Model Size: Table 4 presents our ablation study on
+model size. In general, larger BS-SSAMBA models with more
+layers and larger embeddings yield better results. However, per-
+formance differences across model sizes are small, and even the
+smallest 6M-parameter model achieves competitive results.
+Impact of Number of Masked Patches: Table 5 presents our
+ablation study on different N, the number of masked patches in
+each band, ranging from masking 25% to 75% of patches on
+the temporal axis. In general, we observe an increase on the
+downstream infant-centered audio tagging performance when
+we mask out a larger portion of patches with our optimal setting
+at 75%.
+4. Conclusion
+We propose Band-Split SSAMBA, which integrates band-
+specific projections and a band-agnostic Mamba encoder into
+the Self-Supervised Audio Mamba framework. These modifica-
+tions incorporate human knowledge of the spectrogram into the
+model, reducing sequence length for seq-to-seq modeling and
+facilitating efficient spectrogram representation learning with
+limited in-domain data. We evaluate our approach on unlabeled
+and labeled audio recordings from infant-centered home audio
+recordings. Our experimental results advance audio SSL tech-
+niques with limited in-domain data. Such advances are central
+to achieving a fuller understanding of this key development pro-
+cess: infants’ everyday vocal interactions with family members.
+2798
+
+5. Acknowledgements
+This study was supported by the funding from the National In-
+stitute on Drug Abuse (R34DA050256; R01DA059422). Ex-
+periments in the work used the Delta System at NCSA through
+ACCESS allocations CIS240417 and CIS250040.
+6. References
+[1] N. L. McElwain and C. Booth-LaForce, “Maternal sensitivity to
+infant distress and nondistress as predictors of infant-mother at-
+tachment security.” Journal of Family Psychology, vol. 20, no. 2,
+p. 247, 2006.
+[2] E. E. Hilbrink, M. Gattis, and S. C. Levinson, “Early develop-
+mental changes in the timing of turn-taking: a longitudinal study
+of mother–infant interaction,” Frontiers in psychology, vol. 6, p.
+1492, 2015.
+[3] M. Gratier, E. Devouche, B. Guellai, R. Infanti, E. Yilmaz, and
+E. Parlato-Oliveira, “Early development of turn-taking in vocal
+interaction between mothers and infants,” Frontiers in psychology,
+vol. 6, no. 1167, pp. 236–245, 2015.
+[4] B. Beebe, J. Jaffe, S. Markese, K. Buck, H. Chen, P. Cohen,
+L. Bahrick, H. Andrews, and S. Feldstein, “The origins of 12-
+month attachment: A microanalysis of 4-month mother–infant in-
+teraction,” Attachment & human development, vol. 12, no. 1-2, pp.
+3–141, 2010.
+[5] A. E. Bigelow and M. Power, “Influences of infants’ and moth-
+ers’ contingent vocal responsiveness on young infants’ vocal so-
+cial bids in the still face task,” Infant Behavior and Development,
+vol. 69, p. 101776, 2022.
+[6] R. C. Fraley, G. I. Roisman, and J. D. Haltigan, “The legacy of
+early experiences in development: formalizing alternative models
+of how early experiences are carried forward over time.” Develop-
+mental psychology, vol. 49, no. 1, p. 109, 2013.
+[7] V. H. Zhang, S. L. Elmlinger, R. R. Albert, and M. H. Gold-
+stein, “Caregiver reactions to babbling organize turn-taking inter-
+actions: Facilitative effects of vocal versus non-vocal responses,”
+Infancy, 2024.
+[8] J. Belsky, “Mother-infant interaction at home and in the labora-
+tory: A comparative study,” The Journal of genetic psychology,
+vol. 137, no. 1, pp. 37–47, 1980.
+[9] V. L. Lewedag, D. K. Oller, and M. P. Lynch, “Infants’ vocal-
+ization patterns across home and laboratory environments,” First
+Language, vol. 14, no. 42-43, pp. 049–65, 1994.
+[10] V. Sethna, E. Perry, J. Domoney, J. Iles, L. Psychogiou, N. E.
+Rowbotham, A. Stein, L. Murray, and P. G. Ramchandani,
+“Father–child interactions at 3 months and 24 months: Contri-
+butions to children’s cognitive development at 24 months,” Infant
+mental health journal, vol. 38, no. 3, pp. 378–390, 2017.
+[11] W. Oh, B. L. Volling, and R. Gonzalez, “Trajectories of children’s
+social interactions with their infant sibling in the first year: A mul-
+tidimensional approach.” Journal of Family Psychology, vol. 29,
+no. 1, p. 119, 2015.
+[12] M. Lavechin, R. Bousbib, H. Bredin, E. Dupoux, and A. Cristia,
+“An open-source voice type classifier for child-centered daylong
+recordings,” in Interspeech 2020, 2020, pp. 3072–3076.
+[13] J. Li, M. Hasegawa-Johnson, and N. L. McElwain, “Analysis of
+acoustic and voice quality features for the classification of infant
+and mother vocalizations,” Speech communication, vol. 133, pp.
+41–61, 2021.
+[14] S.-L. Yeh, G.-Y. Chao, B.-H. Su, Y.-L. Huang, M.-H. Lin, Y.-C.
+Tsai, Y.-W. Tai, Z.-C. Lu, C.-Y. Chen, T.-M. Tai, C.-W. Tseng, C.-
+K. Lee, and C.-C. Lee, “Using attention networks and adversarial
+augmentation for styrian dialect continuous sleepiness and baby
+sound recognition,” in Interspeech 2019, 2019, pp. 2398–2402.
+[15] J. Xie, X. Long, R. A. Otte, and C. Shan, “Convolutional neu-
+ral networks for audio-based continuous infant cry monitoring at
+home,” IEEE Sensors Journal, vol. 21, no. 24, pp. 27 710–27 717,
+2021.
+[16] A. Cristia, S. Ganesh, M. Casillas, and S. Ganapathy, “Talker di-
+arization in the wild: the case of child-centered daylong audio-
+recordings,” in Interspeech 2018, 2018, pp. 2583–2587.
+[17] A. Baevski, Y. Zhou, A. Mohamed, and M. Auli, “wav2vec
+2.0: A framework for self-supervised learning of speech repre-
+sentations,” Advances in neural information processing systems,
+vol. 33, pp. 12 449–12 460, 2020.
+[18] Y. Gong, Y.-A. Chung, and J. Glass, “AST: Audio spectrogram
+transformer,” in Interspeech 2021, 2021, pp. 571–575.
+[19] S. Shams, S. S. Dindar, X. Jiang, and N. Mesgarani, “Ssamba:
+Self-supervised audio representation learning with mamba state
+space model,” arXiv preprint arXiv:2405.11831, 2024.
+[20] Y. Gong, C.-I. Lai, Y.-A. Chung, and J. Glass, “Ssast: Self-
+supervised audio spectrogram transformer,” in Proceedings of the
+AAAI Conference on Artificial Intelligence, vol. 36, no. 10, 2022,
+pp. 10 699–10 709.
+[21] A. Gu and T. Dao, “Mamba: Linear-time sequence modeling with
+selective state spaces,” arXiv preprint arXiv:2312.00752, 2023.
+[22] M. N. H. Khan, J. Li, N. L. McElwain, M. Hasegawa-Johnson, and
+B. Islam, “Sound tagging in infant-centric home soundscapes,” in
+2024 IEEE/ACM Conference on Connected Health: Applications,
+Systems and Engineering Technologies (CHASE).
+IEEE, 2024,
+pp. 142–146.
+[23] J. Li, M. Hasegawa-Johnson, and N. L. McElwain, “Towards ro-
+bust family-infant audio analysis based on unsupervised pretrain-
+ing of wav2vec 2.0 on large-scale unlabeled family audio,” in In-
+terspeech 2023, 2023, pp. 1035–1039.
+[24] L. Zhu, B. Liao, Q. Zhang, X. Wang, W. Liu, and X. Wang, “Vi-
+sion mamba: Efficient visual representation learning with bidirec-
+tional state space model,” arXiv preprint arXiv:2401.09417, 2024.
+[25] E. Perez, F. Strub, H. De Vries, V. Dumoulin, and A. Courville,
+“FiLM: Visual reasoning with a general conditioning layer,” in
+Proceedings of the AAAI conference on artificial intelligence,
+vol. 32, no. 1, 2018.
+[26] B. Islam, N. L. McElwain, J. Li, M. I. Davila, Y. Hu, K. Hu,
+J. M. Bodway, A. Dhekne, R. Roy Choudhury, and M. Hasegawa-
+Johnson, “Preliminary technical validation of LittleBeats™: A
+multimodal sensing platform to capture cardiac physiology, mo-
+tion, and vocalizations,” Sensors, vol. 24, no. 3, p. 901, 2024.
+[27] Y. Tokozume, Y. Ushiku, and T. Harada, “Learning from between-
+class examples for deep sound recognition,” arXiv preprint
+arXiv:1711.10282, 2017.
+2799
+

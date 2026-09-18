@@ -1,0 +1,765 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+Vision-Integrated High-Quality Neural Speech Coding
+Yao Guo, Yang Ai∗, Rui-Chen Zheng, Hui-Peng Du, Xiao-Hang Jiang, Zhen-Hua Ling
+National Engineering Research Center of Speech and Language Information Processing, University
+of Science and Technology of China, Hefei, P. R. China
+guoyao1917@mail.ustc.edu.cn, yangai@ustc.edu.cn, zhengruichen@mail.ustc.edu.cn,
+redmist@mail.ustc.edu.cn, jiang xiaohang@mail.ustc.edu.cn, zhling@ustc.edu.cn
+Abstract
+This paper proposes a novel vision-integrated neural speech
+codec (VNSC), which aims to enhance speech coding quality
+by leveraging visual modality information. In VNSC, the image
+analysis-synthesis module extracts visual features from lip im-
+ages, while the feature fusion module facilitates interaction be-
+tween the image analysis-synthesis module and the speech cod-
+ing module, transmitting visual information to assist the speech
+coding process. Depending on whether visual information is
+available during the inference stage, the feature fusion module
+integrates visual features into the speech coding module using
+either explicit integration or implicit distillation strategies. Ex-
+perimental results confirm that integrating visual information
+effectively improves the quality of the decoded speech and en-
+hances the noise robustness of the neural speech codec, without
+increasing the bitrate.
+Index Terms: neural speech coding, visual information, feature
+fusion
+1. Introduction
+Speech coding aims to reduce the bitrate of speech signals while
+preserving speech quality, which is a fundamental step in ap-
+plications like speech communication and transmission. Con-
+ventional speech coding methods have evolved from extensive
+manual efforts and decades of research [1–4], and have been
+applied in various practical scenarios. However, they still face
+challenges such as limited speech quality and high bitrates.
+Recently, neural speech coding has attracted significant at-
+tention. Neural speech codecs operate in an end-to-end train-
+able framework, leveraging neural networks to jointly design
+and train the encoder, quantizer and decoder. SoundStream [5]
+represents an early effort in this domain, employing an en-
+coder to directly process the speech waveform, a residual vector
+quantizer (RVQ) [6] for discretization, and a decoder to recon-
+struct the speech waveform. Subsequent approaches, such as
+Encodec [7] and HiFi-Codec [8], can be viewed as variants of
+SoundStream, incorporating more advanced training and quan-
+tization strategies.
+To avoid direct waveform modeling and
+improve generation efficiency, APCodec [9] employs a paral-
+lel encoding and decoding approach for speech amplitude and
+phase spectra. More recently, MDCTCodec [10] has adopted
+a simpler single-path structure and utilized the modified dis-
+crete cosine transform (MDCT) spectrum as the modeling tar-
+get, achieving higher generation efficiency while maintaining
+high decoded speech quality.
+*Corresponding author.
+This work was funded by Anhui
+Province Major Science and Technology Research Project under Grant
+S2023Z20004, the National Nature Science Foundation of China under
+Grant 62301521 and the Anhui Provincial Natural Science Foundation
+under Grant 2308085QF200.
+Image 
+Analyzer
+Image 
+Synthesizer
+Visual Feature
+Lip Image 
+Sequence
+Synthesized 
+Lip Image 
+Sequence
+MDCT
+Speech 
+Encoder
+Feature Fusion Module
+Quantizer
+Speech Feature
+Visual Information Flow
+Image Analysis-Synthesis Module
+Discrete Token
+Speech 
+Decoder
+IMDCT
+Raw Speech
+Decoded Speech
+Raw Speech 
+MDCT Spectrum
+Decoded Speech 
+MDCT Spectrum
+Encoded 
+Bimodal Feature
+Quantized 
+Bimodal 
+Feature
+Speech Coding Module
+Figure 1: An overview of the proposed VNSC.
+The aforementioned neural speech codecs rely solely on the
+speech modality during training, and the model is optimized us-
+ing frames with a very short window shift [7–10] (e.g., 5 ms∼10
+ms), which inevitably leads to local optima. Intuitively, the de-
+coded speech would be smoother and more coherent if long-
+term cues were introduced to the codec. Ahasan et al. proposed
+DMCodec [11], which incorporates a language model (LM) and
+self-supervised speech model (SM) into a nerual speech codec.
+It has shown that the semantic and contextual information con-
+tained in the LM and SM can enhance the timbre of the decoded
+speech. This indicates that leveraging information from other
+modalities is beneficial for improving speech coding quality.
+Other modalities, such as the visual modality, also con-
+tain rich speech-related information, e.g., speaker characteris-
+tics. Integrating visual information to assist speech generation
+tasks has gained widespread attention [12–15]. For example,
+Xu et al. proposed a multi-layer fusion model with multi-head
+cross-attention mechanism to fuse audio and lip features for
+audio-visual speech enhancement in [15]. Zheng et al. incorpo-
+rated ultrasound tongue images to improve the performance of
+lip-based speech enhancement [14]. Researchers have also col-
+lected audio-visual corpus [16] and made efforts towards audio-
+visual speech recognition [17]. However, integrating visual in-
+formation into neural speech codecs to improve performance
+has not yet been thoroughly investigated.
+Therefore, this paper proposes VNSC, a vision-integrated
+neural speech codec, to explore the potential of visual modal-
+ity in improving coding quality. The image analysis-synthesis
+module of VNSC extracts visual features from lip images,
+which are then fully integrated with speech features through the
+feature fusion module to forms bimodal features. These features
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+619
+10.21437/Interspeech.2025-1409
+
+...
+...
+MCNX v2
+Conv3D
+(Pooling)
+BN
+ReLU
+Conv3D
+BN
+ReLU
+MaxPooling
+Lip Image 
+Sequence
+×1
+Image 
+Feature
+×4
+Image Analyzer
+TransConv3D
+BN
+ReLU
+×5
+Image Synthesizer
+Speech 
+Feature
+Concat
+Linear
+Bimodal 
+Feature
+MCNX v2
+MCNX v2
+...
+MCNX v2
+...
+Feature Fusion Module
+Speech Encoder
+Synthesized 
+Lip Image 
+Sequence
+Image Reconstruction Loss LI
+Reshape
+Conv1D
+Linear
+Reshape
+×4
+Conv1D
+×4
+Linear
+Reshape
+Reshape
+Training and Inference Flow
+Training Only Flow
+Training Loss
+...
+...
+MCNX v2
+Conv3D
+(Pooling)
+BN
+ReLU
+Conv3D
+BN
+ReLU
+MaxPooling
+Lip Image 
+Sequence
+×1
+Image 
+Feature
+×4
+Image Analyzer
+TransConv3D
+BN
+ReLU
+×5
+Image Synthesizer
+Speech 
+Feature
+Concat
+Linear
+Bimodal 
+Feature
+MCNX v2
+MCNX v2
+...
+MCNX v2
+...
+Feature Fusion Module
+Speech Encoder
+Synthesized 
+Lip Image 
+Sequence
+Image Reconstruction Loss LI
+Reshape
+Conv1D
+Linear
+Reshape
+×4
+Conv1D
+×4
+Linear
+Reshape
+Reshape
+Distillation Loss LD
+Training and Inference Flow
+Training Only Flow
+Training Loss
+(a)
+ 
+Scenario VA
+(b)
+ 
+Scenario VUA
+Figure 2:
+Structural details of the image analysis-synthesis module and the feature fusion module in VNSC. Here, Conv3D,
+TransConv3D, and Conv1D represent 3D convolution, transposed 3D convolution and 1D convolution operations, respectively. For
+simplicity, only the MCNX v2 blocks of the speech encoder in the speech coding module is depicted.
+are then injected into a standard neural speech codec to assist
+the coding process. For two different application scenarios, we
+design two distinct feature fusion strategies. When visual in-
+formation is available during inference, visual features are ex-
+plicitly integrated into the speech coding process through con-
+catenation. In contrast, when visual information is unavailable
+during inference, visual features are implicitly incorporated into
+the speech coding process during training through distillation.
+Experimental results confirm that with the assistance of visual
+modality, both the decoded speech quality and the noise robust-
+ness of the neural speech codec are significantly improved.
+Finally, we draw conclusions in Section 5.
+2. Proposed Method
+2.1. Overview
+As shown in Figure 1, VNSC consists of a speech coding mod-
+ule, an image analysis-synthesis module and a feature fusion
+module. The image analysis-synthesis module extracts visual
+features from lip images and injects them into the speech en-
+coding module via the feature fusion module to assist the coding
+process. The VNSC is designed for two scenarios, including
+• Scenario VA(Video Available): Visual information is avail-
+able during inference. The speech coding process can explic-
+itly leverage visual information.
+• Scenario VUA(Video Unavailable): Visual information is
+unavailable during inference. The speech coding process can
+only implicitly incorporate visual information. In this sce-
+nario, the speech codec should learn the visual information
+even in the absence of visual input, offering the advantage of
+incurring no additional computational during inference.
+2.2. Speech Coding Module
+We use MDCTCodec [10], an efficient and lightweight neural
+speech codec, in the speech coding module. The speech encoder
+takes the MDCT spectrum M ∈RM×N of the raw speech as
+input, combines it with visual information from the feature fu-
+sion module, and outputs the encoded bimodal features, where
+M and N represent the dimensions and the number of frames
+of the MDCT spectrum, respectively. These features are then
+discretized by an RVQ. The speech decoder finally decodes the
+MDCT spectrum from the quantized results and reconstructs the
+waveform via inverse MDCT (IMDCT).
+The speech encoder includes a pre-processing module,
+eight cascaded modified ConvNeXt v2 (MCNX v2) blocks and
+a post-processing module. At the input end of the speech en-
+coder, a plain 1D convolutional layer and layer normalization
+are employed for feature pre-processing. At the output end, the
+post-processing module comprises layer normalization, a linear
+layer, a downsampling 1D convolutional layer and a plain 1D
+convolutional layer. The MCNX v2 blocks have proven to be
+well-suited for speech coding [9,10]. Each MCNX v2 block pri-
+marily consists of a 1D depth-wise convolutional layer followed
+by layer normalization, a linear layer followed by a global re-
+sponse normalization [18] layer and a Gaussian error linear unit
+activation [19] function, with residual connections. The speech
+decoder is largely mirror-symmetric to the speech encoder, ex-
+cept that the downsampling 1D convolutional layer is replaced
+by a 1D upsampling transposed convolutional layer.
+2.3. Image Analysis-Synthesis Module
+As shown in Figure 2, the image analysis-synthesis module con-
+sists of an image analyzer ϕIA and an image synthesizer ϕIS.
+The image analyzer processes the input lip image sequence
+I ∈RH×W ×N and extracts the visual feature V ∈RDv×N,
+where H and W denote the height and width of each image,
+respectively, and Dv represent the dimension of the visual fea-
+ture. The image sequence I is time-aligned with the MDCT
+spectrum M in the speech coding module, with the temporal
+length being N. The image synthesizer then reconstructs the
+visual feature V into the image ˆI ∈RH×W ×N. This process
+can be represented by the following equations:
+V = ϕIA(I), ˆI = ϕIS(V ).
+(1)
+The extracted visual feature is sent to the feature fusion module
+for further processing before being incorporated into the speech
+coding process. For VA scenario, only the image analyzer are
+used during inference; whereas for VUA scenario, the entire
+image analysis-synthesis module is absent during inference.
+The image analyzer consists of five cascaded analysis
+blocks and a post-processing block. The first analysis block
+comprises a 3D convolution, batch normalization (BN) and a
+ReLU activation function.
+This 3D convolution reduces the
+height and width by applying a stride, effectively performing
+pooling. The last four analysis blocks include an additional
+620
+
+pooling layer to reduce the height and width, with the 3D convo-
+lution no longer serves this function. The post-processing block
+consists of a linear layer and four 1D convolutional layers, pri-
+marily responsible for reshaping the features and reducing the
+feature dimensions. The image synthesizer is largely mirror-
+symmetric to the image analyzer, with all the 3D convolutions
+replaced by 3D transposed convolutions, and the pooling layers
+removed. The increase in height and width is achieved by five
+3D transposed convolutions.
+During the training phase, for both scenarios, we define
+an image reconstruction loss between I and ˆI as their mean
+squared error (MSE), i.e.,
+LI =
+1
+HWN E(I, ˆI)
+
+
+
+I −ˆI
+
+
+
+2
+F ,
+(2)
+where ∥· ∥F denotes the Frobenius norm.
+2.4. Feature Fusion Module
+The feature fusion module is responsible for integrating speech
+features and visual features, and transmitting the bimodal fea-
+tures into the speech coding process. As shown in Figure 2, fea-
+ture interaction occurs between the feature fusion module and
+the speech encoder in the speech coding module. Let the output
+speech feature of the i-th MCNX v2 block in the speech en-
+coder be Xi ∈RDs×N, where Ds represents the dimension of
+the speech feature. The feature fusion module concatenates the
+speech feature Xi and the visual feature V along the dimension
+axes, and applies a linear layer to reduce the dimensionality, en-
+suring that the bimodal feature dimensions match those of the
+speech feature, i.e.,
+ˆ
+Xi = Concat{Xi, V }, ˜
+Xi = Linear( ˆ
+Xi),
+(3)
+where ˆ
+Xi ∈R(Ds+Dv)×N denotes the concatenated feature
+and ˜
+Xi ∈RDs×N represents the bimodal feature.
+As shown in Figure 2, the bimodal feature integration man-
+ner differs significantly between the two scenarios. In the VA
+scenario, since the lip images are available during the inference
+phase, we adopt an explicit integration approach, directly using
+the bimodal feature ˜
+Xi as input to the next MCNX v2 block,
+i.e., the (i + 1)-th block. However, for the VUA scenario, since
+the lip images are unavailable during the inference phase, we
+adopt an implicit integration approach, distilling the informa-
+tion from the bimodal feature ˜
+Xi into the speech feature Xi
+during the training phase. Specifically, we define the distilla-
+tion loss LD between Xi and ˜
+Xi as
+LD = log
+ 
+1 + e
+−
+tr(X⊤
+i
+˜
+Xi)
+max(||Xi||F ,ε)·max(|| ˜
+Xi||F ,ε)
+!
+,
+(4)
+where tr denotes the matrix trace and ε = 1e −6 is a lower
+bound. The distillation loss encourages the speech features pro-
+duced by the MCNX v2 blocks to learn certain visual informa-
+tion, ensuring that during inference, the speech encoder can still
+generate features containing visual information even without lip
+images, which can then be used in the speech coding process.
+2.5. Training Criteria
+The three modules of VNSC are jointly trained using the gen-
+erative adversarial training strategy provided by MDCTCodec
+[10]. The speech coding module fully adopts the loss func-
+tion LMDCT Codec from MDCTCodec [10], which includes the
+generative adversarial loss, MDCT spectrum loss, Mel spec-
+trogram loss, and quantization loss. For the VA scenario, the
+loss function of VNSC is defined as a linear combination of
+LMDCT Codec and the image reconstruction loss LI, i.e.,
+LV NSC = LMDCT Codec + λILI.
+(5)
+For the VUA scenario, the loss function additionally incorpo-
+rates the additional distillation loss LD, i.e.,
+LV NSC = LMDCT Codec + λILI + λDLD,
+(6)
+where λI and λD are hyperparameters.
+3. Experimental Setup
+3.1. Datasets
+In the experiment, we utilized the Tongue and Lips (TaL) cor-
+pus [16], a multi-speaker dataset containing ultrasound tongue
+imaging, optical lip videos and speech for each utterance. We
+focused on the TaL80 subset, which included recordings from
+81 native English speakers without any voice talent. Only the
+speech and lip video data were used in our experiments. The
+lip video was recorded at a frame rate of 60 fps, and the speech
+was recorded at a sampling rate of 48 kHz at a depth of 16
+bit. The training and validation sets contained 11,478 and 810
+utterances, respectively, while the remaining 1,140 utterances
+formed the test set for inference. The content of these three sets
+was mutually exclusive.
+3.2. Experimental Settings
+In VNSC1, the configuration of the speech coding module is
+fully borrowed from MDCTCodec with a bitrate of 6 kbps [10].
+The frame shift for extracting MDCT spectrum from the speech
+is set to 40, resulting in a frame rate of 1.2 kHz for the speech
+feature Xi. The dimension of Xi is set to 256 (i.e., Ds = 256).
+For the image analysis-synthesis module, to achieve temporal
+alignment between speech and visual features, we first upsam-
+pled the lip video to an image sequence at 150 Hz using FFm-
+peg [20], and then replicated each time point in the sequence
+eight times to achieve a 1.2 kHz frame rate. Each image has a
+height and width of 64. The image sequence is first reshaped
+into the shape [H = 64, W = 64, C = 1, N] before be-
+ing fed into the image analyzer. Here, C represents the number
+of channels, and N is determined by the length of the speech.
+For the analysis blocks in the image analyzer, the kernel size
+of all five 3D convolutions is set to 3, and the output channels
+of these five 3D convolutions are set to 32, 64, 128, 256 and
+512, respectively. The stride of the first 3D convolution is set
+to 1 along the time axis, and 2 along the height and width axes,
+while the stride of the remaining four 3D convolutions is set to
+1 for all axes. All four pooling operations adopt a 2×2 pooling
+window for height and width axes. Therefore, the feature shape
+output by the final analysis block is [H = 2, W = 2, C = 512,
+N]. Then, the post-processing block first merges the height and
+width axes of the feature, eliminates this axis through a linear
+layer, and finally reduces the dimensions through four 1D con-
+volution layers with kernel sizes of 3 and channel numbers of
+256, 256, 64, and 64, respectively, resulting in visual feature V
+with a shape of [C = 64, N] (i.e., Fv = 64). The configuration
+of the image synthesizer is essentially the same as that of the
+1Speech samples are available at https://doge114514-bot.
+github.io/VNSC_demo/.
+621
+
+Table 1: Evaluation results of the bimodal feature integration
+locations and the image reconstruction loss of VNSC on the val-
+idation set for VA scenario.
+PESQ CSIG CBAK COVL STOI ViSQOL
+i = 1
+3.28
+4.82
+3.48
+4.09
+0.95
+3.97
+i = 2
+3.33
+4.85
+3.50
+4.13
+0.95
+3.98
+i = 3
+3.20
+4.77
+3.38
+4.02
+0.95
+3.91
+i = 4
+3.17
+4.73
+3.28
+3.98
+0.95
+3.86
+w/o LI (i = 2) 3.22
+4.78
+3.41
+4.04
+0.95
+3.94
+image analyzer. The number of nodes of the linear layer in the
+feature fusion module is set to 256.
+We trained VNSC on a single Nvidia RTX 4090-D GPU
+with batch size of 16. The hyperparameters were set as λI =
+10−5 for the VA scenario, and λI = 0.5×10−5 and λD = 1 for
+the VUA scenario. We employed the AdamW optimizer [21] for
+training, with exponential decay rate β1 = 0.8 and β2 = 0.99.
+The learning rate decayed by a factor of 0.999 after each epoch,
+starting from an initial rate of 0.0002.
+In the experiments, we compared VNSC with its base
+model MDCTCodec [10], as well as with several other ad-
+vanced neural speech codecs, including SoundStream [5], En-
+codec [7] and HiFi-Codec [8]. We used several commonly used
+objective metrics to evaluate speech quality, including percep-
+tual evaluation of speech quality (PESQ) [22], three composite
+measures (CSIG, CBAK and COVL) [23], short-time objective
+intelligibility (STOI) [24] and virtual speech quality objective
+listener (ViSQOL). For noise robustness evaluation, segmental
+signal-to-noise ratio (SSNR) was also used. For all metrics,
+higher values indicate better performance.
+4. Experimental Results
+4.1. Determination of Feature Integration Locations
+We first determined the optimal location for integrating bimodal
+features in VNSC through experiments, specifically determin-
+ing the value of i such that the performance is maximized when
+visual information starts flowing into the speech coding process
+at the (i + 1)-th MCNX v2 block. The experiments were con-
+ducted only for the VA scenario.
+The experimental results on the validation set are shown in
+Table 1. We can observe that as i increased from 1 to 4, all
+metrics first increased and then decreased. Additionally, we can
+observe that visual information was integrated too late, the per-
+formance degradation is particularly noticeable. When i = 2,
+VNSC achieved the best performance. This may be attributed
+to the fact that different MCNX v2 blocks in the speech en-
+coder learned various aspects of speech during training. The
+third block, in particular, likely captured features more closely
+related to the principles of speech production, making the flow-
+ing of visual information in this block especially beneficial for
+learning. In the following experiments, VNSC is configured
+with i = 2, meaning that visual information flows into the
+speech coding process starting from the third MCNX v2 block.
+Additionally, we conducted an ablation study on the vali-
+dation set to confirm the necessity of the image synthesizer and
+image reconstruction loss LI, with the results shown in the last
+row of Table 1. Clearly, when LI is ablated, all metrics sig-
+nificantly worsen. This indicates that the image synthesizer and
+image reconstruction loss help the image analyzer extract visual
+information. Without them, the speech modality may dominate,
+and the visual modality would lose its effectiveness.
+Table 2: Evaluation results of VNSC and compared advanced
+neural speech codecs on the test set.
+PESQ CSIG CBAK COVL STOI ViSQOL
+VNSC (VA)
+3.36
+4.87
+3.51
+4.17
+0.96
+4.01
+VNSC (VUA) 3.30
+4.81
+3.44
+4.08
+0.95
+3.94
+MDCTCodec 3.26
+4.79
+3.29
+4.07
+0.95
+3.92
+SoundStream
+2.65
+4.21
+3.39
+3.46
+0.90
+3.07
+Encodec
+2.95
+4.45
+3.55
+3.73
+0.92
+3.21
+HiFi-codec
+3.29
+4.76
+3.54
+4.06
+0.94
+3.56
+Table 3: Noise robustness evaluation results of VNSC and MD-
+CTCodec on a noisy test set.
+PESQ CSIG CBAK COVL STOI ViSQOL SSNR
+VNSC (VA)
+2.95
+4.34
+3.09
+3.66
+0.94
+3.30
+2.63
+VNSC (VUA) 2.90
+4.26
+3.05
+3.60
+0.94
+3.23
+2.37
+MDCTCodec 2.85
+4.25
+2.97
+3.56
+0.93
+3.24
+1.61
+4.2. Comparison with Advanced Codecs
+We then compared VNSC with its basic model, MDCTCodec,
+and other advanced codecs, i.e., SoundStream, Encodec and
+HiFi-Codec. The experimental results on the test set are shown
+in Table 2. We can see that VNSC for VA scenario significantly
+outperformed MDCTCodec across almost all metrics, confirm-
+ing the effectiveness of explicitly incorporating visual informa-
+tion. Although VNSC for VUA scenario, like MDCTCodec,
+did not incorporate visual information during inference, it still
+showed improvements across all metrics, indicating that it has
+indeed learned useful visual modality knowledge. Compared to
+other codecs, VNSC effectively bridged the performance gap in
+certain metrics that MDCTCodec, as a unimodal model, falled
+short in. For example, the CBAK of MDCTCodec showed a
+large gap compared to HiFi-Codec, but after incorporating vi-
+sual information to form VNSC, this metric became compara-
+ble. In summary, integrating visual information in VNSC is
+beneficial for improving speech coding quality, and VNSC con-
+siders multiple scenarios, making it practical and versatile.
+4.3. Evaluation on Noise Robustness
+Finally, we evaluated the noise robustness of VNSC. Specifi-
+cally, we added slight noise to the test set, then encoded the
+speech using MDCTCodec and VNSC, respectively, and com-
+puted the objective metrics by comparing the decoded speech
+with the original clean speech. Experimental results are shown
+in Table 3.
+VNSC consistently outperformed MDCTCodec
+across all metrics in both scenarios. The improvement in SSNR
+was particularly significant, indicating that integrating visual in-
+formation effectively enhanced the model’s noise robustness.
+5. Conclusion
+This paper proposed VNSC, a novel bimodal neural speech
+codec that integrates visual information. VNSC is built upon the
+speech-modal MDCTCodec, with visual information extracted
+from lip images flowing into the speech coding process. For
+scenarios where lip images may or may not be available during
+the inference stage, explicit integration and implicit distillation
+of visual information are employed, respectively. Experimental
+results confirm that the proposed VNSC outperformed the uni-
+modal speech codec in both decoded speech quality and noise
+robustness. Further reducing the latency of VNSC and develop-
+ing a streamable bimodal codec will be our future work.
+622
+
+6. References
+[1] ITU-T, “Recommendation G.711: Pulse code modulation (PCM)
+of voice frequencies,” International Telecommunication Union,
+1988.
+[2] ITU-T, “Recommendation G.723: Speech coders for multimedia
+communications: dual-rate coder (5.3/6.3 kbps),” International
+Telecommunication Union, 1996.
+[3] ITU-T, “Recommendation g.726: 40, 32, 24, and 16 kbps adap-
+tive differential pulse code modulation (ADPCM),” International
+Telecommunication Union, 1990.
+[4] ITU-T, “Recommendation G.729: Coding of speech at 8 kbps
+using conjugate-structure algebraic-code-excited linear prediction
+(CS-ACELP),” International Telecommunication Union, 1996.
+[5] N.
+Zeghidour,
+A.
+Luebs,
+A.
+Omran,
+J.
+Skoglund,
+and
+M. Tagliasacchi, “SoundStream:
+An end-to-end neural audio
+codec,” IEEE/ACM Transactions on Audio, Speech, and Lan-
+guage Processing, vol. 30, pp. 495–507, 2021.
+[6] A. Vasuki and P. Vanathi, “A review of vector quantization tech-
+niques,” IEEE Potentials, vol. 25, no. 4, pp. 39–47, 2006.
+[7] A. D´efossez, J. Copet, G. Synnaeve, and Y. Adi, “High fidelity
+neural audio compression,” Transactions on Machine Learning
+Research.
+[8] D. Yang, S. Liu, R. Huang, J. Tian, C. Weng, and Y. Zou, “HiFi-
+Codec: Group-residual vector quantization for high fidelity audio
+codec,” arXiv preprint arXiv:2305.02765, 2023.
+[9] Y. Ai, X.-H. Jiang, Y.-X. Lu, H.-P. Du, and Z.-H. Ling, “APCodec:
+A neural audio codec with parallel amplitude and phase spec-
+trum encoding and decoding,” IEEE/ACM Transactions on Audio,
+Speech, and Language Processing, vol. 32, pp. 3256–3269, 2024.
+[10] X.-H. Jiang, Y. Ai, R.-C. Zheng, H.-P. Du, Y.-X. Lu, and Z.-H.
+Ling, “Mdctcodec: A lightweight mdct-based neural audio codec
+towards high sampling rate and low bitrate scenarios,” in Proc.
+SLT, 2024, pp. 540–547.
+[11] M. M. Ahasan, M. Fahim, T. Mohiuddin, A. Rahman, A. Chadha,
+T. Iqbal, M. A. Amin, M. M. Islam, and A. A. Ali, “DM-Codec:
+Distilling multimodal representations for speech tokenization,”
+arXiv preprint arXiv:2410.15017, 2024.
+[12] T. Alfouras, J. Chung, and A. Zisserman, “The conversation:
+Deep audio-visual speech enhancement,” in Proc. Interspeech,
+2018, pp. 3244–3248.
+[13] X. Xu, Y. Wang, D. Xu, Y. Peng, C. Zhang, J. Jia, and B. Chen,
+“Vsegan: Visual speech enhancement generative adversarial net-
+work,” in Proc. ICASSP, 2022, pp. 7308–7311.
+[14] R.-C. Zheng, Y. Ai, and Z.-H. Ling, “Incorporating ultra-
+sound tongue images for audio-visual speech enhancement,”
+IEEE/ACM Transactions on Audio, Speech, and Language Pro-
+cessing, vol. 32, pp. 1430–1444, 2024.
+[15] X. Xu, Y. Wang, J. Jia, B. Chen, and D. Li, “Improving visual
+speech enhancement network by learning audio-visual affinity
+with multi-head attention,” in Proc. Interspeech, 2022, pp. 971–
+975.
+[16] M. S. Ribeiro, J. Sanger, J.-X. Zhang, A. Eshky, A. Wrench,
+K. Richmond, and S. Renals, “TaL: a synchronised multi-speaker
+corpus of ultrasound tongue imaging, audio, and lip videos,” in
+Proc. SLT, 2021, pp. 1109–1116.
+[17] T. Afouras, J. S. Chung, A. Senior, O. Vinyals, and A. Zisser-
+man, “Deep audio-visual speech recognition,” IEEE transactions
+on pattern analysis and machine intelligence, vol. 44, no. 12, pp.
+8717–8727, 2018.
+[18] S. Woo, S. Debnath, R. Hu, X. Chen, Z. Liu, I. S. Kweon, and
+S. Xie, “ConvNeXt v2: Co-designing and scaling convnets with
+masked autoencoders,” in Proc. CVPR, 2023, pp. 16 133–16 142.
+[19] D. Hendrycks and K. Gimpel, “Gaussian error linear units
+(gelus),” arXiv preprint arXiv:1606.08415, 2016.
+[20] S. Tomar, “Converting video formats with ffmpeg,” Linux journal,
+vol. 2006, no. 146, p. 10, 2006.
+[21] I. Loshchilov and F. Hutter, “Decoupled weight decay regulariza-
+tion,” in Proc. ICLR, 2018.
+[22] I. Recommendation, “P. 862.2: Wideband extension to recom-
+mendation P. 862 for the assessment of wideband telephone
+networks and speech codecs,” International Telecommunication
+Union, 2007.
+[23] Y. Hu and P. C. Loizou, “Evaluation of objective measures for
+speech enhancement,” IEEE/ACM Transactions on Audio, Speech,
+and Language Processing, vol. 16, no. 1, pp. 229–238, 2008.
+[24] C. H. Taal, R. C. Hendriks, R. Heusdens, and J. Jensen, “A short-
+time objective intelligibility measure for time-frequency weighted
+noisy speech,” in Proc. ICASSP, 2010, pp. 4214–4217.
+623
+

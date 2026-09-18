@@ -1,0 +1,712 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+DiffDSR: Dysarthric Speech Reconstruction Using Latent Diffusion Model
+Xueyuan Chen1, Dongchao Yang1, Wenxuan Wu1, Minglin Wu1, Jing Xu1, Xixin Wu1,3,∗
+Zhiyong Wu1,2,∗, Helen Meng1,2,3
+1The Chinese University of Hong Kong, Hong Kong SAR, China
+2Shenzhen International Graduate School, Tsinghua University, Shenzhen, China
+3Vocal Engineering Technologies Limited, Hong Kong SAR, China
+{xychen, wuxx, hmmeng}@se.cuhk.edu.hk zywu@sz.tsinghua.edu.cn
+Abstract
+Dysarthric speech reconstruction (DSR) aims to convert
+dysarthric speech into comprehensible speech while maintain-
+ing the speaker’s identity. Despite significant advancements,
+existing methods often struggle with low speech intelligibility
+and poor speaker similarity. In this study, we introduce a novel
+diffusion-based DSR system that leverages a latent diffusion
+model to enhance the quality of speech reconstruction. Our
+model comprises: (i) a speech content encoder for phoneme
+embedding restoration via pre-trained self-supervised learning
+(SSL) speech foundation models; (ii) a speaker identity encoder
+for speaker-aware identity preservation by in-context learning
+mechanism; (iii) a diffusion-based speech generator to recon-
+struct the speech based on the restored phoneme embedding and
+preserved speaker identity. Through evaluations on the widely-
+used UASpeech corpus, our proposed model shows notable en-
+hancements in speech intelligibility and speaker similarity.1
+Index Terms: dysarthric speech, speech reconstruction, latent
+diffusion, self-supervised learning
+1. Introduction
+Dysarthria is a motor speech disorder characterized by difficulty
+in articulating words due to weak, paralyzed, or uncoordinated
+muscles used for speech [1]. It can result in a notable decline
+in speech quality and voice characteristics compared to typi-
+cal speech patterns [2] and significantly impedes communica-
+tion for dysarthria patients [3]. Dysarthric speech reconstruc-
+tion (DSR) stands out as a highly effective method aimed at en-
+hancing speech intelligibility and preserving speaker identity by
+converting dysarthric speech into a more typical speech pattern.
+In comparison to the voice conversion (VC) task, DSR is a
+more intricate process that has attracted considerable research
+focus. For individuals with less severe dysarthria in the early
+stages, voice banking-based methods [4] aim to gather pre-
+recorded normal speeches before their speech abilities decline,
+enabling the development of personalized text-to-speech (TTS)
+systems [5]. Some studies have explored adapting VC tech-
+niques to reconstruct dysarthric speech signals, such as rule-
+based VC [6] and statistical VC approaches [7]. With the ad-
+vancements in deep learning, end-to-end DSR (E2E-DSR) [8]
+has been introduced. It utilizes a speech encoder derived from
+* Corresponding authors. This work is supported by National Nat-
+ural Science Foundation of China (62076144), CUHK Direct Grant for
+Research (Ref. No. 4055221), the CUHK Stanley Ho Big Data De-
+cision Analytics Research Centre, and the Centre for Perceptual and
+Interactive Intelligence (CPII) Ltd., a CUHK-led InnoCentre under the
+InnoHK initiative of the Innovation and Technology Commission of the
+Hong Kong Special Administrative Region Government.
+1Audio samples: https://Chenxuey20.github.io/DiffDSR/
+a pre-trained automatic speech recognition (ASR) model to re-
+place the text encoder in a sequence-to-sequence TTS system,
+showing more resilient generation results than cascaded sys-
+tems (ASR followed by TTS). Besides, in order to further en-
+hance prosody and speaker similarity, additional components
+such as prosody corrector and speaker encoder, have been inte-
+grated [9] by the similar manner in some TTS systems [10, 11].
+Additionally, Unit-DSR [12] is proposed to use the discrete
+speech units extracted from HuBERT [13] for generating a nor-
+mal speech waveform, which aims to address the issue of train-
+ing inefficiencies of complex pipelines. To enhance speech in-
+telligibility for severe dysarthria patients in noisy acoustic envi-
+ronments, a multi-modal framework [14] has been introduced.
+The visual information, e.g., lip movements, is utilized as ad-
+ditional clues for reconstructing the highly abnormal pronunci-
+ations, which has been widely used in some audio-visual tasks
+[15]. Building upon this foundation, CoLM-DSR [16] is further
+proposed by combining an audio-visual encoder with the neural
+codec language model framework to improve the speaker simi-
+larity and prosody naturalness.
+Though significant progress has been made, there are still
+two primary aspects that need to be further considered: (i)
+How to effectively adapt to new speakers with more preserved
+speaker identities; (ii) How to properly reconstruct the content
+representations while maintaining speaker identities. Address-
+ing these aspects is crucial for ensuring that the reconstructed
+speech aligns closely with the pronunciation habits of patients,
+which is essential for their sense of self-identity and guidance in
+rehabilitation training. With the advent of zero-shot TTS tech-
+niques, language model (LM) and diffusion model are two po-
+tential directions. LM-based methods [17, 18] utilize a next-
+token prediction manner, emphasizing the modality alignment
+between text and speech, which can be challenging for severe
+dysarthria individuals.
+In contrast, diffusion-based methods
+[19, 20] employ a non-autoregressive diffusion-denoising strat-
+egy, relying solely on the speech modality prompt, and have
+shown more robust results.
+Inspired by the success of diffusion model in tasks such as
+speech generation [21], image generation [22] and video gener-
+ation [23], this paper introduces a novel DSR system that lever-
+ages the latent diffusion model to improve the reconstruction re-
+sults for the speech intelligibility and speaker similarity. Firstly,
+a speech content encoder with different self-supervised learning
+(SSL) speech foundation models is designed to extract the ro-
+bust phoneme embedding from dysarthric speech. Secondly,
+we adopt a speaker identity encoder with in-context learning
+mechanism to preserve the speaker-aware representation from
+the dysarthric speech. Finally, we use the speech generator with
+the latent diffusion model to reconstruct the speech based on
+the restored phoneme embedding condition and the preserved
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+2113
+10.21437/Interspeech.2025-1770
+
+Speech Content Encoder
+Variance Adaptor
+Latent Diffusion Model
+Speech Codec Decoder
+Dydarthric
+Speech
+Convolution
+Q-K-V Attention
+Phoneme Embedding
+Q-K-V Attention
+WaveNet
+FiLM
+K/V
+Q
+Q
+Pre-trained
+SSL Model
+Convolution Layers
+CTC Layer
+N x
+Dysarthric Speech
+Phoneme Embedding
+Transformer Layers
+Pre-trained
+SE Model
+Codec Tokenizer
+& Normalizer
+Dysarthric Speech
+Duration/Pitch
+(b) Speech Contnet Encoder
+(c) Speaker Identity Encoder
+(d) In-Context Learning Mechanism
+Speaker Identity Encoder
+Duration
+Predictor
+Pitch
+Predictor
+Expand
+Add
+E.g., {2,2,1}
+Reconstructed
+Speech
+Variance Adaptor
+In-Context Learning
+(a) Overall Architecture of Diff-DSR
+x M
+Phoneme
+Embedding
+Figure 1: Diagram of the proposed Diff-DSR system, where (a) shows the overall architecture, (b), (c) and (d) show the model details
+of speech content encoder, speaker identity encoder and in-context learning mechanism respectively.
+speaker-aware representation prompt. The contributions of this
+paper include:
+• We propose a diffusion-based DSR system that combines a
+speech content encoder, a speaker identity encoder and the la-
+tent diffusion model framework to reconstruct the dysarthric
+speech.
+• Three commonly used pre-trained SSL speech foundation
+models are investigated and compared to conduct the speech
+content restoration for the diffusion condition input.
+• Both subjective and objective experimental results show that
+our proposed diffusion-based DSR system achieves notable
+improvements in terms of speech intelligibility and speaker
+similarity.
+2. Methodology
+The overall architecture of our proposed Diff-DSR model is il-
+lustrated in Figure 1 (a). It comprises a speech content encoder,
+a speaker identity encoder and a latent diffusion-based speech
+generator. The speech content encoder strives to extract robust
+phoneme embedding from dysarthric speech input to provide
+content condition. The speaker identity encoder is designed
+to derive speaker-aware representation from dysarthric speech
+input to provide speaker identity prompt. The speech gener-
+ator utilizes the speech content condition and speaker identity
+prompt as inputs to reconstruct the speech.
+2.1. Speech Content Encoder for Content Restoration
+Firstly, a speech content encoder is devised to extract the robust
+linguistic representation from original dysarthric speech for the
+content restoration. Following [16], we utilize the phoneme
+probability distribution embedding as the content representa-
+tion.
+As illustrated in Figure 1 (b), the speech content en-
+coder comprises two main parts. Initially, we adopt the SSL
+speech foundation models that are pre-trained on a vast amount
+of speech data to extract the hidden semantic features from the
+dysarthric speech x. To explore the impact of different SSL
+models on content restoration, we compare and investigate three
+commonly used SSL speech models: Wav2Vec 2.0 [24], Hu-
+BERT [13] and WavLM [25]. which have shown significant
+recognition performance for low-resource languages [26]. Sub-
+sequently, several convolution layers are employed to capture
+local dependencies in context semantic relevance, followed by
+a connectionist temporal classification (CTC) layer with CTC
+loss to generate the phoneme embedding p. During training,
+only the parameters θASR of the convolution layers and CTC
+layer are updated to avoid overfitting. It can be described as
+p = fASR(SSL(x); θASR), where SSL is pre-trained SSL
+model with frozen parameters.
+2.2. Speaker Identity Encoder with In-Context Learning
+We have specially crafted a speaker identity encoder to provide
+speaker-aware representation prompt in our system for quick
+speaker identity preservation. As depicted in Figure 1 (c), the
+speaker identity encoder consists of three key components:
+Pre-trained SE Model: Initially, We utilize a pre-trained
+speech enhancement (SE) model, i.e., ClearerVoice 1, to reduce
+irrelevant background noise, which seriously impacts the sound
+quality of reconstructed speech.
+Codec Tokenizer & Normalizer: Then, we adopt a pre-
+trained neural audio codec model, EnCodec [27], as our to-
+kenizer.
+For each input speech utterance x, it can output a
+quantized and downsampled hidden representation ˆzp, where
+ˆzp = Encodecenc(x). To not only preserve the speaker iden-
+1https://github.com/modelscope/ClearerVoice-Studio
+2114
+
+tity but also remove some dysarthric acoustic details, following
+[16], we employ a normalization operation to map the dysarthric
+codecs ˆzp into corresponding normal codecs ˜zp within a pre-
+prepared nomal codec set Z . This operation is facilitated by
+a speaker verification (SV) estimator [28] with parameters θSV
+through the nearest L1 distance. It can be formulated as:
+ˆzp →˜zp = arg min
+ˆzp∈Z | fSV (ˆzp; θSV ) −fSV (˜zp; θSV ) | (1)
+In-Context Learning Mechanism: To facilitate in-context
+learning for zero-shot speaker identity preservation, we further
+utilize several Transformer layers to process the speaker codec
+prompt ˜zp, resulting in a hidden speaker-aware representation
+zp. Additionally, a Q-K-V attention layer is inserted for both
+duration/pitch predictors in the variance adaptor and WaveNet
+layer in the latent diffusion model, as shown in Figure 1 (d).
+2.3. Diffusion-based Generator for Speech Reconstruction
+Inspired by the zero-shot TTS technique [19] and zero-shot VC
+method [29], we leverage the diffusion-based generator to re-
+construct the dysarthric speech with the phoneme condition p
+and speaker-aware identity prompt zp.
+Variance Adaptor: In order to provide more acoustic-
+related features and alleviate the diffusion process complexity,
+the variance adaptor is firstly employed to predict both duration
+and pitch from the phoneme embedding p. As shown in Figure
+1 (d). the duration/pitch predictors share the same model struc-
+ture with several convolution layers but with different model
+parameters. The hidden sequence is then expanded to the frame
+level based on the duration and combined with pitch embedding
+to form the final condition information pc.
+Latent Diffusion Model: Similar to NaturalSpeech 2 [19],
+the diffusion (forward) process and denoising (reverse) process
+are formulated as a stochastic differential equation (SDE) [30].
+The forward SDE transforms the latent z0 into Gaussian noise
+with standard Brownian motion wt and noise schedule βt:
+dzt = −1
+2βtztdt +
+p
+βtdwt, t ∈[0, 1]
+(2)
+While the reverse process maps the Gaussian noise back to z0:
+dzt = −1
+2(zt + ∇log pt(zt))βtdt, t ∈[0, 1]
+(3)
+where ∇log pt(zt) is the gradient of the log-density of noise
+data, and more details can be seen in [19]. Specifically, we uti-
+lize WaveNet [31] with parameters θW as the latent diffusion
+backbone, which contains M blocks. Each block includes a di-
+lated convolution layer, a Q-K-V attention layer, and a FiLM
+layer [32]. As shown in Figure 1 (a), it takes the condition in-
+formation pc, the time step t, the current noisy vector zt and
+the speaker identity prompt zp as inputs, predicting the latent
+representation z0 obtained by the neural codec as output, for-
+mulated as z0 = fW (pc, zt, t, zp; θW ).
+Speech Codec Decoder:
+Ultimately, the reconstructed
+speech ˜x with restored content and preserved speaker identity
+is obtained by feeding the latent z0 into the pre-trained speech
+codec decoder [27], formulated as ˜x = Encodecde(z0).
+3. Experiments
+3.1. Datasets and Training Details
+Experiments are conducted on the UASpeech [33], LibriSpeech
+[34], VCTK [35] and LibriTTS [36] datasets. Among them,
+the UASpeech corpus is a benchmark disordered speech corpus,
+which is recorded by an 8-channel microphone array with some
+background noise. It comprises recordings from 19 dysarthria
+speakers with 765 isolated words. We use the VCTK corpus
+with 105 native speakers to train the SV estimator in codec nor-
+malizer. We use the LibriTTS corpus containing 580 hours of
+normal speech from 2456 speakers to train the diffusion-based
+speech generator by teacher-forcing mode. The details of train-
+ing usage for all datasets are shown in Table 1.
+Table 1: Details of training usage for all datasets.
+Dataets
+Type
+Training Modules
+LibriSpeech [34]
+Normal
+Speech Content Encoder
+UASpeech [33]
+Dysarthric
+Speech Content Encoder
+VCTK [35]
+Normal
+Codec Normalizer
+LibriTTS [36]
+Normal
+Diffusion-based Generator
+Similar to [9], four speaker-dependent DSR systems are
+separately built for the four selected speakers (M12, F02, M16
+and F04) with the lowest speech intelligibility.
+All content
+encoders are firstly trained on LibriSpeech for 1M steps with
+batch size of 16, and then finetuned on the target speaker of
+UASpeech for 2k steps to improve phoneme prediction accu-
+racy. For fair comparison with different SSL models, we adopt
+the official pre-trained ‘Wav2Vec 2.0 Base’, ‘HuBERT Base’1
+and ‘WavLM Base’2 models in our experiments, all of which are
+pre-trained with LibriSpeech corpus without finetuning. The
+diffusion-based generator is implemented based on Natural-
+Speech2 and trained on 4 NVIDIA V100 GPUs for 300K it-
+erations with a batch size of 4 on each GPU.
+3.2. Speech Intelligibility Comparison
+To comprehensively investigate the performance of different
+SSL models for content restoration, we conduct the following
+four system settings with different content encoders for both
+objective content encoder comparison and subjective human lis-
+tening test comparison.
+• SV-DSR (VGG): It uses a VGG-based content encoder to ex-
+tract phoneme embedding, and a speaker verification-based
+speaker encoder to represent the speaker embedding for
+speech reconstruction [9].
+• Diff-DSR (Wav2Vec):
+The Wav2Vec 2.0 is used in the
+speech content encoder for our proposed Diff-DSR model.
+• Diff-DSR (HuBERT): The HuBERT is used in the speech
+content encoder for our proposed Diff-DSR model.
+• Diff-DSR (WavLM): The WavLM is used in the speech con-
+tent encoder for our proposed Diff-DSR model.
+First of all, we conduct the content encoder comparison to
+verify the effectiveness of speech content encoder with differ-
+ent SSL models. We decode the phoneme sequences from the
+phoneme embedding outputs from different system settings, re-
+spectively.
+Phoneme error rate (PER) is calculated with the
+ground-truth phoneme sequences. The results are shown in Ta-
+ble 2. We can observe that all the pre-trained SSL models ex-
+hibit substantial enhancements in phoneme prediction perfor-
+mance when compared to the VGG-based baseline. Moreover,
+the system utilizing the WavLM model demonstrates superior
+results across all patients in comparison to the Wav2Vec 2.0 and
+1https://github.com/facebookresearch/fairseq
+2https://github.com/microsoft/unilm/tree/master/wavlm
+2115
+
+HuBERT models. These results underscore the robust capabil-
+ity of WavLM for this low-resource recognition task, which are
+consistent with some previous studies for the similar low-source
+language recognition tasks [26].
+Table 2: Content encoder comparison results of phoneme error
+rate (PER) for speech intelligibility.
+Models
+M12
+F02
+M16
+F04
+SV-DSR (VGG)
+62.1%
+49.1%
+46.5%
+43.0%
+Diff-DSR (Wav2Vec)
+61.8%
+42.4%
+39.7%
+35.1%
+Diff-DSR (HuBERT)
+61.9%
+41.8%
+39.4%
+34.6%
+Diff-DSR (WavLM)
+61.3%
+40.3%
+37.1%
+33.4%
+Considering the open-sourced ASR tools are not as robust
+as humans and can be easily influenced by sound quality and
+speaking styles, following [12], we further conduct a human
+listening test (HLT) to evaluate the speech intelligibility of final
+reconstructed speech. 30 common words are randomly selected
+in the test set and 5 listeners are invited to judge whether the
+utterance corresponds to the word transcription. As shown in
+Table 3, it is evident that as the severity of dysarthria increases,
+the original speech becomes more challenging for others to rec-
+ognize, highlighting the impact of dysarthria on speech intelli-
+gibility. The DSR method proves to be a relatively effective ap-
+proach for enhancing speech intelligibility. Consistent with the
+PER results, the Diff-DSR (WavLM) system achieves the best
+performance across all patients compared to the other system
+settings. Both the PER and HLT results show the remarkable
+performance of pre-trained WavLM model for this DSR task.
+Table 3: Comparison results of human listening test (HLT) ac-
+curacy for speech intelligibility.
+Models
+M12
+F02
+M16
+F04
+Original Speech
+7.4%
+29.3%
+43.0%
+62.0%
+SV-DSR (VGG)
+32.6%
+38.7%
+55.3%
+75.3%
+Diff-DSR (Wav2Vec)
+33.3%
+41.3%
+60.0%
+77.3%
+Diff-DSR (HuBERT)
+34.0%
+42.0%
+60.7%
+78.0%
+Diff-DSR (WavLM)
+34.6%
+43.3%
+62.0%
+78.7%
+3.3. Speaker Similarity Comparison
+To facilitate a fair comparison of speaker similarity without
+being influenced by content errors, we randomly select 10
+utterances with accurately restored content for each of four
+dysarthric speakers. We conduct the following settings for both
+subjective and objective speaker similarity comparisons:
+• SV-DSR: It uses a speaker encoder to extract a global timbre
+embedding and a multi-speaker mel-based decoder [9].
+• CoLM-DSR: Excluding the influence of multi-modal input,
+it uses a LM-based generator with speech codec prompt [16].
+• Diff-DSR(ab): An ablation setting of our proposed model
+without the codec normalizer in speaker identity encoder.
+• Diff-DSR: Our complete proposed diffusion based system.
+We conduct the subjective test to evaluate the speaker
+similarity of reconstructed speech compared with the original
+dysarthric speech. 10 subjects are invited to give the 5-point
+mean opinion score (MOS, 1-bad, 2-poor, 3-fair, 4-good, 5-
+excellent). The scores are averaged and depicted in Figure 2. As
+can be observed, the multi-speaker mel-based system exhibits
+the poorest performance for all patients. Compared with the
+codec LM-based system, our proposed diffusion-based model
+(a) M12
+0
+1
+2
+3
+4
+5
+2.13
+3.46
+3.77
+3.75
+(b) F02
+0
+1
+2
+3
+4
+5
+2.98
+3.55
+3.84
+3.90
+(c) M16
+0
+1
+2
+3
+4
+5
+2.77
+3.62
+3.83
+3.85
+(d) F04
+0
+1
+2
+3
+4
+5
+3.03
+3.78
+3.94
+3.98
+SV-DSR
+CoLM-DSR
+Diff-DSR(ab)
+Diff-DSR
+Figure 2: Comparison results of MOS with 95% confidence in
+terms of speaker similarity.
+achieves significant similarity improvements for all the 4 speak-
+ers. What’s more, the Diff-DSR shows comparable or better re-
+sults with Diff-DSR(ab) in speaker similarity but significantly
+enhanced prosody and sound quality in practice, indicating the
+necessity of codec normalizer in our proposed model.
+Besides, we also employ the speaker verification model
+[28] as an objective measure to evaluate the speaker similarity.
+The L1 distances between the dysarthric speeches and corre-
+sponding reconstructed speeches are calculated and results are
+shown in Table 4. Similar to the MOS findings, our proposed
+model also achieves the best results. Both the subjective and ob-
+jective results highlight that our proposed diffusion based DSR
+system can preserve more speaker information benefited from
+the zero-shot speaker identity preservation ability of latent dif-
+fusion model and in-context learning mechanism. Compared
+with the multi-speaker mel-based system and codec LM-based
+method, our diffusion-based model shows greater robustness
+and suitability for this low-source DSR task.
+Table 4: Objective comparison results for speaker similarity.
+Models
+M12
+F02
+M16
+F04
+SV-DSR
+1.122
+1.151
+1.073
+1.056
+CoLM-DSR
+1.081
+1.076
+0.985
+0.969
+Diff-DSR(ab)
+1.073
+1.071
+0.976
+0.958
+Diff-DSR
+1.075
+1.070
+0.973
+0.955
+4. Conclusion
+This paper proposes to leverage the latent diffusion model to
+enhance dysarthric speech reconstruction results. We explore
+and compare three widely used SSL speech foundation mod-
+els for content restoration. Additionally, we adopt a speaker
+identity encoder with in-context learning mechanism to facili-
+tate speaker-aware identity preservation. Furthermore, we use
+the latent diffusion model to reconstruct the speech based on
+the content condition and speaker identity prompt. Through
+a series of subjective and objective experiments conducted on
+the UASpeech corpus, our proposed Diff-DSR system shows
+notable improvements in terms of speech intelligibility and
+speaker similarity.
+2116
+
+5. References
+[1] W. Ziegler, “Speech motor control is task-specific: Evidence from
+dysarthria and apraxia of speech,” Aphasiology, vol. 17, no. 1, pp.
+3–36, 2003.
+[2] S. Sapir, “Multiple factors are involved in the dysarthria asso-
+ciated with parkinson’s disease: a review with implications for
+clinical practice and research,” Journal of Speech, Language, and
+Hearing Research, vol. 57, no. 4, pp. 1330–1343, 2014.
+[3] D. B. Freed, Motor speech disorders: diagnosis and treatment.
+plural publishing, 2023.
+[4] J. Yamagishi, C. Veaux, S. King, and S. Renals, “Speech synthesis
+technologies for individuals with vocal disabilities: Voice banking
+and reconstruction,” Acoustical Science and Technology, vol. 33,
+no. 1, pp. 1–5, 2012.
+[5] X. Chen, Q. Huang, X. Wu, Z. Wu, and H. Meng, “Hilvoice:
+Human-in-the-loop style selection for elder-facing speech synthe-
+sis,” in ISCSLP.
+IEEE, 2022, pp. 86–90.
+[6] S. A. Kumar and C. S. Kumar, “Improving the intelligibility of
+dysarthric speech towards enhancing the effectiveness of speech
+therapy,” in 2016 International Conference on Advances in Com-
+puting, Communications and Informatics (ICACCI). IEEE, 2016,
+pp. 1000–1005.
+[7] R. Aihara, T. Takiguchi, and Y. Ariki, “Phoneme-discriminative
+features for dysarthric speech conversion.” in Interspeech, 2017,
+pp. 3374–3378.
+[8] D. Wang, J. Yu, X. Wu, S. Liu, L. Sun, X. Liu, and H. Meng,
+“End-to-end voice conversion via cross-modal knowledge dis-
+tillation for dysarthric speech reconstruction,” in ICASSP 2020.
+IEEE, 2020, pp. 7744–7748.
+[9] D. Wang, S. Liu, L. Sun, X. Wu, X. Liu, and H. Meng, “Learning
+explicit prosody models and deep speaker embeddings for atypical
+voice conversion,” arXiv preprint arXiv:2011.01678, 2020.
+[10] X. Chen, S. Lei, Z. Wu, D. Xu, W. Zhao, and H. Meng, “Un-
+supervised multi-scale expressive speaking style modeling with
+hierarchical context information for audiobook speech synthesis,”
+in COLING, 2022, pp. 7193–7202.
+[11] X. Chen, X. Wang, S. Zhang, L. He, Z. Wu, X. Wu, and
+H. Meng, “Stylespeech: Self-supervised style enhancing with vq-
+vae-based pre-training for expressive audiobook speech synthe-
+sis,” in ICASSP 2024.
+IEEE, 2024, pp. 12 316–12 320.
+[12] Y. Wang, X. Wu, D. Wang, L. Meng, and H. Meng, “Unit-dsr:
+Dysarthric speech reconstruction system using speech unit nor-
+malization,” arXiv preprint arXiv:2401.14664, 2024.
+[13] W.-N. Hsu, B. Bolte, Y.-H. H. Tsai, K. Lakhotia, R. Salakhutdi-
+nov, and A. Mohamed, “Hubert: Self-supervised speech represen-
+tation learning by masked prediction of hidden units,” IEEE/ACM
+transactions on audio, speech, and language processing, vol. 29,
+pp. 3451–3460, 2021.
+[14] X. Chen, Y. Wang, X. Wu, D. Wang, Z. Wu, X. Liu, and
+H. Meng, “Exploiting audio-visual features with pretrained av-
+hubert for multi-modal dysarthric speech reconstruction,” arXiv
+preprint arXiv:2401.17796, 2024.
+[15] W. Wu, X. Chen, X. Wu, H. Li, and H. Meng, “Target speech
+extraction with pre-trained av-hubert and mask-and-recover strat-
+egy,” arXiv preprint arXiv:2403.16078, 2024.
+[16] X. Chen, D. Yang, D. Wang, X. Wu, Z. Wu, and H. Meng,
+“Colm-dsr:
+Leveraging neural codec language modeling for
+multi-modal dysarthric speech reconstruction,” arXiv preprint
+arXiv:2406.08336, 2024.
+[17] C. Wang, S. Chen, Y. Wu, Z. Zhang, L. Zhou, S. Liu, Z. Chen,
+Y. Liu, H. Wang, J. Li et al., “Neural codec language mod-
+els are zero-shot text to speech synthesizers,” arXiv preprint
+arXiv:2301.02111, 2023.
+[18] S. Chen, S. Liu, L. Zhou, Y. Liu, X. Tan, J. Li, S. Zhao, Y. Qian,
+and F. Wei, “Vall-e 2: Neural codec language models are hu-
+man parity zero-shot text to speech synthesizers,” arXiv preprint
+arXiv:2406.05370, 2024.
+[19] K. Shen, Z. Ju, X. Tan, Y. Liu, Y. Leng, L. He, T. Qin, S. Zhao,
+and J. Bian, “Naturalspeech 2: Latent diffusion models are natu-
+ral and zero-shot speech and singing synthesizers,” arXiv preprint
+arXiv:2304.09116, 2023.
+[20] Z. Ju, Y. Wang, K. Shen, X. Tan, D. Xin, D. Yang, Y. Liu, Y. Leng,
+K. Song, S. Tang et al., “Naturalspeech 3: Zero-shot speech syn-
+thesis with factorized codec and diffusion models,” arXiv preprint
+arXiv:2403.03100, 2024.
+[21] D. Yang, D. Wang, H. Guo, X. Chen, X. Wu, and H. Meng,
+“Simplespeech:
+Towards simple and efficient text-to-speech
+with scalar latent transformer diffusion models,” arXiv preprint
+arXiv:2406.02328, 2024.
+[22] W. Peebles and S. Xie, “Scalable diffusion models with transform-
+ers,” in Proceedings of the IEEE/CVF International Conference
+on Computer Vision, 2023, pp. 4195–4205.
+[23] T. Brooks, B. Peebles, C. Holmes, W. DePue, Y. Guo, L. Jing,
+D. Schnurr, J. Taylor, T. Luhman, E. Luhman et al., “Video gen-
+eration models as world simulators,” 2024.
+[24] A. Baevski, Y. Zhou, A. Mohamed, and M. Auli, “wav2vec
+2.0: A framework for self-supervised learning of speech repre-
+sentations,” Advances in neural information processing systems,
+vol. 33, pp. 12 449–12 460, 2020.
+[25] S. Chen, C. Wang, Z. Chen, Y. Wu, S. Liu, Z. Chen, J. Li,
+N. Kanda, T. Yoshioka, X. Xiao et al., “Wavlm: Large-scale self-
+supervised pre-training for full stack speech processing,” IEEE
+Journal of Selected Topics in Signal Processing, vol. 16, no. 6,
+pp. 1505–1518, 2022.
+[26] J. Zhao and W.-Q. Zhang, “Improving automatic speech recogni-
+tion performance for low-resource languages with self-supervised
+models,” IEEE Journal of Selected Topics in Signal Processing,
+vol. 16, no. 6, pp. 1227–1241, 2022.
+[27] A. D´efossez, J. Copet, G. Synnaeve, and Y. Adi, “High fidelity
+neural audio compression,” arXiv preprint arXiv:2210.13438,
+2022.
+[28] L. Wan, Q. Wang, A. Papir, and I. L. Moreno, “Generalized end-
+to-end loss for speaker verification,” in ICASSP 2018.
+IEEE,
+2018, pp. 4879–4883.
+[29] X. Zhu, L. He, Y. Xiao, X. Wang, X. Tan, S. Zhao, and L. Xie,
+“Zsvc: Zero-shot style voice conversion with disentangled la-
+tent diffusion models and adversarial training,” arXiv preprint
+arXiv:2501.04416, 2025.
+[30] Y. Song, J. Sohl-Dickstein, D. P. Kingma, A. Kumar, S. Ermon,
+and B. Poole, “Score-based generative modeling through stochas-
+tic differential equations,” arXiv preprint arXiv:2011.13456,
+2020.
+[31] A. Van Den Oord, S. Dieleman, H. Zen, K. Simonyan, O. Vinyals,
+A. Graves, N. Kalchbrenner, A. Senior, K. Kavukcuoglu et al.,
+“Wavenet: A generative model for raw audio,” arXiv preprint
+arXiv:1609.03499, vol. 12, 2016.
+[32] E. Perez, F. Strub, H. De Vries, V. Dumoulin, and A. Courville,
+“Film: Visual reasoning with a general conditioning layer,” in
+Proceedings of the AAAI conference on artificial intelligence,
+vol. 32, no. 1, 2018.
+[33] H. Kim, M. Hasegawa-Johnson, A. Perlman, J. Gunderson, T. S.
+Huang, K. Watkin, and S. Frame, “Dysarthric speech database
+for universal access research,” in Ninth Annual Conference of the
+International Speech Communication Association, 2008.
+[34] V. Panayotov, G. Chen, D. Povey, and S. Khudanpur, “Lib-
+rispeech: an asr corpus based on public domain audio books,”
+in 2015 IEEE international conference on acoustics, speech and
+signal processing (ICASSP).
+IEEE, 2015, pp. 5206–5210.
+[35] C. Veaux, J. Yamagishi, K. MacDonald et al., “Superseded-cstr
+vctk corpus: English multi-speaker corpus for cstr voice cloning
+toolkit,” 2016.
+[36] H. Zen, V. Dang, R. Clark, Y. Zhang, R. J. Weiss, Y. Jia, Z. Chen,
+and Y. Wu, “Libritts: A corpus derived from librispeech for text-
+to-speech,” Interspeech 2019, 2019.
+2117
+

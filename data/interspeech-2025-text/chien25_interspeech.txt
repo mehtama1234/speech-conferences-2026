@@ -1,0 +1,655 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+CAPR: Confidence-Aware Prompt Refinement in Large Language Models
+Jen-Tzung Chien1,2, Po-Chun Huang2
+1Inst. of Electrical and Computer Engineering, National Yang Ming Chiao Tung University, Taiwan
+2Institute of Computer and Comms. Security, National Yang Ming Chiao Tung University, Taiwan
+jtchien@nycu.edu.tw, qmao.cs11@nycu.edu.tw
+Abstract
+Mitigating hallucination in large language models (LLMs) is
+crucial to ensure trustworthy generation. A meaningful solu-
+tion to tackle this issue involves eliciting a reliable confidence
+score in the generation. However, the previous methods only
+focused on using white-box models for short-form generation.
+The solutions to long-form sentences with black-box models
+remain very limited. This study proposes a reliable black-box
+confidence elicitation for long-form generation by leveraging
+the external knowledge, inspired by retrieval augmented gener-
+ation. In particular, this paper proposes the confidence-aware
+prompt refinement (CAPR) to modify user prompts to ensure
+trustworthy responses. The prompt refiner is trained by maxi-
+mizing the rewards based on the confidence and the accuracy of
+generated sentences. Experiments show that CAPR effectively
+elicits reliable confidence scores. The refined prompts enable
+LLMs to produce reliable responses with calibrated confidence.
+Index Terms: large language model, prompt refinement, hallu-
+cination mitigation, question answering
+1. Introduction
+The ability of the current open-domain dialogue system, em-
+powered by large language models (LLMs), has changed the
+user behaviors in utilizing natural language applications. The
+open-domain dialogue system, which was initially designed for
+chit-chat purpose, has been transformed into a general system
+that can handle various users’ queries. For example, instead
+of asking search engines about factoid questions, people cur-
+rently use an open-domain dialogue system like ChatGPT [1]
+and expect to find the helpful and right answer. Unfortunately,
+such kind of system does not always provide reliable answers to
+individual queries due to the issue of hallucination [2,3]. Hallu-
+cinated answers generally refers to those misleading responses
+that are presented in a confident and seemingly plausible man-
+ner. This issue does exist because of twofold reasons. The first
+one is the inherent limitations in LLMs, resulting in insufficient
+knowledge during training, while the second one is the quality
+of the input prompts at test time.
+To address the limitation in LLM capability, some recent
+studies have presented the mechanisms to elicit a confidence
+score indicating the level of model certainty for a response gen-
+eration [4]. In a white-box setting, such a score was measured
+by accessing an internal information of token likelihood from a
+visible and tunable model. However, this approach is infeasible
+to black-box models, like ChatGPT, due to the inaccessibility of
+internal model information. A straightforward method to elicit
+confidence scores from black-box LLMs involves a verbal elici-
+tation by using a prompt [5]. Unfortunately, some prior findings
+have demonstrated that black-box LLMs tend to be overconfi-
+dent in their elicited scores. To mitigate generation of overcon-
+fident responses, verbal confidence elicitation was performed
+by aggregating several confidence scores [6–8]. This approach,
+however, required multiple prompting steps for a single query in
+an aggregation procedure, leading to a time-consuming prompt
+strategy. Another issue with the previous works is that the ma-
+jority of the solutions were tailored only for short-form gener-
+ation, such as question-answering (QA) tasks [9–12], without
+considering long-form responses [13,14].
+In addition, the limitation of prompt quality [15, 16] was
+tackled by designing the sophisticated prompt strategies to en-
+hance the trustworthiness in LLM responses. A notable solution
+was based on the in-context learning (ICL) [17]. However, this
+advanced prompt strategy is primarily feasible to short-form
+generation tasks. Long-form generation, such as a long-form
+answering system, poses a unique challenge to deal with the
+scenario of searching the extended and detailed answers from
+a short input question with very limited information. The uti-
+lization of ICL to cope with this scenario did not yield signifi-
+cant improvement because the in-context demonstrations were
+usually too lengthy, potentially confusing the generation of an-
+swers. Additionally, the extensive input tokens for such demon-
+strations consume a large token capacity within the black-box
+model, which results in an expensive prompting process.
+This paper addresses both limitations and proposes two so-
+lutions. Firstly, a knowledge-based confidence elicitation is in-
+troduced to ensure a regularized confidence score from black-
+box LLMs for a reliable long-form generation. In lieu of merely
+averaging scores from multiple black-box models, this approach
+leverages external knowledge to calibrate the confidence score,
+drawing the inspiration from retrieval-augmented generation
+(RAG). Secondly, the elicited confidence scores are utilized to
+train a prompt refiner, based on the so-called confidence-aware
+prompt refinement (CAPR) model, to address the challenge of
+the limited prompting options in long-form generation tasks.
+The proposed method is evaluated on the challenging long-form
+QA task using different black-box LLMs, demonstrating the ad-
+vantages of the suggested approaches.
+2. Confidence Elicitation & Prompt
+Refinement
+2.1. Confidence elicitation in large language models
+Confidence elicitation aims to provide a regularized confi-
+dence score to reflect truth and correctness of an LLM re-
+sponse, thereby helping users gauge the trustworthiness. The re-
+lated methods are categorized into white-box and black-box ap-
+proaches. White-box methods commonly leverage the model’s
+internal mechanisms using the controllable LLM, such as prob-
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+3264
+10.21437/Interspeech.2025-834
+
+ability consistency and weight stability during inference for to-
+ken generation [12,18]. Conversely, black-box methods, which
+interact solely with the inputs and outputs of the LLM, and
+elicit the confidence scores verbally by incorporating an input
+prompt for confidence score generation. However, prior works
+[6–8] have demonstrated that black-box LLMs often exhibit too
+high score, typically ranging between 0.8 and 1 (the highest
+score), and accordingly generate overconfident responses. This
+discrepancy reflects the unreliability in black-box confidence
+scores, particularly in the highly-secured applications such as
+healthcare and finance, where accurate assessments are vital.
+To address this issue, the methods to LLM responses such as
+using multiple sampling for consistency estimation or employ-
+ing external white-box model to generate reliability estimates
+have been proposed [6–8]. These approaches, however, lead to
+costly prompting as the confidence score elicitation needs the
+repeated prompting. Different from the previous works, this
+study introduces the knowledge-based confidence elicitation by
+utilizing external knowledge based on information retrieval to
+reliably elicit confidence scores at a reduced cost.
+2.2. Prompt refinement to mitigate hallucination
+The hallucination issue in LLMs can be mitigated through
+the hand-crafted prompt engineering techniques, which are re-
+quired for trustworthy generation. For example, the so-called
+rephrase and rewrite (RaR) in [19] employed a hard prompt
+template for prompt refinement where an input question is aug-
+mented with a fixed hard prompt in a form of
+{Question} Rephrase and expand the question, and respond.
+This method stimulates LLMs to fulfill a reasoning process via
+rephrasing and rewriting, and empirically outperformed the tra-
+ditional prompt strategies in various tasks. Additionally, the
+prompt strategy based on a Self-Polish method [20] took the
+advantage of LLM for language understanding where an itera-
+tive refinement procedure was performed through rewriting the
+questions to enhance the prompting performance. On the other
+hand, an alternative prompt strategy called the TextGrad [21]
+method introduced the textual-gradient descent, which was con-
+ceptually inspired by the backpropagation scheme to optimize
+the prompts given by LLMs. In general, the aforementioned
+methods were proposed to improve the quality of responses as
+well as increase the reliability of LLM outputs.
+3. Confidence-Aware Prompt Refinement
+Figure 1: Overview of knowledge-based confidence elicitation.
+3.1. Knowledge-based confidence elicitation
+This study presents a knowledge-based confidence elicitation
+(KCE) framework to improve the alignment between confi-
+dence score and generation accuracy by using black-box LLMs
+like GPT-3.5 and GPT-4. This KCE method is implemented by
+assessing the semantic similarity between generated responses
+and factual knowledge. As shown in Figure 1, given an input
+question x, this framework starts by generating a set of ini-
+tial responses by along with the corresponding verbalized confi-
+dence scores C based on different prompt strategies P. The sys-
+tem outputs by are evaluated by LLM to determine scores C =
+LLM(x, P). At the same time, the external knowledge from k
+documents is retrieved via a retriever {dj}k
+j=1 = Ret(x) by
+using question x. Then, the knowledge-based confidence elici-
+tation KCE(·) is determined by calibrating the confidence score
+based on information sources from multiple prompts and multi-
+ple documents, referring to retrieval augmented generation, via
+Celicit = λ · C + (1 −λ) · Sim
+(1)
+where λ is used to balance the influences from the verbalized
+confidence C and the similarity score, computed by Sim =
+f(by, {dj}k
+j=1) = max1≤j≤k
+
+by·dj
+|by||dj|
+
+, which is measured by
+a semantic discriminator f(·) between knowledge documents
+{dj}k
+j=1 and current answer by. The confidence score C is there-
+fore penalized with low similarity. This calibration would like
+to regularize LLM outputs for trustworthy generation.
+Figure 2: Overview of confidence-aware prompt refinement.
+3.2. Confidence-aware adapter for prompt refinement
+In addition to confidence calibration [22,23], this paper further
+mitigates hallucination in LLM through a reinforced prompt
+refinement driven by a specialized reward function [24, 25].
+A new method called confidence-aware prompt refinement
+(CAPR) is proposed and implemented as depicted in Figure 2.
+This method leverages the output of KCE to calculate a reward
+function for training a reinforcement learning (RL) agent to re-
+fine prompt and update answer by. By fulfilling RL with human
+feedback (RLHF), an optimization process is formulated as a
+Markov decision process. Given a query or question x, at is
+defined as a token generated by RL agent at time step t. No-
+tably, the state in RL is defined as an augmented prompt input
+st = {x, a0, · · · , at}. This state at the end of the trajectory,
+sT , is known as the final refined prompt. Accordingly, the RL
+agent is built by using a pre-trained white-box LLM, where the
+only trainable parameters are the adapter layers with parameter
+θ. The optimization process in CAPR is specially designed for
+long-form generation for question answering.
+3.2.1. Confidence-aware reward function
+Reward function rt plays a crucial role when fine-tuning an
+LLM with RL using adapter θ. The reward is basically designed
+3265
+
+to assess the quality and reliability of the generated answer by
+from a query x. It can be calculated by using the expected cali-
+bration error (ECE) and the generation accuracy (ACC) as
+rt ≜R(sT , byt, yt, Celicit) = −ECE + ACC
+(2)
+where y is the ground truth response, by is the response with
+the refined prompt sT , and Celicit is the elicited confidence from
+KCE at time step T. Optimizing this function involves mini-
+mizing the ECE and maximizing the accuracy, likely leading to
+reliable and accurate outputs [26, 27]. However, the definition
+of accuracy may vary over different downstream tasks.
+Following standard RLHF with human feedback y, such
+a reward R(·) is only calculated at the end of trajectory τ =
+{τt} = {sT , byt, yt, rt, Celicit} at time step T, which is quite
+similar to the scenario in the contextual bandit algorithm. In
+particular, ECE is defined by measuring the accumulated dis-
+tance between the accuracy and the confidence over the model
+predictions across M bins with each bin having the length |Bm|
+ECE =
+M
+X
+m=1
+|Bm|
+n
+|Accuracy(Bm) −Confidence(Bm)|
+(3)
+where n denotes the number of QA training samples within a
+bin Bm. Predictions are sorted into these bins based on their
+confidence scores, and the ECE is computed as the weighted
+average of the absolute differences between the accuracy and
+the confidence for different samples in individual bins.
+The confidence-aware reward is subsequently computed
+and utilized for training a prompt refiner [28] via adapter
+layer θ within the white-box LLM by employing the proxi-
+mal policy optimization (PPO) algorithm [29]. This trick can
+avoid fine-tuning LLMs which is time-consuming.
+The re-
+fined prompt sT is formed by transforming original question
+x with the sequence of tokens generated by the policy net-
+work πθ, where each generated token can be formulated as
+at ∼πθ(at|x, a0, · · · , at−1). Since by and C are generated by
+black-box LLMs, the proposed learning algorithm follows the
+implementation based on the hybrid black-box and white-box
+LLMs where black-box LLM is used to provide the calibrated
+confidence Celicit and white-box LLM is employed to train a
+prompt refiner θ via continuous learning with RL, which can be
+fitted to long-form answer by.
+3.2.2. Adapter learning for prompt refinement
+PPO is implemented as an RL solution to optimize the adapter
+or policy πθ by maximizing the expected reward [30]. The pol-
+icy gradient method is applied for optimization. In particular,
+the learning objective is to maximize the expected reward
+E[R(sT , byt, yt, Celicit)] =
+Z
+R(sT , byt, yt, Celicit)πθ(at|st)dat.
+(4)
+The optimization problem is formulated by maximizing
+J(θ) = Eτ∼πθ [R(τ)]
+(5)
+where the refined prompt is sampled from CAPR trajectory τ
+leveraged by KCE. Notably, the policy gradient is derived by
+∇θJ(θ) = Eτ∼πθ [∇θ log πθ(at|st) R(sT , byt, yt, Celicit)] .
+(6)
+Following the PPO process, which incorporates a clipped sur-
+rogate objective to constrain the magnitude of policy updates
+with an advantage function [29], ensuring that these updates
+stay closely aligned with the previous policy, the optimal policy
+parameter is estimated by
+θ∗= arg max
+θ
+X
+πθ(x)
+Eτ∼πθ [R(sT , byt, yt, Celicit)] .
+(7)
+By optimizing the prompt refiner θ with a carefully de-
+signed confidence-aware reward function, the proposed CAPR
+is trained via a gradient ascent algorithm for a fine-tuned LLM
+θnew ←θold + α∇θJ(θ)|θ=θold
+(8)
+using a learning rate α. Finally, the optimal prompt is refined
+and sampled by the optimal policy a∗
+t ∼πθ∗(at|st). CAPR is
+implemented for trustworthy generation as Algorithm 1.
+Algorithm 1: Training procedure for prompt refiner
+Require: initial policy θ0, retriever function Ret(·),
+reward function R(·), knowledge confidence
+elicitation KCE(·) and prompt refiner πθ
+initialize θ∗= θ0
+repeat
+sample question and ground truth pair (x, y)
+retrieve k documents {dj}k
+j=1 = Ret(x)
+for each step t do
+generate prompt token by at ∼πθ(x)
+end
+for each step t do
+generate answer byt and elicit confidence
+Celicit = KCE({dj}k
+j=1, x, {at}T
+t=0)
+compute reward function
+rt = R(sT , byt, yt, Celicit)
+collect trajectory with transition
+τt = {st, {at}T
+t=0, rt, st+1, Celicit}
+end
+update prompt refiner πθ(·) using PPO with τ
+until convergence or max iteration
+return θ∗
+4. Experiments
+4.1. Experimental setup
+4.1.1. Backbone and prompt refiner models
+This study employed GPT-3.5 and GPT-4 as black-box LLMs
+in the experiments due to their superior performance on the pre-
+vious reasoning benchmarks such as MMLU, GLUE, SQuAD,
+and RACE. Furthermore, these models are among the most
+widely utilized black-box LLMs and have been applied in nu-
+merous applications. For the prompt refinement model, this
+study employed the adapters configured in white-box model
+based on LLamA2 [31], which underwent fine-tuning by using
+the PPO algorithm to enhance the user’s initial prompts, thereby
+resulting in improving the responses, which were generated by
+the black-box LLMs. The efficient fine-tuning of the prompt
+refiner was proposed by utilizing a sophisticated confidence-
+aware reward function and adapter layers. LLaMA2-adapter
+architecture was the same as that in [31]. λ = 0.8 was used.
+4.1.2. Experimental dataset
+The ASQA (answer summaries for questions which are ambigu-
+ous) dataset [32] was selected as the benchmark for long-form
+3266
+
+QA task. This dataset is a well-established resource in the field
+of closed-book, open-domain QA tasks, providing a compre-
+hensive collection of real-world questions and their correspond-
+ing answers in a detailed and paragraph-length style across
+a vast range of topics.
+The prompt strategies using vanilla,
+chain-of-thought (COT) [33], multi-step [34], top-k sampling
+and self-probing were considered. Given the ambiguous ques-
+tions, the KCE was able to elicit accurate confidence scores
+from black-box LLMs. Concurrently, the CAPR was skilled at
+revising ambiguous questions into more precise ones, thereby
+guiding the black-box LLMs to produce better outputs.
+4.1.3. Evaluation metrics
+Several evaluation metrics were employed to assess the quality
+of the proposed method. ROUGE-L [35] measures the accuracy
+by comparing the longest common subsequence between gener-
+ated and ground truth texts. Consistent with the previous study
+setting [12], this work defines ROUGE-L score as the accuracy
+metric for long-form QA, using a threshold of 0.3. ECE eval-
+uates how well the model’s predicted probabilities align with
+the actual outcomes, while the area under the receiver operating
+characteristic curve (AUROC) gauges the model’s ability to pre-
+dict confidence accurately in classifying responses. Generally
+speaking, these metrics provide a comprehensive evaluation of
+the model’s accuracy, trustworthiness, and prediction capability.
+Table 1: Performance comparison of different long-form gener-
+ation methods on different black-box LLMs.
+ROUGE-L (↑)
+ECE (↓)
+AUROC (↑)
+GPT-3.5
+Original LLM
+0.1821
+0.7598
+0.5512
+Self-Polish [20]
+0.2163
+0.7316
+0.5125
+RaR [19]
+0.1423
+0.7746
+0.5631
+TextGrad [21]
+0.2137
+0.7222
+0.6625
+CAPR w/ KCE
+0.2377
+0.6359
+0.6688
+GPT-4
+Original LLM
+0.1945
+0.7562
+0.6002
+Self-Polish [20]
+0.2121
+0.7452
+0.5833
+RaR [19]
+0.2407
+0.7010
+0.5203
+TextGrad [21]
+0.2155
+0.6826
+0.5942
+CAPR w/ KCE
+0.2648
+0.6466
+0.8065
+Table 2: Ablation studies on the benefit of KCE in CAPR with
+different prompt strategies and black-box LLMs.
+Vanilla
+COT
+Multi-step
+ECE (↓)
+GPT-3.5
+0.7082
+0.7778
+0.7548
+GPT-3.5 w/ KCE
+0.5906
+0.5260
+0.5975
+GPT-4
+0.7327
+0.8950
+0.7961
+GPT-4 w/ KCE
+0.6086
+0.6932
+0.6048
+AUROC (↑)
+GPT-3.5
+0.5255
+0.5440
+0.5039
+GPT-3.5 w/ KCE
+0.6071
+0.7268
+0.6940
+GPT-4
+0.5972
+0.5769
+0.4873
+GPT-4 w/ KCE
+0.6437
+0.8622
+0.7529
+4.2. Experimental results
+The results shown in Table 1 demonstrate the performance of
+different prompt refinement methods, including Self-Polish [20]
+Table 3: Ablation studies on reward functions
+ROUGE-L (↑)
+ECE (↓)
+AUROC (↑)
+CAPR w/o KCE
+0.1808
+0.6334
+0.51113
+CAPR w/ ACC
+0.2151
+0.7679
+0.5340
+CAPR w/ KCE
+0.2226
+0.6042
+0.5777
+and TextGrad [21], in generating reliable prompts for long-form
+QA tasks. Original LLM is the case of standard prompt. Self-
+Polish leveraged the LLM to iteratively improve the question,
+while Textgrad employed textual gradient descent with GPT-
+4 to align responses close to ground truth answers. Another
+method, rephrase and respond (RaR), used a structured prompt
+to simultaneously rephrase and answer the question. The pro-
+posed approach notably enhances the ROUGE-L, ECE and AU-
+ROC scores, boosting the reliability and accuracy of confi-
+dence assessments in LLM outputs. This set of experiments
+shows that CAPR with KCE performs well in different black-
+box LLMs, emphasizing its generalization performance. This
+improvement is crucial for applications that depend on precise
+and dependable model responses, enhancing the user trust and
+the utility of the generated content. The results using GPT-4 are
+consistently better than those using GPT-3.5.
+4.3. Ablation studies
+To demonstrate the effectiveness of the proposed methods, abla-
+tion studies are conducted to evaluate the knowledge-base con-
+fidence elicitation (KCE) and the reward function within CAPR.
+Table 2 shows the evaluation on the effect of KCE in different
+traditional prompt strategies, showing that incorporating KCE
+consistently leads to more reliable confidence scores and bet-
+ter generation results in terms of ECE and AUROC. In Table 3
+with the results on ROUGE-L, ECE and AUROC, CAPR with-
+out KCE represents the case of using CAPR with only verbal-
+ized confidence score C while CAPR with ACC implies CAPR
+using accuracy as the sole reward function. CAPR with KCE
+is the proposed method using Celicit. This comparative study
+on reward function highlights the synergistic relationship be-
+tween KCE and CAPR, demonstrating that each component en-
+hances overall performance. The analysis clearly shows how
+KCE complements CAPR and significantly improves prompt
+generation for long-form answering in different metrics.
+5. Conclusions
+This paper introduced two complimentary approaches to dehal-
+lucination in black-box LLMs. These two methods were in-
+tegrated to strengthen the solution by using the external knowl-
+edge to calibrate LLM outputs, and cross-referencing them with
+reliable prompt to improve reliability of response. The hybrid
+solution ensures that it is likely to generate factual responses
+given by the grounded prompt. The prompt refinement was iter-
+atively performed by fine-tuning LLMs according to a prompt
+generator based on reinforcement learning, using the feedback
+from black-box LLMs and helping the generation of reliable
+and contextually relevant answers over time, which were fitted
+to the applications of long-form generation. By integrating the
+confidence calibration and the prompt refinement, the proposed
+method enhanced the trustworthiness of black-box models such
+as GPT-3.5 and GPT-4 over ASQA task, minimizing the hal-
+lucinations while simultaneously improving both accuracy and
+reliability of their responses.
+3267
+
+6. References
+[1] J. Achiam, S. Adler, S. Agarwal, L. Ahmad, I. Akkaya, F. L. Ale-
+man, D. Almeida, J. Altenschmidt, S. Altman, S. Anadkat et al.,
+“GPT-4 Technical Report,” arXiv preprint arXiv:2303.08774,
+2023.
+[2] J.-T. Chien and Z.-X. Tai, “Reinforced retrieval to avoid halluci-
+nation in large language models,” in Proc. of International Joint
+Conference on Neural Networks, 2025, pp. 1–7.
+[3] M. Rohmatillah, B. Aditya, L.-J. Yang, B. G. Ngo, W. Sulaiman,
+and J.-T. Chien, “Promoting mental self-disclosure in a spoken
+dialogue system,” in Proc. of Annual Conference of International
+Speech Communication Association, 2023, pp. 670–671.
+[4] T.-C. Luo and J.-T. Chien, “Variational dialogue generation with
+normalizing flows,” in Proc. of IEEE International Conference on
+Acoustics, Speech and Signal Processing, 2021, pp. 7778–7782.
+[5] K. Tian, E. Mitchell, A. Zhou, A. Sharma, R. Rafailov, H. Yao,
+C. Finn, and C. Manning, “Just ask for calibration: Strategies for
+eliciting calibrated confidence scores from language models fine-
+tuned with human feedback,” in Proc. of Conference on Empirical
+Methods in Natural Language Processing, 2023.
+[6] M. Xiong, Z. Hu, X. Lu, Y. LI, J. Fu, J. He, and B. Hooi, “Can
+LLMs express their uncertainty? an empirical evaluation of confi-
+dence elicitation in LLMs,” in Proc. of International Conference
+on Learning Representations, 2024.
+[7] Z. Lin, S. Trivedi, and J. Sun, “Generating with confidence: Un-
+certainty quantification for black-box large language models,”
+Transactions on Machine Learning Research, 2024.
+[8] M. Jiang, Y. Ruan, S. Huang, S. Liao, S. Pitis, R. B. Grosse,
+and J. Ba, “Calibrating language models via augmented prompt
+ensembles,” in Proc. of Workshop on Challenges in Deployable
+Generative AI at International Conference on Machine Learning,
+2023.
+[9] M. Gabburo, S. Garg, R. Koncel-Kedziorski, and A. Moschitti,
+“Learning answer generation using supervision from automatic
+question answering evaluators,” in Proc. of Annual Meeting of the
+Association for Computational Linguistics, 2023, pp. 8389–8403.
+[10] ——, “SQUARE: Automatic question answering evaluation using
+multiple positive and negative references,” in Proc. of Interna-
+tional Joint Conference on Natural Language Processing, 2023,
+pp. 20–28.
+[11] Y. Dong, K. Luo, X. Jiang, Z. Jin, and G. Li, “PACE: Improv-
+ing prompt with actor-critic editing for large language model,” in
+Findings of the Association for Computational Linguistics, 2024,
+pp. 7304–7323.
+[12] L. Kuhn, Y. Gal, and S. Farquhar, “Semantic uncertainty: Linguis-
+tic invariances for uncertainty estimation in natural language gen-
+eration,” in Proc. of International Conference on Learning Repre-
+sentations, 2023.
+[13] J.-T. Chien, H.-T. Wang, and C.-H. Lee, “Contrastive meta learn-
+ing for soft prompts using dynamic mixup,” in Proc. of Interna-
+tional Joint Conference on Neural Networks, 2024, pp. 1–6.
+[14] J.-T. Chien and C.-C. Chen, “Mask consistency and contrast reg-
+ularization for prompt-based learning,” in Proc. of International
+Joint Conference on Neural Networks, 2024, pp. 1–7.
+[15] M.-Y. Chen, M. Rohmatillah, C.-H. Lee, and J.-T. Chien, “Meta
+learning for domain agnostic soft prompt,” in Proc. of IEEE Inter-
+national Conference on Acoustics, Speech and Signal Processing,
+2023, pp. 1–5.
+[16] J.-T. Chien, M.-Y. Chen, C.-H. Lee, and J.-H. Xue, “Meta soft
+prompting and learning,” APSIPA Transactions on Signal and In-
+formation Processing, vol. 13, no. 5, pp. 1–30, 2024.
+[17] F. Petroni, T. Rockt¨aschel, S. Riedel, P. Lewis, A. Bakhtin, Y. Wu,
+and A. Miller, “Language models as knowledge bases?” in Proc.
+of Empirical Methods in Natural Language Processing, 2019, pp.
+2463–2473.
+[18] K. Li, O. Patel, F. Vi´egas, H. Pfister, and M. Wattenberg,
+“Inference-time intervention: Eliciting truthful answers from a
+language model,” in Proc. of Conference on Neural Information
+Processing Systems, 2023.
+[19] Y. Deng, W. Zhang, Z. Chen, and Q. Gu, “Rephrase and respond:
+Let large language models ask better questions for themselves,”
+2024.
+[20] Z. Xi, S. Jin, Y. Zhou, R. Zheng, S. Gao, J. Liu, T. Gui, Q. Zhang,
+and X. Huang, “Self-polish: Enhance reasoning in large language
+models via problem refinement,” in Proc. of Conference on Em-
+pirical Methods in Natural Language Processing, 2023.
+[21] M. Yuksekgonul, F. Bianchi, J. Boen, S. Liu, Z. Huang,
+C. Guestrin, and J. Zou, “Textgrad: Automatic ”differentiation”
+via text,” 2024.
+[22] J. Geng, F. Cai, Y. Wang, H. Koeppl, P. Nakov, and I. Gurevych,
+“A survey of confidence estimation and calibration in large lan-
+guage models,” in Proc. of Conference of the North American
+Chapter of the Association for Computational Linguistics: Hu-
+man Language Technologies, 2024, pp. 6577–6595.
+[23] B. Huang, H. Sharma, and Y. Mao, “Enhancing language model
+alignment: A confidence-based approach to label smoothing,” in
+Proc. of Conference on Empirical Methods in Natural Language
+Processing, 2024, pp. 21 341–21 352.
+[24] H. Lightman, V. Kosaraju, Y. Burda, H. Edwards, B. Baker,
+T. Lee, J. Leike, J. Schulman, I. Sutskever, and K. Cobbe, “Let’s
+verify step by step,” in Proc. of International Conference on
+Learning Representations, 2024.
+[25] M. Deng, J. Wang, C.-P. Hsieh, Y. Wang, H. Guo, T. Shu,
+M. Song, E. Xing, and Z. Hu, “RLPrompt: Optimizing discrete
+text prompts with reinforcement learning,” in Proc. of the Empir-
+ical Methods in Natural Language Processing, 2022, pp. 3369–
+3391.
+[26] M. Rohmatillah and J.-T. Chien, “Taming NLU noise: Student-
+teacher learning for robust dialogue policy,” in Proc. of IEEE Spo-
+ken Language Technology Workshop, 2024, pp. 849–856.
+[27] J.-T. Chien and Y.-C. Wu, “Empathetic response generation via
+regularized Q-learning,” in Proc. of Asia Pacific Signal and Infor-
+mation Processing Association Annual Summit and Conference,
+2024, pp. 1–6.
+[28] M. Rohmatillah and J.-T. Chien, “Revise the NLU: A prompting
+strategy for robust dialogue system,” in Proc. of IEEE Interna-
+tional Conference on Acoustics, Speech and Signal Processing,
+2024, pp. 10 956–10 960.
+[29] J. Schulman, F. Wolski, P. Dhariwal, A. Radford, and O. Klimov,
+“Proximal policy optimization algorithms,” 2017.
+[30] J.-T. Chien, M. Rohmatillah, and C.-T. Chu, “Strategic optimiza-
+tion for worst-case augmentation and classification,” IEEE Trans-
+actions on Audio, Speech and Language Processing, vol. 33, pp.
+111–123, 2025.
+[31] R. Zhang, J. Han, C. Liu, A. Zhou, P. Lu, Y. Qiao, H. Li, and
+P. Gao, “LLaMA-adapter: Efficient fine-tuning of large language
+models with zero-initialized attention,” in Proc. of International
+Conference on Learning Representations, 2024.
+[32] I. Stelmakh, Y. Luan, B. Dhingra, and M.-W. Chang, “ASQA:
+Factoid questions meet long-form answers,” in Proc. of the Em-
+pirical Methods in Natural Language Processing, 2022.
+[33] J. Wei, X. Wang, D. Schuurmans, M. Bosma, F. Xia, E. Chi, Q. V.
+Le, D. Zhou et al., “Chain-of-thought prompting elicits reason-
+ing in large language models,” Advances in Neural Information
+Processing Systems, vol. 35, pp. 24 824–24 837, 2022.
+[34] Y. Fu, H. Peng, A. Sabharwal, P. Clark, and T. Khot, “Complexity-
+based prompting for multi-step reasoning,” in Proc. of Interna-
+tional Conference on Learning Representations, 2023.
+[35] C.-Y. Lin, “ROUGE: A package for automatic evaluation of sum-
+maries,” in Text Summarization Branches Out, 2004, pp. 74–81.
+3268
+

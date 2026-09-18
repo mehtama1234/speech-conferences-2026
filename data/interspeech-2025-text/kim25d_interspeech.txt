@@ -1,0 +1,545 @@
+Fully End-to-end Streaming Open-vocabulary Keyword Spotting with W-CTC
+Forced Alignment
+Dohyun Kim, Jiwook Hwang
+PuzzleAI, South Korea
+dohyunkim1657@gmail.com, phypan11@gmail.com
+Abstract
+In open-vocabulary keyword spotting, an acoustic encoder
+pre-trained with Connectionist Temporal Classification (CTC)
+loss is typically used to train a text encoder by aligning audio
+embedding space with text embedding space. In previous work,
+word-aligned datasets were created by forced alignment algo-
+rithms such as the Montreal Forced Aligner (MFA) to train text
+encoder and verifier models. In this paper, we propose a new
+training pipeline for open-vocabulary keyword spotting using
+the W-CTC forced alignment algorithm, a simple modification
+of the practical CTC algorithm. Our approach eliminates the
+need for creating word-aligned datasets, operates in a fully end-
+to-end manner, and demonstrates superior performance on the
+Libriphrase hard dataset.
+Index Terms : CTC, W-CTC, forced alignment, end-to-end
+training, keyword spotting, open-vocabulary keyword spotting
+1. Introduction
+Open-vocabulary keyword spotting models aim to recognize
+any keyword in a speech dataset. Solutions for this task in-
+clude few-shot learning, where spoken keywords are enrolled
+before inference, known as the query-by-example method [1],
+and zero-shot learning, where only the text sequences of key-
+words are utilized. In zero-shot systems, text encoders are typ-
+ically trained to match the distribution of a pre-trained audio
+encoder with contrastive learning [2]. This paper focuses on the
+more universal approach of zero-shot open-vocabulary keyword
+spotting.
+Algorithms such as Dynamic Sequence Partitioning (DSP)
+[3, 4] and attention mechanisms [5, 6] have been applied
+to open-vocabulary tasks, where the alignment of audio and
+keywords is crucial. However, DSP is only applicable to
+forced-aligned datasets, and attention-based models trained
+with full utterances degrade performance because extraneous
+context interferes with accurate attention as demonstrated later
+in Sec. 3.4.1. A recent approach [7] utilizes CTC alignment
+by introducing pad tokens in CTC training to find alignments.
+However, it is unclear how to apply this approach directly to
+full-script audio and the approach is limited to short phrase
+datasets. Additionally, it does not leverage practical CTC so
+it requires effort to implement. Therefore, phrase datasets cre-
+ated with the MFA tool [8] are mainly used for training open-
+vocabulary keyword spotting models. However, creating these
+datasets is time-consuming and memory-intensive, making it
+challenging for large datasets. To overcome these problems,
+we use a W-CTC forced alignment [9] that closely resembles
+the practical CTC algorithm, directly incorporating it into the
+training process for end-to-end training on a full-script audio
+dataset. Furthermore, we explore various training pipelines to
+assess the potential for fully end-to-end training. To the best of
+our knowledge, we are the first to train open-vocabulary key-
+word spotting on a full-script dataset.
+Streaming keyword spotting is essential for verifying that
+keywords are spotted in noisy or continuous speech in real-
+time. Previous approaches have relied on Automatic Speech
+Recognition (ASR) models either to detect keywords in de-
+coded text [10] or to verify scores by constraining sequences
+with keywords [11]. However, these methods do not address
+open-vocabulary scenarios and tend to perform poorly on chal-
+lenging cases. The attention-based verifier model [5] offers a
+potential solution by using a sliding window algorithm. Atten-
+tion should be confined to aligned audio regions for optimal
+performance, but the windowing process typically includes ex-
+traneous elements. Therefore, we introduce a streaming open-
+vocabulary keyword spotting system that is compatible with our
+proposed model utilizing streaming W-CTC forced alignment.
+The contributions of this paper are as followings: 1. Pro-
+pose a new open-vocabulary keyword spotting model highly
+compatible with the W-CTC framework that achieves high per-
+formance. 2. Explore a fully end-to-end training pipeline for
+the proposed open-vocabulary keyword spotting model. 3. In-
+troduce an streaming open-vocabulary keyword spotting algo-
+rithm compatible with our proposed model.
+2. Proposed Method
+The proposed method focused on obtaining the functionality of
+streaming open-vocabulary keyword spotting using an end-to-
+end training pipeline. To enable streaming, we use a block-
+wise conformer audio encoder [12] that extracts audio embed-
+dings in continuous speech in real-time. In addition, we use
+W-CTC forced alignment to find keyword alignments in contin-
+uous speech at every training time step for end-to-end training.
+An overview of our model is shown in Fig. 1.
+2.1. Audio encoder
+The Contextual Blockwise Conformer (CBC) [12] adapts Con-
+former [13] for streaming applications by processing overlap-
+ping blocks with a constant hop size and concatenating output.
+To minimize the performance gap with Conformer, CBC incor-
+porates a contextual vector from the previous block and look-
+ahead frames for future context. Its structure mirrors the tiny
+Conformer from [4] with a small block size for real-time pro-
+cessing. Phoneme sequences generated via G2P [14] serve as
+input text. The CBC, trained with CTC Loss, produces audio
+embeddings, o = (o1,o 2,...,o T ), mapped by the CTC layer to
+a token probability distribution, e = (e1,e 2,...,e T ), where T
+is the length of the encoder output.
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+519 10.21437/Interspeech.2025-193
+
+Optionally trainable parameters
+Trainable parameters
+Non-trainable parameters
+Non-parametric region
+Training Loss
+Contextual 
+Blockwise 
+Conformer
+(CBC)
+Pretrained 
+G2P model
+keyword
+CTC 
+layer
+Audio
+GRU
+FC layer
+log softmax
+Pos /
+Neg
+W-CTC forced alignment
+sigmoid
+Org full text
+AND CONTINUED THE SEARCH FOR
+HIS FATHER
+SEARCH
+“ S ER1 CH “
+T x dim
+T x (vocab_size+1)
+(2x(M+2)+1) xT
+“ * S ER1 CH * “
+⟨∗⟩token
+concat
+M x 1
+2xM-1
+⟨∗⟩
+log prob
+If blank token, 1-prob, else, prob
+softmax
+Aorg
+⟨∗⟩prob concat 
+Sec.2.1 Sec.2.2 Sec.2.3
+k*
+k
+o e
+e
+LCTC
+Lkws
+A
+po
+Eq.(1)
+Eq.(2)
+CTC log prob r
+CTC forced 
+alignment
+(G2P)
+Figure 1: Overview of the proposed model training pipeline: The audio encoder(CBC) and CTC layer encode the audio, while G2P
+transforms the keyword into a phoneme sequence as described in Sec. 2.1. The W-CTC forced alignment uses the features and phoneme
+sequences to align the audio subset that best matches the phoneme sequence, leveraging the ⟨∗⟩ token, as described in Sec. 2.2. The
+resulting alignment and audio features are used as input to the verifier (GRU + FC) to infer the keyword probability, as described in
+Sec. 2.3.LCTC is used solely to train the audio encoder, whereasLkws is mainly used to train the verifier model.
+2.2. W-CTC forced alignment
+While CTC loss collects all possible paths [15], CTC forced
+alignment finds the most probable path, which is implemented
+with Dynamic Programming [16]. Let us denote the in-
+put keyword as k = ( k1,k 2,...,k M ), where ki is a to-
+ken, and the result of the CTC forced alignment as Aorg =
+(a⟨ϵ⟩0, ak1, a⟨ϵ⟩1, ak2,... ,akM, a⟨ϵ⟩M ), where an∈{ 0, 1}T .
+an is a vector where the indices on the aligned path of token
+n∈{ ki,⟨ϵ⟩i} are set to 1, and 0 otherwise. The blank token,
+denoted as⟨ϵ⟩, is also aligned. aki can never be the zero vector
+because the phoneme token is aligned with at least one frame,
+but a⟨ϵ⟩i can be the zero vector when ki and ki+1 are tightly
+aligned (See the yellow section in Fig. 1). Unlike standard CTC
+forced alignment, W-CTC forced alignment aligns partial se-
+quences to spot keywords in continuous speech. In [9], the ⟨∗⟩
+token is inserted into unknown text sequences, masking align-
+ment with⟨∗⟩ when there is no preference. The log probability
+of⟨∗⟩ is set to 0 and concatenated in every frame as in Fig. 1,
+ensuring only known sequences affect the score of the best path.
+In our W-CTC forced alignment,⟨∗⟩ are added at the start and
+end of k, forming k∗ = (⟨∗⟩,k 1,k 2,...,k M,⟨∗⟩). The align-
+ment process is identical to the practical CTC forced alignment
+algorithm, which is easy to implement. The algorithm is simple
+and efficient, with a time complexity of O(M×T ), outper-
+forming the DSP algorithm’s complexity of O(M×T 2) [3].
+Further optimizations can enhance its efficiency [16].
+2.3. Verifier model
+Our verifier model is composed of GRU and FC layers as de-
+scribed in [4], and its input is calculated with an alignment, A,
+and token probabilities. a⟨ϵ⟩i are also included to effectively
+verify hard-negatives. This is because an abnormal ⟨ϵ⟩ prob-
+ability can signal a deletion error ( a⟨ϵ⟩i includes indexes with
+non-⟨ϵ⟩i tokens). We solely use A = (ak1, a⟨ϵ⟩1, ak2,..., akM )
+as input with length 2M− 1. We multiply the softmax score
+at each index according to the alignment. The scores of⟨ϵ⟩ are
+subtracted from 1 to maintain the distribution of the empty ⟨ϵ⟩
+alignment (a zero vector), as follows.
+p(n,i) =
+(
+1−softmax (ei)t ifn is⟨ϵ⟩
+softmax (ei)t otherwise (1)
+an is element-wise multiplied by pn = ( p(n,0),...,p (n,T ))
+along the time axis. Finally, audio embeddingo is multiplied by
+each frame index and averaged over the non-zero frames along
+the time axis, as follows:
+rn = ((an◦ pn)· o)/sum(an) (2)
+where◦ denotes element-wise multiplication and· denotes ma-
+trix multiplication. The resulting matrix, r = (rk1,r⟨ϵ⟩1,rk2,
+...,rkM ), is fed to the verifier model.
+2.4. Fully end-to-end training
+Initially, for each utterance, positive phrases are randomly sam-
+pledNgen times by choosing 1 to 4 consecutive words within
+the text label of the audio. Negative phrases are randomly sam-
+pled from the positive phrases of other utterances, excluding
+phrases that are part of the text label. In line with [4, 5], hard
+negative phrases are created from positive phrases by insertion,
+deletion and substitution of 1 to 3 successive phonemes. The
+substitution candidates are predefined with 5 acoustically simi-
+lar phonemes, which is determined by the similarity of the CTC
+layer. As a result, a mini-batch contains 3×Ngen phrases per
+utterance.
+As mentioned in Sec. 2.2, the resulting phrases undergo W-
+CTC forced alignment with full audio. The alignments are in-
+ferred on-the-fly and used for training with the verifier. To train
+the model in a fully end-to-end manner, we employ multitask
+learning.
+Ltotal =Lkws +λCTCLCTC, (3)
+whereLCTC denotes the CTC loss of full text input and Lkws
+refers to Binary Cross Entropy Loss calculated with keywords.
+λCTC is set to 1.0 for fully end-to-end learning and to 0.0 when
+training only the verifier with the pre-trained encoder.
+520
+
+The non-differentiability of CTC due to the gradient of the
+argmax function in alignment maps does not affect the model’s
+optimization or generalization. This is because the alignment
+is directly multiplied with the encoder outputs to ensure differ-
+entiability. Additionally, the impact of Lkws on the encoder
+is minimal, as the aligned path captures the features necessary
+for effective learning. RestrictingLkws gradients to the verifier
+model does not convey performance differences (AUC variation
+within 0.2), which confirms the robustness and effectiveness of
+end-to-end training with W-CTC alignment.
+2.5. Streaming W-CTC keyword spotting inference
+Algorithm. 1 outlines the streaming keyword spotting process,
+which utilizes a modified version of practical continuous CTC
+forced alignment. The first modification involves inserting the
+⟨∗⟩ token at the start of the W-CTC forced alignment to en-
+sure that any arbitrary frame can serve as an alignment start
+point. The second involves backtracking from the index with
+the maximum score of thekM token (ending of keyword, within
+window). This ensures that akM includes at least one frame
+containing the value 1 in the current window. Negative sam-
+ple alignments often reveal abnormal probabilities for certain
+tokens, especially in the final sections of the alignment. They
+can also be completely misaligned, as shown in Fig. 2. These
+abnormal alignments, derived from nearby windows, with low
+scores, help verify the keyword within discrete audio win-
+dows. After the alignment is extracted, it is used in the verifier.
+The complexity of the streaming keyword spotting algorithm,
+O(M×W ) per W -sized window, matches that of practical
+CTC forced alignment. Thus, the algorithm is efficient because
+M andW are small enough for streaming.
+BUT I CANNOT REMEMBER ANY INSTANCE
+startend
+⟨ε⟩
+W=8
+Window idx: 24-32
+Verify score: 2.1e-6
+W=8
+Window idx32-40
+Verify score: 0.9991
+W=8
+Window idx40-48
+Verify score: 0.0003
+startend
+startend
+⟨ε⟩⟨ε⟩ ⟨ε⟩ ⟨ε⟩
+Figure 2: Alignment with window size 8 and target keyword
+“remember”. The first row is completely misaligned, the second
+row is well-aligned and the last row contains misaligned tokens
+with low probability. The verifier model assigns low scores to
+the misaligned cases.
+3. Experimental Results
+3.1. Datasets
+Librispeech [17] train-clean-100 and 360 were used for train-
+ing the CBC and end-to-end training. Our evaluation utilizes
+the Libriphrase dataset [6], derived from Librispeech train-other
+500, comprising both the Libriphrase hard (LH) and Libriphrase
+easy (LE) datasets. In addition, a phrase dataset (PD) consisting
+of 1 to 4-words phrases from Librispeech train-clean-100 and
+360 was employed for training the phrase model. The Speech
+Algorithm 1 Streaming W-CTC Keyword Alignment
+Input: k = (⟨∗⟩,k 1,...,k M ), e = (e1,...,e W ),α,P
+Output:Align,α,P
+1: ifα andP not initialized then
+2: α∈ R2(M +1)+1,α [0] = 0,α [1] = 0,α [2 :] =− inf
+3: ▷ Forward score state (including⟨∗⟩ and⟨ϵ⟩)
+4: P∈ Rt×2(M +1),P = [] ▷ Stores backtrack paths
+5: end if
+6: skM = [] ▷ Stores in current window
+7: fori← 1 to W do
+8: α,Pcur←CTCalign(α,ei, k) ▷O (M )
+9: P.append(Pcur)
+10: skM.append(α[kM ]) ▷ Score of keyword ending
+11: end for
+12: Align =backtrack(P,argmax (skM )) ▷O (M )
+13: returnAlign,α,P
+Commands V1 test (G) dataset [18] was also evaluated.
+3.2. Training configurations
+The acoustic features were 80-channel mel spectrograms (25ms
+window, 10ms hop, 16kHz sample rate). The CBC hyper-
+parameters were: layers: 6, enc-dim: 144, lin-dim: 576, conv-
+kernel: 3, att-heads: 4. For block processing, block/hop/look-
+ahead size were 20/8/8, respectively. The dimension of the GRU
+and FC layer in the verifier was 144. The total number of pa-
+rameters was 3.61M (excluding the G2P model). For training,
+AdamW [19] was used with 5000 warm-up steps and a 0.0015
+learning rate. The audio encoder was trained with CTC for
+150 epochs on Librispeech and for 10 epochs of fine-tuning on
+the PD. With the pre-trained encoder, the verifier model was
+trained for 50 epochs on full utterances (Librispeech) and for
+20 epochs on the PD. The fully end-to-end model was trained
+for 150 epochs. Ngen was set to 10 for keyword sampling. All
+source code was based on ESPNet [20].
+3.3. Baseline Comparisons
+Our evaluation was conducted using the AUC and EER metrics.
+For training and evaluation on the phrase datasets (PD, LE, LH),
+we padded a frame of low probability embedding, excluding the
+⟨∗⟩ token, at the start and end for W-CTC alignment. This pre-
+vented tightly aligned phrases from being adversely affected by
+the aligned index of⟨∗⟩. We utilized results from previous stud-
+ies for the comparison study. For [5], we utilized the AdaKWS-
+Tiny model which has a similar model size. For [7], we used
+the phrase level cosine similarity value, the best result of the
+paper. Additionally, for fairness, we froze the CBC and trained
+the previous [4, 5, 7] and proposed models with the PD. The
+CBC model was initially trained with the Librispeech dataset
+and fine-tuned with the PD using CTC.
+As shown in Table. 1, the proposed method achieves the
+best results on the LH dataset. On LE and G, high performance
+is achieved, similar to previous findings. Thus, using CTC
+alignment leads to more accurate alignment and our proposed
+verifier model improves performance on challenging cases.
+3.4. Ablation Study
+3.4.1. End-to-End Training
+In this section, we explore the role of the verifier and the fea-
+sibility of end-to-end training. The base encoder model trained
+521
+
+Table 1: Baseline comparison. The first row shows results from
+previous studies. The second row refers to trained previous and
+proposed verifier models with the fixed CBC encoder.
+Method AUC EER
+LH G LE LH G LE
+[3] 73.58 81.06 96.7 32.9 27.25 8.42
+[4] 92.7 93.94 99.84 14.4 13.45 1.7
+[5] 93.75 - 99.80 13.47 - 1.61
+[7] 77.10 - 98.32 29.63 - 6.06
+CBC+[4] 88.26 92.79 99.69 19.58 14.92 2.48
+CBC+[5] 92.42 98.94 99.73 14.10 4.23 1.27
+CBC+[7] 75.16 91.82 95.32 31.27 16.67 8.99
+CBC+Ours 95.93 98.89 99.95 10.21 4.64 0.91
+Table 2: Results of an ablation study on end-to-end training.
+Detailed methodology is given in Sec. 3.4.1
+Method AUC EER
+LH LE LH LE
+(1) 66.11 91.36 38.70 15.03
+(2) 78.88 99.12 28.19 4.18
+(3) 94.71 99.93 11.19 0.97
+(4) 95.93 99.95 10.21 0.91
+(5) 94.66 99.92 11.47 1.04
+with Librispeech is denoted as CBC base. The other methods
+are described as follows: (1) CBCbase + verifying with the
+CTC score without using the verifier, (2) CBCbase + training
+AdaKWS [5] with Librispeech, (3) CBCbase + training the pro-
+posed verifier with Librispeech, (4) CBCbase fine-tuned with
+the PD + training the proposed verifier with the PD, (5) multi-
+task learning (λctc = 1.0 in Eq. 3) without CBCbase (i.e. fully
+end-to-end training).
+In previous studies [11, 21], only ASR models were
+used for verification (no verifier was used). However, open-
+vocabulary tasks have highlighted the essential role of verifier
+models. For the AdaKWS [5] model, training with full utter-
+ances was unsuccessful for difficult cases, necessitating the cre-
+ation of the phrase dataset. This suggests that the model should
+solely consider aligned regions for optimal performance. How-
+ever, our model trained with full utterances achieves compara-
+ble results to those trained with the phrase dataset. Addition-
+ally, the good performance of multitask learning demonstrates
+the feasibility of fully end-to-end learning.
+3.4.2. W-CTC forced alignment
+W-CTC’s forced alignment often compressed keyword bound-
+aries due to the high log probability of the⟨∗⟩ token. Thus, we
+capped the log probability of ⟨∗⟩ at -0.5 when the log proba-
+bility of⟨ϵ⟩ in the same frame was below -0.5. This threshold
+was determined by examining the log probability distribution
+of forced alignment of CTC outputs, where approximately 95%
+of phoneme log probabilities were less than -0.5. This adjust-
+ment resulted in more realistic boundary predictions. We com-
+pared this method with the approach in [9] (where ⟨∗⟩ was as-
+signed a log probability of zero) by quantifying the differences
+between W-CTC (which include⟨∗⟩ and target labels only) and
+full-script CTC alignments. This method achieved an average
+frame difference of 0.17, which is substantially lower than that
+achieved by the original method, 0.57. However, the adjustment
+Table 3: Results of ablation study on W-CTC modification in
+Sec. 3.4.2.
+Method AUC EER
+LH LE LH LE
+W-CTC 94.66 99.92 11.47 1.04
+W-CTCmod 94.83 99.92 11.05 1.06
+Table 4: Results of ablation study on the various ways of pro-
+cessing⟨ϵ⟩ tokens stated in Sec. 3.4.3.
+Method AUC EER
+LH LE DEL LH LE DEL
+Non-⟨ϵ⟩ 96.02 99.95 97.57 10.03 0.87 7.37
+Avg 94.78 99.93 98.44 11.96 1.03 6.01
+Concat 95.98 99.95 98.17 10.22 0.79 5.51
+Proposed 95.93 99.95 98.87 10.21 0.91 4.58
+did not result in a critical performance gap, as shown in Table. 3,
+leading us to conclude that compressed boundaries do not affect
+performance.
+3.4.3. Dealing with ⟨ϵ⟩ tokens
+In previous studies, ⟨ϵ⟩ frame embeddings were typically av-
+eraged with consecutive non-⟨ϵ⟩ token frame embeddings. To
+analyze the role of ⟨ϵ⟩ probabilities in the verifier model, we
+explored three transformations of the alignment: 1. Non-⟨ϵ⟩:
+Removed⟨ϵ⟩ token embeddings from the resulting matrix in
+Eq.(2), represented as rnon−⟨ϵ⟩ = ( rk1,...,r kM ). 2. Avg :
+Averaged the non-⟨ϵ⟩ token embeddings with the following⟨ϵ⟩
+token embeddings when calculating the resulting matrix, repre-
+sented as ravg = (rk1+⟨ϵ⟩1,...,r kM +⟨ϵ⟩M ). In this case, only
+thesoftmax value in Eq.(1) was used, not(1−softmax )). 3.
+Concat: Concatenated the non-⟨ϵ⟩ token embeddings with the
+following⟨ϵ⟩ alignments in the resulting matrix, represented as
+rcon = ((rk1,r⟨ϵ⟩1 ),..., (rkM,r⟨ϵ⟩M )) (the dimension of the
+verifier model was doubled). The models were trained on the
+PD dataset and evaluated on the LE, LH and DEL datasets. In
+DEL, an intermediate word is removed from the 3 to 4-words
+Libriphrase dataset to simulate deletion errors.
+The results in Table. 4 show that the averaging method,
+commonly used in previous studies underperformed on the LH
+dataset. On the other hand, on the DEL dataset, the proposed
+method showed the best performance, indicating that discrete
+⟨ϵ⟩ scoring assists in identifying deletion errors. Interestingly,
+the removal of entire⟨ϵ⟩ embeddings also resulted in high per-
+formance across all three datasets, suggesting that non-⟨ϵ⟩ token
+embeddings contain consecutive token probabilities that are ro-
+bust to errors.
+4. Conclusion
+In this paper, we have proposed a fully end-to-end open-
+vocabulary keyword spotting model that uses W-CTC forced
+alignment. Our model structure not only achieves high perfor-
+mance on verifying hard keyword pairs but can also be trained
+in a fully end-to-end manner. A performance evaluation of di-
+verse algorithms and showed that our proposed method is robust
+to hard negative cases. We have also proposed a streaming key-
+word spotting algorithm using W-CTC forced alignment that
+can continuously process an alignment, making it suitable for
+spotting keywords in continuous speech in real-time.
+522
+
+5. References
+[1] J. Jung, Y . Kim, J. Park, Y . Lim, B.-Y . Kim, Y . Jang, and J. S.
+Chung, “Metric learning for user-defined keyword spotting,” in
+ICASSP 2023-2023 IEEE International Conference on Acoustics,
+Speech and Signal Processing (ICASSP). IEEE, 2023, pp. 1–5.
+[2] J. Zhu, F. Samir, C. Yang, and J. Islam, “Open-vocabulary key-
+word spotting in any language through multilingual contrastive
+speech-phoneme pretraining,” arXiv preprint arXiv:2311.08323 ,
+2023.
+[3] K. Nishu, M. Cho, and D. Naik, “Matching latent encod-
+ing for audio-text based keyword spotting,” arXiv preprint
+arXiv:2306.05245, 2023.
+[4] K. Nishu, M. Cho, P. Dixon, and D. Naik, “Flexible keyword spot-
+ting based on homogeneous audio-text embedding,” in ICASSP
+2024-2024 IEEE International Conference on Acoustics, Speech
+and Signal Processing (ICASSP). IEEE, 2024, pp. 5050–5054.
+[5] A. Navon, A. Shamsian, N. Glazer, G. Hetz, and J. Keshet, “Open-
+vocabulary keyword-spotting with adaptive instance normaliza-
+tion,” in ICASSP 2024-2024 IEEE International Conference on
+Acoustics, Speech and Signal Processing (ICASSP). IEEE, 2024,
+pp. 11 656–11 660.
+[6] H.-K. Shin, H. Han, D. Kim, S.-W. Chung, and H.-G. Kang,
+“Learning audio-text agreement for open-vocabulary keyword
+spotting,” arXiv preprint arXiv:2206.15400, 2022.
+[7] S. Jin, Y . Jung, S. Lee, J. Roh, C. Han, and H. Cho, “Ctc-
+aligned audio-text embedding for streaming open-vocabulary key-
+word spotting,” arXiv preprint arXiv:2406.07923, 2024.
+[8] M. McAuliffe, M. Socolof, S. Mihuc, M. Wagner, and M. Son-
+deregger, “Montreal forced aligner: Trainable text-speech align-
+ment using kaldi.” in Interspeech, vol. 2017, 2017, pp. 498–502.
+[9] X. Cai, J. Yuan, Y . Bian, G. Xun, J. Huang, and K. Church, “W-
+ctc: a connectionist temporal classification loss with wild cards,”
+in International Conference on Learning Representations, 2021.
+[10] Y . He, R. Prabhavalkar, K. Rao, W. Li, A. Bakhtin, and
+I. McGraw, “Streaming small-footprint keyword spotting using
+sequence-to-sequence models,” in 2017 IEEE Automatic Speech
+Recognition and Understanding Workshop (ASRU). IEEE, 2017,
+pp. 474–481.
+[11] Y . Xi, H. Li, B. Yang, H. Li, H. Xu, and K. Yu, “Tdt-kws: Fast and
+accurate keyword spotting using token-and-duration transducer,”
+in ICASSP 2024-2024 IEEE International Conference on Acous-
+tics, Speech and Signal Processing (ICASSP) . IEEE, 2024, pp.
+11 351–11 355.
+[12] E. Tsunoo, Y . Kashiwagi, T. Kumakura, and S. Watanabe, “Trans-
+former asr with contextual block processing,” in2019 IEEE Auto-
+matic Speech Recognition and Understanding Workshop (ASRU).
+IEEE, 2019, pp. 427–433.
+[13] A. Gulati, J. Qin, C.-C. Chiu, N. Parmar, Y . Zhang, J. Yu, W. Han,
+S. Wang, Z. Zhang, Y . Wu et al. , “Conformer: Convolution-
+augmented transformer for speech recognition,” arXiv preprint
+arXiv:2005.08100, 2020.
+[14] J. Park, Kyubyong Kim, “g2pe,” https://github.com/Kyubyong/
+g2p, 2019.
+[15] A. Graves, S. Fern ´andez, F. Gomez, and J. Schmidhuber, “Con-
+nectionist temporal classification: labelling unsegmented se-
+quence data with recurrent neural networks,” in Proceedings of
+the 23rd international conference on Machine learning, 2006, pp.
+369–376.
+[16] V . Pratap, A. Tjandra, B. Shi, P. Tomasello, A. Babu, S. Kundu,
+A. Elkahky, Z. Ni, A. Vyas, M. Fazel-Zarandi et al. , “Scaling
+speech technology to 1,000+ languages,” Journal of Machine
+Learning Research, vol. 25, no. 97, pp. 1–52, 2024.
+[17] V . Panayotov, G. Chen, D. Povey, and S. Khudanpur, “Lib-
+rispeech: an asr corpus based on public domain audio books,”
+in 2015 IEEE international conference on acoustics, speech and
+signal processing (ICASSP). IEEE, 2015, pp. 5206–5210.
+[18] P. Warden, “Speech commands: A dataset for limited-vocabulary
+speech recognition,” arXiv preprint arXiv:1804.03209, 2018.
+[19] I. Loshchilov and F. Hutter, “Decoupled weight decay regulariza-
+tion,” arXiv preprint arXiv:1711.05101, 2017.
+[20] S. Watanabe, T. Hori, S. Karita, T. Hayashi, J. Nishitoba, Y . Unno,
+N. E. Y . Soplin, J. Heymann, M. Wiesner, N. Chen et al. ,
+“Espnet: End-to-end speech processing toolkit,” arXiv preprint
+arXiv:1804.00015, 2018.
+[21] L. Lugosch, S. Myer, and V . S. Tomar, “Donut: Ctc-based query-
+by-example keyword spotting,”arXiv preprint arXiv:1811.10736,
+2018.
+523

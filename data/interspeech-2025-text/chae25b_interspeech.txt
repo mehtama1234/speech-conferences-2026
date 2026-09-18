@@ -1,0 +1,641 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+Towards Bitrate-Efficient and Noise-Robust Speech Coding
+with Variable Bitrate RVQ
+Yunkee Chae1, Kyogu Lee1,2,3
+1Interdisciplinary Program in Artificial Intelligence, Seoul National University,
+2Department of Intelligence and Information, Seoul National University,
+3Artificial Intelligence Institute, Seoul National University, Republic of Korea
+{yunkimo95,kglee}@snu.ac.kr
+Abstract
+Residual Vector Quantization (RVQ) has become a dominant
+approach in neural speech and audio coding, providing high-
+fidelity compression. However, speech coding presents addi-
+tional challenges due to real-world noise, which degrades com-
+pression efficiency. Standard codecs allocate bits uniformly,
+wasting bitrate on noise components that do not contribute to
+intelligibility. This paper introduces a Variable Bitrate RVQ
+(VRVQ) framework for noise-robust speech coding, dynam-
+ically adjusting bitrate per frame to optimize rate-distortion
+trade-offs.
+Unlike constant bitrate (CBR) RVQ, our method
+prioritizes critical speech components while suppressing resid-
+ual noise. Additionally, we integrate a feature denoiser to fur-
+ther improve noise robustness. Experimental results show that
+VRVQ improves rate-distortion trade-offs over conventional
+methods, achieving better compression efficiency and percep-
+tual quality in noisy conditions. Samples are available at our
+project page1.
+Index Terms: speech codec, speech enhancement
+1. Introduction
+Modern audio coding techniques, including speech codecs, aim
+to efficiently compress and transmit signals while preserving
+perceptual quality. Recent state-of-the-art neural audio codecs,
+such as SoundStream [1], EnCodec [2], and Descript Audio
+Codec (DAC) [3], have leveraged residual vector quantization
+(RVQ), enabling scalable bitrate control and high-quality com-
+pression. Moreover, their application to speech coding has fur-
+ther enhanced intelligibility and quality at lower bitrates, out-
+performing traditional codecs such as Opus [4] and EVS [5]
+However, speech coding differs from general audio coding
+in a fundamental way: Real-world speech signals often contain
+corruptions, such as background noise. Most speech codecs are
+designed for clean input speech, making them highly vulner-
+able to quality degradation in noisy environments. Therefore,
+integrating speech enhancement (SE) with speech coding is es-
+sential to ensure robust performance in real-world compression
+and communication systems.
+Several studies have explored improving speech robust-
+ness in coding frameworks. [1, 6–11] One approach applied a
+Siamese learning paradigm [12] to train a noise-robust feature
+extractor, which was then used to condition a WaveNet [13], en-
+hancing its ability to process degraded speech signals [6]. An-
+other method introduced a compressor-enhancer encoder, uti-
+lizing a VQ-VAE-based autoencoder [14] in combination with a
+WaveRNN decoder [15] to improve speech quality under noisy
+conditions [7].
+Jiang et al. [8] jointly optimized speech en-
+1https://yoongi43.github.io/noise_robust_vrvq/
+hancement and packet loss concealment, making it more robust
+in network transmission scenarios. Another approach investi-
+gated speech-background disentanglement in the compressed
+domain of neural audio codecs, further refining noise robust-
+ness at the encoding stage [9]. SoundStream [1] also introduced
+controllable noise reduction using a FiLM (Feature-wise Linear
+Modulation) layer [16]. Additionally, a two-stage optimization
+procedure was proposed to achieve low distortion and high per-
+ceptual quality in noisy conditions, providing a theoretical foun-
+dation [10]. While these methods have significantly advanced
+speech enhancement and compression, most do not fully ex-
+plore bitrate efficiency from a variable bitrate perspective, leav-
+ing room for further optimization in rate-distortion trade-offs.
+Several of these studies [1, 9, 10] have incorporated RVQ-
+based models for speech compression.
+Although RVQ has
+demonstrated strong performance, it operates under a constant
+bitrate (CBR) framework, allocating a fixed number of code-
+books is each time frame of the latent vector, regardless of
+the complexity of the speech signal. This rigid allocation be-
+comes particularly inefficient in noisy speech scenarios. We
+hypothesize that noise-dominated frames (e.g., silent segments
+with background noise) require fewer codebooks, while speech-
+dominated frames (e.g., voiced segments) need more to pre-
+serve intelligibility and quality. However, constant bitrate RVQ
+(CRVQ) lacks the flexibility to adapt to these variations, re-
+sulting in wasted bitrate in noise-dominated frames and insuffi-
+cient bit allocation for speech-heavy regions, ultimately reduc-
+ing coding efficiency.
+To address this limitation, we adopt variable bitrate RVQ
+(VRVQ), recently introduced in [17]. Unlike CRVQ, VRVQ
+dynamically adjusts the number of codebooks per frame using
+an importance map trained to optimize the rate-distortion trade-
+off. While importance map-based bitrate allocation has been ex-
+plored in image compression [18–21], its application to speech
+coding remains relatively unexplored. This paper proposes a
+VRVQ-based approach for speech coding that mitigates exces-
+sive bit allocation to noise, achieving a superior rate-distortion
+trade-off compared to conventional CRVQ-based methods. Ad-
+ditionally, we introduce a feature denoiser, inspired by image
+compression techniques [22], to further improve the noise ro-
+bustness of the codec’s latent representation.
+2. Preliminaries
+This section provides a brief overview of RVQ, a funda-
+mental component of state-of-the-art audio and speech codecs
+[1–3, 23], and VRVQ [17], which introduces adaptive bit allo-
+cation for RVQ through an importance map.
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+609
+10.21437/Interspeech.2025-1253
+
+Figure 1: Overview of our framework. Our method leverages VRVQ [17] to jointly optimize the rate-distortion trade-off and denoising
+performance, drawing inspiration from [22]. During training, both clean and noisy speech samples are fed into a shared encoder, while
+the feature denoiser is optimized using a feature guidance loss. Note that the spectrograms in the figure are provided for illustration
+only; the actual input to the model is raw audio.
+2.1. Residual Vector Quantization (RVQ)
+RVQ is a hierarchical quantization method where an input latent
+representation is iteratively refined using up to Nq quantizers.
+Given input signal x, an encoder E produces a latent represen-
+tation ze ∈RD×T , where D is the latent dimension and T is
+the number of downsampled time frames, and vector represen-
+tation of each time t is denoted as ze[t]. For each time frame t,
+RVQ sequentially quantized the residuals as follows:
+zq[t] =
+nq
+X
+i=1
+Qi(ri[t]),
+(1)
+where Qi represents the i-th quantizer, and the residual is com-
+puted recursively as ri[t] = ze[t] −Pi−1
+j=1 Qj(rj[t]), starting
+with with r1[t] = ze[t]. Here, nq ≤Nq denotes the number of
+quantizers used. The quantized output zq is then passed to the
+decoder for reconstruction.
+2.2. Variable Bitrate RVQ (VRVQ)
+VRVQ [17] extends RVQ by introducing adaptive per-frame bi-
+trate allocation via an importance map. First, the encoder E is
+decomposed into two parts: E = E2 ◦E1, where E1 extracts
+shared features, and E2 performs encoding-specific processing.
+A learnable importance subnetwork Ep takes the intermediate
+feature E1(x) and outputs an importance map p ∈(0, 1)T ,
+which determines the number of quantizers used per frame.
+The bit allocation mask ml[t] ∈{0, 1}Nq is derived from
+p[t] using the importance map-to-mask (I2M) function:
+ml[t] = I2Ml(p[t]) := [H0(l · p[t]), . . . , HNq−1(l · p[t])]T,
+(2)
+where Hk(s) is a Heaviside step function, defined as Hk(s) =
+1 if s ≥k, and Hk(s) = 0 otherwise. Here, l is a scaling
+factor for the bitrate control, preventing the importance map
+from producing static bit allocation patterns.
+During train-
+ing, l is randomly sampled from a log-uniform distribution
+Ulog(Lmin, Lmax), while at inference time, it can be chosen
+based on the desired quality level. The quantized output is then
+computed as:
+zq[t] =
+Nq
+X
+i=1
+ml
+i[t] · Qi(ri[t]).
+(3)
+Meanwhile, since the I2M function is non-differentiable, a
+smooth surrogate function of Hk in Eq. 2 is introduced for
+backpropagation:
+f k
+α(s) := 1
+2α log
+
+cosh(α(s −k))
+cosh(α(−s + k + 1))
+
++ 1
+2,
+(4)
+where α ∈R>0 is a hyperparameter. Then, the surrogate func-
+tion of I2M, denoted as I2Mα, is defined, and straight-through
+estimation is applied for backpropagation as follows:
+I2Ml
+α(p[t]) := [f 0
+α(l · p[t]), . . . , f
+Nq−1
+α
+(l · p[t])],
+(5)
+p[t] 7→I2Ml
+α(p[t]) + sg
+
+I2Ml(p[t]) −I2Ml
+α(p[t])
+
+,
+(6)
+where sg denotes the stop-gradient operation.
+The rate loss LR for training of importance subnetwork is
+defined as follows:
+LR = 1
+T
+T
+X
+t=1
+Ep(sg(E1(x)))[t].
+(7)
+As in [17], our models follow the methodology of DAC [3],
+which employs adversarial training. During the training, the
+rate-distortion (R-D) tradeoff loss LD + λRLR is optimized.
+Here, LD is composed of several loss terms, following the for-
+mulation in [3]. It includes an L1 reconstruction loss computed
+on multi-scale log-mel spectrograms, a feature matching loss
+[24], and adversarial losses derived from both a multi-period
+waveform discriminator (MPD) [25] and a multi-resolution
+spectrogram discriminator (MSRD) [26]. In addition, commit-
+ment loss, and codebook losses are incorporated, and λR is a
+hyperparameter.
+3. Methodology
+In this section, we present our training framework leveraging
+VRVQ, as illustrated in Fig. 1. Our approach consists of two
+key components: (1) Simple Mapping, which directly trains a
+codec model to reconstruct clean speech from noisy input, and
+(2) Feature Denoising, which further improves the joint opti-
+mization of speech enhancement and compression.
+3.1. Simple Mapping
+A straightforward approach to training the codec model M is
+to directly map noisy speech y to its clean counterpart x, using
+paired speech data (x, y). As a baseline, we train DAC [3] with
+constant bitrate RVQ (CRVQ), replicating the original DAC
+setup. We denote this model as M C, where the codec is trained
+to estimate the denoised speech as M C(y) = ˆx. The training
+follows the same loss functions as in [3], applied between x and
+ˆx. Additionally, we train the DAC with VRVQ [17], denoted
+as M V , following the same training scheme. As will be shown
+in Section 4, the VRVQ model achieves significantly higher ef-
+ficiency than the CRVQ baseline in terms of the rate-distortion
+trade-off, even under this simple framework.
+610
+
+Figure 2: Results for the 16 kHz models. In each subfigure, markers denote VBR inference outcomes at different scaling factors l =
+1.6, 2.6, 4.2, 6.9, 11.1, 18.1, 29.6, and 48, while the solid lines depict CBR inference results.
+Figure 3: Illustration of the codebook allocation patterns for
+model M V
+FD. Starting from the top row, the scaling factor l are
+4, 8, 12, 24, and 40, respectively. Each panel is annotated with
+the corresponding average bitrate and its PESQ score.
+3.2. Feature Denoising
+To further improve joint speech denoising and compression,
+we introduce a feature-denoising process, inspired by the two-
+branch architecture used in image compression [22], as illus-
+trated in Fig. 1. Our approach comprises two stages:
+1. Pre-training Stage. We begin by training the codec model
+exclusively on clean speech using a reconstruction-based ap-
+proach for both CRVQ and VRVQ configurations. In this stage,
+the models are optimized to ensure that M C(x) = ˆx and
+M V (x) = ˆx.
+2. Fine-tuning with Feature Denoiser. This phase builds upon
+the previous architecture by integrating a feature denoiser Fϕ.
+All weights-except those associated with the Fϕ-are initialized
+from the pre-trained model obtained in the previous stage, and
+the complete model is fine-tuned on noisy speech data. The
+feature denoising process is executed via two branches:
+• Guidance Branch: Clean speech x is processed to extract
+intermediate features: zclean = E1(x).
+• Enhancing Branch: Noisy speech y is processed similarly
+to obtain: znoisy = E1(y)
+The noisy features znoisy are passed through Fϕ to generate a
+mask, refining the representation as follows:
+ˆz = σ(Fϕ(znoisy)) ⊙znoisy,
+(8)
+where σ denotes a learnable sigmoid function inspired by the
+feature masking mechanism in Conv-TasNet [27]. We denote
+the codec models that incorporate a feature denoiser as M C
+FDand
+M V
+FDfor CRVQ-based and VRVQ-based architectures, respec-
+tively. To align the enhanced features with their clean counter-
+parts, we introduce the feature guidance loss:
+LF = ||zclean −ˆz||1.
+(9)
+The final training objective is given by:
+L = LD + λRLR + λF LF ,
+(10)
+where λR and λF are the weights for the rate and feature de-
+noising loss terms, respectively.
+4. Experiments
+4.1. Model Architecture
+All RVQ-based codec models in our experiments are based on
+DAC [3] as described in Section 3. Each codebook uses 10-bit
+vector quantization, and the downsampling rate for time frame
+is set to 512. The maximum number of codebooks, denoted as
+Nq, is set to 8. For the importance subnetwork, we adopt the
+same architecture as in [17], which consists of five 1D convolu-
+tional layers with weight normalization [28] and Snake activa-
+tion functions [29]. The final feature of the importance subnet-
+work has a channel dimension of 1, followed by a sigmoid acti-
+vation function. Our setup differs from [17] in that we prevent
+gradients from flowing from the importance subnetwork input
+back into the encoder, as described in Eq. (7). We found that
+this stabilizes training, likely because it prevents the importance
+subnetwork from interfering with the original latent features in
+the encoder during training.
+Our implementation of feature denoiser Fϕ is based on the
+Mamba architecture [30], which leverages a state-space model
+with a selection mechanism. Mamba has also been employed in
+recent state-of-the-art speech enhancement models [31]. Ac-
+cordingly, we implement Fϕ using 10 bi-directional Mamba
+blocks.
+4.2. Experimental Setup
+Dataset. We employ the EARS-WHAM datasets [32,33] in our
+experiments. The EARS dataset comprises anechoic chamber
+speech recordings spanning 22 emotion categories and 7 speak-
+ing styles. It provides paired noisy and clean speech samples,
+with 86.8 hours of audio for training, 1.7 hours for validation,
+and 3.7 hours for testing.
+Training Configuration.
+Models operating at 16 kHz are
+trained with a batch size of 32, while those at 48 kHz use a
+batch size of 16. For VRVQ models, 25% of the samples in
+each mini-batch are processed using the full Nq codebooks,
+whereas CRVQ models incorporate a quantizer dropout [1–3]
+with a probability of 0.5 during training. The hyperparameter
+α in Eq. (4) is set to 2, and the loss weights are configured
+as λR = 3 and λF = 0.1. During training, the scaling fac-
+tor l is sampled from a log-uniform distribution in the range
+Lmin = 0.8 to Lmax = 48. Each model is trained for 200k
+611
+
+Figure 4: Results for 48k models. In each subfigure, markers denote VBR inference outcomes at different scaling factors l =1.6, 2.6,
+4.2, 6.9, 11.1, 18.1, 29.6, and 48, while the solid lines depict CBR inference results.
+fs
+Ref. Tested
+BD rates ↓(%)
+PESQ
+STOI
+ESTOI SI-SDR
+16 kHz M C
+M V
+-9.44
+-3.87
+-4.58
+-18.39
+16 kHz M C
+M V
+FD
+-18.22 -14.77 -14.25
+-26.33
+16 kHz M C
+FD
+M V
+FD
+-6.89
+-2.87
+-3.34
+-15.12
+48 kHz M C
+M V
+-8.76
+-7.23
+-6.68
+-16.11
+48 kHz M C
+M V
+FD
+-27.31 -25.01 -21.90
+-32.57
+48 kHz M C
+FD
+M V
+FD
+-12.42 -10.69 -10.01
+-20.20
+Table 1: BD-rate for intrusive metrics. Negative values indicate
+that the tested configuration achieves a lower bitrate for a given
+distortion level compared to the reference, reflecting improved
+rate-distortion performance.
+iterations on a single NVIDIA RTX A6000 GPU, and the fine-
+tuning phase runs for 200k iterations.
+Evaluation Metrics. We assess our models using multiple ob-
+jective speech quality metrics. We evaluate intrusive metrics,
+including PESQ [34], STOI [35], ESTOI [36], and SI-SDR [37],
+as well as the non-intrusive metric NISQA [38]. In addition,
+we report Bjøntegaard-Delta (BD)-rate [39] for intrusive met-
+rics using Akima interpolation [40]—a widely adopted method
+in the video codec domain—to quantify the average differences
+between rate-distortion curves.
+4.3. Results
+Fig. 2 illustrates the performance of models trained and evalu-
+ated on 16 kHz speech. Since EARS-WHAM dataset consists of
+48 kHz speech recordings, we downsampled the data to 16 kHz
+for training. The resulting encoded latent vector has a sampling
+rate of 31 Hz. In VBR inference mode, an extra transmission
+cost of ⌈log2 Nq⌉= 3 bits per time frame is incurred (equiva-
+lent to an additional 0.093 kbps). Although these VRVQ models
+(M Vand M V
+FD) are trained in VBR scheme using the importance
+map, they can also be executed in CBR mode by bypassing the
+importance map and using a fixed number of codebooks.
+As shown in Fig. 2, training the simple mapping model
+using the VRVQ (i.e., M V) achieves better performance than
+its CRVQ counterpart (M C), confirming the effectiveness of
+VRVQ for simultaneous speech denoising and compression.
+Moreover, incorporating feature denoiser (M V
+FD) yields further
+improvements over both M Vand its CRVQ counterpart with
+feature denoiser (M C
+FD). It is also notable that across all met-
+rics, inference in VBR mode consistently outperforms the CBR
+mode for the same VRVQ model.
+Fig. 4 presents the results for models trained and evalu-
+ated on 48 kHz speech data. Here, the latent representation is
+downsampled to 93 Hz, which results in an additional trans-
+mission cost of 0.279 kbps. The overall trends remain sim-
+ilar to the 16 kHz experiments; however, the VRVQ model
+M Vexhibits slightly reduced performance at high bitrates com-
+pared to M C.
+In contrast, M V
+FDconsistently achieves supe-
+rior performance across all evaluated metrics compared to both
+M Cand M C
+FD.
+Table 1 reports the BD-rate values for intrusive quality met-
+rics. This table presents a numerical comparison between the
+reference and test models in each row, quantifying their rela-
+tive performance. For the VRVQ models, endpoints are de-
+fined by the inference results obtained using a fixed single code-
+books and the full set of Nq codebooks, respectivly, ensur-
+ing an accurate comparison with the reference CRVQ models.
+Negative BD-rate values indicate that the tested configuration
+achieves a lower bitrate for a given distortion level relative to
+the reference, thereby reflecting improved rate-distortion per-
+formance. Notably, all values in Table 1 are negative, indicat-
+ing that the VRVQ models operate in a more bitrate-efficient
+manner across all metrics, with particularly significant gains
+in SI-SDR. Moreover, M V
+FDclearly outperforms the reference
+CRVQ models for both 16 kHz and 48 kHz configurations. Ad-
+ditionally, M V
+FDdemonstrates greater efficiency than M V, as ev-
+idenced by the lower BD-rate values when compared to M V,
+with M Cas the reference. It is particularly interesting that for
+48 kHz models, even though M Vshows slightly lower perfor-
+mance at high bitrates compared to M C, it still achieves a nega-
+tive BD-rate when referenced to M C, indicating overall bitrate
+efficiency improvements.
+Fig. 3 presents sample importance maps produced by the
+M V
+FDfor noisy input audio.
+These visualization demonstrate
+that, despite the presence of high-frequency noise in the input
+audio, the importance subnetwork prioritizes bit allocation to
+regions corresponding to clean speech components. This tar-
+geted bit allocation effectively reduces redundant bitrate expen-
+diture on noise, thereby contributing to the overall performance
+gains observed.
+5. Conclusion
+This paper presents a framework for simultaneous speech de-
+noising and compression that leverages Variable Bitrate Resid-
+ual Vector Quantization (VRVQ). Our experiments demonstrate
+that using the VRVQ scheme—compared to the conventional
+Constant Bitrate RVQ (CRVQ)—significantly enhances the per-
+formance of a simple mapping approach for converting noisy
+speech into clean speech. Furthermore, the introduction of a
+feature denoiser yields additional performance gains, and its in-
+tegration with the VRVQ scheme further enhances overall sys-
+tem performance. In future work, we plan to develop more ef-
+fective and lightweight training methods for feature denoising,
+with the ultimate goal of realizing a real-time system in VRVQ
+shceme.
+612
+
+6. Acknowledgements
+This work was supported by the National Research Foundation
+of Korea (NRF) grant funded by the Korea government (MSIT)
+[No. RS-2024-00461617, 50%], Information & communica-
+tions Technology Planning & Evaluation (IITP) grant funded by
+the Korea government(MSIT) [No. RS-2022-II220320, 2022-
+0-00320, 40%], [No.RS-2021-II211343, Artificial Intelligence
+Graduate School Program (Seoul National University), 5%],
+and [No.RS-2021-II212068, Artificial Intelligence Innovation
+Hub, 5%]
+7. References
+[1] N.
+Zeghidour,
+A.
+Luebs,
+A.
+Omran,
+J.
+Skoglund,
+and
+M. Tagliasacchi, “Soundstream:
+An end-to-end neural audio
+codec,” IEEE/ACM Transactions on Audio, Speech, and Lan-
+guage Processing, vol. 30, pp. 495–507, 2021.
+[2] A. D´efossez, J. Copet, G. Synnaeve, and Y. Adi, “High fidelity
+neural audio compression,” Transactions on Machine Learning
+Research, 2023.
+[3] R. Kumar, P. Seetharaman, A. Luebs, I. Kumar, and K. Ku-
+mar, “High-fidelity audio compression with improved rvqgan,”
+NeurIPS, vol. 36, 2024.
+[4] J.-M. Valin, K. Vos, and T. Terriberry, “Definition of the opus
+audio codec,” Tech. Rep., 2012.
+[5] M. Dietz, M. Multrus, V. Eksler, V. Malenovsky, E. Norvell,
+H. Pobloth, L. Miao, Z. Wang, L. Laaksonen, A. Vasilache
+et al., “Overview of the evs codec architecture,” in Proc. ICASSP.
+IEEE, 2015, pp. 5698–5702.
+[6] F. S. Lim, W. B. Kleijn, M. Chinen, and J. Skoglund, “Robust
+low rate speech coding based on cloned networks and wavenet,”
+in Proc. ICASSP.
+IEEE, 2020, pp. 6769–6773.
+[7] J. Casebeer, V. Vale, U. Isik, J.-M. Valin, R. Giri, and A. Krish-
+naswamy, “Enhancing into the codec: Noise robust speech coding
+with vector-quantized autoencoders,” in Proc. ICASSP.
+IEEE,
+2021, pp. 711–715.
+[8] X. Jiang, X. Peng, C. Zheng, H. Xue, Y. Zhang, and Y. Lu, “End-
+to-end neural speech coding for real-time communications,” in
+Proc. ICASSP.
+IEEE, 2022, pp. 866–870.
+[9] A. Omran, N. Zeghidour, Z. Borsos, F. de Chaumont Quitry,
+M. Slaney, and M. Tagliasacchi, “Disentangling speech from sur-
+roundings with neural embeddings,” in Proc. ICASSP.
+IEEE,
+2023, pp. 1–5.
+[10] J. Huang, Z. Yan, W. Jiang, and F. Wen, “A two-stage training
+framework for joint speech compression and enhancement,” arXiv
+preprint arXiv:2309.04132, 2023.
+[11] H. Li, J. Q. Yip, T. Fan, and E. S. Chng, “Speech enhancement
+using continuous embeddings of neural audio codec,” in Proc.
+ICASSP, 2025.
+[12] G. Koch, R. Zemel, R. Salakhutdinov et al., “Siamese neural net-
+works for one-shot image recognition,” in ICML deep learning
+workshop, vol. 2, no. 1.
+Lille, 2015, pp. 1–30.
+[13] A. Van Den Oord, S. Dieleman, H. Zen, K. Simonyan, O. Vinyals,
+A. Graves, N. Kalchbrenner, A. Senior, K. Kavukcuoglu et al.,
+“Wavenet: A generative model for raw audio,” arXiv preprint
+arXiv:1609.03499, vol. 12, 2016.
+[14] A. Van Den Oord, O. Vinyals et al., “Neural discrete representa-
+tion learning,” NeurIPS, vol. 30, 2017.
+[15] N.
+Kalchbrenner,
+E.
+Elsen,
+K.
+Simonyan,
+S.
+Noury,
+N. Casagrande, E. Lockhart, F. Stimberg, A. Oord, S. Dieleman,
+and K. Kavukcuoglu, “Efficient neural audio synthesis,” in Proc.
+ICML.
+PMLR, 2018, pp. 2410–2419.
+[16] E. Perez, F. Strub, H. De Vries, V. Dumoulin, and A. Courville,
+“FiLM: Visual reasoning with a general conditioning layer,” in
+Proc. AAAI, vol. 32, no. 1, 2018.
+[17] Y. Chae, W. Choi, Y. Takida, J. Koo, Y. Ikemiya, Z. Zhong, K. W.
+Cheuk, M. A. Mart´ınez-Ram´ırez, K. Lee, W.-H. Liao, and Y. Mit-
+sufuji, “Variable bitrate residual vector quantization for audio cod-
+ing,” in Proc. ICASSP.
+IEEE, 2025.
+[18] M. Li, W. Zuo, S. Gu, D. Zhao, and D. Zhang, “Learning con-
+volutional networks for content-weighted image compression,” in
+Proc. CVPR, 2018, pp. 3214–3223.
+[19] F. Mentzer, E. Agustsson, M. Tschannen, R. Timofte, and
+L. Van Gool, “Conditional probability models for deep image
+compression,” in Proc. CVPR, 2018, pp. 4394–4402.
+[20] M. Li, W. Zuo, S. Gu, J. You, and D. Zhang, “Learning content-
+weighted deep image compression,” IEEE transactions on pattern
+analysis and machine intelligence, vol. 43, no. 10, pp. 3446–3461,
+2020.
+[21] J. Lee, S. Jeong, and M. Kim, “Selective compression learning
+of latent representations for variable-rate image compression,”
+NeurIPS, vol. 35, pp. 13 146–13 157, 2022.
+[22] K. L. Cheng, Y. Xie, and Q. Chen, “Optimizing image compres-
+sion via joint learning with denoising,” in ECCV, 2022.
+[23] A. D´efossez, L. Mazar´e, M. Orsini, A. Royer, P. P´erez, H. J´egou,
+E. Grave, and N. Zeghidour, “Moshi: a speech-text foundation
+model for real-time dialogue,” arXiv preprint arXiv:2410.00037,
+2024.
+[24] K. Kumar, R. Kumar, T. De Boissiere, L. Gestin, W. Z. Teoh,
+J. Sotelo, A. De Brebisson, Y. Bengio, and A. C. Courville, “Mel-
+gan: Generative adversarial networks for conditional waveform
+synthesis,” NeurIPS, vol. 32, 2019.
+[25] J. Kong, J. Kim, and J. Bae, “Hifi-gan: Generative adversarial net-
+works for efficient and high fidelity speech synthesis,” NeurIPS,
+vol. 33, pp. 17 022–17 033, 2020.
+[26] W. Jang, D. Lim, J. Yoon, B. Kim, and J. Kim, “Univnet: A
+neural vocoder with multi-resolution spectrogram discriminators
+for high-fidelity waveform generation,” in Proc. INTERSPEECH,
+2021.
+[27] Y. Luo and N. Mesgarani, “Conv-tasnet: Surpassing ideal time–
+frequency magnitude masking for speech separation,” IEEE/ACM
+transactions on audio, speech, and language processing, vol. 27,
+no. 8, pp. 1256–1266, 2019.
+[28] T. Salimans and D. P. Kingma, “Weight normalization: A sim-
+ple reparameterization to accelerate training of deep neural net-
+works,” NeurIPS, vol. 29, 2016.
+[29] L. Ziyin, T. Hartwig, and M. Ueda, “Neural networks fail to learn
+periodic functions and how to fix it,” NeurIPS, vol. 33, pp. 1583–
+1594, 2020.
+[30] A. Gu and T. Dao, “Mamba: Linear-time sequence modeling with
+selective state spaces,” in First Conference on Language Model-
+ing, 2024.
+[31] R. Chao, W.-H. Cheng, M. La Quatra, S. M. Siniscalchi, C.-H. H.
+Yang, S.-W. Fu, and Y. Tsao, “An investigation of incorporating
+mamba for speech enhancement,” in Proc. ICASSP, 2025.
+[32] J. Richter, Y.-C. Wu, S. Krenn, S. Welker, B. Lay, S. Watan-
+abe, A. Richard, and T. Gerkmann, “EARS: An anechoic fullband
+speech dataset benchmarked for speech enhancement and derever-
+beration,” in Proc. INTERSPEECH, 2024.
+[33] G. Wichern, J. Antognini, M. Flynn, L. R. Zhu, E. McQuinn,
+D. Crow, E. Manilow, and J. Le Roux, “WHAM!:
+Extend-
+ing speech separation to noisy environments,” in Proc. INTER-
+SPEECH, 2019.
+[34] A. W. Rix, J. G. Beerends, M. P. Hollier, and A. P. Hekstra,
+“Perceptual evaluation of speech quality (pesq)-a new method for
+speech quality assessment of telephone networks and codecs,” in
+Proc. ICASSP.
+IEEE, 2001.
+[35] C. H. Taal, R. C. Hendriks, R. Heusdens, and J. Jensen, “An al-
+gorithm for intelligibility prediction of time–frequency weighted
+noisy speech,” IEEE Transactions on audio, speech, and language
+processing, vol. 19, no. 7, pp. 2125–2136, 2011.
+[36] J. Jensen and C. H. Taal, “An algorithm for predicting the in-
+telligibility of speech masked by modulated noise maskers,”
+IEEE/ACM Transactions on Audio, Speech, and Language Pro-
+cessing, vol. 24, no. 11, pp. 2009–2022, 2016.
+[37] J. Le Roux, S. Wisdom, H. Erdogan, and J. R. Hershey, “Sdr–
+half-baked or well done?” in Proc. ICASSP.
+IEEE, 2019, pp.
+626–630.
+[38] G. Mittag, B. Naderi, A. Chehadi, and S. M¨oller, “Nisqa: A deep
+cnn-self-attention model for multidimensional speech quality pre-
+diction with crowdsourced datasets,” in Proc. INTERSPEECH
+2021, 2021.
+[39] G. Bjontegaard, “Calculation of average psnr differences between
+rd-curves,” ITU SG16 Doc. VCEG-M33, 2001.
+[40] C. Herglotz, M. Kr¨anzler, R. Mons, and A. Kaup, “Beyond
+bjøntegaard: Limits of video compression performance compar-
+isons,” in Proc. ICIP.
+IEEE, 2022, pp. 46–50.
+613
+

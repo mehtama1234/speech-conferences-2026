@@ -1,0 +1,761 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+Teacher-Free Knowledge Distillation for Improving Short-Utterance Spoken
+Language Identification
+Spandan Dey1, Hirak Mondal1, Sanjay Kumar Kurmi1
+1Samsung R&D Institute, Bangalore, India
+spandan.dey@samsung.com, hirak.mondal@samsung.com, sanjay.krm@samsung.com
+Abstract
+Spoken language identification (LID) systems exhibit perfor-
+mance degradations as the test input duration reduces.
+To
+delve deeper, we show that 36.94% of the misclassifications
+on 2-second (s) LID inputs occur due to out-of-scope elements
+like non-speech, named entities, filler words, and overlapped
+speech. To mitigate this, we propose a teacher-free knowledge
+distillation (TF-KD) using online label smoothing. This method
+accumulates prediction logits of correctly classified training
+segments from the preceding epoch and uses them as soft-labels
+for distillation in the next epoch. We further enhance TF-KD
+with dynamic weights, conditional label update, and entropy-
+based soft-label computation. Compared to existing KD-based
+solutions for 2s inputs, our approach achieves consistent Cavg
+improvements for both same-corpora and cross-corpora evalua-
+tions without training a separate teacher network.
+Index Terms: Spoken language identification, knowledge dis-
+tillation, online label smoothing, short-duration, VoxLingua107
+1. Introduction
+Spoken language identification (LID) systems are important as
+front-ends for multilingual speech processing applications, such
+as automatic speech recognition (ASR), speech to speech trans-
+lation [1, 2]. In real-time services efficiency of LID systems on
+short-utterance inputs becomes crucial. It also enables stream-
+ing based services and enhances user flexibility and experience
+towards human-to-computer interaction (HCI) [3]. However,
+the existing LID literature shows a striking degradation in per-
+formance as the test input duration gets reduced [4, 5, 6]. As a
+justification for this observation, researchers have suggested the
+increased intra-language distribution variation for shorter test
+segments that catalyses model confusion and degrades LID per-
+formance [7, 8].
+Considering the recent end-to-end deep learning based ap-
+proaches, Shen et al. [8] used x-vector [9] mean compensation
+with longer speech segments for improving short-duration LID
+performance. Researchers have also explored knowledge dis-
+tillation (KD) [10] with longer utterance trained teacher net-
+work and shorter utterance trained student network [4, 6]. Ex-
+tensions are made on conventional KD networks such as with
+additional representation learning from internal layer’s repre-
+sentations (KD-RL) or interactive teacher-student learning for
+reducing the LID performance degradation on shorter test in-
+puts [11]. In spite these efforts, the amount of research explic-
+itly addressing the issue of short-duration LID is yet limited.
+In this study, using the top-ten most widely spoken lan-
+guages from the VoxLingua107 database [12] we focus on miti-
+gating the degradation of LID performance with shorter inputs.
+We first conduct a quantitative explanatory analysis for delv-
+ing deeper on to why LID systems struggle when the test input
+duration is reduced to few seconds. Our analysis shows that
+a significant fraction of 2-second (s) inputs gets misclassified
+due to the presence of different out-of-scope (OOS) elements,
+such as non-speech, named entities (NEs), filler words, over-
+lapped speech. Their presence becomes dominant in the en-
+tire segment as the input duration gets reduced. While voice
+activity detection (VAD) algorithms can be used to eliminate
+the non-speech portions, there exists a serious lack of reliable
+pre-trained models or algorithms for detecting other OOS el-
+ements, especially for the multilingual scenarios [13]. Hence,
+to eliminate the adverse effects of these OOS factors (which
+accounts for notable fraction of total misclassification), we pro-
+pose teacher-free knowledge distillation (TF-KD) using the on-
+line label smoothing (OLS) [14]. We achieve prominent per-
+formance improvements over shorter 2s test segments for both
+same-corpora and cross-corpora evaluations (using Common
+Voice dataset [15]). The major contributions of our study is
+summarized as follows:
+• We provide an in-depth quantitative analysis to elucidate why
+LID systems struggle with short-duration inputs, highlighting
+the dominant presence of OOS elements.
+• To mitigate the impact of the OOS elements, we propose a
+teacher-free knowledge distillation (TF-KD). Even without
+training a teacher model, using online label smoothing, we
+achieve substantial short-duration LID performance improve-
+ments.
+• Proposed TF-KD is further improved with three modifica-
+tions: (i) Dynamic weight adjustment, (ii) conditional soft-
+label update, and (iii) entropy-based soft-label computation.
+2. Methodology
+We first discuss the prominent solutions from LID literature that
+tackle the issue of short-input LID. Then, we present the details
+of our teacher-free knowledge distillation approach.
+2.1. Related works: Knowledge distillation
+KD-basic: Knowledge distillation (KD) was first explored by
+Hinton et al. [10] where the prediction logits from a larger neu-
+ral network (teacher) were used as soft-labels to efficiently su-
+pervise a smaller neural network (student). In this work, we first
+implement the notable KD-based framework by Shen et al. [6]
+where the authors trained a teacher model with larger 4s training
+segments and used its logits to supervise a student model (same
+architecture as teacher) trained with 2s training segments. Let,
+the teacher and the student model be denoted as θt and θs, re-
+spectively. Consider a 2s segment (xs, ys) from the training
+data. In KD, the prediction logit from the teacher model θt(xs)
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+1483
+10.21437/Interspeech.2025-2120
+
+Figure 1: Analysing misclassification in short-utterance LID.
+is used to supervise the student model θs. The total loss used to
+train the student model is:
+Ltot = λLce + (1 −λ)Lkd
+(1)
+Here, λ decides the weights of the two losses. Lce is the
+commonly followed cross-entropy based classification loss us-
+ing the hard-labels ys. Lkd is the additional loss to incorporate
+the class-confusion knowledge learnt from the prediction logits
+of the teacher model:
+Lkd(θs(xs), q) = −1
+L
+L
+X
+i=1
+q[i]logθs(xs)[i]
+(2)
+q[i] =
+exp(θt(xs)[i])/T
+PL
+j=1 exp(θt(xs)[j])/T
+(3)
+Here, T denotes the temperature parameter to smooth the
+teacher prediction logits.
+KD-RL: Authors in [6] also extended the basic KD frame-
+works with representation learning (RL) capabilities. Here, ad-
+ditional Lrl is also used with Ltot in Eq. 1. Let, the n-th layer
+of θt and θs be denoted as θn
+t and θn
+s , respectively.
+Here,
+Lrl computes the L1 norm between the internal representations
+from the n-th layer between the teacher and student models,
+Lrl = ||θn
+s (xs) −θn
+t (xs)||.
+2.2. Explanatory analysis:
+Why LID performance de-
+grades for shorter inputs?
+Hypothesis: Input segments to a trained LID system contain
+some within-scope (WS) parts and some out-of-scope (OOS)
+parts. WS parts contain the spoken portions where unique lan-
+guage discriminating cues are present. However, the OOS parts
+are beyond the merits of the LID model as either they do not
+contain spoken portions or they contain spoken parts ambiguous
+across languages. As the input duration gets shorter, the likeli-
+hood of a segment to be entirely contained or dominated by an
+OOS element increases. As a consequence, even if the trained
+LID model efficiently learnt the language-discriminating cues,
+its chances of failures for shorter inputs increase prominently.
+Analysis: First we infer the possible OOS factors from LID
+perspective: (i) Portion of non-speech segments (NS) [16], (ii)
+named entities (NE) [17, 18], (iii) filler words (FW) [19], (iv)
+portions with overlapping speech (OL) [20], (v) segments with
+code-switching (CS). For the analysis, we feed 2s input seg-
+ments to our baseline LID model (cf. Section 3). We com-
+pute the misclassified segments. Then we explore pre-trained
+models to label each misclassified segment (with ground-truth
+English) in either of the four OOS labels: NS, NE, FW, OL.
+We then calculate and compare what fraction of the total mis-
+classified segments are labelled into these OOS categories. We
+do not consider non-English misclassifications or the impact of
+code-switching due to lack of reliable multilingual pre-trained
+models (or deterministic algorithms). In Figure 1, we illustrate
+the detailed working principle of our analysis.
+2.3. Proposed teacher-free knowledge distillation (TF-KD)
+Among the above-discussed OOS factors, only the impact of NS
+can be filtered out prior due to the development of reliable voice
+activity detection (VAD) systems [16]. For the rest OOS factors,
+due to lack of multilingual pre-trained models or algorithms, we
+can not filter them out. These challenges motivate us to explore
+solutions which are based on the conventional KD-based frame-
+works but also attempts to reduce the impacts of OOS factors
+for improving short-utterance LID. For this we propose several
+teacher-free knowledge distillation (TF-KD) approaches. Un-
+like conventional KD frameworks, in the proposed TF-KD, we
+do not need to train a separate teacher network. The details of
+the proposed TF-KD approaches are discussed next.
+Method-1: TF-KD- To make KD approach teacher-free
+while enabling the knowledge of information-rich soft-labels,
+we propose the preceding epoch to guide the following epoch.
+Further, to reduce the impact of the OOS factors (which at-
+tribute largely to the total misclassification), in the preceding
+epoch we accumulate the prediction logits of the correctly clas-
+sified training segments. This accumulated prediction logit ma-
+trix is then normalized and used like soft-label teacher logits
+as KD to supervise the next epoch. This approach is inspired
+from the online label smoothing (OLS) algorithm [14] applied
+for object recognition tasks. Let, during the t-th epoch of train-
+ing L languages, a segment (xi, yi) is fed to the LID model
+θ which produces correct softmax logit p(l|xi) ∈RL. We
+initialize a zero matrix St ∈RL×L to accumulate the cor-
+rect prediction scores. If arg max p(l|xi) = yi, then we set
+St[:, yi] = p(l|xi). By doing so, at the end of the epoch, we set
+St[:, k] =
+1
+N t
+k
+(
+Nt
+k
+X
+j=1
+p(l|xj))
+(4)
+Here, N t
+k denotes the number of correctly classified training
+segments in the t-th epoch with true label k ∈[1, L], St[:, k]
+denotes the k-th column of the S matrix. Likewise, for each cor-
+rectly predicted training segment we update the corresponding
+column with the normalized prediction logits. At the next t+1-
+th epoch, St is used as supervised matrix with soft-labels resid-
+ing in each column for each ground-truth label [1, L]. However,
+to initialize, at the first epoch, we set uniform distributions for
+each column of S. The total loss to be optimized in the OLS-
+based TF-KD is:
+LTF−KD = αLhard + (1 −α)Lsoft
+(5)
+Here, for better convergence we also include the hard-label
+based loss with weight decided by α. We have set α = 0.7
+upon experimental validation. Lsoft is computed as:
+Lsoft = −
+L
+X
+k=1
+St[:, k] log p(k|xi)
+(6)
+Method-2: TF-KD with dynamic weight schedule- In
+Method-1, following the OLS approach [14], we keep static
+weights α across the epochs in Eq. 5. We hypothesize that in
+the initial epochs, (i) the number of correctly predicted training
+segments can be less, and (ii) the prediction logits may not be
+the most reliable. Hence, we extend the OLS in Method-2 of
+TF-KD with dynamically scheduling the value of α as a func-
+tion of epoch number. For the initial epochs, we have set higher
+values of α with more emphasis on the hard-label loss. Once
+the number of epoch is passed by a limit (τ), we keep on gradu-
+ally decreasing α for increasing the impact of the accumulated
+soft-labels (cf. Algorithm 1).
+1484
+
+Method-3: TF-KD with dynamic weight schedule and
+conditional soft-label update- In the Method-1 and Method-
+2, the accumulated prediction logit matrix St at each epoch t
+is assigned to supervise the immediate next-epoch. However,
+during the training, not all epoch results in monotonic decrease
+in the validation loss. Training with the soft-labels accumu-
+lated from such epochs may hinder the convergence. Hence,
+instead of assigning St to supervise each t + 1-th epoch, we
+first check if the validation loss at the t-th epoch gets reduced
+from the t −1-th epoch, then only St is utilized to supervise
+the t + 1-th epoch. Otherwise, the supervise matrix is kept
+unaltered from the epoch where validation loss reduced last.
+This extension ensures that our TF-KD framework can only
+get the soft-label guidances which helps in better learning the
+language-discriminating cues.
+Method-4: TF-KD with dynamic weight schedule, con-
+ditional soft-label update, and entropy-based soft-label
+computation- Even after correct prediction, prediction scores
+can lack confidence especially when the out-of-scope factors
+can present. In such cases, to further reduce the impact of less-
+confident correct classifications, instead of simple averaging,
+we modify Eq. 4 with entropy-based weighted averaging to pro-
+duce more reliable soft-labels as presented below:
+St[:, k] =
+1
+N t
+k
+(
+Nt
+k
+X
+j=1
+wj · p(l|xj))
+(7)
+wj is set as inverse of the prediction score entropy:
+wj = 1/(
+L
+X
+i=1
+−p(l|xj)[i] log p(l|xj)[i])
+(8)
+For overall understanding, the detailed working procedure
+of the TF-KD is described in Algorithm 1.
+Algorithm 1 Overall working principle of the proposed teacher-
+free knowledge distillation (Method-4).
+1: procedure TF-KD METHOD-4(X, y, αmax, αmin, ∆α, τ)
+2:
+Initialize t = 0, S with uniform distributions, Ssup = S
+3:
+while t ≤Nepoch do
+4:
+t ←t + 1
+5:
+St ←AccumulateCorrectPredLogit(X, y, t)
+6:
+α ←ScheduleAlpha(t, αmax, αmin, ∆α, τ)
+7:
+Compute Lsoft with Ssup (either St−1 or Sprev)
+8:
+LTF-KD ←αLhard + (1 −α)Lsoft
+9:
+Update model parameters using LTF-KD
+10:
+Ssup, Sprev
+=
+(St, St)
+if
+[t
+<
+2
+or
+ValidationLossDecreased(t)] else (Sprev, Sprev)
+11: procedure ACCUMULATECORRECTPREDLOGIT(X, y, t)
+12:
+Initialize St with zeros
+13:
+for each segment (xi, yi) in (X, y) do
+14:
+Compute softmax logit p(l|xi)
+15:
+if arg max(p(l|xi)) = yi then
+16:
+wi = 1/(PL
+j=1 −p(l|xi)[j] log p(l|xi)[j])
+17:
+St[:, yi] ←St[:, yi] + wi · p(l|xi)
+18:
+Normalize each column of St
+19:
+return St
+20: procedure SCHEDULEALPHA(t, αmax, αmin, ∆α, τ)
+21:
+return αmax if t < τ else min(αmin, αmax −∆α · t)
+22: procedure VALIDATIONLOSSDECREASED(t)
+23:
+return validation loss at epoch t < epoch t −1
+3. Experiment details
+Database: We have used utterances of ten most widely spoken
+languages in the world from the VoxLingua107 [12] database
+(Vox-10).
+These languages are: English, Mandarin, Hindi,
+Spanish, French, Arabic, Bengali, Portuguese, Russian, and
+Urdu. VoxLingua107 is one of the largest and most widely ex-
+plored databases in the recent LID literature [5, 21, 22], con-
+sisting 6,628 hours of audios downloaded from video stream-
+ing platforms and averaging 62 hours per language. We per-
+form a session disjoint spilt (with random seed value 42) of
+the collected database using 80:10:10 ratio for training, vali-
+dation, and evaluation sets, respectively. The utterances are in
+.wav format and sampled in 16 kHz. Besides, for additional
+cross-corpora evaluation, we have also used the Mozilla Com-
+mon Voice dataset [15].
+Data pre-processing and feature extraction: For training
+our baseline and proposed TF-KD based LID frameworks, we
+segment the training and validation set utterances in 3s chunks.
+We primarily evaluate our models on short 2s segments. For
+implementing the KD-based literature solutions, we use longer
+4s chunks and shorter 2s chunks for training the teacher and
+student model, respectively [6]. We apply VADs to filter out
+the non-speech chunks. Thereafter, we extract 80-dimensional
+log Mel-spectrogram features and apply mean subtraction based
+normalization on them.
+Classifier architecture and training procedure: Follow-
+ing the recent LID literature [23, 24, 25, 26], we use the
+ECAPA-TDNN architecture [27] for training the LID frame-
+works. Cross-entropy loss is used with AdamW optimizer to
+train the models. We primarily set batch size of 64, learning
+rate of 0.001, and train the models for 50 epochs. We also use
+a validation loss based learning rate scheduler. For KD-based
+literature approaches, we use loss weight λ = 0.7. For the pro-
+posed TF-KD approaches, we apply α = 0.7 with learning rate
+0.0001. For dynamic weight, we experimentally (on validation
+set) fix αmax = 0.8, αmin = 0.3, ∆α = 0.02, and τ = 2.
+Following the NIST LRE [28, 29] and OLR challenges [30] in
+LID, we use cost-based metrics, such as equal error rate (EER)
+and Cavg (*100) (primary metric).
+4. Experiment results
+We first explore why LID performance degrades for shorter in-
+puts. Then, we compare the performance of our proposed TF-
+KD based methods with the existing KD-based solutions.
+4.1. LID performance degradation for shorter utterances:
+Explanatory analysis
+At first, we train a LID model with 3s segments without ap-
+plying VAD for training and evaluation. We evaluate it with
+diverse test segment durations and report the results in Table 1.
+These results emphasize how LID performance gets strikingly
+degraded as we keep on reducing the test segment duration. To
+note, we assume 2s as the minimum duration required to gather
+enough linguistic context to discriminate languages. Follow-
+ing these preliminary results, we next explore how the different
+OOS factors impact for this performance degradation.
+Following Figure 1, we consider the 2s English misclassi-
+fied segments and compute the number of segments detected as
+(i) non-speech, (ii) named entity, (iii) filler word, and (iv) over-
+lap speech. We also segregate the NE-detected segments into
+sub-categories, such as location (LOC), organization (ORG),
+person (PER), and miscellaneous (MISC). In Table 2, we show
+1485
+
+Table 1: Baseline LID performance (trained without VAD) on
+different test duration. Accuracy is reported for reference.
+Test segment
+duration
+Metric
+Acc (%)
+EER (%)
+Cavg
+2s
+51.16
+23.53
+22.62
+3s
+58.08
+20.25
+19.11
+4s
+62.69
+18.16
+17.11
+Utterance
+69.00
+15.32
+13.93
+Table 2: Impact of out-of-scope labelled segments on overall
+LID misclassification for 2s Vox-10 English test segments.
+Segment category
+Number of
+test segments
+Remarks
+Total test utterances (U)
+7911
+23.57 % misclassification
+Misclassified (U w)
+1865
+Non-speech detected (U w
+NS)
+268
+-
+Named entity detected (U w
+NE)
+292
+LOC: 70, ORG: 43,
+PER: 69, MISC: 110
+Filler word detected (U w
+FW)
+249
+-
+Overlap speech detected (U w
+OS)
+25
+-
+U w
+NS ∪U w
+NE ∪U w
+FW ∪U w
+OS
+689
+36.94% of misclassification
+are due to the OOS factors
+that out of 7,911 2s English test segments, 1865 are misclassi-
+fied. Among these 1865 misclassification, these four OOS fac-
+tors alone contribute by 36.94%. The analysis motivates us to
+focus on effectively mitigate the adverse effects of these OOS
+factors to make LID systems robust towards shorter inputs.
+4.2. LID performance of the proposed TF-KD methods
+We next present the LID performances (for both short 2s seg-
+ments and overall utterance-wise evaluation) of the proposed
+TF-KD methods. For comparison, we implement the baseline
+trained with 3s and 2s training chunks (after applying VAD). We
+also implement the state-of-the-art solutions available from lit-
+erature that explicitly address the issue of short-input LID. The
+corresponding results in Table 3 show that the proposed TF-
+KD approaches clearly outperform the baseline and literature
+solutions. Further, we observe the TF-KD Method-4, which
+extends the online label smoothing with dynamic weights, con-
+ditional label update, and entropy-based soft-label computation,
+performs the best among all the proposed TF-KD methods.
+4.3. Ablation experiments
+Impact of α in the OLS loss for TF-KD: In Eq. 5, α is a
+crucial hyperparameter that balances the conventional cross-
+entropy hard-label loss and the online label smoothing loss for
+TF-KD. Increasing α can enhance training convergence, but it
+may reduce the influence of informative soft-labels in LID train-
+ing. By varying α = [0, 0.9] in Method-1, we explore LID
+performances, as shown in Figure 2. The results indicate that a
+moderately high α value optimally balances both losses, leading
+to effective LID performance.
+0
+0.1
+0.3
+0.5
+0.7
+0.9
+α values for OLS used in TF-KD
+9.5
+10.0
+10.5
+11.0
+C
+avg
+*
+100
+Figure 2: LID performances (Cavg ∗100) for different α values
+in OLS used for TF-KD (Method-1).
+Table 3: LID performance comparison of the proposed TF-KD
+based approaches on shorter 2s Vox-10 segments and overall
+utterance-wise evaluation. For comparison, we have also im-
+plemented the literature solutions for short-utterance LID.
+LID framework
+2s test segment
+Whole utterance
+EER (%)
+Cavg
+EER (%)
+Cavg
+Baseline model
+(ECAPA-TDNN)
+Train-chunk 3s
+10.45
+11.20
+4.46
+5.00
+Literature
+Train-chunk 2s
+9.08
+10.06
+3.96
+4.19
+KD [11, 6]
+9.07
+9.47
+3.96
+4.14
+KD-RL [6]
+9.08
+9.18
+4.16
+4.81
+Compensation [8]
+9.81
+10.20
+3.96
+4.11
+Proposed
+TF-KD
+Method-1
+9.91
+9.17
+3.95
+3.79
+Method-2
+9.12
+8.30
+3.97
+3.60
+Method-3
+9.22
+8.25
+3.85
+3.35
+Method-4
+8.94
+8.24
+3.80
+3.41
+Table 4: LID performances using the Vox-10 and Common
+Voice databases with both same-corpora and cross-corpora
+evaluations.
+Training
+database
+LID framework
+Vox-10
+Common Voice
+Cavg
+Cavg
+Vox-10
+Baseline
+11.20
+20.40
+KD-RL
+9.18
+19.11
+TF-KD (Method-4)
+8.24
+16.22
+Common Voice
+Baseline
+25.68
+7.28
+KD-RL
+26.73
+9.07
+TF-KD (Method-4)
+22.03
+4.61
+Verification with cross-corpora evaluation using addi-
+tional database: To verify the effectiveness of our proposed ap-
+proaches, we consider performing both same-corpora and cross-
+corpora experiments using another database. For each 10 lan-
+guage, we consider 10,000 utterances (for avoiding class im-
+balance) using the Common Voice dataset [15] (version 20.0).
+The utterances are randomly split into train, validation, and test
+sets using 80:10:10 ratio. We train the baseline, KD-RL [6],
+and proposed TF-KD Method-4 based frameworks using the
+Common Voice dataset and compare their performances (on 2s
+test segments) in Table 4. Additionally, we report the cross-
+corpora evaluations using the Vox-10 trained LID models. The
+obtained results clearly show that proposed TF-KD approach
+consistently outperform the baseline and literature solutions, so-
+lidifying the effectiveness of the proposed LID framework.
+5. Conclusions
+We conduct extensive analysis to find out why LID systems de-
+grade drastically when the test input duration gets reduced. Our
+analysis show that the presence of out-of-scope factors, such as
+non-speech, named entities, overlap and filler speech becomes
+too dominant in shorter inputs, which can attribute to a signifi-
+cant fraction of total misclassification. To reduce the impact of
+these OOS factors, we propose a teacher-free knowledge distil-
+lation using online label smoothing. Our approach outperforms
+conventional knowledge-distillation based approaches for both
+same-corpora and cross-corpora evaluations without training a
+separate teacher network. In the future, we would like to extend
+our study with OOS-factor detection based multi-task learning
+for enhancing the explainability to the end users.
+6. References
+[1] H. Li, B. Ma, and K. A. Lee, “Spoken language recognition: from
+fundamentals to practice,” Proceedings of the IEEE, vol. 101,
+no. 5, pp. 1136–1159, 2013.
+[2] E. Ambikairajah et al., “Language identification: A tutorial,”
+IEEE Circuits and Systems Magazine, vol. 11, no. 2, pp. 82–108,
+2011.
+[3] Q. Wang, Y. Yu, J. Pelecanos, Y. Huang, and I. L. Moreno, “At-
+tentive temporal pooling for conformer-based streaming language
+1486
+
+identification in long-form speech,” in Odyssey: The Speaker and
+Language Recognition Workshop.
+ISCA, 2022, pp. 255–262.
+[4] F. Wang, L. Huang, T. Li, Q. Hong, and L. Li, “Conformer-based
+language embedding with self-knowledge distillation for spoken
+language identification,” in INTERSPEECH.
+ISCA, 2023, pp.
+5286–5290.
+[5] F. Jia, N. R. Koluguri, J. Balam, and B. Ginsburg, “A compact
+end-to-end model with local and global context for spoken lan-
+guage identification,” in INTERSPEECH. ISCA, 2023, pp. 5321–
+5325.
+[6] P. Shen, X. Lu, S. Li, and H. Kawai, “Knowledge distillation-
+based representation learning for short-utterance spoken language
+identification,” IEEE/ACM Transactions on Audio, Speech, and
+Language Processing, vol. 28, pp. 2674–2683, 2020.
+[7] Shen, Peng and Lu, Xugang and Li, Sheng and Kawai, Hisashi,
+“Feature representation of short utterances based on knowl-
+edge distillation for spoken language identification.” in INTER-
+SPEECH.
+ISCA, 2018, pp. 1813–1817.
+[8] P. Shen, X. Lu, K. Sugiura, S. Li, and H. Kawai, “Compensation
+on x-vector for short utterance spoken language identification.”
+in Odyssey: The Speaker and Language Recognition Workshop.
+ISCA, 2020, pp. 47–52.
+[9] D. Snyder et al., “Spoken language recognition using x-vectors.”
+in Odyssey: The Speaker and Language Recognition Workshop.
+ISCA, 2018, pp. 105–111.
+[10] G. Hinton, “Distilling the knowledge in a neural network,” arXiv
+preprint arXiv:1503.02531, 2015.
+[11] P. Shen, X. Lu, S. Li, and H. Kawai, “Interactive learning of
+teacher-student model for short utterance spoken language identi-
+fication,” in ICASSP.
+IEEE, 2019, pp. 5981–5985.
+[12] J. Valk and T. Alum¨ae, “VoxLingua107: a dataset for spoken lan-
+guage recognition,” in Spoken Language Technology Workshop
+(SLT).
+IEEE, 2021, pp. 652–658.
+[13] S. Dey, M. Sahidullah, and G. Saha, “An overview on Indian
+spoken language recognition from machine learning perspective.”
+ACM Transactions on Asian and Low-Resource Language Infor-
+mation Processing, vol. 21, no. 128, pp. 1–45, 2022.
+[14] C.-B. Zhang, P.-T. Jiang, Q. Hou, Y. Wei, Q. Han, Z. Li, and M.-
+M. Cheng, “Delving deep into label smoothing,” IEEE Transac-
+tions on Image Processing, vol. 30, pp. 5984–5996, 2021.
+[15] R. Ardila, M. Branson, K. Davis, M. Kohler, J. Meyer, M. Hen-
+retty, R. Morais, L. Saunders, F. Tyers, and G. Weber, “Common
+voice: A massively- ˆAmultilingual speech corpus,” in Language
+Resources and Evaluation Conference.
+European Language Re-
+sources Association, May 2020, pp. 4218–4222.
+[16] S. Team, “Silero VAD: pre-trained enterprise-grade voice activity
+detector (VAD), number detector and language classifier,” https:
+//github.com/snakers4/silero-vad, 2024.
+[17] A. Radford, J. W. Kim, T. Xu, G. Brockman, C. McLeavey, and
+I. Sutskever, “Robust speech recognition via large-scale weak su-
+pervision,” in International Conference on Machine Learning.
+PMLR, 2023, pp. 28 492–28 518.
+[18] P. Srinivasan, R. Venkatakrishnan et al., “Transformer-based mod-
+els for named entity recognition: A comparative study,” in Inter-
+national Conference on Computing Communication and Network-
+ing Technologies (ICCCNT).
+IEEE, 2023, pp. 1–5.
+[19] M. Zusag, L. Wagner, and B. Thallinger, “CrisperWhisper: Ac-
+curate timestamps on verbatim speech transcriptions,” in INTER-
+SPEECH.
+ISCA, 2024, pp. 1265–1269.
+[20] H. Bredin, “pyannote.audio 2.1 speaker diarization pipeline: prin-
+ciple, benchmark, and recipe,” in INTERSPEECH.
+ISCA, 2023,
+pp. 1983–1987.
+[21] M. Valente, F. Brugnara, G. Morrone, E. Zovato, and L. Badino,
+“Exploring spoken language identification strategies for auto-
+matic transcription of multilingual broadcast and institutional
+speech,” in INTERSPEECH.
+ISCA, 2024, pp. 1645–1649.
+[22] T. M. Bartley, F. Jia, K. C. Puvvada, S. Kriman, and B. Ginsburg,
+“Accidental learners: Spoken language identification in multilin-
+gual self-supervised models,” in ICASSP.
+IEEE, 2023, pp. 1–5.
+[23] S. Dey, M. Sahidullah, and G. Saha, “Towards cross-corpora
+generalization for low-resource spoken language identification,”
+IEEE/ACM Transactions on Audio, Speech, and Language Pro-
+cessing, 2024.
+[24] A. Prasad, A. Carofilis, G. Vanderreydt, D. Khalil, S. Madik-
+eri, P. Motlicek, and C. Schuepbach, “Fine-tuning self-supervised
+models for language identification using orthonormal constraint,”
+in ICASSP.
+IEEE, 2024, pp. 11 921–11 925.
+[25] S. Dey, P. Singh, and G. Saha, “Wavelet scattering transform for
+improving generalization in low-resourced spoken language iden-
+tification,” in INTERSPEECH.
+ISCA, 2023, pp. 1953–1957.
+[26] R. Duroselle, M. Sahidullah, D. Jouvet, and I. Illina, “Lan-
+guage recognition on unknown conditions: The LORIA-Inria-
+MULTISPEECH system for AP20-OLR challenge,” in INTER-
+SPEECH.
+ISCA, 2021, pp. 3256–3260.
+[27] B. Desplanques, J. Thienpondt, and K. Demuynck, “ECAPA-
+TDNN: Emphasized channel attention, propagation and aggre-
+gation in TDNN based speaker verification,” in INTERSPEECH.
+ISCA, 2020, pp. 1–5.
+[28] S. O. Sadjadi, T. Kheyrkhah, A. Tong, C. S. Greenberg, D. A.
+Reynolds, E. Singer, L. P. Mason, and J. Hernandez-Cordero,
+“The 2017 NIST language recognition evaluation.” in Odyssey:
+The Speaker and Language Recognition Workshop.
+ISCA, 2018.
+[29] Y. Lee, C. Greenberg, E. Godard, A. A. Butt, E. Singer,
+T. Nguyen, L. Mason, and D. Reynolds, “The 2022 NIST lan-
+guage recognition evaluation,” in INTERSPEECH, 2023, pp.
+1928–1932.
+[30] Z. Li, M. Zhao, Q. Hong, L. Li, Z. Tang, D. Wang, L. Song,
+and C. Yang, “AP20-OLR challenge: Three tasks and their base-
+lines,” in Asia-Pacific Signal and Information Processing Asso-
+ciation Annual Summit and Conference (APSIPA ASC).
+IEEE,
+2020, pp. 550–555.
+1487
+

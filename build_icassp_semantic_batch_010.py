@@ -1,0 +1,51 @@
+#!/usr/bin/env python3
+"""Record a tenth bounded ICASSP semantic review batch."""
+from __future__ import annotations
+import hashlib, json
+from pathlib import Path
+HERE = Path(__file__).resolve().parent
+DATA = HERE / "data"
+A = [
+ ("6c213dec41c76bee60f40b339aa508476ef41d67","sound-and-production","time-frequency-measurement","multi-resolution-signal","A generative audio autoencoder must compress a waveform without losing the time-frequency structure needed to reconstruct useful sound."),
+ ("28017a19068a1c3689f41654551529b6c8c09350","sound-and-production","time-frequency-measurement","sampling-and-quantization","An audio codec must decide how many discrete tokens to spend on acoustic fidelity versus the semantic information a listener or downstream model needs."),
+ ("aea106410b217fd7f2344ce26a3650c8c94d14a8","sound-and-production","time-frequency-measurement","sampling-and-quantization","Ultra-low-bitrate sound-effect compression tests how quantization and diffusion can preserve recognizable events with very few bits."),
+ ("db86008dd7082db94dd33b4c11524e5c159d24d2","sound-and-production","room-channel-and-sensing","microphone-channel","Active noise control must estimate its secondary acoustic path while the physical channel and controller are being learned together."),
+ ("55fe457194f7dc62b01ebc0abf1612e1a8112ad0","listening-and-separation","source-separation-and-spatial-listening","blind-source-separation","Music source restoration asks whether overlapping instruments can be separated and reconstructed when original stems are unavailable."),
+ ("ea6f4e24aedef987b73c53cb293b2d591b947e13","listening-and-separation","source-separation-and-spatial-listening","blind-source-separation","Restoring a music mixture requires separating sources while avoiding new artifacts that become louder than the missing material."),
+ ("56fb34a88cc772f834eb425f5454776d76080ba3","listening-and-separation","echo-and-reconstruction","perceptual-enhancement","Audio hallucination in video understanding tests whether a model invents sound that is visually plausible but unsupported by the recording."),
+ ("6039bd6c9fb2e47714a644ef5b93caba242b38e2","listening-and-separation","noise-enhancement","nonstationary-noise","Incremental audio classification must adapt to new sound classes without overwriting the acoustic distinctions learned earlier."),
+ ("c17ba845024c6779c20c90ab07312fa23a3b62f2","recognition-and-alignment","boundaries-and-sequence-structure","long-context-decoding","Streaming speech recognition must decide how much future context to wait for when the complete utterance is unavailable."),
+ ("688146d07467757d9ff7aa3ccbfbdd338e639819","recognition-and-alignment","adaptation-and-open-vocabulary","latency-and-resource","Dynamic speech networks trade model depth and computation against recognition quality as the input or device changes."),
+ ("586bebb49a0f4a50d2c53c004ee62800fad5a203","recognition-and-alignment","acoustic-unit-mapping","crosslingual-transfer","Language-audio pretraining must align variable-duration acoustic input with language supervision rather than assuming fixed segments."),
+("711d83af8c72e162159e84b6373017612be73a5b","recognition-and-alignment","acoustic-unit-mapping","acoustic-to-token","Audio-visual language-model inference must preserve the acoustic evidence needed to map an audio stream to a useful response."),
+ ("55c342722bc5357808194912973e1c500348a201","meaning-and-interaction","dialogue-and-turn-taking","dialogue-state","Topic segmentation uses acoustic transitions between sentences to recover conversational structure that words alone may obscure."),
+ ("7253661de1048019e9ea23e395e6c83b4d52bc79","meaning-and-interaction","grounding-and-action","referential-grounding","Audio captioning must connect language descriptions to the sound events actually present rather than merely produce fluent text."),
+ ("08da8f18cb892647b29da770aa64bdc89e28eba1","meaning-and-interaction","grounding-and-action","referential-grounding","Retrieval-augmented audio generation tests whether a language query can retrieve and condition on the sound it refers to."),
+ ("9212141e66d29e78e0c08d6d524689fd842b6867","meaning-and-interaction","prosody-and-intent","intent-in-context","Zero-shot audio-language classification should use uncertainty to weight prompts instead of treating every textual instruction as equally informative."),
+ ("eeeda17592489a89d4293eeb05c692378ee9a7a2","voice-generation-and-control","text-to-speech-and-content","text-to-speech-planning","Scene-aware speech synthesis must turn visual context into spoken delivery while preserving the requested linguistic content."),
+ ("2230d48501d1a3c823ddbec57210807f437b9a4e","voice-generation-and-control","prosody-and-interactive-control","prosody-control","Controllable bandwidth extension changes acoustic detail while trying to preserve the musical or vocal character of the input."),
+ ("4c29ff8d5dc5dbf70edfd7a15fc89aed700b7dae","voice-generation-and-control","prosody-and-interactive-control","style-and-emotion-control","Disentangled representations make controllable generation testable by asking whether one musical attribute can change without changing the others."),
+ ("20b79816bb8e42f80d3cbf001a6f74c09cae8434","voice-generation-and-control","prosody-and-interactive-control","interactive-latency","Interactive sketch-to-audio generation must respond quickly enough for a person to steer the generated sound."),
+ ("5677bfc89f30ef9e06729ba52f257b7af59a6b8d","people-variation-and-health","speaker-characteristics","speaker-verification","Speaker verification compression must preserve identity evidence while reducing the model and retaining reliable decisions."),
+ ("706f9d8fd024f6ca3ec3c6883db04b44cca003ab","people-variation-and-health","speaker-characteristics","style-and-state-variation","Bioacoustic recognition asks whether learned audio representations transfer across species and ecological conditions rather than only across human speakers."),
+("7fa35c3b31455b8d645fb29a9c35d1a71361cdb1","people-variation-and-health","human-centered-evaluation","accessibility-fit","Audio representation transfer should be tested on the biological signal and task that users actually care about, not only on a source benchmark."),
+("c5eba686c4f670eb5194c4a9a9b955044130ab88","people-variation-and-health","human-centered-evaluation","listener-effort","Audio-visual quality assessment needs human judgments at scale while preserving the variation among listeners and viewing conditions."),
+ ("74e68c5d13e9a3baf621a5ebd856a2ef6b3676ca","languages-accents-and-resources","multilingual-and-crosslingual","cultural-meaning","Negation in joint audio-text models tests whether language meaning survives when acoustic and textual cues disagree."),
+ ("27bb0504e76395bf6ca8106929cc7b34f7c0ae06","languages-accents-and-resources","multilingual-and-crosslingual","crosslingual-transfer","Music captioning with metadata language models asks how structured language knowledge transfers to descriptions of acoustic content."),
+ ("be3257200948d26ec885299c4174474ffd8a6d86","languages-accents-and-resources","multilingual-and-crosslingual","crosslingual-transfer","Audio-video correspondence learning aligns representations from different modalities so a language or visual cue can identify the same sound event."),
+ ("f2e289a5e1a0f1aac8a9f50a14d4ca85a8c90c1c","languages-accents-and-resources","low-resource-and-data-creation","speech-data-collection","Lyric-to-melody generation uses language constraints to create paired musical data and keep generated audio aligned with the requested words."),
+ ("396086a780ffd204b1a467bae77c39ad2885d0fd","evaluation-deployment-and-consequence","privacy-security-and-accountability","spoofing-and-deepfake","Audio steganography must hide information while remaining robust to transformations and secure against an analyst trying to recover it."),
+ ("5ec8a32bb2cff662b1eafde87a14775ee696a204","evaluation-deployment-and-consequence","privacy-security-and-accountability","spoofing-and-deepfake","Broadcast monitoring needs to distinguish generated music from authentic recordings as synthesis methods and channels change."),
+ ("df86196063981e670870ba8b6c8e60e7de661262","evaluation-deployment-and-consequence","privacy-security-and-accountability","auditability-and-contestability","Membership inference tests whether a music diffusion model leaks which training examples it has seen, making privacy a measurable model behavior."),
+("2fa79695d2ba5fcdaee3664a69a18031748f4242","evaluation-deployment-and-consequence","metrics-and-targets","calibration-and-selective-use","Likelihood-based evaluation of music language models must distinguish a low loss from genuinely useful audio understanding when noise changes the signal."),
+]
+papers={p["paperId"]:p for p in json.loads((DATA/"icassp-2026-papers.json").read_text())["papers"]}
+rows=[]; used=set()
+for pid,theme,subtheme,concept,reasoning in A:
+    if pid in used: raise SystemExit(f"duplicate in batch: {pid}")
+    used.add(pid); p=papers[pid]; abstract=p.get("abstract") or ""
+    if not abstract: raise SystemExit(f"batch 010 requires D2 abstract: {p['title']}")
+    rows.append({"paper_id":pid,"title":p["title"],"decision":"supported","confidence":"analyst-reviewed-D2","theme_id":theme,"subtheme_id":subtheme,"concept_id":concept,"semantic_reasoning":reasoning,"evidence_excerpt":abstract[:1000],"source_location":p.get("url"),"source_sha256":hashlib.sha256(abstract.encode()).hexdigest(),"evidence_depth":"D2","review_state":"analyst-reviewed","claim_boundary":"ICASSP discovery record with abstract support; full-paper mechanisms, ablations, and limitations are not established."})
+payload={"schema_version":1,"batch_id":"icassp-2026-semantic-batch-010","status":"analyst-reviewed-D2-batch","claim_boundary":"These assignments are analyst-reviewed from preserved ICASSP title/abstract records. They do not establish full-paper mechanisms or venue-wide prevalence.","reviewed_count":len(rows),"rows":rows}
+(DATA/"icassp-2026-semantic-reviewed-batch-010.json").write_text(json.dumps(payload,indent=2,ensure_ascii=False)+"\n")
+print(json.dumps({"batch_id":payload["batch_id"],"reviewed_count":len(rows),"D2":len(rows)}))

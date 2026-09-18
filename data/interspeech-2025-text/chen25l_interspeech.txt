@@ -1,0 +1,651 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+SoundSculpt: Direction and Semantics Driven Ambisonic Target Sound
+Extraction
+Tuochao Chen∗1, D Shin∗∗2, Hakan Erdogan3, Sinan Hersek2
+1University of Washington,
+2Google AR,
+3Google DeepMind,
+tuochao@cs.washington.edu, deshin@google.com, hakanerdogan@google.com,
+shersek@google.com
+Abstract
+This paper introduces SoundSculpt, a neural network de-
+signed to extract target sound fields from ambisonic recordings.
+SoundSculpt employs an ambisonic-in-ambisonic-out architec-
+ture and is conditioned on both spatial information (e.g., tar-
+get direction obtained by pointing at an immersive video) and
+semantic embeddings (e.g., derived from image segmentation
+and captioning). Trained and evaluated on synthetic and real
+ambisonic mixtures, SoundSculpt demonstrates superior perfor-
+mance compared to various signal processing baselines. Our
+results further reveal that while spatial conditioning alone can
+be effective, the combination of spatial and semantic informa-
+tion is beneficial in scenarios where there are secondary sound
+sources spatially close to the target. Additionally, we compare
+two different semantic embeddings derived from a text descrip-
+tion of the target sound using text encoders.
+Index Terms: target sound extraction, spatial audio, ambison-
+ics, neural network, conditioning
+1. Introduction
+In recent years, spatial audio has become increasingly popular
+due to the introduction of new VR/AR headsets. Ambisonics,
+a popular spatial audio format, enables binaural rendering of
+head-tracked spatial audio and is commonly used in VR [1].
+Ambisonic signals can be recorded using spherical microphone
+arrays [2] or emerging techniques that employ arbitrary micro-
+phone arrays, such as those found in AR glasses [3].
+In this paper, we present SoundSculpt, a method to extract a
+target ambisonic sound field from an ambisonic mixture record-
+ing. We envision a scenario where an individual watches a 180o
+or 360o panoramic video with accompanying head tracked spa-
+tial audio on a VR headset (Figure 1). For example, the video
+might feature a street musician playing the guitar and singing
+amidst a busy cityscape, with various other ambient sounds like
+people talking and traffic. The user points to the guitar, and all
+other sounds in the scene vanish, leaving only the guitar sound,
+preserving its spatial and reverb characteristics.
+The main component of SoundSculpt is an ambisonic-in-
+ambisonic-out neural network conditioned by a target direction
+and a semantic embedding that describes the sound to be iso-
+lated. The target direction can be provided by the user pointing
+to an immersive video. A semantic representation of the tar-
+get sound can be obtained using regional image segmentation at
+the target direction, followed by the computation of a semantic
+embedding of the segmented region.
+* Work done during internship in Google AR.
+** Now at Google DeepMind.
+Raw Ambisonic Audio 
+(Mixture)
+Output Ambisonic Audio 
+(Target)
+θ
+φ
+SoundSculpt
+Model
+Semantic 
+Embedding
+Spatial 
+Embedding
+Figure 1: Overview of SoundSculpt, a spatially and semanti-
+cally conditioned target ambisonic signal extraction model.
+Signal processing based techniques exist to estimate a target
+ambisonic signal. In [4] an ambisonic domain transformation
+is proposed for directional loudness modification. The loud-
+ness of sounds outside of a spherical cap centered at the target
+direction can be suppressed using this method. Furthermore,
+[5] and [6] investigate beamforming and matrix multi-channel
+Wiener filtering based methods to estimate a target ambisonic
+signal. However, if there is another sound source close to the
+desired target, these techniques might not perform effectively.
+This raises the question of whether information other than spa-
+tial direction can be employed as a conditioning factor for ex-
+tracting target ambisonic signals.
+Semantically conditioned neural networks have shown
+promising results to extract target signals from mono or bin-
+aural recordings. Kilgour et al. [7] present a semantically con-
+ditioned audio-to-audio UNet architecture designed to isolate
+a desired audio source from mono waveforms. The semantic
+condition can be derived by feeding the text description of the
+target sound to a text encoder or a short audio snippet of the tar-
+get source to an audio encoder. [8] describes a computationally
+efficient neural network for extracting target sounds from mono
+waveforms. Furthermore, Veluri et al. [9] explore the preserva-
+tion of binaural cues during target sound extraction from binau-
+ral audio. Both of the latter approaches utilize the class label of
+the target sound for model conditioning.
+Neural networks have also shown promising results in
+region-wise sound extraction. For instance, Yang et al. pro-
+posed a model that separates target speech from interfering
+sources using two microphones, focusing on different angular
+regions [10]. Gu et al. introduced a method for extracting ac-
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+943
+10.21437/Interspeech.2025-1379
+
+tive target sounds within a user-defined spatial region, utilizing
+multi-channel audio input and region features to produce an es-
+timate of the target signal [11].
+Drawing inspiration from these methods, we introduce a
+first order ambisonic-to-ambisonic UNet architecture designed
+to extract target ambisonic sounds from complex ambisonic
+mixtures, leveraging both spatial and semantic conditioning.
+To evaluate SoundSculpt’s performance, we curate a compre-
+hensive dataset of synthetic and real ambisonic recordings and
+conduct extensive experiments comparing different condition-
+ing strategies (spatial, semantic, and combined). Our results
+demonstrate that SoundSculpt significantly outperforms tradi-
+tional signal processing baselines in terms of scale-invariant
+signal-to-distortion ratio improvement (SI-SDRi). Furthermore,
+we analyze the benefits of incorporating both spatial and se-
+mantic cues, revealing their synergistic contribution to target
+sound extraction. Finally, we investigate the impact of different
+semantic embedding techniques, comparing the contrastively
+trained SoundWords [7] encoder with a widely-used BERT
+model [12], and discuss their relative effectiveness.
+2. Method
+2.1. Problem Setup
+Let a(t, θ, ϕ) be the plane wave amplitude distribution describ-
+ing an incident sound field. We denote the azimuth angle as θ ∈
+[0, 2π] and the elevation angle as ϕ ∈[−π
+2 , π
+2 ]. The ambisonic
+signal, x(t) = [x00(t), ..., xnm(t), ...xNN(t)]T ∈R(N+1)2,
+represents this sound field using a spherical harmonics (SH) ex-
+pansion up to SH (or ambisonic) order N:
+a(t, θ, ϕ) ≈
+N
+X
+n=0
+n
+X
+m=−n
+xnm(t)Y m
+n (θ, ϕ)
+(1)
+where Y m
+n are real valued SH basis functions, n and m are the
+SH order and degree respectively [4]. In this work we use the
+SN3D SH basis described in [13]. Additionally, we use first
+order ambisonics (FOA) where N = 1.
+We assume that an ambisonic recording x(t) is the combi-
+nation of a target sound field and other sounds in the scene:
+x(t) = y(t) + n(t)
+(2)
+where y(t) ∈R(N+1)2 is the ambisonic signal representing the
+target sound field. Similarly n(t) represents the sound field due
+to everything else in the scene.
+Our goal is to estimate the target ambisonic signal ˆy(t)
+given the ambisonic recording x(t). To that end, we aim to
+design a network that takes x(t), the source direction and a se-
+mantic embedding vector that describes the target sound, as in-
+puts. We propose extracting the semantic embedding - denoted
+using v ∈RK - from a text description of the target sound us-
+ing a text encoder. We denote the target sound’s azimuth and
+elevation angles of arrival as θs and ϕs. We aim to design an
+estimator to extract the target ambisonic signal:
+ˆy = f(x, θs, ϕs, v)
+(3)
+where T is the number of time samples, x ∈R(N+1)2×T is
+a segment of the ambisonic recording and ˆy ∈R(N+1)2×T is
+the corresponding estimated target. We assume that the target
+source doesn’t move during the duration of the segment.
+We hypothesize that in scenarios where the target sound
+originates from a direction (e.g. a plane wave) with minimal
+interference from nearby directions, knowing the source direc-
+tion alone should suffice for effective target ambisonic signal
+estimation. However, the presence of interfering sounds from
+nearby directions may necessitate additional information be-
+yond the direction. Given the promising results of semantic
+conditioning for target sound extraction in mono and binaural
+signals, we anticipate that incorporating a semantic input will
+be beneficial in such scenarios [7, 8, 9].
+To enhance flexibility and avoid limiting SoundSculpt to
+predefined sound classes, we utilize a semantic embedding
+based on a text description rather than discrete class labels as
+employed in [9]. This approach allows for a richer and more
+nuanced representation of the target sound, enabling the model
+to generalize to a wide range of acoustic events.
+2.2. Model Architecture
+Our model draws inspiration from the semantically conditioned
+mono-to-mono U-Net architecture in [7], extending it to a first
+order ambisonic-to-ambisonic (4-channel) U-Net with semantic
+and/or spatial conditioning.
+We derive the semantic embedding vector by feeding the
+target sound’s text description into a text encoder model. One
+of the encoders we consider is SoundWords from [7], which is
+trained to generate a joint text-sound embedding through con-
+trastive learning. We also investigate a widely-used BERT en-
+coder trained in a self-supervised manner on the Wikipedia +
+BooksCorpus datasets [14][12].
+To condition our model, we project the semantic embedding
+and target direction (or the spatial condition - consisting of the
+azimuth and elevation angles) separately to vectors of size 128
+that are then added together. This is then incorporated into the
+model using feature-wise linear modulation (FiLM) [15], ap-
+plied to the layers within the encoder and decoder. Furthermore,
+we experiment with using only the semantic condition and only
+the spatial conditions. Similar to [7], we employ a symmetric
+encoder-decoder U-net network with skip-connections. The en-
+coder employs a convolutional architecture with an initial depth
+of 32, progressively increasing by multiples of 8, 8, 2, and 2
+through 7-layer ResNet blocks [16]. The decoder mirrors this
+structure.
+2.3. Dataset Preparation
+We train and test our models on both synthetic and real am-
+bisonic data as shown in Figure 2. To create synthetic data we
+first use the image source method to generate 400k ambisonic
+room impulse responses (RIRs) for training and 80k for evalu-
+ation [17]. To generate each ambisonic RIR, we first generate a
+random shoebox shaped room where the room dimensions can
+randomly vary between 2-15 meters. We place an ambisonic
+receiver near the center of the room with some position ran-
+domization. We randomly position four sound sources within
+the room, where the first source is the target. Each source’s
+direction relative to the receiver is sampled randomly from a
+uniform distribution on the unit sphere [18]. The distance be-
+tween each source and the receiver is randomly sampled from
+the range 0.6-5 meters, ensuring that all sources fall inside the
+room.
+Random material types are assigned to the floor, ceiling and
+walls of the room and FIR filters representing the acoustic char-
+acteristics of these materials are used during simulation. Jitter
+is introduced to the positions of the image sources to mitigate
+sweeping echoes in the RIRs [19].
+We conduct the simulations in the frequency domain. For a
+944
+
+Random 
+Segments
+Ambisonic RIRs
+Bert or 
+SoundWords
+Text Encoder
+Convolution 
+and Mixing
+Mono or Ambisonic 
+Source Waveforms
+SoundSculpt 
+Target Direction
+(θ, ϕ)
+Semantic 
+Embedding
+Conditioning 
+Input
+Ambisonic 
+Output
+Loss Function
+Combine
+Image Source
+Simulation
+Ambisonic 
+Output
+Target label
+= “Speech”
+Real and 
+Synthetic
+Ambisonic 
+Mixtures
+Freesound 
+Dataset
+FSD50k 
+Dataset
+Clotho 
+Dataset
+Libri-light
+Dataset
+STARSS23
+Dataset
+Figure 2: Overview of dataset preparation and model training.
+given sound source, denoting the number of image source paths
+to the receiver as P we compute the ambisonic room transfer
+function for SH order n and degree m at frequency f as:
+rnm(f) =
+P
+X
+p=1
+Ip(f)e−j2πfτpY m
+n (θp, ϕp)
+(4)
+where, for each path p, Ip(f) ∈C is a multiplier related to dis-
+tance attenuation and wall filtering, τp is the travel delay and
+(θp, ϕp) is the direction of arrival. This is equivalent to encod-
+ing each image source path to ambisonics [13]. Simulation is
+distributed amongst 100 NVIDIA Tesla V100 GPUs for paral-
+lel computing.
+A synthetic training dataset of 1.2 million input/target pairs
+was created by convolving and mixing mono audio sources with
+randomly selected ambisonic RIRs. Source waveforms were
+randomly selected from Libri-Light [20], Clotho [21], FSD50k
+[22], and a collection of ∼78k CC0-licensed Freesound clips
+[23] that are not part of FSD50k. Random source gains and si-
+lencing of secondary sources were applied to increase diversity.
+A similar process was used to create a synthetic test dataset
+of 120k pairs, with speech segments from LibriTTS dev-clean
+split [24] and arbitrary sounds from Clotho and FSD50k’s test
+splits.
+Target source descriptions were derived from dataset labels
+(FSD50k), captions (Clotho), or assigned based on the source
+dataset (e.g. variations of the phrase ”human speech” for Libri-
+Light and LibriTTS). The additional Freesound clips were la-
+beled using keyword matching against the AudioSet ontology
+[25] and a sound event classifier. These descriptions were used
+to extract semantic embeddings for the target sounds.
+An additional 400k training input/target pairs were created
+by sampling and mixing segments from the development set of
+the STARSS23 dataset [26]. This dataset consists of real FOA
+recordings obtained using a high-resolution 32-channel spheri-
+cal microphone array (Eigenmike EM32). The sound event and
+directions are annotated. We first sample 4.096s clips consist-
+ing of single sound events where the direction is static. We ran-
+domly select two segments, one for the target source and one for
+a secondary source. We apply random gains to these segments
+and mix them. We randomize the source directions for each
+segment, by uniformly sampling a random direction on the unit
+sphere and rotating the FOA signal to match this direction of
+arrival via multiplications with rotation matrices [1]. The target
+segment’s sound event label serves as its description. We simi-
+larly create 40k pairs to form a test split of STARSS23 mixtures,
+using the evaluation set of the STARSS23 dataset. During mix-
+ture creation, we excluded the sound class ”domestic sounds”
+from consideration as a target source due to its broad and en-
+compassing nature.
+All input/target pairs we formed have a sample rate of
+16kHz and duration of 4.096s. Additionally, for both datasets,
+with 50% probability we placed a secondary source that has
+a different semantic description than the target, near the target
+source (within ±15° azimuth and elevation) to generate chal-
+lenging cases.
+2.4. Training Setup
+Each SoundSculpt model was trained on 16 Google Cloud TPU
+v3 cores for at least 500k steps (batch size 128, learning rate
+10−4 using the Adam optimizer). Each batch comprised 75%
+of synthetic and 25% of STARSS23 mixtures, this ratio was
+empirically determined. Training emphasized synthetic mix-
+tures because the synthetic dataset offered more diversity and a
+larger volume of data. The loss function was the ℓ1 distance be-
+tween the complex short-time Fourier transforms (STFT, win-
+dow length 1024, hop length 256) of the target and output, av-
+eraged across the FOA channels.
+In more detail, we denote the STFT of the target signal as
+Y ∈CL×F ×(N+1)2 where L is the number of time steps, F =
+513 is the number of real-FFT frequency bins and N = 1 is
+the ambisonic order. Denoting the estimated signal’s STFT as
+ˆY ∈CL×F ×(N+1)2 we compute the loss as:
+L =
+1
+(N + 1)2
+(N+1)2
+X
+c=1
+L
+X
+l=1
+F
+X
+f=1
+|Y [l, f, c] −ˆY [l, f, c]| (5)
+2.5. Baseline Methods
+SoundSculpt’s performance is compared against three baseline
+signal processing algorithms.
+The first, directional loudness
+945
+
+Table 1: Comparison of different target ambisonic signal extraction algorithms. We present SI-SDRi (averaged across channels)
+evaluated and averaged across the test split of the STARSS23 mixtures and synthetic datasets. Results are shown for all segments,
+segments where there is at least one secondary source within 15° of the target direction (only close secondary) and segments where
+there are no secondary sources within 15° (no close secondary).
+Dataset
+Name
+Algorithm Name
+SI-SDRi [dB]
+(all)
+SI-SDRi [dB]
+(only close secondary)
+SI-SDRi [dB]
+(no close secondary)
+STARSS23
+Mixtures
+Ambisonic Loudness Modification
+-6.71
+-7.84
+-6.28
+Max-DI Beamform-and-project
+-6.36
+-7.95
+-5.75
+Max-rE Beamform-and-project
+-6.97
+-8.48
+-6.40
+Bert Condition
+-1.80
+-0.14
+-2.44
+Soundwords Condition
+-2.13
+-0.59
+-2.72
+Spatial Condition
+2.44
+-0.59
+3.59
+Spatial and Bert Condition
+0.73
+-0.20
+1.09
+Spatial and Soundwords Condition
+2.47
+1.19
+2.96
+Synthetic
+Ambisonic Loudness Modification
+-1.43
+-2.32
+-1.16
+Max-DI Beamform-and-project
+-1.56
+-2.83
+-1.17
+Max-rE Beamform-and-project
+-1.59
+-2.87
+-1.19
+Bert Condition
+4.03
+4.18
+3.99
+Soundwords Condition
+3.62
+3.81
+3.56
+Spatial Condition
+9.36
+6.03
+10.38
+Spatial and Bert Condition
+10.32
+8.06
+11.02
+Spatial and Soundwords Condition
+10.73
+8.81
+11.31
+modification, employs an ambisonic transformation to preserve
+the loudness of the spatial signal within a spherical cap, while
+attenuating signals outside this region [4]. The center direction
+of the spherical cap is set to the target sound direction. For the
+cap spread, we empirically determined a value of 60°through
+experimentation on a small validation set.
+Two
+additional
+baseline
+approaches,
+similar
+to
+the
+beamform-and-project method described by Herzog et al. [6],
+were implemented. This technique estimates source signals us-
+ing beamformers and then projects these estimates back to the
+ambisonic domain. While the original method employs multi-
+speaker multichannel Wiener filters, requiring estimation of the
+power spectral density of both the source signals and the noise,
+we instead utilize the signal-independent max-DI and max-rE
+beamformers [27]. A single beamformer steered toward the tar-
+get’s direction is used.
+3. Results and Discussion
+Results are presented in Table 1. We present SI-SDRi (averaged
+across channels) for the baseline algorithms and SoundSculpt
+models that use various types of conditioning. SI-SDRi is aver-
+aged across the respective datasets. We evaluate the algorithms
+on the test split of the STARSS23 mixtures and the synthetic
+dataset. In addition to presenting results for the whole dataset,
+we also provide results for segments where there’s at least one
+secondary source within 15° (great circle distance) of the target
+direction and for segments where there aren’t any secondary
+sources within 15° of the target direction.
+For both the STARSS23 mixtures and the synthetic
+datasets, all neural network-based approaches significantly out-
+perform the signal processing approaches, even when using
+only semantic conditioning. On the synthetic data, SoundSculpt
+models using spatial + semantic conditions outperform both
+spatial-only and semantic-only conditioning, with little differ-
+ence between BERT and SoundWords encoders. However, we
+note that SoundSculpt models have approximately 31.7 million
+parameters, whereas the signal processing methods are inher-
+ently more computationally efficient.
+On the synthetic dataset, semantic-only conditioning ex-
+hibits a small SI-SDRi difference (∼0.2dB) between segments
+with and without a nearby secondary source.
+Models using
+spatial-only or combined semantic and spatial conditioning per-
+form worse when a secondary source is close to the target di-
+rection. In the segments with a nearby secondary source, the
+combined semantic and spatial models outperform the spatial-
+only SoundSculpt. While the combined models also outperform
+the spatial-only model when no secondary source is nearby, the
+performance gain is smaller.
+The STARSS23 mixtures show lower SI-SDRi values over-
+all compared to the synthetic datasets, possibly due to impre-
+cision in direction and sound event labels or external noise in
+the extracted segments. Unlike the synthetic dataset, there is
+little difference between spatial-only and spatial + SoundWords
+conditioning, potentially due to fewer secondary sources in the
+STARSS23 mixtures.
+When there’s no secondary source close to the target,
+spatial-only conditioning slightly outperforms spatial + Sound-
+Words by ∼0.6dB. However, with a close secondary source,
+spatial + SoundWords outperforms spatial-only by ∼1.8dB,
+demonstrating the benefits of combined conditioning on both
+realistic and synthetic ambisonic datasets. On the STARSS23
+mixtures, spatial + BERT conditioning is outperformed by spa-
+tial + SoundWords, which may be because the BERT encoder is
+trained solely on text, whereas SoundWords is trained on both
+text and audio, likely resulting in a better alignment between the
+two modalities.
+4. Conclusion
+This paper introduced SoundSculpt, a neural network model for
+target sound extraction from ambisonic recordings, leveraging
+both spatial and semantic conditioning. SoundSculpt consis-
+tently outperformed traditional signal processing baselines. The
+combination of spatial and semantic information proved bene-
+ficial in complex acoustic scenes with interfering sources near
+the target. Future work could explore alternative network archi-
+tectures and different semantic embedding techniques.
+946
+
+5. References
+[1] F. Zotter and M. Frank, Ambisonics: A practical 3D audio theory
+for recording, studio production, sound reinforcement, and virtual
+reality.
+Springer Nature, 2019.
+[2] B.
+Rafaely,
+Fundamentals
+of
+spherical
+array
+processing.
+Springer, 2015, vol. 8.
+[3] Y. Gayer, V. Tourbabin, Z. Ben-Hur, J. Donley, and B. Rafaely,
+“Ambisonics encoding for arbitrary microphone arrays incorpo-
+rating residual channels for binaural reproduction,” arXiv preprint
+arXiv:2402.17362, 2024.
+[4] M. Kronlachner and F. Zotter, “Spatial transformations for the en-
+hancement of ambisonic recordings,” in Proceedings of the 2nd
+International Conference on Spatial Audio, Erlangen, 2014.
+[5] A. Herzog and E. A. Habets, “Direction preserving wiener matrix
+filtering for ambisonic input-output systems,” in ICASSP 2019-
+2019 IEEE International Conference on Acoustics, Speech and
+Signal Processing (ICASSP).
+IEEE, 2019, pp. 446–450.
+[6] A. Herzog and E. A. P. Habets, “Direction and reverberation pre-
+serving noise reduction of ambisonics signals,” IEEE/ACM Trans-
+actions on Audio, Speech, and Language Processing, vol. 28, pp.
+2461–2475, 2020.
+[7] K. Kilgour, B. Gfeller, Q. Huang, A. Jansen, S. Wisdom, and
+M. Tagliasacchi, “Text-driven separation of arbitrary sounds,”
+arXiv preprint arXiv:2204.05738, 2022.
+[8] B. Veluri, J. Chan, M. Itani, T. Chen, T. Yoshioka, and S. Gol-
+lakota, “Real-time target sound extraction,” in ICASSP 2023-2023
+IEEE International Conference on Acoustics, Speech and Signal
+Processing (ICASSP).
+IEEE, 2023, pp. 1–5.
+[9] B. Veluri, M. Itani, J. Chan, T. Yoshioka, and S. Gollakota, “Se-
+mantic hearing: Programming acoustic scenes with binaural hear-
+ables,” in Proceedings of the 36th Annual ACM Symposium on
+User Interface Software and Technology, 2023, pp. 1–15.
+[10] Y. Yang, G. Sung, S.-F. Shih, H. Erdogan, C. Lee, and M. Grund-
+mann, “Binaural angular separation network,” in ICASSP 2024-
+2024 IEEE International Conference on Acoustics, Speech and
+Signal Processing (ICASSP).
+IEEE, 2024, pp. 1201–1205.
+[11] R. Gu and Y. Luo, “Rezero: Region-customizable sound extrac-
+tion,” IEEE/ACM Transactions on Audio, Speech, and Language
+Processing, 2024.
+[12] J. D. M.-W. C. Kenton and L. K. Toutanova, “Bert: Pre-training
+of deep bidirectional transformers for language understanding,”
+in Proceedings of naacL-HLT, vol. 1.
+Minneapolis, Minnesota,
+2019, p. 2.
+[13] M. Gorzel, A. Allen, I. Kelly, J. Kammerl, A. Gungormusler,
+H. Yeh, and F. Boland, “Efficient encoding and decoding of bin-
+aural sound with resonance audio,” in Audio Engineering Society
+Conference: 2019 AES International Conference on Immersive
+and Interactive Audio.
+Audio Engineering Society, 2019.
+[14] Google, “Bert experts (wikibooks),” https://tfhub.dev/google/
+experts/bert/wiki books/2, 2023, accessed: January 10, 2025.
+[15] E. Perez, F. Strub, H. De Vries, V. Dumoulin, and A. Courville,
+“Film: Visual reasoning with a general conditioning layer,” in
+Proceedings of the AAAI conference on artificial intelligence,
+vol. 32, no. 1, 2018.
+[16] K. He, X. Zhang, S. Ren, and J. Sun, “Deep residual learning
+for image recognition,” in Proceedings of the IEEE conference on
+computer vision and pattern recognition, 2016, pp. 770–778.
+[17] J. B. Allen and D. A. Berkley, “Image method for efficiently sim-
+ulating small-room acoustics,” The Journal of the Acoustical So-
+ciety of America, vol. 65, no. 4, pp. 943–950, 1979.
+[18] M. E. Muller, “A note on a method for generating points uniformly
+on n-dimensional spheres,” Communications of the ACM, vol. 2,
+no. 4, pp. 19–20, 1959.
+[19] E. De Sena, N. Antonello, M. Moonen, and T. Van Waterschoot,
+“On the modeling of rectangular geometries in room acoustic sim-
+ulations,” IEEE/ACM Transactions on Audio, Speech, and Lan-
+guage Processing, vol. 23, no. 4, pp. 774–786, 2015.
+[20] J. Kahn, M. Riviere, W. Zheng, E. Kharitonov, Q. Xu, P.-E.
+Mazar´e, J. Karadayi, V. Liptchinsky, R. Collobert, C. Fuegen
+et al., “Libri-light: A benchmark for asr with limited or no su-
+pervision,” in ICASSP 2020-2020 IEEE International Conference
+on Acoustics, Speech and Signal Processing (ICASSP).
+IEEE,
+2020, pp. 7669–7673.
+[21] K. Drossos, S. Lipping, and T. Virtanen, “Clotho: An audio cap-
+tioning dataset,” in ICASSP 2020-2020 IEEE International Con-
+ference on Acoustics, Speech and Signal Processing (ICASSP).
+IEEE, 2020, pp. 736–740.
+[22] E. Fonseca, X. Favory, J. Pons, F. Font, and X. Serra, “Fsd50k: an
+open dataset of human-labeled sound events,” IEEE/ACM Trans-
+actions on Audio, Speech, and Language Processing, vol. 30, pp.
+829–852, 2021.
+[23] “Freesound - Collaborative database of creative-commons li-
+censed sound effects,” https://freesound.org/, 2025, accessed: Jan-
+uary 10, 2025.
+[24] H. Zen, V. Dang, R. Clark, Y. Zhang, R. J. Weiss, Y. Jia, Z. Chen,
+and Y. Wu, “Libritts: A corpus derived from librispeech for text-
+to-speech,” arXiv preprint arXiv:1904.02882, 2019.
+[25] J. F. Gemmeke, D. P. Ellis, D. Freedman, A. Jansen, W. Lawrence,
+R. C. Moore, M. Plakal, and M. Ritter, “Audio set: An ontology
+and human-labeled dataset for audio events,” in 2017 IEEE inter-
+national conference on acoustics, speech and signal processing
+(ICASSP).
+IEEE, 2017, pp. 776–780.
+[26] K. Shimada, A. Politis, P. Sudarsanam, D. A. Krause, K. Uchida,
+S. Adavanne, A. Hakala, Y. Koyama, N. Takahashi, S. Takahashi
+et al., “Starss23: An audio-visual dataset of spatial recordings of
+real scenes with spatiotemporal annotations of sound events,” Ad-
+vances in Neural Information Processing Systems, vol. 36, 2024.
+[27] F. Lluis, N. Meyer-Kahlen, V. Chatziioannou, and A. Hofmann,
+“Direction specific ambisonics source separation with end-to-end
+deep learning,” Acta Acustica, vol. 7, p. 29, 2023.
+947
+

@@ -1,0 +1,519 @@
+AC/DC: LLM-based Audio Comprehension via Dialogue Continuation
+Yusuke Fujita1, Tomoya Mizumoto1, Atsushi Kojima1, Liu Lianbo1, Yui Sudo1
+1SB Intuitions, Japan
+yusuke.fujita@sbintuitions.co.jp
+Abstract
+We propose an instruction-following audio comprehension
+model that leverages the dialogue continuation ability of large
+language models (LLMs). Instead of directly generating target
+captions in training data, the proposed method trains a model
+to produce responses as if the input caption triggered a dia-
+logue. This dialogue continuation training mitigates the cap-
+tion variation problem. Learning to continue a dialogue effec-
+tively captures the caption’s meaning beyond its surface-level
+words. As a result, our model enables zero-shot instruction-
+following capability without multitask instruction tuning, even
+trained solely on audio captioning datasets. Experiments on
+AudioCaps, WavCaps, and Clotho datasets with AudioBench
+audio-scene question-answering tests demonstrate our model’s
+ability to follow various unseen instructions.
+Index Terms: audio language model, audio captioning, large
+language model, dialogue continuation training
+1. Introduction
+Automated audio captioning (AAC) is the task of describing au-
+dio content in natural language [1,2]. It has various potential ap-
+plications, such as support systems for deaf and hard-of-hearing
+people to understand environmental sounds and video content
+retrieval systems to find desired sound scenes. In this research
+field, acoustic scene classification (ASC) and audio event de-
+tection (AED) have been foundational tasks [3]. ASC addresses
+the problem of classifying the acoustic environment in an au-
+dio recording with predefined semantic labels, e.g., “office” and
+“park”. AED targets the identification of specific sound events,
+e.g., “dog barking”, and detects when they occur. Though
+ASC and AED provide categorical or timestamped event de-
+scriptions, their outputs are relatively coarse rather than a holis-
+tic narrative of the audio scene. Therefore, AAC extends the
+tasks by offering free-form natural language summaries of au-
+dio content. The DCASE Challenges have organized the AAC
+tasks and fostered advanced methods [4–6] with a standardized
+Clotho [7] dataset. The AAC task has been further extended to
+audio question-answering (AQA) that responds to various ques-
+tions related to the audio content [8].
+One of the major problems in AAC and AQA is to han-
+dle variations in textual descriptions of the same audio content.
+Whereas ASC and AED systems are designed to classify prede-
+fined labels with a small vocabulary, the free-form nature of au-
+dio captions requires large-vocabulary word sequences as train-
+ing targets. Compared to automatic speech recognition (ASR),
+which is a similar large-vocabulary task, AAC and AQA are
+more difficult for text-audio alignment. While ASR transcrip-
+tions have fewer variations in their written form and are mono-
+tonically aligned to the corresponding audio, there are various
+audio caption candidates for describing the same audio content,
+such as “ telephone bell is ringing” versus “phone sounds are
+heard. ”Moreover, the audio and the caption text are not always
+monotonically aligned, such as “ a dog barking and then birds
+chirping,” versus “ birds chirping after a dog barking. ” Due
+to the lack of text uniqueness, the model training faces a data
+scarcity problem.
+To address the text variation problem, prior work has ex-
+plored the use of large-scale text generation models to augment
+training data. WavCaps [9] introduced the large-scale audio
+captioning dataset, consisting of over 400K audio clips. In Wav-
+Caps, a large language model (LLM) transforms and filters the
+raw sound metadata to generate diverse and high-quality cap-
+tions. SLAM-AAC [10] proposed a paraphrasing augmentation
+method based on back-translation with a machine translation
+model. These approaches can be viewed as knowledge distilla-
+tion from the text generation model into the AAC models. Scal-
+ing up the training data using text generation models improves
+accuracy but requires a more significant training cost.
+The knowledge of text generation models can be directly
+obtained by integrating LLMs into AAC and AQA models [10–
+15]. Such LLM-based models also benefit from instruction-
+following capability, which is critically important for the AQA
+task, answering various types of questions. SALMONN [12]
+integrates BEATs [16] and Whisper [17] encoders with Vi-
+cuna LLM [18] and is trained across multiple tasks (includ-
+ing AAC, AQA, and many speech and music tasks) with task-
+specific prompts. Researchers examined various audio en-
+coders such as CED [19] and EAT [20] for improving the AAC
+performance [10, 15]. Though multitask-trained models like
+SALMONN can follow various instructions, they struggle with
+making variations in tasks and vocabulary used in training data.
+On the other hand, AAC-specific models like SLAM-AAC [10]
+give a significant boost in AAC performance, but they often lack
+the instruction-following capability. In all the aforementioned
+models, sufficient variation of audio-text pairs for each task in
+training data is crucial. In other words, transferred knowledge
+from LLMs is limited to the distribution of target text in training
+data. As a result, the existing models cannot follow unseen task
+instructions.
+In this paper, we propose a training method for audio com-
+prehension models that follow unseen instructions with no task-
+specific training data. Unlike conventional AAC models that
+learn to produce captions, the proposed method trains a model
+to produce dialogue responses. The response texts for the model
+training targets are prepared by feeding the ground-truth cap-
+tions to the backbone LLM without any task-specific instruc-
+tions. The trained model produces a response as if the audio
+caption triggered a dialogue. This dialogue continuation train-
+ing prevents overfitting to the caption vocabulary and the cap-
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+2610 10.21437/Interspeech.2025-1308
+
+caption
+LLM
+response
+Encoder
+Adapter
+LLM
+audio
+(unseen)
+prompt
+Encoder
+Adapter
+LLM
+instruction-following
+response
+audio
+(b) Dialogue continuation training
+prompt
+(c) Zero-shot instruction-following(a) Response preparation
+(frozen)
+(learnable)
+(frozen)
+response
+prediction
+CE loss
+Audio-caption 
+pairs
+Audio-response 
+pairs
+Figure 1: System diagram of proposed dialogue continuation training.
+tioning task itself. Since the non-instructed training targets are
+generated by the backbone LLM itself, the trained models are
+not biased to any task-specific prompts and are ready to fully
+leverage the instruction-following capability of the LLM. As a
+result, the trained model answers various audio-related ques-
+tions without either task-specific data augmentation or multi-
+task training data. Experiments on AudioCaps [21], Clotho [7],
+WavCaps [9] datasets with AQA testsets in AudioBench [22]
+demonstrate the zero-shot instruction-following ability.
+2. Proposed Method
+Our method trains a model without explicit task prompts. In-
+stead, we use LLM-generated responses as targets. Due to
+this dialogue continuation training, we can append unseen task
+prompts to the frozen LLM in the inference phase, yielding
+instruction-following responses. Figure 1 shows the overview
+of the proposed method.
+2.1. Baseline audio captioning model
+Our model architecture is based on SLAM-AAC [10], which is
+an LLM-based AAC model. The model uses a pretrained audio
+encoder, an adapter based on linear layers, and an instruction-
+tuned LLM decoder. We slightly modify the SLAM-AAC archi-
+tecture so as to consider both prefix and suffix prompts as inputs
+to the LLM decoder, whereas SLAM-AAC only considers the
+suffix prompt.
+In our baseline model, a T -length input audio sequencex∈
+RT is transformed into a L-length caption sequence y∈V L,
+conditioned on prefix p and suffix s prompt texts:
+X = Encoder(x)∈ RD′×T′
+, (1)
+A = Adapter(X; Θ)∈ RD×T′
+, (2)
+P = Tokenizer(p)∈ RD×P , (3)
+S = Tokenizer(s)∈ RD×S, (4)
+C = [P ; A; S]∈ RD×(P +T′+S), (5)
+p(yi| y<i, C) = LLM(y<i, C)∈ [0, 1]|V| (6)
+(1≤ i≤ L)
+whereV is a text token vocabulary, Encoder is the audio en-
+coder function to audio embeddings X, D′ is the dimension of
+an audio embedding, T′ is the length of audio embeddings, Θ
+is learnable parameters of the linear layers in theAdapter func-
+tion transforming X into A, D is the embedding dimension
+matching to the LLM token embedding, the Tokenizer func-
+tion tokenizes a prompt text sequence ( p or s) and generates
+corresponding token embeddings, P and S are the lengths of
+tokenized embeddings, and LLM is the LLM decoder that au-
+toregressively produces a distribution of the i-th output token
+yi ∈V conditioned on the prompt token embeddings C and
+previous output tokens y<t. We use beam search to obtain the
+best sequence y from Eq. 6, and the output sequence length L
+is determined when the end-of-sentence token is generated.
+To prepare prefix and suffix prompts, we use the chat tem-
+plate1 with “system”, “user”, and “assistant” roles. We use the
+fixed prompt specific to the AAC task: “Describe the audio you
+hear,” in the system prompt for the baseline model. The au-
+dio embeddings A are placed in the user prompt, and then the
+assistant prompt is appended for generating the output caption
+from the assistant role. The learnable parameters Θ are only
+in the adapter. They are learned to minimize cross-entropy loss
+between the predicted distribution and the ground-truth caption
+in the AAC training data y∗
+i :
+Lcaption =− 1
+|y∗|
+|y∗|X
+i=1
+log p(y∗
+i| y∗
+<i, C). (7)
+2.2. Dialogue continuation training
+Instead of using ground-truth audio captions, the proposed
+model replaces the training targets with responses to the audio
+caption. As depicted in Figure 1(a), we prepare the response
+to the caption in training data. The response r∗ is generated
+by feeding the ground-truth audio caption y to the same LLM
+function used in the baseline model:
+Y∗ = Tokenizer(y∗), (8)
+P′ = Tokenizer(p(noinst)), (9)
+S′ = Tokenizer(s(noinst)), (10)
+C′ = [P′; Y∗; S′], (11)
+p(r∗
+i|r∗
+<i, C′) = LLM(r∗
+<i, C′). (12)
+1https://huggingface.co/docs/transformers/chat templating
+2611
+
+Here, p(noinst) and s(noinst) are the prompt texts with no specific
+instruction but only contain special tokens indicating start and
+end markers of user and assistant messages. The best sequence
+r∗ is obtained through temperature-based sampling to encour-
+age variations of the training targets.
+The response r∗ is different from the one obtained from
+conventional paraphrasing augmentation [10]. Whereas para-
+phrasing augmentation inevitably increases the amount of train-
+ing data, our method does not change the data amount but rather
+increases task variations. For example, a paraphrasing of “ In
+the forest a flock of birds is chirping.” is “In the forest, a group
+of birds are chirping. ” In contrast, the proposed response is
+“What a lovely scene! The forest is alive with the sweet sounds
+of birds chirping away!” With no specific instruction, we obtain
+a wide variety of dialogue-like responses capturing the meaning
+of audio content. Note that we use only a single sampled re-
+sponse per a ground-truth caption, which is sufficient to obtain
+instruction-following capability in our experiments.
+The proposed training process is shown in Figure 1(b).
+Given the prepared response r∗, the adapter’s parametersΘ are
+optimized to minimize cross-entropy loss for the prepared re-
+sponses instead of captions:
+LDCT =− 1
+|r∗|
+|r∗|X
+i=1
+log p(r∗
+i| r∗
+<i, C′). (13)
+Since the prepared target is obtained through the same LLM as
+used in the model, the LLM parameters can be frozen, and the
+adapter training can focus on extracting the caption’s meaning
+rather than surface-level words to produce the same response as
+if the caption is fed into the LLM.
+2.3. Zero-shot instruction-following inference
+Being trained with no task-specific instruction as described in
+Sec. 2.2, the adapter does not overfit to the audio captioning
+task. Therefore, the proposed model can accept various instruc-
+tions in the inference phase. By setting p(inst) and s(inst) appro-
+priately according to the chat template for the backbone LLM,
+the response r follows the specified instruction:
+P′′ = Tokenizer(p(inst)), (14)
+S′′ = Tokenizer(s(inst)), (15)
+C′′ = [P′′; A; S′′], (16)
+p(ri|r<i, C′′) = LLM(r<i, C′′). (17)
+For example, if we use the prompt, “Describe the audio con-
+tent.” the response r does the AAC task. Using prompts like
+“Does the sound have speech?” the model answers the audio-
+related question.
+2.4. Relation to prior work
+The ASR-oriented dialogue continuation has been investigated
+in AudioChatLlama [23]. Similar to the proposed method, it tar-
+gets LLM responses without task prompts using ASR training
+data, i.e., transcriptions. The audio-text alignment in ASR is rel-
+atively easier than the AAC task. Moreover, the ASR-oriented
+dialogue continuation model captures the speech pronunciation
+rather than the meaning, leading to difficulty in recognizing rare
+words, as mentioned in [23]. On the other hand, our AAC-
+oriented model deals with the situation in which the same au-
+dio feature could be assigned to different words but with the
+same meaning. Our work is the first attempt to obtain audio-
+text alignment for non-speech audio data using dialogue con-
+tinuation.
+3. Experiments
+3.1. Experimental Setup
+3.1.1. Data
+The main training dataset in the experiments was Audio-
+Caps [21]. We also used WavCaps [9] and Clotho [7] as ad-
+ditional training data for validating the scalability of the pro-
+posed method. We did not apply paraphrasing augmentation in
+SLAM-AAC [10] to check if the proposed method can mitigate
+the data scarcity problem without expanding data volume.
+The evaluation metrics and datasets were derived from Au-
+dioBench [22]. We used their AQA benchmarks, including
+Clotho-AQA, AudioCaps-QA, and WavCaps-QA, to validate
+the models’ ability to follow various instructions. The AQA
+accuracy was judged by Llama-3-70B-Instruct according to the
+AudioBench framework. We also used test sets of AudioCaps to
+evaluate the AAC performance, which is the originally intended
+task of the baseline model and the training dataset.
+3.1.2. Modeling
+We developed our baseline model using SLAM-AAC [10] with
+slight modifications described in Sec. 2.1. The baseline model
+used EAT-base2 as the audio encoder pretrained and finetuned
+on AudioSet [24] dataset. The adapter was a 2-layer linear pro-
+jection with 5x downsampling. We used Llama-3-8B-Instruct 3
+as the backbone LLM. We did not use the CLAP-Refine strat-
+egy in SLAM-AAC [10] for simplicity. The training targets of
+the proposed model were prepared as described in Sec.2.2 using
+the backbone LLM with a temperature of 0.7.
+All the models were optimized with a batch size of 4. We
+ran a 1,000-iteration warmup to a peak learning rate of 1e-4 be-
+fore linearly decaying over 100,000 iterations. We conducted
+the model validation steps every 1,000 iterations, Though the
+backbone LLM was frozen, we examined with and without ap-
+plying LoRA [25] finetuning in the LLM decoder.
+3.1.3. Inference
+In the inference phase, we used beam search with a beam size of
+4. The instruction prompt for the model varies between tasks.
+For the AQA tasks, we used this instruction:
+”system”: ”Answer the question provided after the audio
+caption within 10 words.”
+”user”: ”{AUDIO}. Question:{INSTRUCTION},”
+where ”{AUDIO}” is the placeholder replaced with the audio
+embedding, and ” {INSTRUCTION}” is replaced with the
+actual question in the test dataset. For the AAC task, we used
+the original prompt used for the baseline model training:
+”system”: ”Describe the audio content in one 10-word
+sentence.”
+”user”: ”{AUDIO}.”
+3.2. Results
+Table 1 shows the performance metrics for different models. We
+observed that the proposed training target achieved much better
+2The slam-aac recipe in https://github.com/X-LANCE/SLAM-LLM
+3https://huggingface.co/meta-llama/Meta-Llama-3-8B-Instruct
+2612
+
+Table 1: Performance metrics for different training configurations. Each accuracy was judged by Llama-3-70B-Instruct and rescaled
+to a 100-point scale following the method in AudioBench [22]. Models C1 and C2 were from AudioBench paper [22].
+Training configuration AQA accuracy AAC accuracy
+ID Data Target LoRA Clotho AudioCaps WavCaps Avg. AudioCaps
+A1
+AudioCaps
+caption N 28.56 39.74 29.61 32.64 51.43
+A2 proposed N 52.88 47.54 42.37 47.60 46.20
+A3 caption Y 32.38 41.85 35.20 36.48 52.55
+A4 proposed Y 56.38 47.09 37.96 47.14 43.13
+B1 AudioCaps
++WavCaps
++Clotho
+caption N 29.47 39.42 30.26 33.05 51.27
+B2 proposed N 55.82 47.99 39.28 47.70 45.53
+B3 caption Y 26.73 42.56 31.58 33.62 52.08
+B4 proposed Y 54.68 47.73 40.59 47.67 43.51
+C1 SALMONN [12] 51.18 47.03 46.25 48.15 34.37
+C2 Qwen-Audio-Chat [26] 58.20 47.99 38.68 48.29 47.99
+Table 2: Examples of instruction-following test. The input audio is “river mouth3.wav” in Clotho-AQA. The ground-truth caption is
+“body of water splashes around over and over. ” The ground-truth answer to the question “Are there waves?” is “Yes, waves do exist. ”
+Model Instruction Prediction
+baseline (A3) (noinst) Water splashing and gurgling as wind blows into a mi-
+crophone
+Describe the audio content in one 10-word sen-
+tence.
+Water splashing and gurgling
+Are there waves? Water splashing and gurgling are present, the wind is
+blowing, and birds are chirping in the background
+Describe the audio content in one 10-wordGerman
+sentence.
+Water splashing and gurgling as wind blows into a mi-
+crophone
+proposed (A4) (noinst) The soothing sound of waves crashing against the
+shore! It’s a calming and peaceful scene, isn’t it?
+Describe the audio content in one 10-word sen-
+tence.
+Waves crashing against the shore create soothing ocean
+soundscape ambiance.
+Are there waves? Yes, there are waves!
+Describe the audio content in one 10-wordGerman
+sentence.
+Das Wasser pl ¨atschert und schwappt rhythmisch am
+Strand entlang.
+AQA accuracy than the conventional training target (caption)
+for all AQA benchmarks by large margins (A1 vs. A2, A3 vs.
+A4). The LoRA finetuning demonstrated improvement when
+trained with the conventional target (A1 vs. A3), while no con-
+sistent behaviors were observed when trained with the proposed
+target. Our best result on the averaged AQA accuracy (47.70%;
+B2) was comparable with that of Qwen-Audio-Chat (48.29%;
+C2). The results indicate that the proposed method is efficient
+in acquiring AQA capability without large-scale multitask data
+augmentation.
+For the AAC task, the baseline models were better than the
+proposed models. It was expected since the proposed model
+was built for general audio comprehension and does not limit
+their vocabulary to that of baseline AAC models. Our AAC re-
+sults were slightly worse than that of Qwen-Audio-Chat trained
+with a large-scale multitask setup including AAC targets in
+training data. The results suggest that the proposed model is
+more general and task-agnostic than other models and could be
+further finetuned for specified purposes using task-specific tar-
+gets. We leave this direction for future work.
+We observed similar trends when trained on more data (B1-
+B4), but there was no significant improvement (vs. A1-A4).
+This could be due to the relatively few learnable parameters
+in our models. Finetuning the audio encoder jointly with the
+adapter may improve performance.
+Table 2 demonstrates examples of instruction-following re-
+sults. The baseline model (A3) did not follow instructions and
+produced similar captions. In contrast, the proposed model (A4)
+followed various instructions in a zero-shot manner. With no in-
+struction, it produced a dialogue-like response to the audio. The
+results suggest that the proposed method effectively utilizes the
+original instruction-following capability in the backbone LLM.
+4. Conclusion
+We proposed an audio comprehension model that enhances au-
+dio QA by leveraging LLM’s dialogue continuation capability.
+Experiments demonstrated its effectiveness and potential for
+flexible audio understanding. In future work, we plan to com-
+bine dialogue continuation training with explicit instruction-
+tuning to further enhance task-specific performance while pre-
+serving zero-shot capability.
+2613
+
+5. References
+[1] K. Drossos, S. Adavanne, and T. Virtanen, “Automated audio cap-
+tioning with recurrent neural networks,”Proc. WASPAA, pp. 374–
+378, 2017.
+[2] X. Mei, X. Liu, M. D. Plumbley, and W. Wang, “Automated audio
+captioning: an overview of recent progress and new challenges,”
+EURASIP J. Audio Speech Music Process., no. 1, Oct. 2022.
+[3] D. Stowell, D. Giannoulis, E. Benetos, M. Lagrange, and M. D.
+Plumbley, “Detection and classification of acoustic scenes and
+events,” IEEE Transactions on Multimedia , vol. 17, no. 10, pp.
+1733–1746, Oct 2015.
+[4] Y . Koizumi, D. Takeuchi, Y . Ohishi, N. Harada, and K. Kashino,
+“The NTT DCASE2020 challenge task 6 system: Automated au-
+dio captioning with keywords and sentence length estimation,”
+DCASE2020 Challenge, Tech. Rep., 2020.
+[5] X. Mei, Q. Huang, X. Liu, G. Chen, J. Wu, Y . Wu, J. Zhao,
+S. Li, T. Ko, H. L. Tang, X. Shao, M. D. Plumbley, and W. Wang,
+“An encoder-decoder based audio captioning system with transfer
+and reinforcement learning for DCASE challenge 2021 task 6,”
+DCASE2021 Challenge, Tech. Rep., 2021.
+[6] X. Mei, X. Liu, H. Liu, J. Sun, M. D. Plumbley, and
+W. Wang, “Automated audio captioning with keywords guidance,”
+DCASE2022 Challenge, Tech. Rep., 2022.
+[7] K. Drossos, S. Lipping, and T. Virtanen, “Clotho: An audio cap-
+tioning dataset,” in ICASSP, 2020.
+[8] S. Lipping, P. Sudarsanam, K. Drossos, and T. Virtanen, “Clotho-
+AQA: A crowdsourced dataset for audio question answering,” in
+EUSIPCO, 2022, pp. 1140–1144.
+[9] X. Mei, C. Meng, H. Liu, Q. Kong, T. Ko, C. Zhao, M. D.
+Plumbley, Y . Zou, and W. Wang, “WavCaps: A ChatGPT-
+Assisted Weakly-Labelled Audio Captioning Dataset for Audio-
+Language Multimodal Research,” IEEE/ACM Transactions on
+Audio, Speech, and Language Processing, vol. 32, pp. 3339–3354,
+2024.
+[10] W. Chen, Z. Ma, X. Li, X. Xu, Y . Liang, Z. Zheng, K. Yu,
+and X. Chen, “SLAM-AAC: Enhancing Audio Captioning with
+Paraphrasing Augmentation and CLAP-Refine through LLMs,” in
+ICASSP, 2025.
+[11] S. Deshmukh, B. Elizalde, R. Singh, and H. Wang, “Pengi: An
+audio language model for audio tasks,” in Advances in Neural In-
+formation Processing Systems , A. Oh, T. Neumann, A. Glober-
+son, K. Saenko, M. Hardt, and S. Levine, Eds., vol. 36, 2023, pp.
+18 090–18 108.
+[12] C. Tang, W. Yu, G. Sun, X. Chen, T. Tan, W. Li, L. Lu, Z. MA,
+and C. Zhang, “SALMONN: Towards generic hearing abilities for
+large language models,” in ICLR, 2024.
+[13] S. Ghosh, S. Kumar, A. Seth, C. K. R. Evuru, U. Tyagi, S. Sak-
+shi, O. Nieto, R. Duraiswami, and D. Manocha, “Gama: A large
+audio-language model with advanced audio understanding and
+complex reasoning abilities,” in EMNLP, 2024.
+[14] C. Tang, W. Yu, G. Sun, X. Chen, T. Tan, W. Li, L. Lu, Z. Ma,
+and C. Zhang, “Extending large language models for speech and
+audio captioning,” in ICASSP, 2024, pp. 11 236–11 240.
+[15] J. Liu, G. Li, J. Zhang, H. Dinkel, Y . Wang, Z. Yan, Y . Wang,
+and B. Wang, “Enhancing Automated Audio Captioning via Large
+Language Models with Optimized Audio Encoding,” in Inter-
+speech, 2024.
+[16] S. Chen, Y . Wu, C. Wang, S. Liu, D. Tompkins, Z. Chen, W. Che,
+X. Yu, and F. Wei, “BEATs: Audio pre-training with acoustic to-
+kenizers,” in ICML, 2023, pp. 5178–5193.
+[17] A. Radford, J. W. Kim, T. Xu, G. Brockman, C. McLeavey, and
+I. Sutskever, “Robust speech recognition via large-scale weak su-
+pervision,” in ICML, 2023.
+[18] W.-L. Chiang, Z. Li, Z. Lin, Y . Sheng, Z. Wu, H. Zhang,
+L. Zheng, S. Zhuang, Y . Zhuang, J. E. Gonzalez, I. Stoica,
+and E. P. Xing., “Vicuna: An open-source chatbot impressing
+gpt-4 with 90%* chatgpt quality,” 2023. [Online]. Available:
+https://lmsys.org/blog/2023-03-30-vicuna/
+[19] H. Dinkel, Y . Wang, Z. Yan, J. Zhang, and Y . Wang, “Ced: Con-
+sistent ensemble distillation for audio tagging,” in ICASSP, 2024,
+pp. 291–295.
+[20] W. Chen, Y . Liang, Z. Ma, Z. Zheng, and X. Chen, “Eat: Self-
+supervised pre-training with efficient audio transformer,” in IJ-
+CAI, 2024, pp. 3807–3815.
+[21] C. D. Kim, B. Kim, H. Lee, and G. Kim, “AudioCaps: Generating
+captions for audios in the wild,” in NAACL, 2019, pp. 119–132.
+[22] B. Wang, X. Zou, G. Lin, S. Sun, Z. Liu, W. Zhang, Z. Liu, A. Aw,
+and N. F. Chen, “Audiobench: A universal benchmark for audio
+large language models,” in NAACL, 2025.
+[23] Y . Fathullah, C. Wu, E. Lakomkin, K. Li, J. Jia, Y . Shang-
+guan, J. Mahadeokar, O. Kalinli, C. Fuegen, and M. Seltzer,
+“AudioChatLlama: Towards general-purpose speech abilities for
+LLMs,” in NAACL, 2024, pp. 5522–5532.
+[24] J. F. Gemmeke, D. P. W. Ellis, D. Freedman, A. Jansen,
+W. Lawrence, R. C. Moore, M. Plakal, and M. Ritter, “Audio
+set: An ontology and human-labeled dataset for audio events,”
+in ICASSP, 2017.
+[25] E. J. Hu, yelong shen, P. Wallis, Z. Allen-Zhu, Y . Li, S. Wang,
+L. Wang, and W. Chen, “LoRA: Low-rank adaptation of large lan-
+guage models,” in ICLR, 2022.
+[26] Y . Chu, J. Xu, X. Zhou, Q. Yang, S. Zhang, Z. Yan, C. Zhou, and
+J. Zhou, “Qwen-Audio: Advancing universal audio understanding
+via unified large-scale audio-language models,” 2023. [Online].
+Available: https://arxiv.org/abs/2311.07919
+2614

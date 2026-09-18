@@ -1,0 +1,448 @@
+ReSepNet: A Uniﬁed-Light Model for Recursive Speech Separation with
+Unknown Speaker Count
+Hadi Alizadeh, Rahil Mahdian Toroghi, Hassan Zareian
+1Faculty of Technology and Media Engineering, Iran Broadcasting University (IRIBU), Tehran, Iran
+alizadeh.hadi08@gmail.com, mahdian.t.r@gmail.com, zareian@iribu.ac.ir
+Abstract
+Single-channel speech separation remains a signiﬁcant chal-
+lenge, particularly when the number of concurrent speakers
+is unknown. Existing methods often rely on prior assump-
+tions about speaker count, limiting their real-world applicabil-
+ity. This paper introduces ReSepNet (Recursive Separation Net-
+work), a novel, uniﬁed model for speaker-independent speech
+separation that dynamically adapts to an unknown number of
+speakers. ReSepNet employs a recursive separation architec-
+ture, enabling it to iteratively isolate individual voices without
+prior knowledge of the speaker count. To enhance efﬁciency
+and reduce model complexity, we introduce a novel objective
+function and workﬂow. We demonstrate the effectiveness of Re-
+SepNet on the WSJ0 datasets, achieving state-of-the-art separa-
+tion performance and accurate speaker count estimation. Fur-
+thermore, ReSepNet generalizes well to mixtures containing
+four and ﬁve speakers, showcasing its robustness and adaptabil-
+ity to challenging scenarios.
+Index Terms: Speech separation, recursive, unknown speaker
+count, improved transformer, single channel separation
+1. Introduction
+Speech separation, a core challenge in audio processing, aims
+to isolate individual speech sources from their mixtures. Appli-
+cations span speech recognition, voice assistants, and speaker
+veriﬁcation. Traditional methods like Independent Component
+Analysis (ICA)[1] and Independent Vector Analysis (IV A)[2]
+excel in overdetermined scenarios, while underdetermined mix-
+tures often rely on clustering techniques such as those in [3] and
+Gaussian Mixture Models (GMM) [4]. Deep Neural Networks
+(DNNs) have revolutionized underdetermined speech separa-
+tion, with models like Conv-TasNet-gLN [5] achieving state-
+of-the-art results. However, most existing methods necessitate
+prior knowledge of the number of speakers in the mixture, a
+crucial piece of information for model input.
+Existing approaches for underdetermined speech separation
+with unknown speaker counts often exhibit limitations. For in-
+stance, [6] employs a Count-Head block to estimate the speaker
+count and then utilizes a dedicated decoder for the estimated
+number, restricting the maximum separable speaker count. Al-
+ternatively, [7] trains separate models for each possible speaker
+count and selects the model with the highest output channel ac-
+tivity. This approach also limits the maximum separable count
+and necessitates a complex multi-model architecture.
+Novel approaches in [8, 9] overcome the limitation of train-
+ing separate models for each speaker count by iteratively sep-
+arating one source at a time. However, these methods are con-
+strained to scenarios with equal or fewer speakers than those
+encountered during training and operate in the time-frequency
+Figure 1: Workﬂow and block diagram of ReSepNet for sepa-
+rating a mixture of two speakers.
+domain. In contrast, recursive approaches in [10, 11] exhibit
+greater ﬂexibility, enabling separation of mixtures with more
+speakers than those seen during training. [10] employs itera-
+tive separation, while [11] reﬁnes the initial separation by re-
+separating the extracted sources from the original mixture. De-
+spite their potential, these methods suffer from signiﬁcant draw-
+backs. The approaches in [8, 9] encounter a heavy model due to
+the utilization of AlexNet [12] for iteration termination, leading
+to increased computational complexity. Furthermore, the em-
+ployment of CNNs in [10] can result in limited receptive ﬁelds,
+while the use of RNNs in [11] necessitates information prop-
+agation through numerous intermediate states [13], potentially
+hindering performance.
+ReSepNet, our proposed framework, employs a recursive
+architecture. At each iteration, it generates two outputs: the
+separated speech of one speaker and the residual signal con-
+taining the remaining speakers. This residual signal then serves
+as input for the subsequent iteration. To effectively terminate
+the separation process, we introduce an Iteration Authorization
+Block (Fig. 1). To enhance separation quality and minimize
+model complexity, we incorporate several key innovations:
+1. Transformer-based Architecture: We leverage the strengths
+of improved Transformer architectures [13, 14], enabling di-
+rect context-aware modeling of speech sequences and over-
+coming the limitations of RNNs and CNNs in capturing long-
+range dependencies.
+2. Dual-Path structure: To effectively handle long input se-
+quences, we adopt a Dual-Path structure [15], enabling more
+efﬁcient analysis of extended audio segments.
+3. Counting method: We introduce a novel source counting
+mechanism that effectively overcomes the limitations of ex-
+isting methods, such as delays and excessive parameter re-
+quirements, by leveraging the model’s output characteristics.
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+1458 10.21437/Interspeech.2025-2121
+
+2. SYSTEM OVERVIEW
+ReSepNet operates in the time domain and comprises four key
+stages: an Encoder, a Mask Estimation module, a Decoder, and
+an Iteration Authorization Block (Fig. 1). The separation pro-
+cess proceeds iteratively. In each iteration, the Encoder gen-
+erates an embedding of the input mixture. Subsequently, the
+Mask Estimation module produces separation masks that iso-
+late the target speaker’s contribution. The Decoder then recon-
+structs the time-domain signal corresponding to the separated
+speaker. Finally, the Iteration Authorization Block evaluates
+the residual signal to determine if additional speakers remain.
+The separation process continues iteratively until the residual
+signal primarily consists of noise, indicating the completion of
+the separation process.
+In this work, similar to [5, 6, 10] the problem of
+single-channel speech separation is estimating the sources
+s1(t), . . . , sc(t)∈ R(1×T ), with duration T , from the mixture
+x(t)∈ R(1×T ) which is deﬁned as (1),
+x(t) =
+C∑
+i=1
+si(t) (1)
+The method separates one source at a time from the input
+mixture, producing two outputs: the estimated sound of one
+source, sˆk(t) and the residual signal that is a mixture of the
+remaining sources, ˆrk(t). To separate another source, the re-
+maining mixture is fed back into the model. The operation of
+the model in the k-th iteration is described in (2).
+ˆsk(t), ˆrk(t) = F (ˆr(k−1)) , ˆr0(t) = x(t) (2)
+In fact, F is applied recursively on the remaining mixture to
+separate the remaining sources. Therefore, in order to separate
+C sources from the mixture, the model have to be usedC times.
+2.1. Encoder
+The Encoder comprises a one-dimensional convolutional net-
+work with ReLU activation. This network employs convolu-
+tional ﬁlters with kernel size L and N output channels. The input
+signal is processed with a 50% overlap, resulting in a tensor of
+dimensions DN×E, where E represents the number of output
+features. This process, which can be mathematically expressed
+as in (3), effectively extracts informative features from the input
+mixture x by applying convolutional ﬁlters with weights W .
+X = ReLU(x∗ W ) (3)
+2.2. Mask Estimation
+As illustrated in Fig. 2, the Mask Estimation module generates
+separation masks to isolate individual speakers from the input
+mixture. To effectively handle long-duration mixtures, the En-
+coder’s output is segmented into overlapping chunks of length
+K, with a 50% overlap. These segments are then organized into
+a three-dimensional tensor of dimensions DN×K×P , where P
+represents the number of segments. This tensor subsequently
+undergoes Intra and Inter-chunk processing.
+2.3. Intra and Inter-chunk processing
+The Intra and Inter-chunk processing section, designed to cap-
+ture both short-term and long-term dependencies, employs a
+cascading structure consisting of B blocks. This section lever-
+ages the Dual-path approach proposed in [15] to effectively
+model these dependencies. In the Intra-processing mode, seg-
+ments of the input tensor with dimensionsDN×K are processed
+by the Improved Transformer (IT) block [13]. This block per-
+forms local processing on the input tensor, as mathematically
+described in (4).
+DIntra
+b = IT b[DInter
+b−1 [:, :, z], z = 1, ..., P] (4)
+where, b∈ B and if b = 1, the input to IT is segmented Encoder
+output.
+In the Inter-processing mode, segments of the input tensor
+with dimensions DN×P are processed by the IT block. This
+block performs global processing on the input tensor, capturing
+long-range dependencies across all segments. The mathemati-
+cal representation of this process is as (5),
+DInter
+b = IT b[DIntra
+b [:, y, :], y = 1, ..., K] (5)
+As stated in (5), the output of local processing enters the global
+processing mode, which enables the model to better handle
+long-term inputs.
+2.4. Decoder
+Following mask generation, the separation masks are applied
+element-wise to the Encoder’s output, resulting in the separated
+speaker’s signal and the residual signal. Subsequently, a trans-
+pose convolutional network [16] with kernel size L and N input
+channels is employed in the Decoder to reconstruct the time-
+domain representation of the separated speaker’s signal from
+the masked features, as described in (6).
+si(t) = Yi∗ V , i = 0, 1 (6)
+where Yi represents the masked arrangements for the audio of
+one speakers (i = 0 ) and the residual signal ( i = 1 ), and Y ∈
+R2×N . In addition, V ∈ RN×L represents the parameters of
+the transposed convolution module.
+3. Iteration Authorization Block
+The Iteration Authorization Block determines whether the
+residual signal necessitates further processing to extract addi-
+tional speakers. This block enables the model to be iteratively
+reused by treating the residual signal as a new input mixture,
+provided it exhibits characteristics indicative of residual speech.
+The block’s design is informed by an analysis of the model’s
+output behavior. For a mixture of C speakers, the model should
+ideally execute C iterations. As illustrated in Fig. 2 for a two-
+speaker mixture, the residual signal in the ﬁnal iteration exhibits
+a high degree of noise, while the extracted speech signal closely
+resembles the original input. These observations guide the de-
+sign of the Iteration Authorization Block, which incorporates
+two key components:
+• Cross correlation between the mixed input and the separated
+source audio.
+• Cross correlation between the mixed input and the residual
+signal.
+The Iteration Authorization Block produces a binary output. If
+the absolute value of any of the calculated cross-correlations
+exceeds or equals 0.93, the block signals the end of the iteration
+process by outputting 1. Otherwise, it outputs 0, indicating that
+further iterations are required.
+1459
+
+Figure 2: (A) Structure of the Mask Estimation Section, (B) Structure of the Iteration Authorization Block and (C) Separation of a 2
+speaker mixture over 2 iterations.
+4. Model Training Objective Function
+To prevent the model from exhibiting a bias towards a spe-
+ciﬁc number of speakers, the training process must incorporate
+mixtures containing a diverse range of speaker counts. Conse-
+quently, the objective function for model training is deﬁned as
+in (7).
+L =
+C−1∑
+k=1
+𝓁k (7)
+where, k is the iteration number, C is number of speakers in the
+input mixture, and 𝓁k is the loss function in the k-th iteration.
+Since our goal is to increase SI-SNR and solve the permutation
+problem, we use uPIT [18] and OR-PIT [10] to deﬁne𝓁k, which
+is denoted as (8):
+𝓁k =
+max
+i
+l(ˆs(t), si(t)) + 1
+C−k l(ˆr(t), ∑
+n⁄=i sn(t))
+CM− C + k (8)
+where, CM denotes the maximum number of speakers in the
+model’s training mixtures; l is the function, that calculates
+the Signal-to-Interference-and-Noise Ratio (SI-SNR) for two
+model’s outputs, and i∈ {1, . . . , C} corresponds to speaker
+indices. Speciﬁcally, the SI-SNR is ﬁrst calculated between the
+estimated source signal, ˆs(t), and the reference sounds, deter-
+mining the source with the highest SI-SNR to be si(t). Next,
+the SI-SNR is computed between the residual signal output and
+the sum of the reference sounds (excluding the reference si(t))
+according to (8). The method for calculating SI-SNR through
+function l is in [19, 10, 15], and denoted as in (9):
+lSI−SNR(ˆs(t), s(t)) := 10 log 10
+|starget|2
+|enoise|2 (9)
+where, starget := ⟨ˆs(t),s(t)⟩s(t)
+|s(t)|2 and enoise := ˆs(t)− starget (t).
+Here, ˆs(t) and s(t) are mean-normalized in the time domain.
+Normalizing the mean of the sources ensures the scale invari-
+ance of the objective function [10].
+Unlike uPIT, where the number of permutations for a mix-
+ture with C speakers is C!, the proposed approach reduces the
+number of permutations to C, signiﬁcantly reducing compu-
+tational complexity. Furthermore, the sum of the remaining
+sources, ˆrk(t), is consistently trained to appear in the second
+output channel. This constraint ensures that no trace of the ex-
+tracted speaker’s speech is present in the residual signal, effec-
+tively enforcing a separation constraint. By explicitly attending
+to the separated speaker in one output channel and the resid-
+ual signal in the other, the model’s separation performance is
+signiﬁcantly enhanced, as demonstrated in [10].
+5. Model Training
+Model training was conducted using the WSJ0 dataset [20], fol-
+lowing the methodologies outlined in [21, 10]. Audio record-
+ings from distinct speakers were randomly mixed with Signal-
+to-Noise Ratios (SNRs) ranging from -2.5 dB to 2.5 dB, result-
+ing in the creation of the WSJ0-2mix and WSJ0-3mix datasets
+for two- and three-speaker scenarios, respectively. ReSepNet
+was exclusively trained on a combined dataset of WSJ0-2mix
+and WSJ0-3mix, setting the maximum number of speakers dur-
+ing training CM to 3. To reduce computational demands, audio
+samples were downsampled to 8 kHz. For training, the audio
+data was segmented into 4-second windows. Segments shorter
+than 2 seconds were discarded, while shorter segments were
+zero-padded to achieve a consistent 4-second duration. To eval-
+uate the model’s generalization capabilities, additional WSJ0-
+4mix and WSJ0-5mix datasets were created for four- and ﬁve-
+speaker test scenarios.
+Train epoch is 83 (due to numerical instability in later
+epochs, resulting in NaN outputs), and the Adam [22] optimizer
+is used with gradient clipping 5. The learning rate(lr) is initially
+increased and then reduced by multiplying by 0.98 every two
+1460
+
+Table 1: Comparison of model performance on WSJ0 datasets. The table presents the Si-SNRi (dB) and the number of parameters for
+models on WSJ0-2mix, WSJ0-3mix, WSJ0-4mix, and WSJ0-5mix test datasets. Symbols used: ’*’ indicates a model trained for a ﬁxed
+number of speakers, ’-’ denotes unavailable data, and ’+’ signiﬁes that the number of parameters exceeds the stated value.
+Model WSJ0-2mix WSJ0-3mix WSJ0-4mix WSJ0-5mix # Param
+Conv-TasNet-gLN* [5] 14.6 11.6 - - 8.8M
+DPRNN* [15] 18.8 - - - 2.6M
+DPTNet* [13] 20.2 - - - 2.69M
+Sepformer* [17] 20.4 17.6 - - 26M
+MULCAT [7] 20.12 16.70 12.82 10.50 7.5M
+OR-PIT [10] 14.8 12.6 10.2 - +60M
+DPRNN + OR-PIT [11] 17.8 13.7 9.9 6.2 +60M
+Coarse-to-ﬁne [11] 19.8 15.4 11.4 7.3 +60M
+ReSepNet (Ours) 21.16 19.19 14.91 12.03 2.8M
+epochs.
+lr =
+{
+k1· d−0.5
+model· n· warmup−1.5
+n , n≤ warmupn
+k2· 0.98Epoch/2 , n > warmupn
+(10)
+where, n is the step number, the value of dmodel is 64, and K1
+and K2 are tunable numerical values being set during model
+training, where K1 is set to 0.2, K2 to 4e−4, warmupn is set
+to 4000, and the batch size is set to 1, similar to [15, 13, 14].
+6. Experimental Results
+The model was trained on a server with a high-end NVIDIA
+GeForce RTX 3090 GPU with 24 GBytes RAM, and ev-
+ery epoch of training required approximately 6.2 hours. Re-
+markably, despite being trained exclusively on WSJ0-2mix
+and WSJ0-3mix datasets, ReSepNet successfully generalizes
+to separate challenging WSJ0-4mix and WSJ0-5mix mixtures,
+demonstrating its robustness and adaptability. This achievement
+is particularly noteworthy considering the signiﬁcantly reduced
+model complexity compared to existing state-of-the-art meth-
+ods. Separation samples are available on our GitHub repository
+for independent evaluation and analysis1. Furthermore, ReSep-
+Net surpasses the performance of models designed for a known
+number of speakers, such as DPTNet [13] and SepFormer [17],
+which utilize the Dual-path method without the dynamic mixing
+capability of our approach.
+To rigorously assess the accuracy of the Iteration Autho-
+rization Block, we conducted extensive evaluations on a dedi-
+cated test set comprising 3000 samples for each of the 1, 2, and
+3 speaker conditions, drawn from the WSJ0 test sets, WSJ0-
+2mix, and WSJ0-3mix, respectively. A successful classiﬁcation
+is deﬁned as the block accurately outputting zeros for all but the
+ﬁnal iteration, where a 1 is expected. Our proposed approach
+achieves an impressive accuracy of 96.6%, surpassing the per-
+formance of existing recursive models [10, 11] which exhibit an
+accuracy of 95.7%. Notably, unlike these models that rely on
+computationally expensive AlexNet for iteration control and re-
+quire 10-second input segments of mel spectrograms, our novel
+Iteration Authorization Block solely leverages cross-correlation
+analysis, eliminating the need for feature extraction and impos-
+ing no constraints on input segment length.
+1https://hadializadeh1.github.io/ReSepNet/
+Furthermore, the Real-Time Factor (RTF) computed on
+WSJ0-2Mix for single iteration and two iterations demonstrates
+that our proposed recursive method remains efﬁcient while out-
+performing baseline approaches [5, 13, 15].
+7. Conclusion
+This paper presented ReSepNet, a novel recursive speech
+separation framework that dynamically adapts to mixtures
+with an unknown number of speakers. By integrating a
+transformer-based architecture with a recursive separation
+workﬂow and a lightweight Iteration Authorization Block,
+ReSepNet eliminates the need for prior assumptions about
+speaker counts while achieving state-of-the-art performance.
+The key innovations including a dual-path transformer structure
+for efﬁcient long-context modeling, a permutation-invariant
+training objective that reduces computational complexity, and
+a cross-correlation-based iteration termination mechanism
+achieves 96.6% accuracy in speaker count estimation. Ex-
+perimental results on WSJ0-2mix and WSJ0-3mix datasets
+demonstrate ReSepNet’s superiority over existing methods,
+with SI-SNRi improvements. This work opens new directions
+for real-world speech separation systems, particularly in
+scenarios with unpredictable speaker counts. Future research
+will explore extending ReSepNet to real-time applications and
+integrating speaker diarization for fully end-to-end solutions.
+8. References
+[1] T.-W. Lee and T.-W. Lee, Independent component analysis .
+Springer, 1998.
+[2] H. Sawada, N. Ono, H. Kameoka, D. Kitamura, and
+H. Saruwatari, “A review of blind source separation methods: two
+converging routes to ilrma originating from ica and nmf,”APSIPA
+Transactions on Signal and Information Processing, vol. 8, p. e12,
+2019.
+[3] R. Mahdian, M. Babaiezadeh, and C. Jutten, “Separation
+of speech sources in under-determined case using sca and
+time-frequency methods,” in 2008 International Symposium on
+Telecommunications. IEEE, 2008, pp. 533–538.
+[4] D. A. Reynolds et al., “Gaussian mixture models.” Encyclopedia
+of biometrics, vol. 741, no. 659-663, 2009.
+1461
+
+[5] Y . Luo and N. Mesgarani, “Conv-tasnet: Surpassing ideal time–
+frequency magnitude masking for speech separation,”IEEE/ACM
+transactions on audio, speech, and language processing, vol. 27,
+no. 8, pp. 1256–1266, 2019.
+[6] J. Zhu, R. A. Yeh, and M. Hasegawa-Johnson, “Multi-decoder
+dprnn: Source separation for variable number of speakers,” in
+ICASSP 2021-2021 IEEE International Conference on Acoustics,
+Speech and Signal Processing (ICASSP). IEEE, 2021, pp. 3420–
+3424.
+[7] E. Nachmani, Y . Adi, and L. Wolf, “V oice separation with an un-
+known number of multiple speakers,” inInternational Conference
+on Machine Learning. PMLR, 2020, pp. 7164–7175.
+[8] K. Kinoshita, L. Drude, M. Delcroix, and T. Nakatani, “Listen-
+ing to each speaker one by one with recurrent selective hearing
+networks,” in 2018 IEEE international conference on acoustics,
+speech and signal processing (ICASSP). IEEE, 2018, pp. 5064–
+5068.
+[9] J. Shi, J. Xu, G. Liu, B. Xu et al., “Listen, think and listen again:
+Capturing top-down auditory attention for speaker-independent
+speech separation.” inIJCAI, 2018, pp. 4353–4360.
+[10] N. Takahashi, S. Parthasaarathy, N. Goswami, and Y . Mitsufuji,
+“Recursive speech separation for unknown number of speakers,”
+arXiv preprint arXiv:1904.03065, 2019.
+[11] Z. Jin, X. Hao, and X. Su, “Coarse-to-ﬁne recursive speech
+separation for unknown number of speakers,” arXiv preprint
+arXiv:2203.16054, 2022.
+[12] A. Krizhevsky, I. Sutskever, and G. E. Hinton, “Imagenet clas-
+siﬁcation with deep convolutional neural networks,” Advances in
+neural information processing systems, vol. 25, 2012.
+[13] J. Chen, Q. Mao, and D. Liu, “Dual-path transformer network:
+Direct context-aware modeling for end-to-end monaural speech
+separation,”arXiv preprint arXiv:2007.13975, 2020.
+[14] A. Vaswani, N. Shazeer, N. Parmar, J. Uszkoreit, L. Jones, A. N.
+Gomez, Ł. Kaiser, and I. Polosukhin, “Attention is all you need,”
+Advances in neural information processing systems, vol. 30, 2017.
+[15] Y . Luo, Z. Chen, and T. Yoshioka, “Dual-path rnn: efﬁcient long
+sequence modeling for time-domain single-channel speech sepa-
+ration,” in ICASSP 2020-2020 IEEE International Conference on
+Acoustics, Speech and Signal Processing (ICASSP). IEEE, 2020,
+pp. 46–50.
+[16] M. D. Zeiler, D. Krishnan, G. W. Taylor, and R. Fergus, “Decon-
+volutional networks,” in2010 IEEE Computer Society Conference
+on computer vision and pattern recognition . IEEE, 2010, pp.
+2528–2535.
+[17] C. Subakan, M. Ravanelli, S. Cornell, M. Bronzi, and J. Zhong,
+“Attention is all you need in speech separation,” inICASSP 2021-
+2021 IEEE International Conference on Acoustics, Speech and
+Signal Processing (ICASSP). IEEE, 2021, pp. 21–25.
+[18] M. Kolbæk, D. Yu, Z.-H. Tan, and J. Jensen, “Multitalker speech
+separation with utterance-level permutation invariant training of
+deep recurrent neural networks,” IEEE/ACM Transactions on Au-
+dio, Speech, and Language Processing, vol. 25, no. 10, pp. 1901–
+1913, 2017.
+[19] Y . Luo and N. Mesgarani, “Tasnet: time-domain audio separation
+network for real-time, single-channel speech separation,” in 2018
+IEEE International Conference on Acoustics, Speech and Signal
+Processing (ICASSP). IEEE, 2018, pp. 696–700.
+[20] J. Garofolo, D. Graff, D. Paul, and D. Pallett, “Csr-i (wsj0) com-
+plete ldc93s6a,” Web Download. Philadelphia: Linguistic Data
+Consortium, vol. 83, 1993.
+[21] J. R. Hershey, Z. Chen, J. Le Roux, and S. Watanabe, “Deep clus-
+tering: Discriminative embeddings for segmentation and separa-
+tion,” in2016 IEEE international conference on acoustics, speech
+and signal processing (ICASSP). IEEE, 2016, pp. 31–35.
+[22] D. P. Kingma and J. Ba, “Adam: A method for stochastic opti-
+mization,”arXiv preprint arXiv:1412.6980, 2014.
+1462

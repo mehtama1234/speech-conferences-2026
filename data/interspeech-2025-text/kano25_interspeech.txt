@@ -1,0 +1,680 @@
+Pick and Summarize: Integrating Extractive and Abstractive Speech
+Summarization
+Takatomo Kano1, Atsunori Ogawa1, Marc Delcroix1, Ryo Fukuda1, William Chen2, Shinji
+Watanabe2
+1NTT inc., Japan
+2Carnegie Mellon University, USA
+{takatomo.kanou, atsunori.ogawa,delcroix.marc}@ntt.com
+Abstract
+Speech summarization condenses long speech while preserving
+essential content. Recently, there has been growing interest in
+end-to-end (E2E) abstractive speech summarization, which di-
+rectly generates a text summary from spoken input. However,
+abstractive summarization of lengthy speech sequences presents
+challenges, such as identifying key information within very
+long speech. In this paper, we hypothesize that first addressing
+the simpler task of extractive summarization can help with these
+aforementioned long-sequence challenges and improve over-
+all summarization performance. To this end, we introduce an
+extractive-abstractive summarization model that exploits auxil-
+iary information from extractive summaries generated directly
+from raw speech input to enhance abstractive speech summa-
+rization. Experiments on a web presentation corpus demon-
+strate consistent gains with our proposed method, achieving up
+to 1.4-point gains in METEOR score over a strong abstractive
+summarization baseline.
+Index Terms: speech summarization, abstractive, extractive,
+multi-task learning
+1. Introduction
+Speech summarization aims to condense very long speech in-
+put into a concise summary that preserves essential content and
+key highlights [1]. Summarization approaches are categorized
+into two styles [2, 3]: extractive and abstractive.
+Extractive
+summarization selects key utterances from a spoken document.
+It is particularly effective in structured domains, such as news
+broadcasts, where formal discourse and logical organization fa-
+cilitate accurate sentence selection. Abstractive summarization
+generates text that captures the semantic essence of the spoken
+document. It excels in informal settings like conversations and
+meetings, where rephrasing disfluent speech is crucial. Conse-
+quently, abstractive speech summarization has recently received
+more interest than extractive speech summarization.
+Many natural language processing (NLP) studies report the
+benefits of combining extractive and abstractive summarization
+task [4–6]. For example, sharing knowledge between extrac-
+tive and abstractive summarization processes via pre-training or
+multi-task learning has been shown to enhance the performance
+of abstractive summarization [5,7]. Another study [8] provides
+an extractive summary, instead of the whole document, to an ab-
+stractive summarization model that converts it to an abstractive
+summarization. However, these prior works were limited to text
+summarization. In this paper, we propose to extend the ideas of
+these works to end-to-end (E2E) speech summarization.
+Recently, there has been an increased interest in E2E ab-
+stractive speech summarization, which directly generates a text
+summary from the input speech [9–15].
+Such E2E models
+promise several advantages over, e.g., cascade systems perform-
+ing automatic speech recognition (ASR) followed by text sum-
+marization, with two independent models.
+First, E2E mod-
+els can be robust to recognition errors [11]. Moreover, they
+can exploit paralinguistic information (e.g., emotion, empha-
+sis), which was shown to be important for speech summariza-
+tion [16]. However, current E2E abstractive speech summa-
+rization systems still sometimes lack behind cascade systems
+in some domains [11].
+One reason could be the limited training data, but we be-
+lieve another contributing factor is the challenge of abstract-
+ing very long speech sequences directly.
+In this paper, we
+hypothesize that first tackling the relatively easier task of ex-
+tractive summarization could help mitigate the aforementioned
+long-sequence challenge in abstractive summarization. We pro-
+pose E2E extractive-abstractive (ex-abstractive) summarization,
+a novel E2E abstractive speech summarization approach condi-
+tioned on extractive summaries. We introduce two implemen-
+tations of the approach. First, we develop a modular approach,
+where the ex-abstractive summarization model accepts speech
+embeddings and an extractive summary obtained from an inde-
+pendent extractive model as inputs. As a side contribution, for
+this modular system, we develop a new extractive speech sum-
+marization model, which transcribes the important utterances
+directly instead of selecting them from ASR transcriptions as in
+prior works [17]. Second, we propose a monolithic approach,
+where one model sequentially generates the extractive followed
+by the abstractive summaries.
+The proposed ex-abstractive summarization models pre-
+serve the advantages of E2E systems, i.e., being robust to ASR
+errors and capable of exploiting paralinguistic information. In
+addition, we expect that multi-task learning and conditioning
+the abstractive summarization on the extractive summaries will
+help find important contents from very long speech sequences.
+We evaluate our framework on a web presentation corpus,
+which contains 664 hours of talks with human-annotated sum-
+maries. Experimental results demonstrate a 1.4 points improve-
+ment in METEORscores [18] with our proposed abstractive
+summarization conditioned on extractive summaries compared
+with conventional systems [11]. Further analysis reveals that
+extractive summaries prevent the content from being lost in ab-
+stractive summarization.
+2. Related works
+Early works on speech summarization focused on extractive ap-
+proaches. Prior works typically formulate extractive summa-
+rization as a binary classification task [19–21]. Each sentence
+in transcriptions is assigned a label (0, 1) to indicate its exclu-
+sion (0) or inclusion (1) in summary. The extractive summary
+comprises all sentences with the inclusion label 1. This ap-
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+281
+10.21437/Interspeech.2025-1341
+
+Adapter
+Whisper Decoder
+Embedding 
+Abstractive summary
+ 
+Adapter
+Whisper Decoder
+Embedding 
+Extractive summary 
+Figure 1: Modular system
+Adapter
+Whisper Decoder
+Embedding 
+Extractive
+summary 
+Abstractive
+summary 
+Figure 2: Monolithic system
+proach ensures the correctness of the content at the sentence
+level. There have been many approaches that select important
+sentences from transcriptions using Bayesian classifier, sup-
+port vector machine, and neural networks [17, 22–24]. More
+recently, EESUM [21] performs E2E speech-to-speech extrac-
+tive summarization directly, without transcription. It relies on
+term frequency–inverse document frequency scoring over self-
+supervised speech representations (e.g., Wav2Vec [25]) to select
+salient content in the spoken document. This work is out of our
+scope because we focus on generating text summaries instead
+of speech summaries.
+With the advent of sequential models [26], abstractive
+speech summarization has become pre-dominant [7, 27, 28]
+since rephrasing disfluent speech is crucial, it is often more ap-
+propriate for speech summarization. In this work, unlike prior
+abstractive speech summarization approaches, we condition the
+processing on extractive summaries. For this, we design a novel
+extractive speech summarization model, which transcribes only
+important utterances from the spoken document instead of se-
+lecting them from the transcriptions.
+3. End-to-end speech summarization
+3.1. Abstractive speech summarization
+The E2E speech summarization system receives an input speech
+signal X and generates an abstractive summary A.
+Previ-
+ous studies have fine-tuned pre-trained ASR models for speech
+summarization tasks [11, 29]. Here, we use the Whisper [30]
+encoder and decoder but introduce two modifications to address
+the long-sequence and speech summarization tasks.
+First, we run the encoder in a chunk-wise manner since
+Whisper automatically segments long speech into 30-second
+chunks and applies padding to the final chunk during prepro-
+cessing. The encoded speech sequence is obtained as follows:
+H = ENC (X; θe) ,
+(1)
+where, ENC(·) denotes the Whisper encoder function with pa-
+rameters θe. H ∈RC×L×D is the sequence of Whisper em-
+beddings, C is the number of chunks, L is the length of each
+speech chunk, and D is the embedding dimension. Since each
+speech chunk is encoded independently, the model cannot cap-
+ture long-range contextual information across chunks. To ad-
+dress this, we concatenate the embeddings along the C dimen-
+sion, obtaining ˆ
+H ∈R(CL)×D.
+To further enhance long-context learning for summariza-
+tion, we introduce an adapter network between the encoder and
+the decoder that processes ˆ
+H as follows
+I = ADA
+  ˆ
+H; θa
+
+∈R(CL)×D,
+(2)
+where, the ADA(·) is a two-layer Transformer network [31],
+the θa denotes its parameters, and the I is the final embedding
+sequence of the encoding process.
+For the decoder, we leverage the prompt framework of
+Whisper to control target generation. The decoder receives I
+and special tokens S, and generates the target sequence A in an
+auto-regressive manner as follows:
+ak = DEC(a1:k−1, Icross, Sprompt; θd),
+(3)
+where ak is a k-th token of A, Sprompt denotes that the special
+tokens S is inserted to the Whisper decoder as a prompt. Icross
+denotes the speech embedding imputing cross-attention func-
+tion. DEC(·) is the Whisper decoder function, and θd denotes
+its parameters. We extend the Whisper’s special token format
+as
+S = [⟨|startoftranscript|⟩⊕⟨|en|⟩⊕t⊕⟨|notimestamp|⟩], (4)
+where ⟨|startoftranscript|⟩is the start of sentence token, ⟨|en|⟩
+denotes the language (English) ID, ⟨|notimestamp|⟩denotes
+not generating timestamp.
+Additionally, we introduce t ∈
+{⟨|extract|⟩, ⟨|abstract|⟩} as a summarization task,
+The system is trained using the cross-entropy loss between
+the ground-truth summary and the prediction. During training,
+we freeze θe (encoder parameters) and fine-tune the θa (adapter
+parameters) and θd (decoder parameters).
+3.2. Extractive speech summarization
+In this paper, we aim to condition the decoding process of the
+abstractive summarization on the extractive summary. For this
+purpose, it is more convenient to input the text token of the ex-
+tractive summary instead of utterance-level exclusion/inclusion
+labels because the decoder is pre-trained with text sequences.
+Therefore, we reformulate extractive summarization as a se-
+quence generation task. Given an input speech signal X, an
+extractive summarization model generates the target extractive
+summary E directly.
+The extractive summary E is a subset of the original spoken
+sentences containing as much content as possible. If the train-
+ing corpus provides extractive summaries, we can directly use
+these for training. If not, we can create pseudo extractive sum-
+maries for training targets using automatic summarization eval-
+uation metrics [7] and search algorithm. We followed previous
+research and employed BERTScore [32] as automatic summa-
+rization metrics. We calculated BERTScore for each sentence
+of a ground-truth transcription and a human abstractive sum-
+mary. We used a greedy search algorithm to generate a pseudo
+extractive summary, which maximizes the BERTScore. Extrac-
+tive summaries are generated automatically by selecting U sen-
+tences from the transcription that maximize the BERTScore for
+the reference abstractive summary. The number of extracted
+sentences, U, is a hyperparameter. The summarization process
+is thus identical to that of abstractive summarization described
+in Section 3.1, only the training target differs. However, note
+that this extractive summarization is relatively easier than ab-
+stractive summarization, as its task is merely to conduct long-
+form ASR with a limited number of sentences.
+282
+
+4. Proposed ex-abstractive
+We propose two frameworks to integrate extractive and abstrac-
+tive summarization during training and inference. We introduce
+the modular and monolithic ex-abstractive approaches shown in
+Figs. 1 and 2, respectively.
+4.1. Modular system
+In the modular system, as illustrated in Fig. 1, we treat that ex-
+tractive and abstractive summarization are separately conducted
+with two different modules: one for extractive summarization
+and another for ex-abstractive summarization.
+The extractive summary E is obtained by training a sepa-
+rate Whisper decoder, where A is replaced with E in Eq. (3), as
+described in Sec. 3.2. The ex-abstractive model takes both the
+input speech X and the generated extractive summary E as in-
+put. The encoder generates I similar to Eqs. (1) and (2). Unlike
+Eq. (3), the decoder is conditioned on the extractive summary
+E as an additional prompt to generate the abstractive summary
+A as:
+ak = DEC(a1:k−1, Icross, [S ⊕E]prompt; θd).
+(5)
+Therefore, A is generated based on both I and E.
+The modular system’s loss is the same as that described
+in Sec. 3.1. The modular system only trains for the abstrac-
+tive summary tasks, so we ignore the prompt composed of the
+special tokens and the extractive summary at loss calculation.
+In the modular system, the ex-abstractive summarization model
+does not share the knowledge for solving extractive tasks.
+4.2. Monolithic approach
+Next, we propose a monolithic approach and try to share knowl-
+edge between extractive and abstractive summarization tasks in
+a single model. Unlike the modular system, the monolithic ap-
+proach generates sequentially extractive and abstractive sum-
+maries using the same model and a single decoding process as
+shown in Fig 2. We implement this model by simply changing
+the target sequence in Eq. (3) to Y = [E ⊕⟨|abstract|⟩⊕A] in
+auto-regression decoding, where ⟨|abstract|⟩works as an end-
+of-sequence token for E. The decoder generates Y as follows;
+yk = DEC(y1:k−1, Icross, Sprompt; θd).
+(6)
+Here, Sprompt is as defined in Eq. (4), with t set to ⟨|extract|⟩,
+yk is the k-th token of Y , y1:k−1 is the sequence of previously
+generated tokens. Consequently, like the modular system, the
+abstractive summary generation is conditioned on the extractive
+summary.
+The training loss is the sum of the cross entropy loss for
+the extractive and abstractive summary, each normalized by the
+sequence length. This normalization ensures that multi-tasks
+of varying lengths are balanced in the total loss calculation,
+preventing the extractive summarization from generating exces-
+sively long sequences based on the input X [33].
+5. Experiments
+5.1. Experimental settings
+We conduct all experiments within the ESPnet toolkit [34].
+We evaluated our proposed method using a web presentation
+dataset, which consists of 3384 talks, 664 hours of speech
+and human-annotated transcriptions and abstractive summaries.
+The evaluation set contains 424 talks corresponding to a total of
+84 hours of speech.
+For the initialization of E2E systems, we employed the
+Whisper-large-v2 model with 32 encoder and decoder layers.
+First, we fine-tuned the Whisper model for long-form speech
+recognition task. We compared our approach against conven-
+tional E2E and cascade speech summarization models [11]. The
+cascade system, following previous study [11], uses Whisper-
+base to generate transcriptions and T5 [35] for text summariza-
+tion. The E2E baseline system consists of the Whisper model
+fine-tuned to generate abstractive summaries as in Sec. 3.1, but
+without our extension to handle long recordings. Therefore, it
+can only accept the first 30 sec of the speech. We name this
+model as WhisperSUM.
+In this work, following Sec. 3.1, we also prepared an E2E
+abstractive summarization system for long-form speech (maxi-
+mum duration of training data is 20 minutes). Because of mem-
+ory and computing limitations, we cannot fine-tune the Whisper
+encoder parameters of the E2E model. However, it can consider
+a longer context than WhisperSUM through the adapter network
+and the decoder.
+To construct the modular system, we generated two sepa-
+rate models (an extractive and an ex-abstractive one), by fine-
+tuning the pre-trained long-form ASR model separately for ex-
+tractive and ex-abstractive summarization.
+We use ground-
+truth extractive summaries to condition abstractive summariza-
+tion when training the ex-abstractive model. In contrast, for
+the monolithic system, we fine-tuned the pre-trained long-form
+ASR model directly for ex-abstractive summarization to output
+extractive and abstractive summaries as explained in Sec. 4.2.
+The length of extractive summaries is a hyper-parameter
+affecting the performance of the ex-abstractive summarization
+model. Based on our analysis described in Sec. 5.3, we set the
+length of extractive summaries to 10% of the number of sen-
+tences in the transcriptions. Note that the extractive summary
+length is controlled as a hyper-parameter in the data preparation
+stage. The modular system’s extractive summarization model
+and monolithic model are trained with a specific summarization
+length for the references. At inference time, they perform auto-
+regressive decoding until the end of the sequence token appears.
+We trained all models with a batch size of 1 and validated
+every 1,000 steps. Early stopping was applied with a patience
+of 10, and models were fine-tuned for up to 1M iteration. We
+used a ReduceLROnPlateau scheduler1 with an initial learning
+rate of 1e −5, and optimized using AdamW [36] with β = 0.9
+and β2 = 0.999. For the abstractive and ex-abstractive models,
+validation was based on abstractive summarization accuracy,
+while the extractive summarization model in the modular sys-
+tem was validated based on extractive summarization accuracy.
+We evaluated summarization performance using BERTScore
+(BERT) [32], METEOR (MTR) [18], and ROUGE-Longest (R-
+L) [37].
+5.2. Summarization results
+Table 2 compares performances of different systems using hu-
+man abstractive summaries as references (top) and automati-
+cally generated pseudo extractive summaries as references (bot-
+tom), as introduced in Sec. 3.2. We evaluate the baseline sys-
+tems only in terms of abstractive summaries, as they do not gen-
+erate extractive summaries. In contrast, our proposed modular
+(system No. 4) and monolithic (system No. 5) systems can
+generate both extractive (No. 4-1,5-1) and abstractive (No. 4-
+2,5-2) summaries, and we evaluate the performance for both
+1https://pytorch.org/docs/stable/generated/
+torch.optim.lr_scheduler.ReduceLROnPlateau.html
+283
+
+Table 1: Summarization example
+Ground-truth
+extractive
+So I began to wonder what it might be like to parent my children in a war zone and a refugee camp. So the question I
+had was could parent training programs be useful for families while they were still in ...
+Ground-truth
+abstractive
+What it’s like to be a parent in a war zone & How do parents protect their children and help them feel secure again
+when their homes are ripped apart by war ? In this warm-hearted talk , psychologist Aala El-Khani shares her work
+supporting – and learning from – refugee families affected by the civil war in Syria . She asks: How can we help these
+loving parents give their kids the warm , secure parenting they most need ?
+Monolithic
+extractive
+So I began to wonder what it might be like to parent my children in a war zone and a refugee camp. So the question I
+had was could parent training programs be useful for families while they were still in ...
+Monolithic
+abstractive
+How we can help refugees children in Syria & Refugee camp teachers are the most innocent and vulnerable victims of
+conflict, but they are also the most vulnerable. How can we help refugees in Syria in general? In this inspiring talk,
+psychologist and parent trainer Hala Al-Khalili explains how we can help refugees.
+End-to-end
+abstractive
+How to help children in conflict, war, chaos and conflict & Refugee camp teachers are the most innocent and vulnerable
+victims of war and conflict. In this inspiring talk, psychologist and TED Fellow Zahra Al-Khalabi explains how we can
+help children in conflict, war, chaos and conflict.
+Table 2:
+Abstractive and Extractive summarization perfor-
+mance. systemE and systemA output extractive and abstrac-
+tive summaries, respectively. The conventional systems (1,2,3)
+only perform abstractive summarization.
+No.
+System
+R-L
+MTR
+BERT
+Evaluation for human abstractive reference
+1
+Cascade [11]
+18.2
+12.6
+87.1
+2
+WhisperSUM [11]
+16.8
+11.9
+85.1
+3
+End-to-end
+16.8 ± 1.1
+11.5 ± 0.9
+85.1 ± 1.0
+4-1
+ModularE
+8.3 ± 0.8
+10.4 ± 1.0
+70.5 ± 1.2
+4-2
+ModularA
+18.5 ± 1.1
+13.6 ± 1.2
+87.6 ± 1.3
+5-1
+MonolithicE
+9.0 ± 0.8
+11.7 ± 1.0
+73.1 ± 1.1
+5-2
+MonolithicA
+18.8 ± 1.2
+14.0 ± 1.2
+87.8 ± 1.1
+Evaluation for pseudo extractive reference
+4-1
+ModularE
+50.9 ± 1.1
+40.6 ± 1.0
+93.6 ± 0.9
+5-1
+MonolithicE
+43.2 ± 1.0
+40.1 1.2
+90.0 ± 0.9
+summary styles. Our proposed modular (No. 4-2) and mono-
+lithic (No. 5-2) systems outperformed the baseline end-to-end
+and cascade models, with the monolithic system achieving the
+highest performance in all three metrics. The provided extrac-
+tive summary includes topic words. These topic words support
+abstractive summarization finding the important content from
+long speech sequence, as described in Sec 5.4.
+Due to the gap between written and spoken style, the ex-
+tractive summaries (spoken style) achieve lower scores than the
+abstractive ones (written style) when evaluated with human ab-
+stractive summary references (written style). Therefore, to con-
+firm if the generated summaries are effectively extractive, we
+measure how similar they are to the reference pseudo-extractive
+summaries, obtained as explained in Sec. 3.1. The bottom two
+rows of Table 2 evaluate the quality of the extractive summaries
+generated with the modular and monolithic systems.
+The results show that both modular and monolithic systems
+generate extractive summaries very close to the pseudo ones
+based on all three metrics. Since the extractive summarization
+model in the modular system is explicitly trained for extrac-
+tive task, it achieves the best performance on extractive targets.
+Although the extractive summaries produced by the monolithic
+system may deviate from reference extractive summaries, they
+ultimately enhance the final abstractive summarization perfor-
+Table 3: Monolithic system’s abstractive summarization results
+for each extractive summarization ratio. The results are ob-
+tained using ground-truth extractive summary at inference.
+Extracted sentence
+RL
+MTR
+BS
+0
+16.8
+11.5
+85.1
+2
+18.2
+13.4
+86.8
+4
+18.8
+13.3
+86.8
+6
+18.6
+13.8
+87.6
+8
+19.0
+13.9
+87.5
+10
+19.0
+13.8
+87.6
+mance.
+5.3. Optimal summarization ratio of extractive summary
+In this section, we explore the optimal value of U introduced in
+Sec. 3.2. We set U = rZ where r is the summarization ratio and
+Z is the number of sentences in the input speech. During extrac-
+tive data creation, we vary r and train separate monolithic sys-
+tems for each. Table 3 presents the abstractive summarization
+performance when using ground-truth extractive summaries as
+input. These results indicate that the extractive summarization
+ratio of 5–10% is optimal for abstractive summarization, yield-
+ing the best score in the monolithic system.
+5.4. Examples
+Table 1 shows the summarization example of monolithic and
+E2E systems. This example shows the first several sentences of
+monolithic system and ground-truth extractive summary. The
+extracted utterances include topic words (highlighted by red,
+blue, and green) that appear in the ground-truth abstractive sum-
+mary. The summary generated with the monolithic system con-
+tains two topic words (giver, taker) and lost matcher. How-
+ever, the E2E system’s summary only contains one topic word
+(giver). This result shows an example where extractive summa-
+rization can pick topic words from utterances and prevent the
+content from being lost in abstractive summarization.
+6. Conclusion
+We propose an E2E speech summarization system that condi-
+tions extractive summary to abstractive summarization. Extrac-
+tive summaries prevents the content from being lost in abstrac-
+tive summarization and improves summarization performance.
+In future works, we will apply our proposal to a wide domain.
+284
+
+7. References
+[1] C. Hori and S. Furui, “Improvements in automatic speech summa-
+rization and evaluation methods,” in Proc. of SLP.
+ISCA, 2000,
+pp. 326–329.
+[2] V. Dalal and L. G. Malik, “A survey of extractive and abstractive
+text summarization techniques,” in Proc. of InterSpeech.
+IEEE,
+2013, pp. 109–110.
+[3] N. Kalyani A and S. Jothilakshmi, “Techniques for summariza-
+tion of spoken document: A survey,” IJAST, vol. 28, pp. 154–167,
+2019.
+[4] S. C. Atitienei and A. Marginean, “Exploring the limits of T5:
+multitask fine- tuning for reasoning, summarization, sentiment
+analysis and figurative language understanding,” in Proc. of ICCP.
+IEEE, 2024, pp. 1–8.
+[5] A. Magooda, D. J. Litman, and M. Elaraby, “Exploring multitask
+learning for low-resource abstractive summarization,” in Proc. of
+EMNLP.
+ACL, 2021, pp. 1652–1661.
+[6] R. Habu, R. Ratnaparkhi, A. Askhedkar, and S. Kulkarni, “A hy-
+brid extractive-abstractive framework with pre & post-processing
+techniques to enhance text summarization,” in Proc. of ACIT.
+IEEE, 2023, pp. 529–533.
+[7] T. Ma, Q. Pan, H. Rong, Y. Qian, Y. Tian, and N. Al-Nabhan, “T-
+bertsum: Topic-aware text summarization based on BERT,” IEEE
+Trans. Comput. Soc. Syst., vol. 9, no. 3, pp. 879–890, 2022.
+[8] C. S. Vinukonda, T. Kumar, V. Raj, R. A. Kumar, and S. Mistry,
+“A hybrid approach for automatic text summarization,” in Proc.
+of ICCIT, 2021.
+[9] R. Sharma, S. Palaskar, A. W. Black, and F. Metze, “End-to-end
+speech summarization using restricted self-attention,” in Proc. of
+ICASSP.
+IEEE, 2022, pp. 8072–8076.
+[10] T. Kano, A. Ogawa, M. Delcroix, R. Sharma, K. Matsuura, and
+S. Watanabe, “Speech summarization of long spoken document:
+Improving memory efficiency of speech/text encoders,” in Proc.
+of ICASSP.
+IEEE, 2023, pp. 1–5.
+[11] R. Sharma, W. Chen, T. Kano, R. Sharma, S. Arora, S. Watanabe,
+A. Ogawa, M. Delcroix, R. Singh, and B. Raj, “Espnet-summ:
+Introducing a novel large dataset, toolkit, and a cross-corpora
+evaluation of speech summarization systems,” in Proc. of ASRU.
+IEEE, 2023, pp. 1–8.
+[12] K. Matsuura, T. Ashihara, T. Moriya, T. Tanaka, A. Ogawa,
+M. Delcroix, and R. Masumura, “Leveraging large text corpora for
+end-to-end speech summarization,” in Proc. of ICASSP.
+IEEE,
+2023, pp. 1–5.
+[13] K. Miyazaki, Y. Masuyama, and M. Murata, “Exploring the capa-
+bility of mamba in speech applications,” in Proc. of InterSpeech,
+2024, pp. 237–241.
+[14] H. Shang, Z. Li, J. Guo, S. Li, Z. Rao, Y. Luo, D. Wei, and
+H. Yang, “An end-to-end speech summarization using large lan-
+guage model,” in Proc. of InterSpeech, 2024, pp. 1950–1954.
+[15] W. Kang and D. Roy, “Prompting large language models with au-
+dio for general-purpose speech summarization,” in Proc. of Inter-
+Speech, 2024, pp. 1955–1959.
+[16] R. Sharma, S. Shon, M. Lindsey, H. Dhamyal, and B. Raj,
+“Speech vs. transcript: Does it matter for human annotators in
+speech summarization?”
+in Proc. of ACL.
+ACL, 2024, pp.
+14 779–14 797.
+[17] S. Lin, Y. Yeh, and B. Chen, “Extractive speech summarization -
+from the view of decision theory,” in Proc. of InterSpeech. ISCA,
+2010, pp. 1684–1687.
+[18] S. Banerjee and A. Lavie, “METEOR: an automatic metric for MT
+evaluation with improved correlation with human judgments,” in
+ACL.
+ACL, 2005, pp. 65–72.
+[19] X. Cheng and W. Lu, “Shapley value guided extractive text sum-
+marization,” in Proc. of ICASSP. IEEE, 2024, pp. 10 906–10 910.
+[20] I. Malkiel, Y. Yehuda, J. Ephrath, O. Katz, O. Barkan, N. Nice,
+and N. Koenigstein, “Unsupervised topic-conditional extractive
+summarization,” in Proc. of ICASSP.
+IEEE, 2024, pp. 11 286–
+11 290.
+[21] J. Wang, “Essumm: Extractive speech summarization from un-
+transcribed meeting,” in Proc. of InterSpeech.
+ISCA, 2022, pp.
+3243–3247.
+[22] S. Lin, B. Chen, and H. Wang, “A comparative study of probabilis-
+tic ranking models for chinese spoken document summarization,”
+ACM Trans. Asian Lang. Inf. Process., vol. 8, no. 1, pp. 3:1–3:23,
+2009.
+[23] C. Tsai, H. Hung, K. Chen, and B. Chen, “Extractive speech sum-
+marization leveraging convolutional neural network techniques,”
+in Proc. of SLT.
+IEEE, 2016, pp. 158–164.
+[24] A. Ogawa, T. Hirao, T. Nakatani, and M. Nagata, “Ilp-based com-
+pressive speech summarization with content word coverage maxi-
+mization and its oracle performance analysis,” in Proc. of ICASSP.
+IEEE, 2019, pp. 7190–7194.
+[25] S. Schneider, A. Baevski, R. Collobert, and M. Auli, “wav2vec:
+Unsupervised pre-training for speech recognition,” in Proc. of In-
+terSpeech.
+ISCA, 2019, pp. 3465–3469.
+[26] A. M. Rush, S. Chopra, and J. Weston, “A neural attention model
+for abstractive sentence summarization,” in Proc. of EMNLP.
+ACL, 2015, pp. 379–389.
+[27] J. Zhang, Y. Zhao, H. Li, and C. Zong, “Attention with sparsity
+regularization for neural machine translation and summarization,”
+IEEE ACM Trans. Audio Speech Lang. Process., vol. 27, no. 3,
+pp. 507–518, 2019.
+[28] J. Pilault, R. Li, S. Subramanian, and C. Pal, “On extractive and
+abstractive neural document summarization with transformer lan-
+guage models,” in Proc. of EMNLP. ACL, 2020, pp. 9308–9319.
+[29] K. Matsuura, T. Ashihara, T. Moriya, T. Tanaka, T. Kano,
+A. Ogawa, and M. Delcroix, “Transfer learning from pre-trained
+language models improves end-to-end speech summarization,” in
+Proc. of InterSpeech.
+ISCA, 2023, pp. 2943–2947.
+[30] A. Radford, J. W. Kim, T. Xu, G. Brockman, C. McLeavey, and
+I. Sutskever, “Robust speech recognition via large-scale weak su-
+pervision,” in ICML, ser. Proceedings of Machine Learning Re-
+search, vol. 202.
+PMLR, 2023, pp. 28 492–28 518.
+[31] M. Wang, W. Han, I. Shafran, Z. Wu, C. Chiu, Y. Cao, N. Chen,
+Y. Zhang, H. Soltau, P. K. Rubenstein, L. Zilka, D. Yu, G. Pun-
+dak, N. Siddhartha, J. Schalkwyk, and Y. Wu, “SLM: bridge the
+thin gap between speech and text foundation models,” in Proc. of
+ASRU.
+IEEE, 2023, pp. 1–8.
+[32] T. Zhang, V. Kishore, F. Wu, K. Q. Weinberger, and Y. Artzi,
+“Bertscore: Evaluating text generation with BERT,” in Proc. of
+ICLR.
+OpenReview.net, 2020.
+[33] R. Fukuda, T. Kano, A. Ando, and A. O. and, “Speech emotion
+recognition based on
+large-scale automatic speech recognizer,” in Proc. of ICASSP.
+IEEE, 2025, p. To be appear.
+[34] S. Watanabe, T. Hori, S. Karita, T. Hayashi, J. Nishitoba, Y. Unno,
+N. Enrique Yalta Soplin, J. Heymann, M. Wiesner, N. Chen,
+A. Renduchintala, and T. Ochiai, “ESPnet: End-to-end speech
+processing toolkit,” in InterSpeech, 2018, pp. 2207–2211.
+[35] C. Raffel, N. Shazeer, A. Roberts, K. Lee, S. Narang, M. Matena,
+Y. Zhou, W. Li, and P. J. Liu, “Exploring the limits of transfer
+learning with a unified text-to-text transformer,” J. Mach. Learn.
+Res., vol. 21, pp. 140:1–140:67, 2020.
+[36] I. Loshchilov and F. Hutter, “Decoupled weight decay regulariza-
+tion,” in Proc. of ICLR.
+OpenReview.net, 2019.
+[37] L. Chin-Yew, “ROUGE: A package for automatic evaluation of
+summaries,” in Workshop on Text Summarization Branches Out.
+ACL, 2004, pp. 74–81.
+285

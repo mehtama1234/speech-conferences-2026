@@ -1,0 +1,544 @@
+Private kNN-VC: Interpretable Anonymization of Converted Speech
+Carlos Franzreb1, Arnab Das1, Tim P olzehl1, Sebastian M¨oller2
+1German Research Center for Artificial Intelligence, Germany
+2Technical University of Berlin, Germany
+carlos.franzreb@dfki.de
+Abstract
+Speaker anonymization seeks to conceal a speaker’s identity
+while preserving the utility of their speech. The achieved privacy
+is commonly evaluated with a speaker recognition model trained
+on anonymized speech. Although this represents a strong attack,
+it is unclear which aspects of speech are exploited to identify the
+speakers. Our research sets out to unveil these aspects. It starts
+with kNN-VC, a powerful voice conversion model that performs
+poorly as an anonymization system, presumably because of prosody
+leakage. To test this hypothesis, we extend kNN-VC with two
+interpretable components that anonymize the duration and variation
+of phones. These components increase privacy significantly, proving
+that the studied prosodic factors encode speaker identity and are
+exploited by the privacy attack. Additionally, we show that changes
+in the target selection algorithm considerably influence the outcome
+of the privacy attack.
+Index T erms: speaker anonymization, voice conversion, inter-
+pretability
+1. Introduction
+Speaker anonymization has become an active field of research
+since the first edition of the V oicePrivacy Challenge (VPC) [1],
+which provides an evaluation protocol to assess the strength of
+anonymization systems. The evaluation simulates an attack on
+the anonymized speech, leveraging a speaker recognition model
+trained to discriminate anonymized speakers by learning their
+characteristics. In the VPC task, the spoken content is ignored.
+Identifying speakers from text is a different task with its own
+challenges [2]. Privacy is measured in terms of its trade-off with
+utility, which should be preserved throughout anonymization. How
+utility is defined depends on the use case; the VPC 2024 [3] focuses
+on human perception, measuring utility with speech and emotion
+recognition models trained on original speech.
+V oice Conversion (VC) models change the speaker identity
+of speech from a source speaker to a target speaker [4]. Their
+goal is to produce speech with great target similarity, which is
+complementary to the anonymization’s goal of concealing the
+source speaker. kNN-VC [5] is a popular VC model because of its
+simplicity, versatility and the high quality of the converted speech.
+It works for multiple languages without re-training the vocoder [6],
+and also for any target speaker for which sufficient speech data is
+available (5 minutes according to their experiments).
+Despite achieving state-of-the-art results on subjective target
+speaker similarity, kNN-VC fails to conceal the source speaker’s
+identity according to several publications that use the VPC 2024
+objective evaluation [6, 7, 8, 9]. Most authors argue that the identity
+leakage arises from prosodic features, i.e. the intonational and rhyth-
+mic aspects of speech [10]. Recent work has shown that prosody is
+leveraged by the attacker of the VPC evaluation to identify speakers
+by experimenting with deep prosodic representations [11], pitch con-
+tours [12] and phone durations [13, 14], making prosody a good can-
+didate for explaining kNN-VC’s poor privacy. However, this hypoth-
+esis has not been empirically proven yet. More generally, identifying
+the aspects of speech which are exploited by the attacker to identify
+anonymized speakers is an active field of research. This is due to the
+complex nature of speech, which makes model explainability chal-
+lenging [15], as well as to the deep architectures used for anonymiza-
+tion, whose behavior is unpredictable and hard to understand [16].
+Anonymizing different aspects of speech independently can
+help us understand how the attacker identifies speakers, as we can
+perform ablation studies looking at each aspect individually, as
+well as studying their possible combinations. [17] proposes such
+an anonymization system, conditioning the vocoder on the phone
+durations as well as on the pitch and energy contours of the source
+speech. Pitch and energy contours are anonymized by applying a
+random percentage offset to each individual value. However, the
+system achieves perfect privacy on the VPC 2022 evaluation even
+when using the original prosodic features, leaving unclear how the
+anonymization of pitch and energy impacts privacy.
+We propose a similar approach to enhance the anonymization ca-
+pabilities of kNN-VC, targeting two aspects of prosody: the duration
+and variation of phones. We anonymize phone durations by predict-
+ing new durations from the phonetic transcript of the source speech,
+following an approach used for text-to-speech [18]. To manipulate
+phonetic variation, we quantize the target speech with k-means clus-
+tering. Fewer clusters result in a lower resolution of information
+available for the neighbor selection of kNN-VC, thereby restrict-
+ing individual expressive characteristics. The two aspects can be
+anonymized independently, and in different levels of strength, allow-
+ing us to assess their effect in the results of the VPC 2024 evaluation.
+In our experiments, we observed that target selection signif-
+icantly impacted the privacy outcomes in the VPC 2024 evaluation,
+even though our anonymization system performs consistently across
+all target speakers, as confirmed by the utility evaluation. This
+discrepancy underscores the sensitivity and nuance of privacy
+assessment. We conduct additional experiments to analyze the
+attacker’s behavior in relation to target speaker selection and discuss
+the broader implications of our findings.
+The code and weights for the proposed anonymization system
+are open-source1. It is implemented in SpAnE [19], where the
+inference takes place, and evaluated with the VPC 2024 [3].
+2. Anonymization system
+kNN-VC [5] is an any-to-any VC model. It first extracts features
+from both source and target speech using WavLM [20], a speech
+language model. Then, each source feature is replaced with the aver-
+1https://github.com/carlosfranzreb/private_
+knnvc
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+3224 10.21437/Interspeech.2025-820
+Figure 1: Private kNN-VC: purple components are the same as
+those of kNN-VC.S is the source speech,T is the target speaker’s
+speech, andA is the anonymized speech.
+age of its four nearest target features according to cosine similarity.
+This works because the representation space of speech language
+models like WavLM is heavily influenced by phones [21]. The
+converted features are synthesized with a HiFi-GAN vocoder [22]
+trained on data that simulates the kNN conversion by replacing the
+features of each training sample with others from the same speaker.
+We enhance kNN-VC for speaker anonymization by adding
+two trained predictors (see Figure 1). The phone predictor assigns a
+phone to each WavLM feature, while the duration predictor estimates
+the duration of each phone in a phonetic transcript. The transcript
+is obtained by removing consecutive occurrences from the sequence
+of predicted phones. Both predictors share the same convolutional
+architecture as the variance predictors from FastSpeech2 [18].
+2.1. Phone predictor
+The phone predictor is trained with the same data used by SUPERB
+[23] for their phone recognition task. It consists of the Librispeech
+train-clean-100dataset [24], for which the aligned phones were
+predicted with a g2p model. The alphabet is based on the CMU
+dictionary2: there are 41 phones and lexical stress is ignored. 80% of
+the data is used for training, 10% for validation and 10% for testing.
+We train this predictor with two losses: cross entropy and
+connectionist temporal classification (CTC) [25]. Cross entropy
+considers the accuracy of each prediction, while CTC considers the
+whole phonetic transcript, without duplicates. Combining these two
+losses, the resulting phone predictor is both accurate and produces a
+clean phonetic transcript. (ACC=92% and PER=2% on the held-out
+test set). It took 4 hours to train on one NVIDIA RTXA6000 GPU.
+2.2. Controlling the phonetic variation
+Recent work on voice conversion shows that quantizing features
+of speech language models can be used for manipulating voice
+characteristics [26] and disentangling prosodic features [ 27].
+Inspired by their approaches, we use the phone predictor to quantize
+the target features. We group the target features based on their
+predicted phones, and then cluster each group with k-means [28].
+The cluster centers are used for the conversion step instead of
+the target features. The number of clusters determines how many
+representations of each phone are available for the conversion,
+which ultimately controls the phonetic variation of the anonymized
+speech. As the clustering already aggregates features, each source
+feature is exchanged with its nearest cluster center, rather than
+averaging the four nearest neighbors as in kNN-VC.
+2http://www.speech.cs.cmu.edu/cgi-bin/cmudict
+2.3. Duration predictor
+The duration predictor is trained like the one from FastSpeech2 [18],
+with 24 hours of speech from a single LJSpeech speaker [29]. and
+the mean squared error (MSE) loss. For a given speech sample, the
+true duration of each phone is its number of consecutive predictions
+by our phone predictor. Improvement on the validation set stagnates
+after 20 epochs. The test loss is MSE=4.4. Once the true durations
+have been computed, training the duration predictor takes less than
+a minute in an Apple M1 chip. At inference time, the predicted
+durations are applied by evenly sampling features from the actual
+range of source features. For example, if a phone has a true duration
+of 5 features, but the predicted duration is 3, we remove the second
+and fourth features. If the predicted duration is larger than the true
+duration, we duplicate the intermediate features.
+Since the duration predictor is trained on data from a single
+speaker, its predictions are not conditioned on the target speaker
+selected for anonymization, hindering target fidelity. However, our
+goals are to protect the source speaker’s identity and to preserve
+the speech’s utility; neither is compromised by poor target fidelity.
+2.4. Nomenclature for model configurations
+The degrees of manipulation for the duration and variation of phones
+are defined by two parameters. The first parameter is the weightw∈
+[0,1], assigned to the predicted durationsp. They are summed with
+the true durationst, whose weight is1−w, to produce the durations
+d, as shown in Equation 1 below. The second parameter is the
+number of clusters used to quantize the target features of each phone.
+The two parameter values are used to identify each configuration.
+For clarity,w is expressed as a number between 1 and 10. For
+example, a configuration withw =0.7 and 8 clusters is named(7-8).
+d=w·p+(1−w)·t (1)
+3. Evaluation
+We evaluate our anonymization system with the official imple-
+mentation of the VPC 2024 [3]. As target speakers, we use 100
+speakers from the LibriTTS [30] train-other-500dataset, evenly
+distributed across genders. The target selection algorithm randomly
+selects a target speaker while preserving the source speaker’s gender.
+It is applied independently to each utterance, allowing different
+utterances from the same source to be anonymized with different
+target speakers.
+Privacy is measured with a speaker recognition model trained
+on anonymized Librispeechtrain-clean-360data [24], and evaluated
+on a verification setup with the Librispeech test-clean dataset.
+Speaker embeddings of trial and enrollment utterances are compared
+with cosine similarity. The evaluation metric is the equal error rate
+(EER). EER=0% means that all pairs of samples were correctly
+recognized, and EER=50% is the best achievable result in terms
+of privacy. We average results for male and female trials, which
+are reported separately by the VPC 2024 framework. For a few
+configurations, the male EER was up to 6% higher than the female
+EER; otherwise, the results were similar. For the averaging to be
+fair, EER values above 50% are replaced by their subtraction from
+100 (i.e. 100−EER). EERs exceeding 50% only occur when the
+EER is close to 50%, because of the thresholding procedure.
+The VPC 2024 measures utility with models trained on original
+data. Intelligibility is estimated with the word error rate (WER)
+of a speech recognition model trained on LibriSpeech. Emotion
+preservation is estimated with the unweighted average recall (UAR)
+of an emotion recognition model trained and evaluated on the
+speech samples of IEMOCAP [31]. Recent experiments have
+3225
+revealed a significant discrepancy between objective and subjective
+utility measures in anonymized speech [32]. Note that in our
+analysis, the terms intelligibility and emotion preservation are used
+exclusively to describe the outcomes of the objective evaluation,
+without implying a direct correlation to subjective perception.
+4. Experiments
+We experiment with different configurations of our model to
+investigate how each of the prosodic aspects (duration and variation
+of phones) affect the privacy attack. For each parameter, we have
+selected four values. Phonetic variation is anonymized with 32, 16
+or 8 clusters, or not anonymized, which we define as zero in our
+configuration identifiers. Zero means that no clustering is performed,
+i.e. all available target features are candidates for the conversion.
+Using fewer than eight clusters is possible, but it adversely affects in-
+telligibility. For the duration weightw, we use values 0, 0.3, 0.7 and
+1. Zero means that the phone durations are not modified, and one
+means that the predicted phone durations are used without summing
+them with the true durations at all. Each experiment takes roughly
+5 hours on a RTXA6000 GPU. We compare the proposed system
+with the original kNN-VC and the baselines from the VPC 2024 [3].
+4.1. Phone duration and variation
+Figures 2 and 3 depict the privacy-utility trade-offs computed with
+the VPC 2024 framework. Figure 2 shows a scatter plot of privacy
+against intelligibility. The ideal anonymization system would output
+highly intelligible speech while enhancing privacy. In the plot, such
+a system would lie in the top-right corner. Figure 3 shows privacy
+against emotion preservation. In this plot, the ideal anonymization
+system would also lie in the top-right corner.
+A slight anonymization of the phone duration (w =3) improves
+the privacy of kNN-VC from 10% to 15% in terms of EER.
+Increasing the weight further increases the EER up to 22.5%. The
+difference in EER between(7-0) and (10-0) is negligible. These
+results show that phone durations encode speaker identity, and that
+the attacker exploits them to recognize the source speakers. Both
+intelligibility and emotion preservation decrease monotonically for
+increasing values ofw. Compared with the VPC baselines,(7-0)
+ranks second in terms of intelligibility with WER=4%, and third
+in emotion preservation with UAR=43%, while providing better
+privacy than the baselines with better utility (22.2% EER, against
+6.1% of B1 and 4.5% of B2). We attribute the loss in intelligibility
+to the errors made by our predictors; emotion preservation decreases
+because our duration predictor does not consider the emotion of
+the source speech, which influences rhythm and stress patterns.
+Reducing the phonetic variation of the anonymized speech is
+more effective at protecting the source speakers’ identities than
+altering phone durations. (0-32), which constitutes the smallest
+constraint possible of the phonetic variation in our experiments,
+achieves the same EER as the complete anonymization of phone
+durations (EER=22.5%). Reducing the number of clusters further
+continually improves the EER up to 49.6% for 8 clusters. Regard-
+ing utility, reducing the phonetic variation has a lower impact on
+intelligibility than altering the phone durations, with a max. WER
+of 4.7%. The degradation of emotion preservation is compara-
+ble for both anonymization techniques. Our experiments where
+both the variation and duration of phones are anonymized show
+that these two techniques are complementary.(3-16) achieves an
+EER of 49.9% and provides the same utility as(0-16) (WER=4%,
+UAR=42%). V ariation can be increased while increasing phone du-
+ration anonymization, without a loss in privacy, as shown by(7-32).
+4.2. Best configurations
+Table 1:VPC 2024 evaluation results. A suffix in our configuration
+identifiers means that a different target selection algorithm was used:
+c stands for cross-gender;r stands for random, andd for disjoint.
+Model Emotion ↑ Intelligibility↓ Privacy↑
+UAR (%) WER (%) EER (%)
+Original 71 1.8 4.6
+B1 43 2.9 6.1
+B2 53 10.0 4.5
+B3 38 4.4 27.3
+B4 43 5.9 30.3
+B5 38 4.4 34.3
+B6 36 9.1 21.1
+kNN-VC 50 2.9 10.4
+Ours (0-32) 44 3.5 22.5
+Ours (0-8) 41 4.7 49.6
+Ours (3-16) 42 4.0 49.9
+Ours (7-8) 39 5.7 48.5
+Ours (0-32)c 42 3.8 23.4
+Ours (0-8)c 38 4.7 49.3
+Ours (3-16)c 40 4.2 49.0
+Ours (7-8)c 37 5.9 48.8
+Ours (0-32)r 42 3.7 17.8
+Ours (0-8)r 39 4.8 18.3
+Ours (3-16)r 40 4.3 19.1
+Ours (7-8)r 37 5.7 26.6
+Ours (10-8)r 35 7.3 29.4
+Ours (0-8)d,1 40 4.7 48.4
+Ours (0-8)d,2 40 4.8 49.4
+The configurable nature of our model makes it adaptable to dif-
+ferent privacy requirements. The VPC also evaluates models in this
+way, to account for different use cases of anonymization [3]. The
+motivation behind this is the trade-off between privacy and utility.
+Use cases that don’t require as much privacy may therefore benefit
+from better utility. Table 1 shows the VPC 2024 evaluation results
+for the baselines and some of our configurations. kNN-VC offers
+the best utility, but little privacy. Our extensions of it offer gradual
+improvements in privacy. Privacy can be improved by reducing the
+phonetic variation, with(0-32) doubling the EER of kNN-VC, and
+(0-8) achieving almost perfect privacy according to the results of
+this evaluation. Removing phone duration anonymization makes
+the model simpler and faster, as the duration predictor is not needed.
+However, for use cases that require more phonetic variation, the
+addition of the phone duration anonymization allows us to increase
+the number of clusters without a loss in privacy, as shown by(3-16).
+5. Effect of target selection on privacy
+Our model picks target speakers randomly, but preserves the gender
+of the source speaker. Randomness ensures unlinkability, i.e.
+that source speakers cannot be identified by attacking solely the
+target selection algorithm [12]. Preserving gender is a reasonable
+requirement for many use cases, as it facilitates fairer evaluations
+of the anonymized datasets, helping to identify and mitigate
+potential biases. Previous work also reports improved target speaker
+similarity in other extensions of kNN-VC when same-gender
+3226
+Figure 2:Privacy vs. intelligibility
+ Figure 3:Privacy vs. emotion preservation
+ Figure 4:No. of targets vs. privacy
+conversion is enforced [33]. We observe similar results: the
+configuration identifiers in Table 1 that havec as a suffix refer to
+experiments where cross-gender conversion is enforced, instead
+of same-gender conversion. Cross-gender conversion decreases
+emotion preservation between 2% and 3% UAR. Intelligibility is
+also consistently worse, but the difference is marginal. Privacy is
+not affected significantly by the gender of the target speaker.
+We have also run the same experiments as before, but with
+completely random target selection, ignoring gender. The results
+are shown in Table 1, where the configuration identifiers haver as a
+suffix. The EER of all configurations of our model which achieved
+EERs close to 50% under the same-gender constraint decrease
+by over 20%. The highest EER achieved for completely random
+target selection is 29.4%, obtained with (10-8)r, the strongest
+configuration possible in terms of privacy in our experiments. In
+this section, we perform two additional experiments to analyze how
+target selection affects the efficacy of the attack.
+5.1. Effect of gender constraint on privacy
+As the privacy achieved by same-gender and cross-gender conver-
+sion is similar, we hypothesize that the attacker is being confused by
+the two disjoint sets of targets, regardless of the gender distribution of
+the two sets. We test this by splitting the 100 target speakers into two
+groups, where each group has 25 female and 25 male members. One
+group is used to anonymize female source speakers, and the other for
+male source speakers. In this way, there are still two disjoint sets of
+targets, but they both comprise an even distribution across genders.
+We have run this experiment for the two possible combinations of
+target set and source gender for the configuration(0-8). The results
+of this experiment are reported in Table 1, with the suffixesd,1 and
+d,2. These experiments yield the same privacy results as when a gen-
+der constraint is placed on the target selection: the EERs are close
+to 50%. Thus, it is not gender that is confounding the attacker, but
+having two disjoint sets of target speakers, each of them being used
+to anonymize roughly half of the training and evaluation samples.
+5.2. Effect of number of targets on privacy
+The results presented until now suggest that the attacker is learning
+particularities about each target, instead of looking for remaining
+information about the source speakers in the anonymized speech.
+Its ability to recognize speakers is therefore likely to be impacted by
+the number of targets used. To test this effect, we have anonymized
+our model (7-8) with different numbers of targets. The privacy
+results are shown in Figure 4. When target selection is completely
+random, privacy saturates at an EER of 27%, achieved with 100
+targets. When the same-gender constraint is added to the selection
+algorithm, privacy already nears 50% for 25 target speakers.
+6. Limitations
+We identify three areas of improvement for the proposed system:
+privacy, interpretability and emotion preservation.
+The large difference in EER when the target selection algorithm
+is changed leads us to believe that there is still personally identifiable
+information (PII) in the anonymized speech produced by our
+system, although the attacker fails to exploit it for certain target
+selections. Related work has shown that some selection algorithms
+may confound the attacker, leading to an overestimation of privacy
+[12]. Same-gender selection seems to be such an algorithm in our
+case, but only for certain configurations. Our current experiments
+can only discard phone duration as the cause of the privacy leakage;
+timbre and phonetic variation could still contain PII. It is also unclear
+whether certain target speakers provide better anonymization than
+others. Acoustic differences between source and target speakers
+could impact the results of the kNN conversion.
+Differences between target speakers also hinder the inter-
+pretability of phonetic variation. We cannot ensure that the
+clustering algorithm constrains phonetic variation in the same way
+for all target speakers. The effect of these differences in the results
+of our experiments is unclear. Interpretability could be further
+improved by increasing the granularity of phonetic variation, which
+can be replaced by pitch, energy and other prosodic aspects.
+Lastly, we do not consider the emotion of the source speech
+in our anonymization system. Addressing this should improve the
+utility of the anonymized speech. To enhance emotion preservation
+without leaking speaker identity, we need to recognize emotions,
+and to model how the target speakers expresses them. For example,
+the duration predictor could be trained with an emotional dataset,
+conditioning the durations on the emotion of each sample.
+7. Conclusion
+We propose an interpretable extension of kNN-VC for speaker
+anonymization. Each anonymization technique is specific and con-
+figurable, allowing us to research its effect on utility and privacy. Our
+experiments show that the variation and duration of phones encode
+speaker identity, which the VPC 2024 attacker exploits to identify
+speakers. Constraining the phonetic variation provides stronger
+anonymization than altering the phone durations. Their combination
+allows our system to cater to different utility requirements without
+losing privacy. Unexpectedly, our experiments demonstrate that
+target selection significantly influences objective privacy evaluations,
+indicating that residual PII persists in the anonymized speech.
+3227
+8. Acknowledgements
+Funded by Federal Ministry of Education and Research, Germany
+(BMBF 16KIS2048).
+9. References
+[1] N. Tomashenko, B. M. L. Srivastava, X. Wang, E. Vincent, A. Nautsch,
+J. Y amagishi, N. Evans, J. Patino, J.-F. Bonastre, P .-G. No´e, and
+M. Todisco, “Introducing the V oicePrivacy Initiative,” inInterspeech
+2020. ISCA, 2020, pp. 1693–1697.
+[2] Y . Sinha, M. Raivakhovskyi, M. Schubert, and I. Siegert, “Safe-
+guarding Speech Content Style: Enhancing Privacy Beyond Speaker
+Identity,” in 4th Symposium on Security and Privacy in Speech
+Communication. ISCA, Sep. 2024, pp. 92–101.
+[3] N. Tomashenko, X. Miao, P . Champion, S. Meyer, X. Wang,
+E. Vincent, M. Panariello, N. Evans, J. Y amagishi, and M. Todisco,
+“The voiceprivacy 2024 challenge evaluation plan,”arXiv preprint
+arXiv:2404.02677, 2024.
+[4] B. Sisman, J. Y amagishi, S. King, and H. Li, “An Overview of V oice
+Conversion and Its Challenges: From Statistical Modeling to Deep
+Learning,”IEEE/ACM Transactions on Audio, Speech, and Language
+Processing, vol. 29, pp. 132–157, 2021.
+[5] M. Baas, B. van Niekerk, and H. Kamper, “V oice Conversion With
+Just Nearest Neighbors,” inInterspeech 2023. ISCA, Aug. 2023,
+pp. 2053–2057.
+[6] C. Franzreb, A. Das, H. Gieseler, E. C. Jahn, T. Polzehl, and S. M¨oller,
+“Towards Audiovisual Anonymization for Remote Psychotherapy: a
+Subjective Evaluation,” in4th Symposium on Security and Privacy
+in Speech Communication. ISCA, 2024, pp. 102–110.
+[7] Z. Cai, H. Li Xinyuan, A. Grag, L. P . Garc ´ıa-Perera, K. Duh,
+S. Khudanpur, N. Andrews, and M. Wiesner, “Privacy versus emotion
+preservation trade-offs in emotion-preserving speaker anonymization,”
+in IEEE Spoken Language T echnology W orkshop, 2024.
+[8] S. Ghosh, M. Jouaiti, A. Das, Y . Sinha, T. Polzehl, I. Siegert, and
+S. Stober, “Anonymising Elderly and Pathological Speech: V oice
+Conversion Using DDSP and Query-by-Example,” inInterspeech
+2024. ISCA, Sep. 2024, pp. 4438–4442.
+[9] A. Das, C. Franzreb, T. Herzig, P . Pirlet, and T. Polzehl, “Comparing
+speech anonymization efficacy by voice conversion using knn and
+disentangled speaker feature representations,” in4th Symposium on
+Security and Privacy in Speech Communication. ISCA, Sep. 2024,
+pp. 121–126.
+[10] D. Jurafsky and J. H. Martin, Speech and language processing:
+an introduction to natural language processing, computational
+linguistics, and speech recognition, ser. Prentice Hall series in artificial
+intelligence. Upper Saddle River, N.J: Prentice Hall, 2000.
+[11] N. Gengembre, O. Le Blouch, and C. Gendrot, “Disentangling prosody
+and timbre embeddings via voice conversion,” inInterspeech 2024.
+ISCA, Sep. 2024, pp. 2765–2769.
+[12] P . Champion, “Anonymizing Speech: Evaluating and Designing
+Speaker Anonymization Techniques,” Ph.D. dissertation, University
+of Lorraine, 2023.
+[13] Q. Jin, A. R. Toth, T. Schultz, and A. W. Black, “Speaker de-
+identification via voice transformation,” in2009 IEEE W orkshop
+on Automatic Speech Recognition & Understanding, Nov. 2009, pp.
+529–533.
+[14] N. Tomashenko, E. Vincent, and M. Tommasi, “Analysis of Speech
+Temporal Dynamics in the Context of Speaker V erification and V oice
+Anonymization,” in2025 IEEE International Conference on Acoustics,
+Speech and Signal Processing (ICASSP), 2025.
+[15] D. Fucci, B. Savoldi, M. Gaido, M. Negri, M. Cettolo, L. Bentivogli
+et al., “Explainability for speech models: On the challenges of acoustic
+feature selection,” inProceedings of the T enth Italian Conference on
+Computational Linguistics (CLiC-it 2024), 2024.
+[16] C. Rudin, “Stop explaining black box machine learning models for
+high stakes decisions and use interpretable models instead,”Nature
+Machine Intelligence, vol. 1, no. 5, pp. 206–215, May 2019.
+[17] S. Meyer, F. Lux, J. Koch, P . Denisov, P . Tilli, and N. T. Vu, “Prosody
+Is Not Identity: A Speaker Anonymization Approach Using Prosody
+Cloning,” inICASSP 2023 - 2023 IEEE International Conference on
+Acoustics, Speech and Signal Processing (ICASSP), Jun. 2023, pp. 1–5.
+[18] Y . Ren, C. Hu, X. Tan, T. Qin, S. Zhao, Z. Zhao, and T.-Y . Liu,
+“Fastspeech 2: Fast and high-quality end-to-end text to speech,” in
+International Conference on Learning Representations, 2021.
+[19] C. Franzreb, T. Polzehl, and S. M¨oller, “A Comprehensive Evaluation
+Framework for Speaker Anonymization Systems,” in3rd Symposium
+on Security and Privacy in Speech Communication. ISCA, 2023,
+pp. 65–72.
+[20] S. Chen, C. Wang, Z. Chen, Y . Wu, S. Liu, Z. Chen, J. Li, N. Kanda,
+T. Y oshioka, X. Xiao, J. Wu, L. Zhou, S. Ren, Y . Qian, Y . Qian,
+M. Zeng, X. Y u, and F. Wei, “Wavlm: Large-scale self-supervised
+pre-training for full stack speech processing,”IEEE Journal of Selected
+T opics in Signal Processing, vol. 16, pp. 1–14, 10 2022.
+[21] A. Sicherman and Y . Adi, “Analysing Discrete Self Supervised Speech
+Representation For Spoken Language Modeling,” inICASSP 2023 -
+2023 IEEE International Conference on Acoustics, Speech and Signal
+Processing (ICASSP), Jun. 2023, pp. 1–5, iSSN: 2379-190X.
+[22] J. Kong, J. Kim, and J. Bae, “Hifi-gan: Generative adversarial networks
+for efficient and high fidelity speech synthesis,”Advances in Neural
+Information Processing Systems, vol. 33, pp. 17 022–17 033, 2020.
+[23] S.-w. Y ang, P .-H. Chi, Y .-S. Chuang, C.-I. J. Lai, K. Lakhotia, Y . Y .
+Lin, A. T. Liu, J. Shi, X. Chang, G.-T. Lin, T.-H. Huang, W.-C. Tseng,
+K.-t. Lee, D.-R. Liu, Z. Huang, S. Dong, S.-W. Li, S. Watanabe,
+A. Mohamed, and H.-y. Lee, “SUPERB: Speech Processing Universal
+PERformance Benchmark,” inInterspeech 2021. ISCA, Aug. 2021,
+pp. 1194–1198.
+[24] V . Panayotov, G. Chen, D. Povey, and S. Khudanpur, “Librispeech: An
+ASR corpus based on public domain audio books,” inProc. ICASSP
+2015 - 40 th Annual IEEE International Conference on Acoustics,
+Speech and Signal Processing (ICASSP), Brisbane, Australia, Apr.
+2015, pp. 5206–5210.
+[25] A. Graves, S. Fern´andez, F. Gomez, and J. Schmidhuber, “Connection-
+ist temporal classification: labelling unsegmented sequence data with
+recurrent neural networks,” inProceedings of the 23rd International
+Conference on Machine Learning, ser. ICML ’06. New Y ork, NY ,
+USA: Association for Computing Machinery, 2006, p. 369–376.
+[26] W. Zhou, F. Zhang, Y . Liu, W. Guan, Y . Zhao, and H. Qu, “Zero-Shot
+Sing V oice Conversion: built upon clustering-based phoneme
+representations,” Sep. 2024, arXiv:2409.08039 [cs, eess].
+[27] Y . Sim, J. Y oon, and Y .-J. Suh, “SKQVC: One-Shot V oice Con-
+version by K-Means Quantization with Self-Supervised Speech
+Representations,” Nov. 2024, arXiv:2411.16147.
+[28] J. A. Hartigan, M. A. Wonget al., “A k-means clustering algorithm,”
+Applied statistics, vol. 28, no. 1, pp. 100–108, 1979.
+[29] K. Ito and L. Johnson, “The lj speech dataset,” https:
+//keithito.com/LJ-Speech-Dataset/, 2017.
+[30] H. Zen, V . Dang, R. Clark, Y . Zhang, R. J. Weiss, Y . Jia, Z. Chen, and
+Y . Wu, “Libritts: A corpus derived from librispeech for text-to-speech,”
+in Interspeech 2019, 2019, pp. 1526–1530.
+[31] C. Busso, M. Bulut, C.-C. Lee, A. Kazemzadeh, E. Mower, S. Kim,
+J. N. Chang, S. Lee, and S. S. Narayanan, “Iemocap: Interactive
+emotional dyadic motion capture database,”Language resources and
+evaluation, vol. 42, pp. 335–359, 2008.
+[32] M. Panariello, N. Tomashenko, X. Wang, X. Miao, P . Champion,
+H. Nourtel, M. Todisco, N. Evans, E. Vincent, and J. Y amagishi,
+“The voiceprivacy 2022 challenge: Progress and perspectives in voice
+anonymisation,”IEEE/ACM Trans. Audio, Speech and Lang. Proc.,
+vol. 32, p. 3477–3491, Jul. 2024.
+[33] D. Liu, Y . Lin, H. Bu, and M. Li, “Two-stage and Self-supervised
+V oice Conversion for Zero-Shot Dysarthric Speech Reconstruction,”
+International Conference on Asian Language Processing, 2024.
+3228

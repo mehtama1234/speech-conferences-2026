@@ -1,0 +1,607 @@
+FD-Bench: A Full-Duplex Benchmarking Pipeline Designed for Full Duplex
+Spoken Dialogue Systems
+Yizhou Peng1,2, Yi-Wen Chao2, Dianwen Ng2, Yukun Ma3, Chongjia Ni3, Bin Ma3, Eng Siong Chng2
+1Alibaba-NTU Global e-Sustainability CorpLab, Nanyang Technological University, Singapore
+2College of Computing and Data Science, Nanyang Technological University, Singapore
+3Alibaba, Alibaba Inc., Singapore
+peng.yizhou@ntu.edu.sg
+Abstract
+Full-duplex spoken dialogue systems (FDSDS) enable more
+natural human–machine interactions by allowing real-time user
+interruptions and backchanneling, compared to traditional SDS
+that rely on turn-taking. However, existing benchmarks lack
+metrics for FD scenes, e.g., evaluating model performance dur-
+ing user interruptions. In this paper, we present a comprehen-
+sive FD benchmarking pipeline utilizing LLMs, TTS, and ASR
+to address this gap. It assesses FDSDS’s ability to handle user
+interruptions, manage delays, and maintain robustness in chal-
+lenging scenarios with diverse novel metrics. We applied our
+benchmark to three open-source FDSDS (Moshi, Freeze-omni,
+and VITA-1.5) using over 40 hours of generated speech, with
+293 simulated conversations and 1,200 interruptions. The re-
+sults show that all models continue to face challenges, such as
+failing to respond to user interruptions, under frequent disrup-
+tions and noisy conditions. Demonstrations, data, and code will
+be released.1
+Index Terms : Large Language Models, Evaluation, Full-
+Duplex Spoken Dialogue Systems
+1. Introduction
+Spoken dialogue systems (SDS) enable natural human-machine
+interactions through spoken language. Traditionally, SDS were
+built using cascaded architectures—such as the early Google
+Duplex [1]—which relied on sequentially processing inputs
+through modular components (ASR, Speech Interruption Han-
+dler, NLU, and TTS), a design that, while groundbreaking, often
+suffered from latency issues and error accumulation. Recently,
+end-to-end (E2E) SDS like AudioGPT [2], SpeechGPT [3],
+Mini-Omni [4], and GLM4 [5] have emerged, leveraging large
+language models (LLMs) such as pretrained Llama3 [6], and
+Qwen [7] with simplified architectures to reduce latency and
+improve accuracy significantly. Additionally, since the speed
+of speech generation also constrains the performance of SDS,
+an improved diffusion method [8] focuses on achieving faster
+and more responsive speech synthesis. However, despite these
+advances, most current SDS remain turn-taking-based, which
+limits their ability to replicate the fluidity of human conversa-
+tion. To overcome this limitation, full-duplex SDS (FDSDS) —
+exemplified by Moshi [9], Freeze-Omni [10], OmniFlatten [11],
+and Minmo [12]—have been introduced, enabling simultaneous
+speaking and listening, effectively handling real-time conversa-
+tional dynamics such as interruptions, affirmations, backchan-
+neling, and topic shifts [13, 14].
+These developments have spurred the creation of several
+benchmarks that standardize system evaluation. Researchers
+1https://github.com/pengyizhou/FD-Bench
+actively assess these systems’ understanding, reasoning, and
+speech generation capabilities, as well as their accuracy in
+solving various problems [15, 16]. Moreover, studies investi-
+gate how diverse speech styles, such as varying accents, ages,
+speeds, and volumes, enhance overall system performance [17].
+However, these metrics are predominantly assessing the model
+performance turn-by-turn instead of a full-duplex manner. This
+means the users wait until the model finishes speaking before
+responding, which doesn’t mirror real-world interactions where
+people engage with one another in real time.
+In this work, we propose a comprehensive benchmarking
+pipeline for FDSDS that addresses the previously unmet need
+for full-duplex capability evaluation. It automates dialogue gen-
+eration, speech corpus simulation, and multi-criteria assessment
+using LLMs, TTS, and ASR technologies. This end-to-end
+pipeline is scalable to larger datasets, making it applicable to
+any FDSDS without requiring manual evaluation of the model
+output.
+This study identifies key challenges and unresolved issues
+by applying our benchmarking pipeline to a diverse set of state-
+of-the-art FDSDS, including Moshi, Freeze-omni, and VITA-
+1.5 [18]. Our experiments highlight key aspects such as robust-
+ness to interruptions, latency management, and natural response
+delays, offering valuable insights into the current limitations of
+these systems. These findings underscore the need for further
+research on more natural, human-like spoken dialogue systems.
+2. Methodology
+We propose a benchmarking pipeline to evaluate the full-duplex
+capabilities of SDS, addressing a gap in current evaluation ap-
+proaches by incorporating a thorough assessment of interrup-
+tion handling. This pipeline defines full-duplex performance
+across two key dimensions: interruption handling and response
+quality. The first dimension assesses the system’s ability to
+handle interruptions effectively, focusing on its capacity to de-
+tect user-initiated disruptions, manage ongoing processes (such
+as halting and resuming operations), and control delays dur-
+ing these events. The second dimension evaluates the system’s
+response quality following an interruption, ensuring that gen-
+erated speech remains stable and that the conversational con-
+tent stays coherent and aligned with the intended dialogue. All
+tests are conducted within a server-client architecture to emu-
+late real-world usage scenarios and ensure reliable, consistent
+performance metrics.
+2.1. Benchmarking Pipeline
+Figure 1 shows our overall pipeline of benchmarking designed
+for FDSDS. We first use GPT-4o to generate simulated conver-
+sational text, up to 5 conversation rounds, between a user and
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+176 10.21437/Interspeech.2025-739
+
+GPT-4o
+ChatTTS
+F5TTS
+CosyV
+oice2
+Generated 
+Simulated 
+Speech
+Moshi
+... ...
+FDSDS
+Inference
+reference
+speech
+Noise
+Clips
++ +
+Librispeech
+dev-clean MUSAN
+Whisper
+Text
+Response
+Speech
+Response Silero-VAD Timestamps
+SRR (%)
+SRIR (%)
+SIR (%)
+EIR (%)
+NIR (%)
+IRD (ms)
+FSED (ms)
+ERT (ms)
+EIT (ms)
+OBJ
+metrics
+Transcriptions
+WER (%)
+GPT
+Llama3
+SBJ Score
+C-PPLSimulated 
+Conversations
+ Freeze-omni
+VITA-1.5
+Figure 1: Pipeline for Benchmarking FDSDS: The framework integrates simulated conversations generated by GPT-4o and speech
+synthesis tools to produce input data. Noise samples and reference speech are used for diverse speakers and environments. The pipeline
+processes these inputs through duplex systems, incorporating Whisper for transcriptions and Silero-VAD for obtaining timestamps.
+Subjective scoring involves GPT inference, while Conditioned-PPL is from Llama3. Objective metrics are computed using timestamps.
+an AI agent. Then, we utilize State-of-the-Art speech synthesis
+models to generate speech of the users from the simulated con-
+versations, integrating with noise sampled from MUSAN [19]
+to simulate the background of the input, and reference speakers
+from Librispeech [20] to get speaker-diverse synthesized speech
+corpus. This corpus is then fed into different FDSDS to ob-
+tain inference outputs, including speech and text, according to
+the modalities the models support. For the speech output, we
+applied Whisper [21] ASR model using WhisperX [22] imple-
+mentation to obtain speech transcription and Silero-V AD [23]
+to get utterance-level timestamps for further evaluation. Finally,
+the benchmarking metrics, including Subjective and Objective
+counterparts, are produced using simple timestamp calculations
+and GPT/Llama inference.
+Table 1: Simulated Conversational Text Generated by GPT-
+4o model. We have various types of interruptions— Affirmative
+Acknowledgment, Denial and Discontent, Further Inquiry, Re-
+quiring a Repeat, and TopicShift—to mirror real-life conversa-
+tions.
+# Convs Interruption Types # Total Int# A # D # F # R # S
+293 350 58 393 109 316 1196
+2.2. Dataset Design
+We design a corpus to simulate natural, full-duplex spoken di-
+alogues between a user and an AI assistant. Our prompt for
+dialogue generation is inspired by [24], with some constraints
+to stabilize generation. Each conversation consists of up to 5
+rounds, always initiated by the user, who is typically in a hurry
+and prone to interrupting. The dataset spans dozens of topics
+such as travel, food, entertainment, and fitness to broaden do-
+main coverage. The interruption statistics are shown in Table 1.
+Table 2: User inquiry speech corpus. Easy / Medium / Hard
+interruption difficulties have diverse speech duration. For the
+noisy corpus, we generate three different SNR configurations
+for Easy portion of F5TTS and CosyVoice2.
+ID TTS Engines Duration (H) E/M/H SNR
+1 ChatTTS 4.2 / 2.8 / 2.3 -
+2 F5TTS 3.8 / 2.4 / 2.0 -
+3 +Noise-gap 3.8 / - / - 0/10/20
+4 +Noise-bg 3.8 / - / - 0/10/20
+5 CosyV oice2 4.2 / 2.8 / 2.4 -
+6 +Noise-gap 4.2 / - / - 0/10/20
+7 +Noise-bg 4.2 / - / - 0/10/20
+The entire corpus includes 293 multi-round conversations with
+up to 4 interruptions each, resulting in around 1.2k interrup-
+tions, where sometimes affirmation and denial could happen si-
+multaneously with further inquiry and topic shift.
+We only focus on the user part from the simulated con-
+versations for the benchmarking and apply state-of-the-art
+TTS models, such as ChatTTS [25], F5TTS [26, 27], and
+CosyV oice2 [28, 29] to generate a speaker-diverse user inquiry
+speech corpus. It’s worth noting that we should keep the same
+speaker characteristics during the entire conversation to ensure
+a natural speech flow. Also, we inserted different lengths of si-
+lence between each inquiry speech segment to simulate varying
+extents of interruption. Specifically, we define three levels of
+interruptions, Easy, Medium, and Hard, where we insert ran-
+dom silences of 6–10 seconds, 4–6 seconds, and 2–4 seconds,
+respectively. Furthermore, we insert noise sampled from MU-
+SAN with SNRs of 0, 10, and 20 to the entire corpus as back-
+ground noise, namely Noise-bg and to only the silence gaps be-
+tween each inquiry segment, namely Noise-gap, to evaluate the
+model’s robustness to noisy conditions and noise interruptions.
+All speech is in 24KHz pcm format, with an overall duration of
+40 hours. The statistics information for the generated corpus is
+shown in Table 2.
+Table 3: Models inference setup. The models are categorized
+into two classes based on FD implementations; built-in means
+the model itself handles FD events, while VAD-based means the
+model counts on an external VAD module to handle FD events.
+Chunk-size is measured in milliseconds.
+FD-Type Model Chunk-size V AD-thresh.
+built-in Moshi 80 -
+V AD-based Freeze-Omni 107 0.8
+VITA-1.5 200 0.7
+2.3. Evaluation Metrics
+We evaluate reply quality using a combination of subjective and
+objective metrics. Specifically, we adopt the GPT-4o model as
+a scoring system that rates responses on six dimensions, includ-
+ing relevance, encouragement, simplicity, flexibility, practical-
+ity, and creativity, each on a 1–10 scale, then averages the sub-
+scores, resulting in the final subjective score. Simultaneously,
+we compute the conditioned perplexity (c-PPL) to quantify how
+well each reply aligns with the user request and conversation
+context. Together, these two approaches provide a holistic view
+of the quality of the system’s reply content.
+Beyond reply quality, we define several objective met-
+rics to assess real-time performance and interruption han-
+177
+
+Table 4: The evaluation of model robustness under varying levels of user interruptions. Only the results from speech input simulated
+using Cosyvoice2 are reported in this paper. WER, SRR, SRIR, SIR, EIR, and C-PPL are assessed over the entire output speech response,
+while IRD, FSED, ERT, and EIT are reported using the median of all collected time values to mitigate the influence of outliers. The
+Score is calculated as the arithmeticmean of the six scores corresponding to six sub-perspectives derived from all successful responses.
+The Data name is formed as 5-Easy/Medium/Hard since we only report CosyVoice2-generated data in this table.
+Model Data WER↓ SRR↑ SRIR↑ SIR↑ EIR↓ IRD↓ FSED↓ ERT EIT C-PPL Score↑
+Moshi
+5-E 5.3 61.7 79.4 83.1 27.9 1345 4155 221 2008 20 4.43
+5-M 5.0 45.6 78.4 77.1 23.1 1453 2735 235 1887 18 4.55
+5-H 5.0 34.1 75.3 73.0 19.5 1527 2020 235 1649 25 4.42
+Freeze-omni
+5-E - 11.3 35.5 66.5 31.5 3618 515 180 2027 73 3.29
+5-M - 11.7 21.7 49.4 23.5 12200 449 259 2047 80 3.38
+5-H - 11.2 18.3 49.0 23.7 11927 456 311 2093 110 3.14
+VITA-1.5
+5-E - 26.9 54.7 75.7 25.1 13063 4242 234 2289 28 2.68
+5-M - 18.3 48.5 81.9 32.5 10759 2601 176 2174 60 2.44
+5-H - 17.1 45.7 78.0 35.1 4651 1840 253 2270 50 2.27
+USER
+AI
+User
+Interrupt
+SR
+IRDFSED
+User
+Stop
+SI SRI
+ EI
+ERT
+EIT
+NI
+NOISE
+User
+Interrupt
+User
+Inquiry
+User
+Stop
+Figure 2: Visualization of real-time performance and interrup-
+tion handling. In this example, AI successfully replies ( SR) to
+the user inquiry with a slightly early reply time ( ERT). Then,
+some noise from the user interrupts (NI) AI. AI resumes a reply,
+and the user interrupts, interruption response delays (IRD) the
+AI’s being successfully interrupted (SI). When the user stops the
+interruption, AI successfully replies to interruption ( SRI) after
+the first speech emits delay ( FSED). However, AI does not re-
+spond to the user’s next interruption and keeps talking. In the
+last round, AI early interrupts ( EI) the user’s inquiry for early
+interrupt time (EIT) before the user finishes.
+dling, as shown in Fig. 2. Interruption-related met-
+rics—SRRate (measures the odds of Success-Replies per User-
+non-interrupt-inquiries), SIRate (measures the rates ofSuccess-
+Interrupts per User-interrupt-inquiries), SRIRate (measures the
+odds of Success-Replies-to-Interrupts per SIs), EIRate (mea-
+sures the odds of Early-Interrupts per User-inquiries), and
+NIRate (measures the rates of Noise-Interrupts per Noise-
+gaps between user inquiries)—capture how effectively the sys-
+tem processes user queries, interruptions, and noise events.
+Timing metrics— IRD(interrupt-response-delay), FSED(first-
+speech-emit-delay), ERT(early-reply-time), and EIT(early-
+interrupt-time)—measure delays and responsiveness, indicating
+how soon or prematurely the system starts or resumes talking.
+Lastly, WER (Word-Error-Rate) evaluates the accuracy of gen-
+erated speech against output text, offering insight into the over-
+all fidelity of the spoken output.
+3. Experiments
+We apply our benchmark pipeline to the State-of-the-Art open-
+source FDSDS that support English input and output, including
+Moshi [30], Freeze-onmi [10, 31], and VITA-1.5 [18, 32].
+3.1. Setup
+Our experiments integrate robust computational resources with
+a server-client architecture, and each model operates on a single
+H20 GPU with 96GB VRAM. We deploy models using a devel-
+opment server code from official repositories, while clients are
+designed to simulate real-time speech streams. The evaluation
+settings for each model are shown in Table 3. Specifically, we
+use the client to send audio with different chunk-sizes based
+on the server receiving settings. We follow the original V AD
+threshold settings of 0.8 and 0.7 for Freeze-omni and VITA-1.5.
+We apply Silero-V AD with a threshold of 0.5 to get times-
+tamp information from both the simulated user speech and the
+model’s output. And we utilize Whisper-large-v3-turbo to per-
+form ASR with a beam-size of 5. For subjective scoring, we
+call Openai API with a specially designed prompt using the
+GPT-4o-2024-11-20 model with the temperature set to 0.2. Fi-
+nally, we use the Llama-3.3-70B-Instruct model to calculate
+Conditioned-PPL with the precision int-8, running on one sin-
+gle H20-96GB GPU.
+3.2. Results
+We report the experimental results from two perspectives: the
+robustness to different levels of user interruptions and the ro-
+bustness to varying levels of noisy conditions or sudden noise
+between user inquiries. Due to space limitations, here we re-
+port the results where we stream simulated speech corpus using
+CosyV oice2 into the systems only, which are ID 5-7 from ta-
+ble 2.
+In table 4, we examine system performance under different
+frequencies of interruptions. We find that Moshi consistently
+outperforms V AD-based-interruption systems in interruption-
+related metrics, e.g., SRR, SRIR, and SIR, possibly due to sub-
+optimal V AD thresholds used by V AD-based interruption sys-
+tems, which might be prevented by predicting the possible in-
+terruption events internally in Moshi. While Moshi also has
+lower interruption delays, which are measured with IRD, FSED
+shows that Freeze-omni still replies much faster overall. Inter-
+estingly, all three systems sometimes respond a few hundred
+milliseconds earlier or interrupt the user’s inquiries by around
+two seconds, as seen in ERT, EIT, and EIR. This may be one of
+the training data designs of Moshi aimed at achieving faster re-
+sponse, whereas for V AD-controlled systems, it may be caused
+by the time shift introduced by the inaccuracy of the V AD mod-
+ule.
+When faced with more challenging interruption data, the
+WER for Moshi remains relatively stable, suggesting its gener-
+ation quality is less affected by frequent interruptions. However,
+Moshi and VITA observe over 40% relative drops in SRR with
+slight SRIR degradation, whereas Freeze-omni’s poor SRR re-
+sults also accompany degraded SRIR in more challenging sce-
+narios. Meanwhile, FSED and SIR reflect that frequent inter-
+ruptions prompt Moshi to respond more quickly and make in-
+terruptions harder, possibly due to training data that includes
+similar speaker speaking styles and characteristics. The no-
+table response delays longer than 10 seconds in Freeze-omni
+178
+
+Table 5: The evaluation of model robustness under varying background noise or sudden noise between user inquiries. SRR, SRIR, SIR,
+EIR, NIR, and C-PPL are assessed over the entire output speech response, while IRD, FSED, ERT, and EIT are reported using the
+median of all collected time values to mitigate the influence of outliers. The Score is calculated as the arithmetic mean of the scores
+for six sub-scoring perspectives derived from all successful responses. The data name is formed as {ID}-{SNR}.
+Model Data SRR↑ SRIR↑ SIR↑ EIR↓ NIR ↓ IRD↓ FSED↓ ERT EIT C-PPL Score↑
+Moshi
+6-20 60.4 71.3 81.0 27.1 39.3 1577 5090 222 2049 16 4.38
+6-10 63.8 78.9 84.6 24.8 46.0 1482 4410 231 1913 22 4.28
+6-00 63.8 77.9 83.7 25.7 48.0 1638 4562 236 1936 27 4.26
+7-20 59.7 74.9 83.9 25.4 37.6 1501 3077 207 2062 17 4.50
+7-10 60.8 79.3 86.4 21.6 39.2 1530 1676 179 2157 20 4.24
+7-0 59.7 77.3 87.8 22.4 41.6 1472 1311 182 2285 49 3.67
+Freeze-omni
+6-20 14.0 34.1 61.1 27.0 6.5 11842 525 243 2069 142 3.15
+6-10 13.8 35.6 65.0 28.9 6.5 4595 509 205 2174 77 3.22
+6-0 14.8 36.2 58.1 24.1 6.2 12491 554 281 2072 54 3.19
+7-20 9.9 31.0 61.0 26.6 3.6 4916 572 292 2103 66 3.01
+7-10 13.5 33.2 61.4 27.3 4.8 12254 633 224 2203 136 2.84
+7-0 11.9 35.0 63.5 26.4 4.4 11973 722 243 2134 95 2.36
+VITA-1.5
+6-20 30.6 55.9 81.1 29.5 16.2 10389 4308 269 2122 35 2.41
+6-10 32.3 61.0 84.9 32.8 21.1 9547 4226 271 2328 78 2.30
+6-0 32.6 61.4 85.7 34.2 21.9 9212 4162 323 2115 66 2.21
+7-20 28.8 56.8 81.3 28.1 16.2 12028 4541 280 2203 66 2.48
+7-10 28.7 58.9 80.8 27.4 16.4 12218 4436 241 2303 73 2.24
+7-0 30.2 59.1 82.6 28.4 17.4 12111 4501 255 2213 54 1.97
+0 20 40 60 80 100
+Affirmative
+Denial
+Further-
+Inquiry
+Repeat
+Topic-Shift
+SIR(%)
+VITA1.5
+Freeze-omni
+Moshi
+0 20 40 60 80 100
+Affirmative
+Denial
+Further-
+Inquiry
+Repeat
+Topic Shift
+SRIR(%)
+VITA1.5
+Freeze-Omni
+Moshi
+Figure 3: SIR and SRIR performance of the three models v.s.
+five types of interruption scenarios
+and VITA-1.5 appear tied to V AD misjudgments and the in-
+stability of the official development server. Although C-PPL
+does not directly gauge response quality, it fluctuates more obvi-
+ously for models using V AD under increased interruption diffi-
+culty, while Moshi remains relatively stable. Finally, subjective
+scores evaluated from successful replies are stable for Moshi
+and Freeze-omni but degrade significantly for VITA-1.5 when
+interruptions become frequent. We also observe that VITA-1.5
+randomly generates English-Chinese mixture speech, degrading
+the scores. These suggest that the quality of response under fre-
+quent interruption is not necessarily relevant to how the model
+handles interruptions; it’s more related to the LLM’s ability to
+understand and respond to user inquiries.
+In table 5, we evaluate system performance under noise sit-
+uations. The results show that, under gap noise (data ID: 6-
+SNR) conditions, Moshi and VITA-1.5 exhibit an increasing
+NIR—while Freeze-omni remains relatively stable, likely due
+to a high V AD threshold of 0.8 that effectively filters most gap
+noise—and all models show stable interruption-related metrics
+(SRR, SRIR, SIR, and EIR) as the gap noise grows louder, ex-
+cept for VITA-1.5, which registers increases in these metrics,
+suggesting that a lower V AD threshold of 0.7 may trigger more
+false positives and fake interruptions. Meanwhile, the output
+quality score remains mainly unaffected by gap noise.
+In contrast, with background noise (data ID: 7-SNR), al-
+though interruption-related metrics do not change significantly,
+Moshi’s FSED decreases markedly, possibly because more
+noise tokens are mistakenly interpreted as effective user input,
+and for all systems, subjective scores degrade significantly un-
+der low SNR conditions, which indicate that while the systems
+handle sudden noise relatively well, background noise poses
+challenges for noise filtering and robustness.
+4. Analysis
+We designed five types of interruptions in our dataset. Here, we
+analyze the impact of different interruption types on FDSDS
+under clean and easy interruption settings (data ID: 5-E). Fig. 3
+shows the SIRs and SRIRs for the three models, broken down
+by each interruption type. In general, we can conclude that Re-
+peat, where users would usually ask for a repeat of the model
+response, have the Highest SIR among all the models. How-
+ever, it shows a relativelyLower SRIR, e.g., the worst for both
+Freeze-omni and VITA-1.5 and the second worst for Moshi,
+which suggests that a pardon? like request was not well-
+trained to reply in these models. In contrast, further inquiry
+shows the Worst SIR with the Best SRIR , indicating that a
+calm further question is challenging for either model to de-
+tect, while such an inquiry is easier to reply for the LLMs.
+5. Conclusion and Future Work
+In this work, we introduce a novel benchmarking pipeline that
+leverages LLMs, TTS, and ASR to comprehensively evaluate
+the performance of FDSDS, focusing on the model’s perfor-
+mance under challenging interruption and noise interference
+scenarios. The evaluations generally include measures reflect-
+ing success or error rates across different user interruptions.
+Moreover, timing factors, including delays or early response,
+and quality aspects, such as scores rated by LLMs, assess real-
+time responsiveness, the naturalness of real-time interactions,
+and alignment with user demands. Our benchmarking results
+show many challenges for FDSDS to remain under frequent in-
+terruptions and noisy environments. Hence, by applying our
+pipeline, future FDSDS should be able to evolve and become
+more natural in real-time human-machine interactions.
+179
+
+6. Acknowledgement
+This research is supported by the RIE2025 Industry Align-
+ment Fund – Industry Collaboration Projects (IAF-ICP) (Award
+I2301E0026), administered by A*STAR, as well as supported
+by Alibaba Group and NTU Singapore through Alibaba-NTU
+Global e-Sustainability CorpLab (ANGEL).
+7. References
+[1] Y . Leviathan and Y . Matias, “Google duplex: An ai system for
+accomplishing real-world tasks over the phone,” Google AI blog,
+vol. 8, 2018.
+[2] R. Huang, M. Li, D. Yang, J. Shi, X. Chang, Z. Ye, Y . Wu,
+Z. Hong, J. Huang, J. Liu, Y . Ren, Y . Zou, Z. Zhao, and S. Watan-
+abe, “Audiogpt: Understanding and generating speech, music,
+sound, and talking head,”Proceedings of the AAAI Conference on
+Artificial Intelligence, vol. 38, no. 21, pp. 23 802–23 804, 2024.
+[3] D. Zhang, S. Li, X. Zhang, J. Zhan, P. Wang, Y . Zhou, and X. Qiu,
+“SpeechGPT: Empowering large language models with intrinsic
+cross-modal conversational abilities,” in Findings of the Associ-
+ation for Computational Linguistics: EMNLP 2023 , pp. 15 757–
+15 773.
+[4] Z. Xie and C. Wu, “Mini-omni: Language models can hear,
+talk while thinking in streaming,” 2024. [Online]. Available:
+https://arxiv.org/abs/2408.16725
+[5] A. Zeng, Z. Du, M. Liu, K. Wang, S. Jiang, L. Zhao,
+Y . Dong, and J. Tang, “Glm-4-voice: Towards intelligent
+and human-like end-to-end spoken chatbot,” 2024. [Online].
+Available: https://arxiv.org/abs/2412.02612
+[6] A. Grattafiori and et al., “The llama 3 herd of models,” 2024.
+[Online]. Available: https://arxiv.org/abs/2407.21783
+[7] J. Bai and et al., “Qwen technical report,” 2023. [Online].
+Available: https://arxiv.org/abs/2309.16609
+[8] X. Zhang, D. Liu, H. Liu, Q. Zhang, H. Meng, L. P. G. Perera,
+E. Chng, and L. Yao, “Speaking in wavelet domain: A simple and
+efficient approach to speed up speech diffusion model,” in Proc.
+EMNLP, 2024, pp. 159–171.
+[9] A. D ´efossez, L. Mazar ´e, M. Orsini, A. Royer, P. P ´erez,
+H. J ´egou, E. Grave, and N. Zeghidour, “Moshi: a speech-
+text foundation model for real-time dialogue,” 2024. [Online].
+Available: https://arxiv.org/abs/2410.00037
+[10] X. Wang, Y . Li, C. Fu, Y . Shen, L. Xie, K. Li, X. Sun, and
+L. Ma, “Freeze-omni: A smart and low latency speech-to-speech
+dialogue model with frozen llm,” 2024. [Online]. Available:
+https://arxiv.org/abs/2411.00774
+[11] Q. Zhang, L. Cheng, C. Deng, Q. Chen, W. Wang, S. Zheng,
+J. Liu, H. Yu, C. Tan, Z. Du, and S. Zhang, “Omniflatten: An
+end-to-end gpt model for seamless voice conversation,” 2025.
+[Online]. Available: https://arxiv.org/abs/2410.17799
+[12] “Minmo: A multimodal large language model for seamless
+voice interaction,” 2025. [Online]. Available: https://arxiv.org/
+abs/2501.06282
+[13] Z. Ma, Y .-Z. Song, C. Du, J. Cong, Z. Chen, Y . Wang,
+Y . Wang, and X. Chen, “Language model can listen while
+speaking,” ArXiv, vol. abs/2408.02622, 2024. [Online]. Available:
+https://api.semanticscholar.org/CorpusID:271710060
+[14] D. Traum, K. Georgila, R. Artstein, and A. Leuski, “Evaluating
+spoken dialogue processing for time-offset interaction,” in Pro-
+ceedings of the 16th Annual Meeting of the Special Interest Group
+on Discourse and Dialogue, Prague, Czech Republic, Sep. 2015,
+pp. 199–208.
+[15] C.-K. Yang, Y .-K. Fu, C.-A. Li, Y .-C. Lin, Y .-X. Lin, W.-C. Chen,
+H. L. Chung, C.-Y . Kuan, W.-P. Huang, K.-H. Lu, T.-Q. Lin, H.-
+H. Wang, E.-P. Hu, C.-J. Hsu, L.-H. Tseng, I.-H. Chiu, U. Sanga,
+X. Chen, P. chun Hsu, S. wen Yang, and H. yi Lee, “Building
+a taiwanese mandarin spoken language model: A first attempt,”
+2024. [Online]. Available: https://arxiv.org/abs/2411.07111
+[16] W. Chen, Z. Ma, R. Yan, Y . Liang, X. Li, R. Xu, Z. Niu,
+Y . Zhu, Y . Yang, Z. Liu, K. Yu, Y . Hu, J. Li, Y . Lu, S. Liu,
+and X. Chen, “Slam-omni: Timbre-controllable voice interaction
+system with single-stage training,” 2024. [Online]. Available:
+https://arxiv.org/abs/2412.15649
+[17] Y . Chen, X. Yue, C. Zhang, X. Gao, R. T. Tan, and H. Li,
+“V oicebench: Benchmarking llm-based voice assistants,” 2024.
+[Online]. Available: https://arxiv.org/abs/2410.17196
+[18] C. Fu, H. Lin, Z. Long, Y . Shen, M. Zhao, Y . Zhang,
+S. Dong, X. Wang, D. Yin, L. Ma, X. Zheng, R. He, R. Ji,
+Y . Wu, C. Shan, and X. Sun, “Vita: Towards open-source
+interactive omni multimodal llm,” 2024. [Online]. Available:
+https://arxiv.org/abs/2408.05211
+[19] D. Snyder, G. Chen, and D. Povey, “Musan: A music,
+speech, and noise corpus,” 2015. [Online]. Available: https:
+//arxiv.org/abs/1510.08484
+[20] V . Panayotov, G. Chen, D. Povey, and S. Khudanpur, “Lib-
+rispeech: an asr corpus based on public domain audio books,”
+in 2015 IEEE international conference on acoustics, speech and
+signal processing (ICASSP). IEEE, 2015, pp. 5206–5210.
+[21] A. Radford, J. W. Kim, T. Xu, G. Brockman, C. McLeavey, and
+I. Sutskever, “Robust speech recognition via large-scale weak
+supervision,” in International conference on machine learning .
+PMLR, 2023, pp. 28 492–28 518.
+[22] M. Bain, J. Huh, T. Han, and A. Zisserman, “Whisperx: Time-
+accurate speech transcription of long-form audio,” in Interspeech
+2023, 2023, pp. 4489–4493.
+[23] S. Team, “Silero vad: pre-trained enterprise-grade voice activity
+detector (vad), number detector and language classifier,” https://
+github.com/snakers4/silero-vad, 2024.
+[24] P. Wang, S. Lu, Y . Tang, S. Yan, W. Xia, and Y . Xiong, “A full-
+duplex speech dialogue scheme based on large language model,”
+in Advances in Neural Information Processing Systems , vol. 37.
+Curran Associates, Inc., 2024, pp. 13 372–13 403.
+[25] 2Noise, “Chattts: A generative speech model for daily di-
+alogue.” https://huggingface.co/2Noise/ChatTTS, commit
+1a3c04a8b0651689bd9242fbb55b1f4b5a9aef84.
+[26] Y . Chen, Z. Niu, Z. Ma, K. Deng, C. Wang, J. Zhao, K. Yu,
+and X. Chen, “F5-tts: A fairytaler that fakes fluent and
+faithful speech with flow matching,” 2024. [Online]. Available:
+https://arxiv.org/abs/2410.06885
+[27] SWivid, “F5-tts,” https://huggingface.co/SWivid/F5-TTS, com-
+mit 4dcc16f297f2ff98a17b3726b16f5de5a5e45672.
+[28] Z. Du, Y . Wang, Q. Chen, X. Shi, X. Lv, T. Zhao, Z. Gao,
+Y . Yang, C. Gao, H. Wang, F. Yu, H. Liu, Z. Sheng, Y . Gu,
+C. Deng, W. Wang, S. Zhang, Z. Yan, and J. Zhou, “Cosyvoice 2:
+Scalable streaming speech synthesis with large language models,”
+2024. [Online]. Available: https://arxiv.org/abs/2412.10117
+[29] FunAudioLLM, “Cosyvoice2,” https://huggingface.
+co/FunAudioLLM/CosyV oice2-0.5B, commit
+45ff167993d48deff27c382217c0dad1e7d36e28.
+[30] kyutai, “moshiko,” commit
+2bfc9ae6e89079a5cc7ed2a68436010d91a3d289. [Online].
+Available: https://huggingface.co/kyutai/moshiko-pytorch-bf16
+[31] VITA-MLLM. Freeze-omni. Commit
+3e17af43b4fe64ba9609b4e1ba94c443c45101c0. [Online].
+Available: https://github.com/VITA-MLLM/Freeze-Omni
+[32] ——, “Vita,” commit
+336a3e49c6c0d6e562fc9e51f21ab6e58e9c55d0. [Online].
+Available: https://github.com/VITA-MLLM/VITA
+180

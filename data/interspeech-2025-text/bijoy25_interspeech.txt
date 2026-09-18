@@ -1,0 +1,843 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+Multi-Teacher Language-Aware Knowledge Distillation for Multilingual
+Speech Emotion Recognition
+Mehedi Hasan Bijoy, Dejan Porjazovski, Tam´as Gr´osz, Mikko Kurimo
+Department of lnformation and Communications Engineering, Aalto University, Finland
+firstname.lastname@aalto.fi
+Abstract
+Speech Emotion Recognition (SER) is crucial for improv-
+ing human-computer interaction. Despite strides in monolin-
+gual SER, extending them to build a multilingual system re-
+mains challenging. Our goal is to train a single model capa-
+ble of multilingual SER by distilling knowledge from multiple
+teacher models. To address this, we introduce a novel language-
+aware multi-teacher knowledge distillation method to advance
+SER in English, Finnish, and French. It leverages Wav2Vec2.0
+as the foundation of monolingual teacher models and then dis-
+tills their knowledge into a single multilingual student model.
+The student model demonstrates state-of-the-art performance,
+with a weighted recall of 72.9 on the English dataset and an un-
+weighted recall of 63.4 on the Finnish dataset, surpassing fine-
+tuning and knowledge distillation baselines. Our method excels
+in improving recall for sad and neutral emotions, although it
+still faces challenges in recognizing anger and happiness.
+Index Terms: multi-teacher knowledge distillation, multilin-
+gual, speech emotion recognition, large audio-language model
+1. Introduction
+Speech Emotion Recognition (SER) involves identifying and
+analyzing emotional states in spoken languages. In multilin-
+gual settings, it becomes challenging due to the distinct linguis-
+tic features of each language. Unlike simple fine-tuning (FT)
+and knowledge distillation (KD), multi-teacher knowledge dis-
+tillation (MTKD) specifically addresses this challenge by us-
+ing multiple teacher models, each specialized in a different lan-
+guage, to enhance the student model’s performance. The impor-
+tance of SER is recognized as it benefits applications in human-
+computer interaction and speech processing tasks by fostering
+empathetic and effective interactions. For instance, SER aids
+in early detection and intervention in mental health issues by
+monitoring speech [1], even in multilingual communities.
+Recent efforts in SER have primarily focused on leverag-
+ing pre-trained transformer-based large audio-language models
+due to their robust speech representation capabilities [2]. More-
+over, it is hypothesized that integrating knowledge from mul-
+tiple teacher models significantly enhances student model per-
+formance by utilizing complementary insights. For example,
+Confidence-Aware MTKD dynamically adapts to each teacher’s
+reliability [3], while Adaptive MTKD employs a meta-weight
+network to coordinate diverse knowledge from multiple teach-
+ers [4]. Their empirical results indicate that these methods out-
+perform FT and KD models, particularly in low-resource set-
+tings [5]. Overall, there is a clear shift towards adaptive meta-
+learning strategies, pre-trained models, and MTKD to achieve
+high performance and efficiency.
+We found that previous studies have not investigated
+MTKD for multilingual SER, particularly in training a mul-
+tilingual student model from monolingual teachers.
+There-
+fore, we hypothesize that optimizing MTKD for multilingual
+SER can enhance emotional knowledge transfer across lan-
+guages. By leveraging cross-lingual data, we aim to better in-
+tegrate emotional knowledge in the student model. Our objec-
+tive is to construct a single multilingual SER model through the
+distillation of knowledge obtained from multiple monolingual
+teacher models. We investigate whether MTKD improves cross-
+linguistic emotional knowledge transfer in multilingual SER.
+To achieve this, we use cosine similarity scores to select the
+most suitable teacher for each language. Consequently, this tar-
+geted approach should improve cross-linguistic knowledge in-
+tegration, allowing better generalization across languages. By
+mitigating score variation through cosine similarity rescaling,
+our method enhances stability, resulting in improved cross-
+linguistic generalization and reliable performance, even in chal-
+lenging multilingual scenarios.
+The main contributions of this study are summarized below:
+• We propose a language-aware MTKD method using three
+teacher models to enhance SER in English, Finnish, and
+French It includes both monolingual and multilingual con-
+figurations, setting a novel benchmark for multilingual SER.
+• Our proposed method achieves superior performance across
+datasets by surpassing different training paradigms, such as
+standard FT and conventional KD baselines, demonstrating
+generalizability and robustness.
+2. Related Works
+Numerous approaches have been developed for the SER task,
+which can broadly be categorized into four groups: simple FT,
+conventional KD, MTKD, and multimodal fusion. As for sim-
+ple FT, pre-trained models like wav2vec2.0 [6], HuBERT [7],
+and WavLM [8] have significantly advanced SER by address-
+ing the issue of data scarcity [9]. Leveraging transfer learning
+and FT, as demonstrated in the works of [10] and [11], markedly
+improved the performance of emotion recognition from speech.
+Sharma et al. [12] expanded on this by developing a multi-
+lingual learning system, while another study introduced the P-
+TAPT method to better align pre-training with target tasks [11].
+Unlike the previous studies, Chakhtouna et al. [13] proposed
+a model combining HuBERTX-large with an SVM to empha-
+size the importance of advanced feature extraction. However,
+while the effectiveness of fine-tuning is supported by the em-
+pirical outcomes of [10] and [11], limitations such as potential
+overfitting and model convergence issues are observed in [13].
+When it comes to conventional KD, studies have expanded
+its scope for SER by transferring knowledge from a larger
+teacher model to a smaller student model to optimize perfor-
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+146
+10.21437/Interspeech.2025-418
+
+mance [14]. For example, Hao et al. [15] introduced the OFA-
+KD framework for heterogeneous architectures, and Zhao et al.
+[16] proposed a hierarchical network with decoupled KD. Sim-
+ilarly, another work focused on KD-based model adaptation for
+emotional speech [17]. These studies generally aim to enhance
+the model performance. However, challenges such as the effec-
+tiveness of dropout [18], resource demands [19], and the need
+for improvements in multi-modal KD [16] are still persistent.
+With respect to MTKD, several methods have been pro-
+posed, including a confidence-aware MTKD framework to ad-
+dress low-performing teachers [3], switched-training for dif-
+ferent resource settings [20], and adaptive MTKD with meta-
+learning [4]. In contrast, Yang et al. [21] and Ren et al. [22]
+concentrated on efficiency and resource optimization through
+two-stage MTKD and self-distillation, respectively. Addition-
+ally, a few studies explored multimodal and ensemble meth-
+ods for enhancing performance [5, 23].
+Despite these ad-
+vancements, challenges such as high computational demands
+[4, 5], large dataset requirements [21], and increased complex-
+ity [20, 22] persist, highlighting ongoing limitations in the field.
+3. Methodology
+Our proposed method involves training a student model S
+guided by three teacher models T1, T2, and T3.
+The
+training process uses the raw audio waveform input X,
+which is a discrete-time sequence of N successive samples
+{x[1], x[2], . . . , x[N]} such that xt ∈R . Three teacher mod-
+els, T1, T2, and T3, and the student model S each process
+X and produce logits for K classes.
+The Kullback-Leibler
+(KL) divergence between the student logits and each teacher’s
+logits is computed as Li
+KL(σ(lTi) ∥σ(lS)), where σ is the
+softmax function.
+The total KL divergence loss is LKL =
+P3
+i=1 ci × Li
+KL, with ci being constants derived from cosine
+similarities. The cross-entropy (CE) loss between the student
+logits and true labels y is LCE(σ(lS), y). The total loss is
+calculated as: L = (1 −λ)LCE + λLKL, where λ balances
+the contributions of CE and KL divergence losses, enabling the
+model to learn accurate classification while aligning its pre-
+dicted distribution with the targeted teacher’s distribution.
+Motivations: Our proposed method advances SER by address-
+ing cross-language variability, a key challenge in multilingual
+SER tasks that hinders generalization. We introduce a novel
+language-aware MTKD method, where multiple teacher mod-
+els, each specialized in a different language, distill language-
+specific emotional cues into a student model. Using cosine sim-
+ilarity scores, the student model captures nuanced emotional
+patterns for each language while learning cross-linguistic rep-
+resentations. This approach improves generalizability and mul-
+tilingual performance, setting a new benchmark compared to
+prior methods that lack language-specific optimization. Fig-
+ure 1 presents an overview of our proposed MTKD method.
+3.1. Proposed Language-Aware MTKD Method
+The proposed method utilizes three pre-trained teacher mod-
+els, Ti(.), where i ∈{1, 2, 3}, each specializing in English,
+Finnish, and French, respectively, alongside a student model
+S(.) that can be monolingual or multilingual. The raw audio
+waveform X is fed into each model, producing logits lT1, lT2,
+lT3, and lS, where each set of logits corresponds to K number
+of classes. Then, cosine similarities between the student’s and
+each teacher’s logits are calculated to measure alignment:
+csi =
+PK
+j=1 ls[j]lTi[j]
+qPK
+j=1(ls[j])2
+qPK
+j=1(lTi[j])2
+for i ∈{1, 2, 3}
+(1)
+Teacher1
+Mono. (T1)
+Teacher2
+Mono. (T2)
+Teacher3
+Mono. (T3)
+Student
+Mono./Multi. (S)
+Logits (lT1)
+Logits (lT2)
+Logits (lT3)
+Logits (lS)
+ᏝKL1
+ᏝKL2
+ᏝKL3
+ᏝKL
+ᏝCE
+Ꮭ
+MTKD
+KD
+FT
+Figure 1: Proposed language-aware MTKD method.
+To prioritize the most relevant teacher, these cosine simi-
+larity scores are scaled by a small temperature value τ < 1.0
+and transformed via a softmax function, enhancing small dif-
+ferences and focusing on the most relevant teacher: cs′
+i =
+exp (csi/τ)/P3
+k=1 exp (csk/τ).
+Scaling the cosine similar-
+ity by dividing by a small τ sharpens the differences between
+similarity scores, as exp(csi/τ) amplifies higher scores more
+strongly, making the most relevant teacher’s contribution more
+dominant. The student and teacher logits are then converted into
+probabilities using the softmax function with a higher tempera-
+ture τ > 1.0, such that:
+Px[j] =
+exp
+ lx[j]
+T
+
+PK
+k=1 exp
+ lx[k]
+T
+; for x ∈{S, Ti}
+(2)
+Dividing the logits by a high temperature value τ smooths the
+probability distribution, lowering the model’s confidence in spe-
+cific classes and fostering exploration by reducing the differ-
+ences between logits of those K classes. Next, the KL diver-
+gence loss is computed to ensure the student model mimics the
+teachers’ probability distributions:
+Li
+KL =
+K
+X
+j=1
+PS[j] log
+ PS[j]
+PTi[j]
+
+for i ∈{1, 2, 3}
+(3)
+Moreover, we aim to ensure that the student model prior-
+itizes learning from the most relevant teacher. To do so, we
+combine the distribution errors from the three different teachers
+by weighting them with the enhanced cosine similarity scores
+of each teacher such that LKL = P3
+i=1 cs′
+i × Li
+KL. Next, the
+CE loss is calculated to measure how well the student predicts
+the classes by comparing the student’s predicted probabilities
+with corresponding class labels (eq. 4).
+LCE = −
+K
+X
+j=1
+yj log
+ 
+exp(lS[j])
+PK
+k=1 exp(lS[k])
+!
+(4)
+Finally, to enable language-aware distillation, we combine the
+classification error LCE with the distribution error LKL to cal-
+culate L. This ensures that the model’s prediction logit distri-
+bution is similar to the appropriate teacher and that it correctly
+classifies the actual labels, ensuring that the student model not
+only aligns its output distribution with the most relevant teacher,
+but also accurately classifies the actual labels.
+4. Experimental Setup
+Evaluation Metrics: To accommodate the varying evaluation
+metrics used in different studies, we report UR [22], WR [12],
+unweighted accuracy (UA) [11], and weighted accuracy (WA)
+147
+
+Table 1: The composition of combined multilingual data.
+Dataset
+Language
+Splits
+Train
+Test
+# Samples
+# Samples
+IEMOCAP
+English
+5
+≈4508
+≈1241
+FESC
+Finnish
+9
+≈2798
+≈461
+CaFE
+French
+1
+420
+84
+[24] to ensure comprehensive results and facilitate cross-study
+comparisons. UR and UA ignore the class distribution, while
+WR and WA adjust for it.
+Datasets: We utilize three datasets: IEMOCAP [25] for En-
+glish, FESC [26] for Finnish, and CaFE [27] for French. We
+focus on four common emotion classes, including angry, happy,
+neutral, and sad, which are available in all three of these
+datasets. This eliminates class inconsistency issue in the multi-
+lingual setup. The statistics for the considered portion of these
+datasets can be found in Table 1.
+Baselines: FT-Mono. fine-tunes Wav2Vec2.0-base1 on a mono-
+lingual dataset, while FT-Multi. fine-tunes same Wav2Vec2.0-
+base1 model on a multilingual dataset.
+Additionally, KD-
+Mono. is a knowledge distillation approach where a monolin-
+gual student model (Wav2Vec2.0-base1) learns from a multilin-
+gual teacher model, which is fine-tuned FT-Multi.
+Cross Validation: In the multilingual SER task, we use prede-
+fined splits from the English and Finnish datasets and a single
+split from the French dataset to train and evaluate our language-
+aware MTKD model on non-overlapping sets.
+Experiments: For our experiments, we use three teacher mod-
+els specialized in English, Finnish, and French SER tasks,
+which are fine-tuned Wav2Vec2-base1 models, trained for 20
+epochs with a learning rate of 3e−5 and a batch size of 32. In
+our language-aware MTKD method, processed audio is used
+as an input to each model to produce soft outputs. We dis-
+till knowledge from the teacher models to the student model
+by calculating the KL divergence loss, comparing the stu-
+dent’s predictions with each teacher’s predictions. The losses
+are combined using amplified cosine similarity scores and a
+softmax function to prioritize the correct language. Outputs
+are further smoothed using a temperature value of 5. The fi-
+nal student model is optimized by combining cross-entropy
+loss and KL divergence loss, weighted at 75% and 25% re-
+spectively, ensuring effective learning of both general and
+language-specific SER tasks. The code for reproducing both
+the proposed method and the baselines is publicly available at
+https://github.com/aalto-speech/mtkd4ser.
+5. Results
+5.1. Quantitative Analysis
+5.1.1. Performance on IEMOCAP
+Table 2 presents the empirical results of various training ap-
+proaches, including our proposed MTKD method, on the
+IEMOCAP dataset. This comparison highlights the effective-
+ness and generalizability of three training paradigms: fine-
+tuning, knowledge distillation, and multi-teacher knowledge
+distillation.
+The results demonstrate that the MTKD method
+with a monolingual student and monolingual teachers (MTKD-
+Mono.) achieves the highest mean UR of 72.5, while the MTKD
+method with a multilingual student and monolingual teachers
+1https://huggingface.co/facebook/wav2vec2-base
+(MTKD-Multi.) achieves the highest mean WR of 72.9. While
+other methods exhibit variability in performance and achieve
+superiority only in specific splits, our proposed MTKD-Multi.
+method consistently outperforms them across most splits, un-
+derscoring its robustness.
+5.1.2. Comparison with Baselines
+Table 3 presents a detailed comparison of our proposed MTKD
+method against several baselines for SER in English, Finnish,
+and French. The performance is reported as the mean of five
+splits for the IEMOCAP dataset and as the mean of the best and
+worst splits for the FESC dataset. A more comprehensive anal-
+ysis was conducted on the IEMOCAP dataset, given its status
+as a widely used benchmark, whereas the investigation of the
+FESC dataset was limited to the best and worst splits to opti-
+mize computational resources and time. Empirical results indi-
+cates that while FT and KD yield promising outcomes, MTKD
+demonstrates superior generalization and robustness, achieving
+the highest average scores with a substantial amount of data.
+In the monolingual setup, MTKD with a monolingual student
+(MTKD-Mono.) achieves the highest UR and WR in the IEMO-
+CAP and FESC datasets. Likewise, in the multilingual setup,
+MTKD with a multilingual student (MTKD-Multi.) attains the
+highest UR and WR scores.
+The MTKD-Multi.
+method demonstrates consistent per-
+formance across evaluations.
+The impact of dataset size on
+its effectiveness is evident in English SER with the IEMO-
+CAP dataset. Given its relatively large training set (5.7 hours),
+IEMOCAP exhibits stable performance between the best and
+average results (Table 2). Furthermore, while MTKD-Mono.
+achieves a marginal improvement over baseline methods in the
+monolingual setup, MTKD-Multi. outperforms the baseline by
+a significant margin, highlighting its superior ability to lever-
+age multilingual training for enhanced performance. However,
+MTKD-Mono. achieves the highest UR score across compared
+monolingual and multilingual methods.
+In contrast, Finnish
+SER using the FESC dataset, which contains 3.33 hours of
+training data, shows a performance drop. For French SER, with
+only 0.5 hours of training data, KD-Mono. demonstrates supe-
+rior performance compared to other methods. The low perfor-
+mance of MTKD-Multi. in French SER is expected, as French
+data is a minority group in each training batch. As a result, the
+teacher selected based on the cosine similarity scores is often
+not the one specialized in French SER, leading to less effective
+learning for French compared to English and Finnish SER.
+5.1.3. Comparison with Existing State-of-the-Art (SOTA)
+Table 4 presents a comparative analysis of various SOTA meth-
+ods for English SER using the IEMOCAP dataset. Our pro-
+posed monolingual and multilingual MTKD methods outper-
+form existing SOTA approaches in terms of WA and UR, re-
+spectively. However, the slightly higher UA score reported in
+[16] is anticipated, given that their approach utilizes 20% of the
+entire dataset, including duplicated data.
+5.2. Qualitative Analysis
+Figure 2 delineates the average inter-class performance of vari-
+ous SER methods. The comparison includes monolingual (En-
+glish) and multilingual methods, highlighting the impact of dif-
+ferent training approaches. It clarifies that integrating multilin-
+gual data enhances overall system effectiveness.
+Our proposed method, MTKD-Multi., outperforms other
+148
+
+Table 2: Performance of our proposed MTKD methods alongside other baselines on the IEMOCAP dataset, where ’Mono.’ refers
+to monolingual, and ’Multi.’ stands for multilingual configurations. The upper (numerator) and lower (denominator) bounds of the
+confidence interval are reported for both UR and WR.
+Split
+FT-Mono.
+FT-Multi.
+KD-Mono.
+MTKD-Mono.
+MTKD-Multi.
+UR
+WR
+UR
+WR
+UR
+WR
+UR
+WR
+UR
+WR
+Split 1
+69.8 74.5
+64.4
+65.8 70.6
+65.8
+70.6 74.1
+66.7
+70.7 74.0
+67.2
+72.5 77.4
+66.9
+70.3 75.1
+64.9
+72.4 76.8
+67.1
+68.5 73.1
+63.2
+72.5 76.0
+68.7
+73.4 76.6
+69.9
+Split 2
+79.3 83.9
+73.3
+78.1 82.6
+72.8
+70.9 74.4
+67.3
+74.9 77.9
+71.6
+76.7 81.5
+71.0
+74.8 79.5
+69.3
+77.8 82.4
+72.1
+76.0 80.5
+70.6
+71.2 74.8
+67.3
+71.0 74.4
+67.3
+Split 3
+66.2 71.3
+60.7
+65.9 71.0
+60.4
+67.7 71.2
+64.0
+69.5 72.8
+66.0
+69.5 74.5
+64.0
+69.1 74.1
+63.6
+68.9 73.9
+63.5
+69.0 74.0
+63.6
+71.4 74.9
+67.8
+71.5 74.8
+67.9
+Split 4
+68.5 73.9
+62.7
+70.2 75.1
+64.8
+64.2 68.0
+60.3
+69.7 73.0
+66.1
+70.2 75.3
+64.3
+70.1 75.0
+64.7
+72.3 77.6
+66.3
+72.8 77.8
+67.2
+71.6 75.3
+67.7
+73.8 77.0
+70.3
+Split 5
+72.2 76.9
+66.8
+70.5 75.1
+65.4
+67.9 71.3
+64.2
+70.2 73.4
+66.8
+72.2 77.0
+66.7
+71.2 75.8
+66.0
+71.0 75.9
+65.5
+69.7 74.4
+64.5
+73.0 76.3
+69.3
+74.7 77.8
+71.3
+Mean
+71.2 76.1
+65.6
+70.1 74.9
+65.8
+68.2 71.8
+64.5
+71.0 74.2
+67.6
+72.2 77.1
+66.6
+71.1 76.1
+65.8
+72.5 77.3
+66.9
+71.2 76.0
+65.8
+71.9 75.5
+68.2
+72.9 76.1
+69.3
+Table 3: Comparison of our proposed methods with baselines
+for SER in English, Finnish, and French.
+IEMOCAP
+FESC
+CaFE
+UR
+WR
+UR
+WR
+UR
+WR
+FT-Mono.
+71.2
+70.1
+59.5
+62.0
+78.1
+78.6
+KD-Mono.
+72.2
+71.1
+62.7
+67.8
+82.3
+79.8
+MTKD-Mono.
+72.5
+71.2
+62.9
+68.1
+78.1
+75.0
+FT-Multi.
+68.2
+71.0
+62.7
+64.3
+77.1
+79.8
+MTKD-Multi.
+71.9
+72.9
+63.4
+66.1
+73.4
+72.3
+Table 4: Performance comparison of our MTKD method against
+SOTA methods on the IEMOCAP dataset. Paradigm CKD de-
+notes Cubic Knowledge Distillation. * indicates redundancy.
+Method
+Paradigm
+WA
+UA
+UR
+Wav2vec2-PT [9]
+FT
+—
+—
+67.2
+DKDFMH [16]
+KD
+—
+77.1*
+—
+P-TAPT [11]
+FT
+—
+74.4
+—
+Vesper-4 [24]
+KD
+68.4
+69.3
+—
+CubicKD [28]
+CKD
+63.3
+—
+—
+MTKD-Mono.
+MTKD
+76.0
+76.2
+72.5
+MTKD-Multi.
+MTKD
+74.8
+74.9
+71.9
+Figure 2: Performance improvement of MTKD-Mono. over FT-
+Mono. on monolingual set (Left) and of MTKD-Multi. over
+FT-Multi. on multilingual set (Right), respectively.
+approaches in emotion recognition by reducing misclassifica-
+tion numbers. Compared to the monolingual fine-tuning method
+(FT-Mono.), which struggles with identifying neutral emo-
+tions, and the monolingual knowledge-distillation method (KD-
+Mono.), which still show confusion between happiness and neu-
+tral, our method (MTKD-Mono.) demonstrates superior accu-
+racy and generalization, especially for sadness. The multilin-
+gual fine-tuning method (FT-Multi.) improves performance but
+has issues between neutral and sadness. However, our MTKD-
+Multi. method enhances overall system effectiveness by im-
+proving performance for sadness and neutral emotions.
+5.3. Error Analysis
+The confusion matrices in Figure 2 reveals that the MTKD-
+Mono. method has difficulty distinguishing between Happiness
+and Neutral classes, while the MTKD-Multi. method struggles
+with Anger class, likely due to being minority classes. De-
+spite these challenges, MTKD-Mono. performs better in reduc-
+ing misclassifications between Anger and Sadness, and MTKD-
+Multi. excels in reducing errors between Neutral and Sadness.
+In terms of recall, MTKD-Mono. improves scores for Hap-
+piness and Anger, whereas MTKD-Multi.
+boosts scores for
+Neutral and Sadness. Overall, MTKD-Multi. shows superior
+performance by reducing misclassification rates and improv-
+ing recall, as highlighted by its higher average UR and WR
+scores across languages and enhanced performance in English
+SER. This indicates that leveraging multilingual data and multi-
+teacher knowledge distillation provides a significant advantage
+over traditional monolingual methods.
+6. Conclusion
+This study demonstrates the effectiveness of the MTKD ap-
+proach in markedly enhancing the performance of multilin-
+gual SER systems. By leveraging multiple monolingual teacher
+models, our method facilitates the transfer of cross-linguistic
+emotional knowledge, outperforming standard FT and conven-
+tional KD methods across various languages and datasets. This
+highlights the importance of optimizing emotional knowledge
+transfer for improved multilingual emotional understanding.
+The quantitative analysis of the IEMOCAP dataset shows that
+MTKD-Mono achieves the highest mean UR of 72.5, while
+MTKD-Multi attains the highest mean WR of 72.9. Further-
+more, in the FESC dataset, MTKD-Mono achieves the highest
+WR of 68.1, and MTKD-Multi attains the highest UR of 63.4
+among all compared methods. These results validate that train-
+ing on out-of-distribution data enhances generalization, even
+with limited in-domain data. However, our method currently re-
+lies on homogeneous teachers. Moreover, the associated com-
+putational demands and challenges in selecting teacher mod-
+els underscore areas that require further improvement. In fu-
+ture studies, we will explore heterogeneous teachers, alternative
+similarity metrics, and broader linguistic and cultural contexts
+to develop a more robust and versatile SER system.
+149
+
+7. Acknowledgements
+The computational resources were provided by Aalto Scien-
+ceIT. The authors are grateful for the Academy of Finland
+project funding number 345790 in ICT 2023 programme’s
+project ”Understanding speech and scene with ears and eyes”
+and the Business Finland project LAREINA under Grant
+7817/31/2022.
+8. References
+[1] N. Elsayed, Z. ElSayed, N. Asadizanjani, M. Ozer, A. Abdel-
+gawad, and M. Bayoumi, “Speech emotion recognition using su-
+pervised deep recurrent system for mental health monitoring,” in
+2022 IEEE 8th World Forum on Internet of Things (WF-IoT).
+IEEE, 2022, pp. 1–6.
+[2] T. Gr´osz, A. Virkkunen, D. Porjazovski, and M. Kurimo, “Discov-
+ering relevant sub-spaces of bert, wav2vec 2.0, electra and vit em-
+beddings for humor and mimicked emotion recognition with inte-
+grated gradients,” in Proceedings of the 4th on Multimodal Sen-
+timent Analysis Challenge and Workshop: Mimicked Emotions,
+Humour and Personalisation, 2023, pp. 27–34.
+[3] H. Zhang, D. Chen, and C. Wang, “Confidence-aware multi-
+teacher knowledge distillation,” in ICASSP 2022-2022 IEEE In-
+ternational Conference on Acoustics, Speech and Signal Process-
+ing (ICASSP).
+IEEE, 2022, pp. 4498–4502.
+[4] ——, “Adaptive multi-teacher knowledge distillation with meta-
+learning,” in 2023 IEEE International Conference on Multimedia
+and Expo (ICME).
+IEEE, 2023, pp. 1943–1948.
+[5] S. Anand, N. K. Devulapally, S. D. Bhattacharjee, and J. Yuan,
+“Multi-label emotion analysis in conversation via multimodal
+knowledge distillation,” in Proceedings of the 31st ACM Inter-
+national Conference on Multimedia, 2023, pp. 6090–6100.
+[6] A. Baevski, Y. Zhou, A. Mohamed, and M. Auli, “wav2vec
+2.0: A framework for self-supervised learning of speech repre-
+sentations,” Advances in neural information processing systems,
+vol. 33, pp. 12 449–12 460, 2020.
+[7] W.-N. Hsu, B. Bolte, Y.-H. H. Tsai, K. Lakhotia, R. Salakhutdi-
+nov, and A. Mohamed, “Hubert: Self-supervised speech represen-
+tation learning by masked prediction of hidden units,” IEEE/ACM
+transactions on audio, speech, and language processing, vol. 29,
+pp. 3451–3460, 2021.
+[8] S. Chen, C. Wang, Z. Chen, Y. Wu, S. Liu, Z. Chen, J. Li,
+N. Kanda, T. Yoshioka, X. Xiao et al., “Wavlm: Large-scale self-
+supervised pre-training for full stack speech processing,” IEEE
+Journal of Selected Topics in Signal Processing, vol. 16, no. 6,
+pp. 1505–1518, 2022.
+[9] L. Pepino, P. Riera, and L. Ferrer, “Emotion recognition
+from speech using wav2vec 2.0 embeddings,” arXiv preprint
+arXiv:2104.03502, 2021.
+[10] T. Gr´osz, D. Porjazovski, Y. Getman, S. Kadiri, and M. Kurimo,
+“Wav2vec2-based paralinguistic systems to recognise vocalised
+emotions and stuttering,” in Proceedings of the 30th ACM Inter-
+national Conference on Multimedia, 2022, pp. 7026–7029.
+[11] L.-W. Chen and A. Rudnicky, “Exploring wav2vec 2.0 fine tuning
+for improved speech emotion recognition,” in ICASSP 2023-2023
+IEEE International Conference on Acoustics, Speech and Signal
+Processing (ICASSP).
+IEEE, 2023, pp. 1–5.
+[12] M. Sharma, “Multi-lingual multi-task speech emotion recogni-
+tion using wav2vec 2.0,” in ICASSP 2022-2022 IEEE Interna-
+tional Conference on Acoustics, Speech and Signal Processing
+(ICASSP).
+IEEE, 2022, pp. 6907–6911.
+[13] A. Chakhtouna, S. SEKKATE, and A. Abdellah, “Unveiling em-
+bedded features in wav2vec2 and hubert msodels for speech
+emotion recognition,” Procedia Computer Science, vol. 232, pp.
+2560–2569, 2024.
+[14] L. Gao, K. Xu, H. Wang, and Y. Peng, “Multi-representation
+knowledge distillation for audio classification,” Multimedia Tools
+and Applications, vol. 81, no. 4, pp. 5089–5112, 2022.
+[15] Z. Hao, J. Guo, K. Han, Y. Tang, H. Hu, Y. Wang, and C. Xu,
+“One-for-all: Bridge the gap between heterogeneous architectures
+in knowledge distillation,” Advances in Neural Information Pro-
+cessing Systems, vol. 36, 2024.
+[16] Z. Zhao, H. Wang, H. Wang, and B. Schuller, “Hierarchical
+network with decoupled knowledge distillation for speech emo-
+tion recognition,” in ICASSP 2023-2023 IEEE International Con-
+ference on Acoustics, Speech and Signal Processing (ICASSP).
+IEEE, 2023, pp. 1–5.
+[17] H.-I. Yun and J.-S. Park, “End-to-end emotional speech recogni-
+tion using acoustic model adaptation based on knowledge distil-
+lation,” Multimedia Tools and Applications, vol. 82, no. 15, pp.
+22 759–22 776, 2023.
+[18] K. Sridhar and C. Busso, “Ensemble of students taught by prob-
+abilistic teachers to improve speech emotion recognition.” in IN-
+TERSPEECH, 2020, pp. 516–520.
+[19] R. Takashima, S. Li, and H. Kawai, “An investigation of a knowl-
+edge distillation method for ctc acoustic models,” in 2018 IEEE
+International Conference on Acoustics, Speech and Signal Pro-
+cessing (ICASSP).
+IEEE, 2018, pp. 5809–5813.
+[20] T. Fukuda, M. Suzuki, G. Kurata, S. Thomas, J. Cui, and B. Ram-
+abhadran, “Efficient knowledge distillation from an ensemble of
+teachers.” in Interspeech, 2017, pp. 3697–3701.
+[21] Z. Yang, L. Shou, M. Gong, W. Lin, and D. Jiang, “Model com-
+pression with two-stage multi-teacher knowledge distillation for
+web question answering system,” in Proceedings of the 13th In-
+ternational Conference on Web Search and Data Mining, 2020,
+pp. 690–698.
+[22] Z. Ren, T. T. Nguyen, Y. Chang, and B. W. Schuller, “Fast yet
+effective speech emotion recognition with self-distillation,” in
+ICASSP 2023-2023 IEEE International Conference on Acoustics,
+Speech and Signal Processing (ICASSP).
+IEEE, 2023, pp. 1–5.
+[23] K.-P. Huang, T.-H. Feng, Y.-K. Fu, T.-Y. Hsu, P.-C. Yen, W.-C.
+Tseng, K.-W. Chang, and H.-Y. Lee, “Ensemble knowledge dis-
+tillation of self-supervised speech models,” in ICASSP 2023-2023
+IEEE International Conference on Acoustics, Speech and Signal
+Processing (ICASSP).
+IEEE, 2023, pp. 1–5.
+[24] W. Chen, X. Xing, P. Chen, and X. Xu, “Vesper: A compact and
+effective pretrained model for speech emotion recognition,” IEEE
+Transactions on Affective Computing, 2024.
+[25] C. Busso, M. Bulut, C.-C. Lee, A. Kazemzadeh, E. Mower,
+S. Kim, J. N. Chang, S. Lee, and S. S. Narayanan, “Iemocap:
+Interactive emotional dyadic motion capture database,” Language
+resources and evaluation, vol. 42, pp. 335–359, 2008.
+[26] M. Airas and P. Alku, “Emotions in vowel segments of continuous
+speech: analysis of the glottal flow using the normalised ampli-
+tude quotient,” Phonetica, vol. 63, no. 1, pp. 26–46, 2006.
+[27] P. Gournay, O. Lahaie, and R. Lefebvre, “A canadian french emo-
+tional speech dataset,” in Proceedings of the 9th ACM multimedia
+systems conference, 2018, pp. 399–402.
+[28] Z. Lou, S. Otake, Z. Li, R. Kawakami, and N. Inoue, “Cu-
+bic knowledge distillation for speech emotion recognition,” in
+ICASSP 2024-2024 IEEE International Conference on Acoustics,
+Speech and Signal Processing (ICASSP). IEEE, 2024, pp. 5705–
+5709.
+150
+

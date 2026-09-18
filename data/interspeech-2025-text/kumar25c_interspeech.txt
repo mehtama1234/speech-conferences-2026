@@ -1,0 +1,709 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+ArticulateX: End-to-End Monolingual Speech Translation in Articulator Space
+Vishal Kumar, Vinayak Abrol
+1CSE Department & Infosys Centre for AI , IIIT-Delhi, India
+{vishalku,abrol}@iiitd.ac.in
+Abstract
+We present ArticulateX, the first non-autoregressive di-
+rect speech-to-speech translation (S2ST) model that oper-
+ates through an articulatory latent space, offering an effi-
+cient alternative to existing cascaded models.
+It consists of
+a direct speech-to-articulator encoder, a latent articulator-to-
+MelSpectrogram mapper, and a vocoder for high-fidelity speech
+synthesis.
+By leveraging articulatory representations, which
+are inherently language-agnostic, our model effectively cap-
+tures speech dynamics, preserving speaker identity, prosody
+and expressiveness across languages. Unlike prior autoregres-
+sive models, ArticulateX eliminates the need for intermediate
+text, discrete units and/or complex self-supervised objectives,
+enabling faster inference, stable training, and improved transla-
+tion quality. We demonstrate the efficacy of the proposed model
+in fr-en and de-en speech-to-speech translation on the CVSS
+dataset, achieving BLEU scores better or comparable to exist-
+ing models.
+Index Terms: Speech translation, neural networks, end-to-end
+modeling
+1. Introduction
+During
+the
+past
+decades,
+speech-to-speech
+translation
+(S2ST) [1] has emerged as a critical tool for real-time cross-
+linguistic communication. Traditional S2ST systems are based
+on modular pipelines, typically involving Automatic Speech
+Recognition (ASR) [2], Machine Translation (MT) [3], and
+Text-to-Speech (TTS) [4]. Although effective, these systems
+suffer from significant drawbacks, including latency, com-
+pound errors, and reliance on language-specific intermediate
+representations.
+Recent advances in machine learning, such
+as
+sequence-to-sequence
+models
+[5]
+and
+self-supervised
+learning [6], have enabled end-to-end S2ST systems that
+bypass textual representations, introducing new possibilities
+for efficiency and scalability. Models like Translatotron [7, 8]
+and UnitY [9] have demonstrated the potential of language-
+agnostic acoustic units and multilingual pre-training. However,
+aligning
+disparate
+acoustic
+features
+such
+as
+phonology,
+prosody, and rhythm remains a significant challenge for direct
+speech-to-speech systems.
+In this paper, we present ArticulateX, a novel non-
+autoregressive framework [10] that introduces a language-
+independent articulatory latent space for direct speech-to-
+speech translation.
+Unlike conventional acoustic or spectral
+representations, our approach maps speech signals to dynamic
+articulatory gesture configurations of the vocal tract that under-
+lie speech production across all languages. Drawing inspiration
+from articulatory phonetics and the motor theory of speech per-
+ception [11], ArticulateX models speech as a universal set of ar-
+ticulatory movements, abstracting away language and speaker-
+specific variability. This enables more effective cross-linguistic
+alignment and addresses challenges related to acoustic variabil-
+ity and coarticulatory effects.
+The ArticulateX framework1 employs an end-to-end design
+that consists of three key components: a source audio to target
+articulator encoder to map input speech into articulatory repre-
+sentations, a latent articulator-to-MelSpectrogram generator to
+generate target speech features, and a vocoder for high-quality
+speech synthesis. Using state-of-the-art deep learning archi-
+tectures, including convolutional layers, conformer blocks [12],
+and transformer [13], our model captures subtle articulatory dy-
+namics essential for natural synthesis while remaining robust to
+speaker variability and environmental noise. Furthermore, the
+non-autoregressive architecture enables parallelized inference,
+significantly reducing latency compared to autoregressive mod-
+els. By introducing articulatory representations as a universal
+intermediary, ArticulateX provides a scalable, efficient, and ro-
+bust solution for multilingual speech-to-speech translation. Ex-
+perimental results demonstrate its ability to achieve high trans-
+lation accuracy and speech naturalness while addressing the in-
+herent limitations of existing S2ST systems2.
+In summary, this work makes the following contributions.
+1. We propose a novel speech-to-speech translation framework
+that takes advantage of a language-agnostic articulatory space
+to bridge the gap between source and target languages.
+2. We present a detailed methodology for mapping acoustic sig-
+nals to articulatory representations using deep neural net-
+works.
+3. We provide extensive experimental evaluations that highlight
+the robustness of our system.
+2. Related Works
+Conventional S2S translation systems are implemented as a cas-
+cade of three pre-trained components: automatic speech recog-
+nition (ASR) for the source language, machine translation (MT)
+for the conversion of the source language to the target lan-
+guage, and text-to-speech synthesis (TTS) for speech genera-
+tion in the target language [1].
+Recent works have reduced
+the dependence on multiple components by utilising learned
+discrete speech representations as an intermediate representa-
+tion. For instance, recently, Zhang et al. [14] jointly trained
+a phoneme-conditioned VAE model for a multilingual setting,
+while Lee et al. [15] used a pre-trained vocoder to directly pre-
+dict the waveform from the discrete representation without re-
+1This work is supported by TBO Mahalanobis Fellowship, Nebius Research
+Grant & in part by the Infosys Foundation via the Infosys Centre for AI, IIITD.
+2https://sites.google.com/view/articulatex-demo/
+home
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+11
+10.21437/Interspeech.2025-1305
+
+A2Mel
+Generator
+Vocoder /
+PostProcessing
+Source Language
+Target Language
+S2A Encoder
+Feature
+Extractor Conformer
+Sparse
+Transformer
+Figure 1: ArticulateX: Translates speech from source to English language using latent articulatory representations of the vocal tract.
+lying on spectrograms. In addition, there have been attempts
+to enhance the linguistic information in the latent space us-
+ing language-aware normalisation [16]. However, end-to-end
+training at scale is often infeasible, which may limit their over-
+all performance. Further, these approaches are not as flexible,
+as they cannot easily adapt to new or low-resource languages.
+End-to-end S2S translation systems have gained considerable
+attention with the Translatotron models from Google [17, 7, 8].
+Similarly, work in [18] proposes a simple yet effective frame-
+work for multilingual end-to-end S2S. Recent advancements in
+self-supervised learning (SSL) based models (e.g., wav2vec or
+HuBERT) pre-trained on large amount of unlabeled audio data
+have gained traction for extracting linguistically rich acoustic
+features. For S2ST task, these models enabled cross-lingual
+transfer; for instance, XLS-R [19], a multilingual model pre-
+trained on 436K hours of speech, achieved few-shot translation
+for under-resourced languages like Swahili by aligning latent
+speech representations across languages. Alternatively, some
+studies employ discrete acoustic units as an intermediate rep-
+resentation to bridge the speech–text modality gap.
+For in-
+stance, the UnitY framework [9] converts source speech into
+language-agnostic units via HuBERT and then generates tar-
+get speech using a multilingual TTS module, reducing train-
+ing data needs by 60% compared to spectrogram-based sys-
+tems while maintaining high naturalness (MOS). Additionally,
+non-autoregressive models like FastSpeech-2 [4] achieve sub-
+second latency through parallel spectrogram prediction, and
+other works have enhanced synthesis quality by preserving
+speaker traits [20].
+Existing models exhibit several limitations:
+(1) robust-
+ness challenges, including over-/under-generation and difficul-
+ties with long sequences; (2) reliance on autoregressive archi-
+tectures that yield slow inference and degrade quality when re-
+placed by non-autoregressive synthesis; and (3) closed-source,
+data-intensive, and expensive training processes that hinder
+open-source progress.
+3. ArticulateX
+In this section, we introduce ArticulateX, which bypasses tex-
+tual intermediaries by directly mapping acoustic signals into a
+language-agnostic articulatory domain. The pipeline comprises
+of three modules: (1) S2A Encoder, (2) MelSpectrogram Gen-
+erator and (3) Vocoder/PostProcessing.
+1. Speech-2-Articulator (S2A) Encoder: is a core innovation
+in ArticulateX, mapping raw speech from the source lan-
+guage to a language-independent articulatory latent space of
+the target language. The S2A Encoder integrates a feature
+extractor, Conformer blocks, and a sparse transformer, all
+carefully optimized to balance expressive power, efficiency,
+and scalability.
+By operating in a universal articulatory
+space, the S2A Encoder eliminates language-specific biases,
+making it adept at modeling cross-lingual speech dynamics.
+This ensures robust and natural translations, even for low-
+resource languages. Inspired by LoRA [21], all trainable lay-
+ers are reparameterized into low-rank representations (rank
+4), significantly reducing computational overhead and model
+size (3.1M parameters) while retaining expressiveness. This
+makes ArticulateX scalable and efficient for real-world appli-
+cations. Figure 2(a), 2(c), and 2(b) depict the components of
+the S2A encoder.
+• Feature
+Extractor:
+employs
+four
+dilated
+1D-
+convolutional
+blocks
+(Conv-BN-LeakyReLU)
+with
+progressively larger kernel sizes & dilation factors to
+capture long-term temporal dependencies in speech. This
+is followed by four standard Conv1D layers with increas-
+ing kernel size & strides to progressively downsample
+features, culminating in an attentive average pooling layer
+that emphasizes the most informative temporal segments.
+• Conformer Block: The four Conformer blocks [12] seam-
+lessly enable the model to capture both local acoustic nu-
+ances and global speech patterns, crucial for preserving
+speaker characteristics and prosody in the translation pro-
+cess.
+• Sparse Transformer: is a lightweight variant of the stan-
+dard encoder-decoder transformer [13] with dense layers
+replaced with sparse linear layers that use a trainable soft-
+max threshold. To stabilize training, a Straight-Through
+Estimator (STE) is applied during backpropagation, ensur-
+ing gradients remain smooth and effective while training
+with sparse inputs/outputs.
+Articulatory representations encode both local dependencies
+(e.g., transitions between the neighbouring phonemes) and
+global dynamics (e.g., rhythm, prosody, or speaker-level
+characteristics). A Conformer block is explicitly designed to
+handle this dual nature by combining convolutions for local
+modeling with self-attention for global relationships. Fur-
+ther, articulatory representations are highly sparse in nature,
+meaning that only a subset of features is active at a given
+time. Thus, a sparse transformer is well-suited for such data
+as it can selectively attend to the most salient regions in the
+feature space, avoiding overfitting on inactive or less relevant
+dimensions of the articulatory representation. A large Trans-
+former alone excel at capturing global patterns but lacks the
+inductive bias to efficiently model fine-grained local details,
+which are critical for articulatory mapping.
+2. Articulator to MelSpectrogram (A2Mel) Generator: in
+ArticulateX transforms sparse articulatory feature sequences
+in the target language into high-fidelity MelSpectrograms. It
+addresses the unique challenges of mapping sparse represen-
+tations to dense spectrograms while preserving fine-grained
+prosodic and acoustic details.
+Our A2Mel Generator em-
+12
+
+Audio
+Conv-1D Block
+[k: 3+2N, d: 2+N]
+LeakyReLU
+Attentive AvgPool-1D
+Conv-1D
+[k: 3+2(N/2), s: 1+(N/2)]
+N = {0,1,2,3}
+(a) Feature Extractor
+Positional Encoding
+Input
+Length
+Predictor
+Transformer
+Encoder
+Transformer
+Decoder
++
+ 
+(b) Sparse Transformer
+Feed Forwad Network
+x1/2
+Multi-Head Attention
+LayerNorm
+Conv-1D
+GLU
+DepthWise Conv-1D
+BatchNorm-1D
+SiLU
+Pointwise Conv-1D
+Dropout
+x4
+LayerNorm
+Feed Forwad Network
+x1/2
+(c) Conformer Block
+Figure 2: Components of S2A Encoder. k, d, s denotes Kernel-
+Size, Dialation and Stride, respectively
+ploys a lightweight FastSpeech-2-inspired architecture (50M
+parameters) optimized for articulatory input, integrating pitch
+and energy conditioning for every articulatory unit, ensuring
+language-agnostic fine-grained prosody control. Addition-
+ally, instead of relying on a separate aligner, the system in-
+corporates a self-supervised duration predictor trained jointly
+with the generator. This duration predictor effectively aligns
+sparse articulatory features with their temporal representa-
+tions, eliminating the need for external alignment tools while
+improving training efficiency.
+3. Vocoder/PostProcessing:
+We employ a pretrained HiFi-
+GAN-V1 [22] (with and without fine-tunning; 14M param-
+eters) to transform the spectrograms into raw waveforms. To
+improve details in high frequencies and remove temporal in-
+consistencies, we used the CDiffuse model (4M parameters)
+from [23].
+4. Experimental setup
+4.1. Dataset
+We conducted experiments using the benchmark CVSS Corpus.
+The dataset has 1,900 hours of sentence-level parallel speech
+from 21 source languages to English generated via high-quality
+Table 1: S2S Translation performance comparison using BLEU Scores
+for various systems. Here, ‘Mono’ & ‘Multi’ denote mono-lingual &
+multi-lingual models, respectively.3
+Model
+Params
+(Approx.)
+BLEU
+fr-en
+de-en
+Translatotron-2 [7] [Multi]
+-
+26.13
+16.92
+UnitY [9] [Multi]
+-
+26.9
+16.36
+S2UT [15] [Mono]
+130 M
+22.23
+2.99
+DASpecch [26] [Mono]
+95 M
+25.03
+-
+ComSpeech [27] [Multi]
+112 M
+28.15
+18.16
+Hibiki [28] [Mono]
+2.7 B
+38.21
+-
+Ours [Mono]
+70 M
+37.24
+20.07
+TTS models. It has two variants: CVSS-C, offering synthe-
+sized speech in a canonical voice, and CVSS-T, with the source
+speaker’s voice preserved. This work focuses on the former,
+specifically fr-en and de-en pairs.
+4.2. Model Training
+Our overall pipeline is implemented in PyTorch and is
+architecture-agnostic for constituent building blocks. First, the
+target language text is converted into a sequence of phonemes
+that are then converted to binary-encoded articulatory features.
+S2A encoder is trained using a composite loss that combines
+masked prediction loss for accurate sequence length estimation
+and MAE loss for precise articulator feature reconstruction. For
+extracting articulatory features and the A2Mel generator, we
+adapted the implementation and training pipeline from the IMS
+Toucan toolkit [24]. Finally, the HiFiGAN vocoder is fine-tuned
+using a composite loss on the generated raw waveforms. The
+first loss is the standard MelLoss from [22], while the second
+one is a multi-resolution STFT loss proposed in [25].
+Our model components are trained on a machine with
+3× NVIDIA RTX 3090 GPUs (24 GB each) and 512 GB of
+RAM. Model optimization is achieved with the Adam opti-
+mizer, batchsize of 64 and a learning rate of 10−3 with a co-
+sine annealing scheduler. The STE in sparse transformer also
+uses gradient clipping. Our S2A encoder is primarily trained on
+4-sec audio segments and, together with A2Mel+Vocoder Artic-
+ulateX can successfully translate sequences up to 12 seconds.
+5. Results
+In this section, we present an evaluation of our proposed system
+ArticulateX for fr-en & de-en translation. We compare its
+performance against six SOTA models: Translatotron-2, UnitY,
+S2UT, DASpeech, ComSpeech and Hibiki.
+5.1. Comparison with existing systems
+The performance in terms of BLEU scores (higher the better) of
+the proposed and existing models for speech translation is sum-
+marized in Table 1. To calculate the BLEU score, we employ
+the pretrained Wav2Vec2-vox-960h ASR model on the respec-
+tive CVSS testset.
+Notably, our proposed model, with a minimal parameter
+count of approximately 70M, achieves BLEU scores of 37.24
+fr-en and 20.07 de-en, which are competitive with or supe-
+rior to those obtained by considerably larger translation mod-
+els. For instance, compared to the recent Hibiki model, Ar-
+ticulateX achieves only 2.4% relative lower performance on
+3The number of parameters in Translatotron-2 and UnitY models is unknown.
+13
+
+(a): Target
+(b): Predicted
+Frequency
+Time
+Figure 3: Target and Predicted Spectrograms for (de: Ich h¨atte
+das fast vergessen.), (Target en: I almost forgot that), (Pre-
+dicted en: I nearly forgot that)
+(fr-en). In most existing works, both models, such as the la-
+tent representation-based Translatron-2 model or latent discrete
+unit-based DASpeech, UnitY & S2UT models, the training
+phase arguments the acoustic model with auxiliary information
+via additional linguistic decoding tasks. In contrast, Articu-
+lateX doesn’t rely on any separate linguistic information and
+consists of modular & exchangeable blocks that can be pre-
+trained or trained in an end-to-end manner. Alternatively, re-
+cent works such as Translatron-3 and ComSpeech have also ex-
+plored unsupervised training without parallel translation data.
+In a preliminary comparison with ComSpeech, we observe that
+supervised models like ArticulateX or Hibiki have far superior
+performance. These findings demonstrate the efficacy of our
+lightweight architecture in achieving high translation quality,
+thereby highlighting a favourable trade-off between model com-
+plexity and performance.
+5.2. Qualitative Evaluation & Ablation Study
+To evaluate the naturalness and equivalency of the translated
+outputs, we designed a rigorous Mean Opinion Score (MOS)
+experiment involving English-speaking individuals with En-
+glish as their second language. Each participant was presented
+with a randomized set of translation samples to mitigate poten-
+tial biases and was instructed to evaluate the outputs based on
+two key aspects: 1) naturalness, which measures the human-
+likeness of the translation, and 2) equivalency, which assesses
+the accuracy of the meaning relative to the source text. Raters
+used a standardized Likert scale ranging from 1 (poor) to 5 (ex-
+cellent), with comprehensive scoring guidelines provided to en-
+sure consistency across evaluations. By averaging the scores
+across all samples and participants, we derived an aggregate
+MOS for our system.
+In order to ascertain the contribution of individual compo-
+nents to our system’s overall performance, we conducted an ex-
+tensive ablation study. Specifically, we explain below a few
+approaches that resulted in intelligible outputs.
+1. Initially, we attempted to map the articulatory representa-
+tions of the source language (fr/de) to those of the target
+language using classical machine learning techniques. We
+explored various configurations combining Gaussian mixture
+models (GMM) and support vector regression (SVR). Specif-
+ically, a GMM was trained on unique articulatory represen-
+tations to predict posterior probabilities for each articulator,
+while a multivariate SVR was simultaneously trained on the
+same data. The outputs of both models were combined via a
+weighted average to obtain the final articulatory representa-
+tion, which was then input to a pretrained A2Mel+Vocoder
+Table 2: Qualitative and MOS performance of speech-2-articulatory
+(S2A), articulatory-2-articulatory (A2A) and text-2-articulatory (T2A)
+mapping. ArticulateX V1 includes the post-processing network.
+Method
+Approach
+Naturalness
+Equivalence
+A2A
+SVR + GMM
+2.04 ± 0.04
+1.89 ± 0.04
+T2A
+Conv1D
+2.56 ± 0.04
+2.01 ± 0.04
+Transformer
+3.24 ± 0.05
+2.66 ± 0.05
+Sparse Transformer
+1.97 ± 0.04
+2.99 ± 0.07
+S2A
+ArticulateX
+4.79 ± 0.01
+4.01 ± 0.01
+ArticulateX V1
+4.84 ± 0.01
+4.24 ± 0.01
+model for audio synthesis.
+Although this approach pro-
+duced approximate mappings, it was effective only for very
+short durations, yielding suboptimal translation for longer se-
+quences.
+2. In our second ablation study, we directly mapped source lan-
+guage text to the target language articulator space using three
+sequence models: a Conv1D-based model, a Transformer,
+and a Sparse Transformer. Here, text embeddings were ex-
+tracted using Bert-based MiniLM [29]. The Conv1D model
+comprises 12 Conv1D–BatchNorm–ReLU blocks with resid-
+ual connections every 3rd block, followed by a softmax layer
+(≈11M parameters). Both the Transformer and Sparse Trans-
+former follow the architecture of [13] with three encoder and
+three decoder layers; the Sparse Transformer replaces stan-
+dard linear layers with custom sparse variants, containing
+22M and 10M parameters, respectively. The resulting artic-
+ulatory representations are synthesized into audio via a pre-
+trained A2Mel+Vocoder. Notably, the Conv1D and Trans-
+former models yield greater naturalness, while the Sparse
+Transformer offers superior equivalence.
+3. Finally, the third set of experiments involves our proposed di-
+rect speech-to-articulatory mapping approach. Here, we ex-
+perimented with the base ArticulateX model, and Articula-
+teX V1 includes the post-processing CDiffuse model.
+The results of these experiments are reported in Table 2. The
+comparative analysis clearly indicates that our S2A-based ap-
+proach in ArticulateX delivers significantly higher MOS scores
+for both naturalness and equivalence compared to A2A & T2A
+approaches. Additionally, our system achieves an RTF of 0.97,
+demonstrating near real-time processing capability. These re-
+sults underscore the efficacy of audio-based articulatory repre-
+sentations in improving the quality and fidelity of speech syn-
+thesis, and they provide a robust foundation for future develop-
+ments in speech translation technologies.
+6. Conclusion & Future Work
+We presented ArticulateX, a non-autoregressive direct S2S
+translation model that innovatively leverages a language-
+independent articulatory latent space for efficient and high-
+fidelity translation. With its novel lightweight S2A Encoder and
+A2Mel Generator, ArticulateX achieves state-of-the-art perfor-
+mance by combining sparse articulatory representations with
+computationally efficient modules like Conformer blocks and
+Sparse Transformers.
+Future work will extend the training
+dataset to include longer sequences for improved temporal mod-
+eling and explore multilingual capabilities through architectural
+and training paradigm enhancements, aiming to make Articula-
+teX a robust, scalable solution for S2S translation.
+14
+
+7. References
+[1] W. Wahlster, Verbmobil: Foundations of Speech-to-Speech Trans-
+lation.
+Springer, 2000.
+[2] L. D. Dong Yu, Automatic Speech Recognition: A Deep learning
+Approach.
+Springer London, 2014.
+[3] N. M. Guerreiro, R. Rei, D. v. Stigt, L. Coheur, P. Colombo, and
+A. F. T. Martins, “xcomet: Transparent machine translation eval-
+uation through fine-grained error detection,” Transactions of the
+Association for Computational Linguistics, pp. 979–995, 2024.
+[4] Y. Ren, C. Hu, X. Tan, T. Qin, S. Zhao, Z. Zhao, and
+T.-Y. Liu, “Fastspeech 2:
+Fast and high-quality end-to-end
+text to speech,”
+in International Conference on Learning
+Representations (ICLR), 2021, pp. 1–15. [Online]. Available:
+https://openreview.net/forum?id=piLPYqxtWuA
+[5] S. Liu, Y. Cao, D. Wang, X. Wu, X. Liu, and H. Meng, “Any-
+to-many voice conversion with location-relative sequence-to-
+sequence modeling,” IEEE/ACM Transactions on Audio, Speech,
+and Language Processing, pp. 1717–1728, 2021.
+[6] W.-N. Hsu, B. Bolte, Y.-H. H. Tsai, K. Lakhotia, R. Salakhutdi-
+nov, and A. Mohamed, “Hubert: Self-supervised speech represen-
+tation learning by masked prediction of hidden units,” IEEE/ACM
+Transactions on Audio, Speech, and Language Processing, pp.
+3451–3460, 2021.
+[7] Y. Jia, M. T. Ramanovich, T. Remez, and R. Pomerantz,
+“Translatotron 2: High-quality direct speech-to-speech translation
+with voice preservation,” in International Conference on Machine
+Learning (ICML), 2022, pp. 10 120–10 134. [Online]. Available:
+https://proceedings.mlr.press/v162/jia22b/jia22b.pdf
+[8] E. Nachmani, A. Levkovitch, Y. Ding, C. Asawaroengchai,
+H. Zen, and M. T. Ramanovich, “Translatotron 3: Speech to
+speech translation with monolingual data,” in IEEE Interna-
+tional Conference on Acoustics, Speech and Signal Processing
+(ICASSP), 2024, pp. 10 686–10 690.
+[9] H. Inaguma, S. Popuri, I. Kulikov, P.-J. Chen, C. Wang, Y.-A.
+Chung, Y. Tang, A. Lee, S. Watanabe, and J. Pino, “UnitY: Two-
+pass direct speech-to-speech translation with discrete units,” in
+Proceedings of the Annual Meeting of the Association for Compu-
+tational Linguistics (Volume 1: Long Papers), 2023, pp. 15 655–
+15 680.
+[10] Y. Xiao, L. Wu, J. Guo, J. Li, M. Zhang, T. Qin, and T.-Y. Liu,
+“A survey on non-autoregressive generation for neural machine
+translation and beyond,” IEEE Transactions on Pattern Analysis
+and Machine Intelligence, pp. 11 407–11 427, 2023.
+[11] A. M. Liberman and I. G. Mattingly, “The motor theory of speech
+perception revised,” Cognition, pp. 1–36, 1985.
+[12] A. Gulati, J. Qin, C.-C. Chiu, N. Parmar, Y. Zhang, J. Yu,
+W. Han, S. Wang, Z. Zhang, Y. Wu, and R. Pang, “Conformer:
+Convolution-augmented transformer for speech recognition,” in
+Interspeech, 2020, pp. 5036–5040.
+[13] A. Vaswani, N. Shazeer, N. Parmar, J. Uszkoreit, L. Jones,
+A. N. Gomez,
+L. u. Kaiser,
+and I. Polosukhin,
+“Atten-
+tion is all you need,” in Advances in Neural Information
+Processing Systems (NeurIPS), 2017, pp. 1–11. [Online]. Avail-
+able:
+https://proceedings.neurips.cc/paper files/paper/2017/file/
+3f5ee243547dee91fbd053c1c4a845aa-Paper.pdf
+[14] C. Zhang, X. Tan, Y. Ren, T. Qin, K. Zhang, and T.-Y. Liu,
+“Uwspeech:
+Speech to speech translation for unwritten lan-
+guages,” AAAI Conference on Artificial Intelligence, pp. 14 319–
+14 327, 2021.
+[15] A. Lee, P.-J. Chen, C. Wang, J. Gu, S. Popuri, X. Ma, A. Polyak,
+Y. Adi, Q. He, Y. Tang, J. Pino, and W.-N. Hsu, “Direct speech-
+to-speech translation with discrete units,” in Proceedings of the
+Annual Meeting of the Association for Computational Linguistics
+(Volume 1: Long Papers), 2022, pp. 3327–3339.
+[16] R. Huang,
+J. Liu,
+H. Liu,
+Y. Ren,
+L. Zhang,
+J. He,
+and Z. Zhao, “Transpeech: Speech-to-speech translation with
+bilateral perturbation,” in International Conference on Learning
+Representations (ICLR), 2023, pp. 1–17. [Online]. Available:
+https://openreview.net/forum?id=UVAmFAtC5ye
+[17] Y. Jia, R. J. Weiss, F. Biadsy, W. Macherey, M. Johnson, Z. Chen,
+and Y. Wu, “Direct speech-to-speech translation with a sequence-
+to-sequence model,” in Interspeech, 2019, pp. 1123–1127.
+[18] H. Inaguma, K. Duh, T. Kawahara, and S. Watanabe, “Multilin-
+gual end-to-end speech translation,” in IEEE Automatic Speech
+Recognition and Understanding Workshop (ASRU), 2019, pp.
+570–577.
+[19] A. Babu, P. Wang, B. Xu, R. Sanabria, W. Galuba, A. Wu, T. F.
+de Gusm˜ao, M. Likhomanenko, Y. Adi, Q. Xu, R. Collobert,
+A. Mohamed, and E. Dupoux, “Xls-r: Self-supervised cross-
+lingual speech representation learning at scale,” in Interspeech,
+2022, pp. 2278–2282.
+[20] N. Hirschkind, J. L. Yeo, S. Baskar, P. Sun, M. Omachi, S. J. Ren-
+nie, T. Hayashi, A. Garg, P. Molchanov, Y. Zhang, M. Omachi,
+and K. Yu, “Diffusion synthesizer for efficient multilingual speech
+to speech translation,” in Interspeech, 2024, pp. 837–841.
+[21] E. J. Hu, yelong shen, P. Wallis, Z. Allen-Zhu, Y. Li, S. Wang,
+L. Wang, and W. Chen, “LoRA: Low-rank adaptation of large
+language models,” in International Conference on Learning
+Representations (ICLR), 2022, pp. 1–13. [Online]. Available:
+https://openreview.net/forum?id=nZeVKeeFYf9
+[22] J. Kong, J. Kim, and J. Bae, “Hifi-gan:
+Generative ad-
+versarial
+networks
+for
+efficient
+and
+high
+fidelity
+speech
+synthesis,”
+in Advances in Neural Information Processing
+Systems (NeurIPS), 2020, pp. 17 022–17 033. [Online]. Avail-
+able:
+https://proceedings.neurips.cc/paper files/paper/2020/file/
+c5d736809766d46260d816d8dbc9eb44-Paper.pdf
+[23] Y.-J. Lu, Z.-Q. Wang, S. Watanabe, A. Richard, C. Yu, and
+Y. Tsao, “Conditional diffusion probabilistic model for speech
+enhancement,” in IEEE International Conference on Acoustics,
+Speech and Signal Processing (ICASSP), 2022, pp. 7402–7406.
+[24] F. Lux, J. Koch, A. Schweitzer, and N. Thang Vu, “The ims tou-
+can system for the blizzard challenge 2021,” in The Blizzard Chal-
+lenge, 2021, pp. 14–19.
+[25] R. Yamamoto, E. Song, and J.-M. Kim, “Parallel wavegan: A
+fast waveform generation model based on generative adversar-
+ial networks with multi-resolution spectrogram,” in IEEE Inter-
+national Conference on Acoustics, Speech and Signal Processing
+(ICASSP), 2020, pp. 6199–6203.
+[26] Q. Fang,
+Y. Zhou,
+and Y. Feng,
+“DASpeech:
+Directed
+acyclic transformer for fast and high-quality speech-to-speech
+translation,” in Advances in Neural Information Processing
+Systems
+(NeurIPS),
+2023,
+pp.
+1–20.
+[Online].
+Available:
+https://openreview.net/forum?id=JvYSSPtQyk
+[27] Q. Fang, S. Zhang, Z. Ma, M. Zhang, and Y. Feng, “Can we
+achieve high-quality direct speech-to-speech translation without
+parallel speech data?” in Proceedings of the Annual Meeting of
+the Association for Computational Linguistics (Volume 1: Long
+Papers), 2024, pp. 7264–7277.
+[28] T. Labiausse, L. Mazar´e, E. Grave, P. P´erez, A. D´efossez,
+and
+N.
+Zeghidour,
+“High-fidelity
+simultaneous
+speech-to-
+speech
+translation,”
+pp.
+1–12,
+2025.
+[Online].
+Available:
+https://arxiv.org/abs/2502.03382
+[29] W. Wang, F. Wei, L. Dong, H. Bao, N. Yang, and M. Zhou,
+“MiniLM:
+deep
+self-attention
+distillation
+for
+task-agnostic
+compression of pre-trained transformers,” in Advances in Neural
+Information Processing Systems (NeurIPS), 2020, pp. 5776–5788.
+[Online]. Available:
+https://proceedings.neurips.cc/paper files/
+paper/2020/file/3f5ee243547dee91fbd053c1c4a845aa-Paper.pdf
+15
+

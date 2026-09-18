@@ -1,0 +1,768 @@
+LID Models are Actually Accent Classifiers: Implications and Solutions for
+LID on Accented Speech
+Niyati Bafna1,∗, Matthew Wiesner1,2,∗
+1CLSP and 2HLTCOE, Johns Hopkins University, USA
+nbafna1@jhu.edu, wiesner@jhu.edu
+Abstract
+Prior research indicates that LID model performance sig-
+nificantly declines on accented speech; however, the specific
+causes, extent, and characterization of these errors remain
+under-explored. (i) We identify a common failure mode on ac-
+cented speech whereby LID systems often misclassify L2 ac-
+cented speech as the speaker’s native language or a related lan-
+guage. (ii) We present evidence suggesting that state-of-the-art
+models are invariant to permutations of short spans of speech,
+implying they classify on the basis of short phonotactic fea-
+tures indicative of accent rather than language. Our analysis
+reveals a simple method to enhance model robustness to accents
+through input chunking. (iii) We present an approach that inte-
+grates sequence-level information into our model without rely-
+ing on monolingual ASR systems; this reduces accent-language
+confusion and significantly enhances performance on accented
+speech while maintaining comparable results on standard LID.1
+Index Terms: language identification, accented speech, pho-
+netic information
+1. Introduction
+Spoken language identification (LID) is vital for speech pro-
+cessing pipelines, but often fails to generalize across diverse ac-
+cents. Accent variation arises for many reasons: in national and
+global link languages such as English, Spanish, and Swahili,
+speakers color their pronunciation with the phonology of local
+substrate languages or their L1 languages [1]. For example,
+Indian English speakers may approximate the fricative /θ/ in
+English with a dental /d/, since most Indian language phone
+inventories do not contain the former. Other kinds of L1 accent
+variation may not be easily described by a currently spoken sub-
+strate or L1 language phonology, e.g., Latin American Spanish
+accents. While all speakers have an accent [2], we focus specif-
+ically on how LID models handle accents influenced by local
+substrate or L1 substrate phonology – L2-accents for short.2
+We aim to broadly characterize the mode of errors made by
+modern LID approaches on multiple L2-accents in 3 languages,
+to explain why some models fail to generalize to L2-accents,
+and finally, informed by our analyses, to improve LID robust-
+ness to L2-accented speech. To this end, we first study the error
+patterns of the ECAPA-TDNN LID model [3, 4] on a variety
+of L2-accents. We find that accent-language confusion, i.e. the
+mis-recognition of L2-accented speech as the L1 substrate or
+*These authors contributed equally.
+1We release our code at https://github.com/
+niyatibafna/mitigating-accent-bias-in-lid/ .
+2For bilingual speakers, or L1 speakers who share similar accent
+features as a group of L2 speakers we still call this accent an L2-accent.
+a related language, is a significant contributor to this degrada-
+tion, e.g., classifying Filipino accented English as Tagalog or
+Cebuano. Accent-language confusion in an LID model indi-
+cates that the model functions as an accent ID model and sim-
+ply relies on the strong correlation between accent and language
+to make language predictions. We hypothesize that this occurs
+when models use phoneme inventories or short phonotactic fea-
+tures characteristic of accent to make predictions, instead of lex-
+ical or syntactic features that may more generally characterize
+language. We probe LID models on adversarially constructed
+inputs designed to help characterize invariance to block permu-
+tations in order to help explain errors on L2-accented speech.
+Current commonly used LID models, such as the ECAPA-
+TDNN [4], or pooled classification of self-supervised (SSL)
+representations of speech, borrow from techniques used in
+speaker ID. These models are not explicitly trained to cap-
+ture sequence-level information, and involve pooling opera-
+tions which inherently treat input sequences as exchangeable.
+For these reasons, they may be uniquely vulnerable to mis-
+classifying L2-accents. Formerly, phonotactic models were
+commonly used for LID [5, 6, 7, 8, 9], and some recent work has
+looked at fusing these approaches to improve LID. Our analy-
+ses indicate that one reason for the success of these fusion ap-
+proaches is that they are robust to L2-accents.
+Finally, we explicitly incorporate sequence-level views of
+the data to improve accent-robustness. We present a model
+that fuses the ECAPA-TDNN, which appears to be partially
+permutation invariant, with models that operate directly on
+higher-level phonetic features through use of either phonetic
+transcripts, or discretized SSL representations, inspired by
+[10, 11, 12], who show that these largely encode phonemic in-
+formation. This model shows large gains on L2-accents (up
+to +34 LID points for English), while suffering minimally on
+standard LID. We conduct an ablation that uses only sequence-
+level information for LID ( phoneseqs), and show that this
+model displays considerably reduced accent-language confu-
+sion, lending support to the claim that sequence-level features
+contribute to accent-robustness for LID.
+2. Related Work
+The degradation of commonly used LID and ASR systems on
+accented speech is well documented [13, 14, 15, 16, 17], al-
+though largely only for English dialects and accents. We ex-
+tend this analysis to a broader set of accents and languages than
+previously studied for LID systems. Some previous work has
+investigated using ASR outputs to aid LID systems on accented
+speech: [18] use ASR hypotheses for multiple monolingual
+ASR systems as input to an LID system, showing improvements
+on accented and code-switched speech. Other studies have
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+1488 10.21437/Interspeech.2025-2300
+
+also explored improving LID by using phonetic information;
+[19] show that fine-tuning wav2vec2 on articulatory feature
+detection improves its performance on English/Mandarin LID.
+[20] proposed PHO-LID, which uses an additional SSL-based
+contrastive phoneme segmentation objective to inject phono-
+tactic information into the model and reduces confusions be-
+tween nearby languages. Our modeling approach, while simi-
+lar, is somewhat simpler and we primarily use it to analyze how
+phonotactic information improves performance on L2-accents.
+Our work is similar to [21], which uses a na¨ıve Bayes char-
+gram model monolingual-ASR transcripts to inform LID pre-
+dictions using fusion with the SOTA model predictions. To
+our knowledge, ours is the first work to characterize accent-
+language confusion as a major cause of failure for LID on ac-
+cented speech, and link it with the block permutation invariance
+of LID models. Our model uses a language-agnostic phonetic
+transcriber instead of relying on ASR systems, and is trained
+with access to SOTA model representations, which outperforms
+a shallow fusion-based approach.
+3. Datasets
+See Table 1 for a summary of the datasets we used.
+General domain training – The V oxLingua-107 (VL-107)
+[3] dataset is used to train multi-domain baseline models since it
+has broad coverage of languages, accents, and acoustic channels
+and we are interested in evaluating LID models on typical data
+found “in the wild.” VL-107 contains a total of 6628 hours
+of speech from YouTube covering 107 languages. We assume
+the speech consists mainly of common, L1 accents, though no
+ground-truth accent labels are provided.
+Common L1 (mainstream) accents – We want to ver-
+ify that improvements from our approach on accented speech
+do not come at the cost of degraded performance on speech
+in mainstream accents or other languages. We report general-
+purpose LID performance on the FLEURS [22] test set, which
+provides L1 speech from a relatively clean domain.
+L2 accents in English– For evaluation on English accented
+speech, we use: 1) The Edinburgh International Accents of En-
+glish Corpus (EdAcc) [16], containing English accented con-
+versational speech. 2) CommonVoice (CV): a subset contain-
+ing English accented speech from v1.0. 3) The Speech Accent
+Archive (SAA) [23], as an additional set of recorded accents
+with the special property that all of the speakers say exactly the
+same sentence. The version we downloaded contains 16.5 hrs
+of speech from 2138 speakers, 200 unique accents, with 68 ac-
+cents containing at least 5 examples of speech.
+L2 accents in German / French – We filtered Common-
+V oice v13.0 [24] for mainstream and L2 accented data in Ger-
+man and French (e.g. Polish-accented German). We collected
+1.3 hrs of speech from 10 L2-German and 6 L2-French accents.
+The self-reported accents in EdAcc are not standardized.
+Therefore, we manually grouped them into 35 L2-accent cat-
+egories totaling 19h, excluding L1 accents (e.g. “Australia”).
+CommonV oice accent reporting is relatively normalized, con-
+taining 3.9h with 6 L2 English accents, although with varying
+granularity, e.g., there is a single “African” accent. The SAA
+is primarily used for analysis where it was important to have
+controlled for the spoken content of the speech.
+Table 1: Summary of datasets used in the study.
+Use Dataset # hr # Accents # Langs
+Train VL-107 [3] 6.6k h - 107
+Test L1 FLEURS Test [22] 283 h - 102
+Test L2 en
+EdAcc [16] 19 h 35 1
+CV v1 3.9 h 8 1
+SAA [23] 16.5 h 200 1
+Test L2 fr, de CV 13.0 1.3 h 10 de, 6 fr 2
+Figure 1: ET+phoneseqs-train and
+ET+duseqsembed-train consist of a trained com-
+ponent that take phonetic transcripts and quantized SSL
+representations respectively as inputs. Representations from
+this component are combined with those from ECAPA-TDNN
+before the classification layer.
+4. Models
+4.1. Baselines and Analysis
+We use theECAPA-TDNN model (21M parameters), trained for
+LID on V oxLingua-107, as our baseline, and conduct our error
+pattern and context window analyses on this model. We also re-
+peat the latter on two top-performing LID models: 1) the MMS
+model (1B parameters), trained on FLEURS, 2) the GEO model
+from [25], which is built off of the MMS SSL model and trained
+for speech geolocation on 3k hr of speech. Fine-tuning the re-
+sulting model for LID outperformed the MMS model.
+4.2. Using phone transcripts
+We usewav2vec2-xlsr-53-espeak-cv-ft [26] to gen-
+erate phonetic transcriptions of the text. Our phoneseqs-
+component takes the phoneme sequences as input, treating each
+phone as a separate token. It has an embedding layer with di-
+mension 256, followed by 8 transformer layers, with attention
+dimension 128 and 8 attention heads, and a linear classification
+layer ( 1.2M parameters in total). ET+phoneseqs-train
+(depicted in Figure 1) concatenates representations from
+ECAPA-TDNN (frozen) to the phoneseqs-module represen-
+tations before the classification layer during training. We also
+provide results using only phoneseqs, as well as a fusion-
+based model (ET+phoneseqs) that averages output probabil-
+ity distributions of ECAPA-TDNN and phoneseqs.
+4.3. Using discrete SSL units
+Our duseqs (discrete-unit sequence) model uses discretized
+wav2vec2-base representations in lieu of phone se-
+1489
+
+quences. We obtain representations from the 8th layer of
+wav2vec2-base (as per [10]), pool over 100ms segments,
+(rough duration of uttered phones), and train KMeans clustering
+over the resulting representations obtained over all training lan-
+guages, using 1000 clusters. ET+duseqs-train (depicted
+in Figure 1) uses ECAPA-TDNN representations analogously
+to ET+phoneseqs-train, with a duseqs-component us-
+ing centroid representations from the KMeans clustering as em-
+beddings (768-dim), 4 transformer layers with attention dimen-
+sion 128 and 8 attention heads, followed by a linear classi-
+fication layer ( 0.6M parameters in total). We further train
+ET+duseqsembed-train, which learns 256-dimensional
+embeddings for the centroid clusters from scratch during train-
+ing, and provide an ablation using only duseqs.
+All models are trained on VL-107, on a single GPU with
+learning rate 1e − 4; phoneseqs and duseqs for 20 epochs,
+and the ET+* models for 10 epochs.
+5. Error profiles on accented speech
+ECAPA-TDNN has a mean accuracy of 87.6% and 73% for
+mainstream accents in CommonV oice and EdAcc respectively,
+but degrades to a mean accuracy of 55.8% and 57% respec-
+tively on L2 accents. We also show this problem for German
+and French L2 accents: ECAPA-TDNN performs with mean
+93.4% and 97.5% accuracy on German and French mainstream
+accents respectively, but degrades to 61.3% and 80.1% accu-
+racy respectively for L2 accents in these languages.
+5.1. Accent-language confusion
+To test our first hypothesis – that a common failure mode
+of LID system is due to mis-classification with a speaker’s
+L1 language or a related language – we study the confu-
+sions of ECAPA-TDNN on L2-accented data. In Figure 2,
+we demonstrate accent-language confusion in SOTA LID mod-
+els, as well as its mitigation in our phoneseqs-based mod-
+els. For each accent, we examine the top 3 predicted lan-
+guages for misclassified examples of speech as well as the as-
+sociated percentage of total error for ECAPA-TDNN and the
+GEO model. We see that accent-language confusion often con-
+stitutes a significant portion of the error for ECAPA-TDNN.
+For example, mis-classification of Dutch-accented English as
+Dutch and Brazilian-accented English as Portuguese constitut-
+ing 82.6% and 50% of total error respectively. We also ob-
+serve the same trend for ECAPA-TDNN on the German and
+French speech; e.g. the mis-classification of Polish-accented
+German as Polish comprises 33.3% of total error. The error
+profiles of phoneseqs and ET+phoneseqs-train on the
+same set of samples show a clear contrast, most visible for
+phoneseqs, with much lower accent-language confusion, and
+similar errors largely regardless of accent. This suggests that the
+phoneseqs-component captures an alternate view of the data,
+useful for combating accent-language confusion.
+6. Explaining accent-language confusion
+We examine how LID models capture long-range dependencies
+and their impact on accented speech.
+6.1. Block Permutation Invariance
+Models invariant to short block permutations may struggle to
+distinguish words with identical phonemes in different orders.
+To test this, we split 10s+ audio into T -second chunks, reverse
+1 2 3
+(1) Geo
+pakistani
+kenyan
+ghanian
+filipino
+sinhalese
+lithuanian
+bulgarian
+chinese
+shona
+catalan
+spanish
+romanian
+indian
+colombian
+nigerian
+french
+mexican
+jamaican
+italian
+israeli
+vietnamese
+indonesian
+polish
+dutch
+japanese
+icelandic
+russian
+korean
+ecuadorian
+montenegrin
+egyptian
+south african
+macedonian
+chilean
+brazilian
+ga sd cy
+cy es sw
+oc cy ig
+ceb cy fil
+cy sd ga
+ga cy sv
+cy sv bg
+cy ga es
+cy sn sv
+cy ca ga
+cy ga ca
+cy ro es
+cy ur ga
+cy ga es
+oc cy yo
+oc ig cy
+cy es ga
+cy oc ga
+cy ga mt
+cy he bg
+cy km es
+cy ms es
+cy ga sv
+nl ga cy
+cy cmn ko
+cy ga es
+cy ga ru
+cy ga af
+cy ga es
+cy es tg
+ga cy es
+cy ga sv
+cy ga sv
+cy ga sv
+cy sv nb
+1 2 3
+(2) ECAPA-TDNN
+la hi sd
+sn la sw
+la sn yo
+tl ceb la
+gv la fa
+la lb lt
+la bg uz
+la fo sq
+sn la sw
+ca la is
+tl cy la
+la ro pt
+la hi mr
+tl la hr
+yo la sw
+yo sw la
+la da tl
+sw tl la
+la sl sq
+iw la pl
+la vi gv
+id la vi
+gv pl cy
+nl lb hr
+gv nn tl
+is cy nl
+lb la pl
+no te
+hu nn la
+cy hr
+la tl pl
+pl lb la
+la mk sl
+gv la no
+pt la tl
+1 2 3
+(3) phoneseqs
+cy fo vi
+cy sn fo
+yo fo cy
+tl fo yo
+cy fo la
+cy fo lv
+cy af la
+cy fo mi
+cy fo vi
+cy af tl
+cy fo yo
+cy tl fo
+cy no af
+cy mi tl
+yo fo cy
+yo as cy
+fo la vi
+cy fo la
+cy tl fo
+cy fo yo
+cy fo mi
+fo no cy
+cy vi mi
+cy fo no
+af cy fo
+fo cy mi
+cy af fo
+hu la
+sn yo mi
+fo vi cy
+cy fo da
+cy yo tl
+cy fo no
+cy mi fo
+1 2 3
+(4) ET+PS
+gv la ur
+la sn ha
+la yo ha
+tl af hi
+la cy mi
+nl la nn
+la nl af
+no cy la
+la cy ha
+cy ca la
+cy tl la
+la mi no
+no cy tl
+la pt tl
+yo la sw
+yo ms ha
+la as is
+ha tl ht
+la cy af
+la yo pt
+la vi cy
+id ms fi
+cy gv nl
+no gv is
+gv mg mi
+is fo
+cy la hr
+nn fa
+nn mi
+la gv lt
+sv la no
+la sl sq
+cy la no
+pt
+1 2 3
+(5) ET+PS (all)
+ur gv la
+la sn ha
+la yo ha
+tl af nl
+cy la mi
+nl la nn
+la nl af
+no cy la
+la cy ha
+cy la ca
+cy tl la
+la mi no
+cy tl no
+la tl pt
+yo sn la
+yo ms ha
+la as eo
+ha tl ht
+la cy af
+la yo pt
+cy la vi
+id tl ms
+cy gv nl
+no gv is
+gv fi my
+cy haw is
+cy la hr
+nn fa cy
+pt tl nn
+gv sv lb
+sv la no
+la tl sl
+cy la tl
+pt no
+10
+20
+30
+40
+50
+60
+70
+80
+Figure 2: Error profiles for SOTA (1, 2) and our best-
+performing ET+phoneseqs-train model (5) on EdAcc ac-
+cents, showing the top 3 languages that each accent was mis-
+classified as, as well as associated percentage of total er-
+ror. (3) and (4) show the error profile for phoneseqs and
+ET+phoneseqs-train on samples where ECAPA-TDNN
+made mistakes. Errors indicative of accent-language confusion
+are highlighted in green.
+their order, and analyze performance degradation.
+Table 3 shows performance of most models remains stable
+for chunk sizes down to 0-0.25s, roughly a phoneme’s duration.
+However, GEO degrades immediately on accented speech, in-
+dicating sensitivity to 0.5-2s sequences, i.e., the duration of 1-4
+words. ECAPA-TDNN and MMS show minimal degradation,
+suggesting limited modeling of longer sequences.
+6.2. Long Range Dependency
+A model may be invariant to small block permutations yet still
+capture long-range dependencies, such as identifying a lan-
+guage through distant phoneme co-occurrences. To test whether
+models just aggregate local predictions or are capable of mod-
+eling long-range dependencies, we evaluate ECAPA-TDNN,
+MMS, and GEO on speech segments over 10 seconds from
+the SAA and EdAcc datasets. Segments are split into non-
+overlappingT -second chunks, and language predictions are ag-
+gregated by majority vote. Performance variation with chunk
+size indicates long-range modeling.
+Table 4 confirms expected degradation on non-US en-
+glish accents. However, ECAPA-TDNN improves with larger
+chunks, suggesting it does capture long dependencies. Surpris-
+ingly, GEO improves ( 10% relative) on accented speech when
+context is limited, indicating over-fitting to long sequences from
+common L1 accents. ECAPA-TDNN models short-term depen-
+dencies well, while GEO excels at longer sequence modeling.
+Notably, GEO—the least permutation-invariant model—proved
+most robust to L2 accents.
+1490
+
+Table 2: “Mean” shows the bootstrap resampling average over speakers with 95% confidence intervals in parentheses. “Macro”
+shows the macro-averages with std. dev., computed over languages for FLEURS, and over accents for all other datasets. All results
+were significant as compared against the baseline ECAPA-TDNN system using a McNemar test withp< 0.05.
+FLEURS EdAcc (L2 en) CommonVoice (L2 en) CommonVoice (L2 non-en)
+Mean Macro Mean Macro Mean Macro Mean Macro
+ECAPA-TDNN 89.3 (89.0,89.6) 89.5±17.2 47.9 (40.1,56.2) 55.8±26.8 34.5 (23.7,48.4) 57.0±24.6 63.8 (54.2,73.1) 68.4±22.2
+ET+phoneseqs-train 86.6 (86.1,87.0) 86.4±18.2 57.4 (48.9,65.6) 64.0±25.4 68.9 (61.2,76.1) 81.6±10.7 73.0 (63.3,81.0) 76.0±13.9
+ET+phoneseqs 89.5 (89.2,89.9) 89.5±17.8 52.2 (43.9,60.5) 59.8±26.5 46.4 (37.3,57.2) 69.1±18.6 66.8 (56.6,75.7) 73.6±20.3
+phoneseqs 52.9 (52.1,53.7) 52.5±22.7 37.3 (30.5,44.2) 45.2±22.8 47.3 (40.9,54.8) 67.3±13.6 48.4 (40.6,56.0) 51.6±14.9
+duseqs 49.6 (48.9,50.3) 49.8±18.3 42.6 (37.3,48.0) 48.6±17.8 48.3 (39.4,56.7) 66.3±13.5 48.1 (40.9,55.2) 48.2±19.2
+ET+duseqs-train 84.7 (84.3,85.1) 84.9±18.9 50.7 (43.0,58.1) 58.3±24.4 48.1 (39.3,58.0) 67.0±15.6 68.6 (59.8,76.6) 70.0±22.7
+ET+duseqsembed-train 84.2 (83.8,84.7) 84.2±20.2 53.4 (45.9,60.9) 60.7±23.7 51.5 (43.5,60.7) 67.5±13.3 63.7 (54.8,71.3) 65.6±22.8
+Table 3: The relative degradation (%) in performance when the
+input audio is block-reversed. Colors range from light to dark
+red, with darker colors indicating that the model does not treat
+sequences of chunks of the corresponding size as exchangeable.
+Chunk Size (s)
+Accent Model 0.25 0.5 1 2 4
+en us
+ECAPA -2.7 -0.7 -0.5 0.0 -0.2
+MMS -1.7 -0.5 -0.5 -0.2 -0.2
+GEO -6.7 0.0 0.0 -0.2 0.0
+other
+ECAPA -4.4 -1.9 0.7 -0.2 0.4
+MMS -5.6 -0.9 1.1 -0.4 0.0
+GEO -37.0 -15.8 -6.0 -3.2 -2.4
+7. Results and Discussion
+See our results in Table 2. We find that
+ET+phoneseqs-train shows considerable gains on
+all accented speech over ECAPA-TDNN while maintaining
+a comparable performance on standard LID. 3,4 This, in con-
+junction with our error profile analysis above, validates our
+hypothesis that sequence-level information is beneficial in
+countering accent-language confusion for LID.
+In fact, even simple fusion ( ET+phoneseqs) maintains
+performance on FLEURS, and improves overECAPA-TDNN on
+accented speech, presumably because the complementary error
+profiles of the two component models serve to amplify the cor-
+rect vote and mute wrong answers. ET+phoneseqs-train
+yields further benefits by giving the model access to the
+ECAPA-TDNN representations during training, therefore allow-
+ing the model to learn a suitable combination strategy.
+Note that phoneseqs by itself shows poor general per-
+formance, showing that acoustic representations are very infor-
+mative for the task, even though they display accent-language
+confusion. This is intuitive: in many cases, accent and lan-
+guage are indeed highly correlated, and short phonotactic fea-
+tures are very useful for LID on mainstream accented speech
+where the accent-language association may hold (unlike for L2-
+accent speech).
+3We also obtained results for L1 minority accents in English
+(CommonV oice v1), German, French, Italian, and Spanish (Common-
+V oice v9.0). ET+phoneseqs-train improves on average over
+ECAPA-TDNN on these data, and is consistently better on L1 accented
+speech for all languages except Italian.
+4On accented speech in Arabic, Spanish, and Chinese telephony
+from the NIST-LRE dataset [27], performance was poor across all mod-
+els and the acoustic domain mismatch appeared to dominate any other
+behaviors.
+Table 4: Accuracy results for ECAPA-TDNN, MMS, and GEO
+models on EdAcc and SAA datasets where segments are chun-
+ked into varying window sizes and predictions are aggregated
+across the chunks by majority vote. The highest accuracy
+achieved for each accent category in each dataset is bolded.
+Colors range from light to dark green, with darker indicating
+better performance.
+Window Size (s)
+Accent Dataset Model 0.5 1 2 4 8
+en us
+EdAcc
+ECAPA 92.3 100.0 100.0 100.0 100.0
+MMS 73.0 96.0 96.0 96.0 100.0
+GEO 88.5 96.2 100.0 100.0 100.0
+SAA
+ECAPA 84.0 96.4 99.0 98.8 99.0
+MMS 88.5 99.3 99.5 99.8 100.0
+GEO 98.8 100.0 100.0 100.0 100.0
+other
+EdAcc
+ECAPA 23.5 39.8 51.5 60.0 65.1
+MMS 21.0 51.0 63.0 65.0 66.0
+GEO 55.9 81.3 84.0 80.0 76.0
+SAA
+ECAPA 27.1 49.0 62.2 68.3 72.1
+MMS 51.4 85.4 91.0 90.4 87.0
+GEO 86.6 97.2 96.2 93.4 88.5
+We observe that ET+duseqs-train and
+ET+duseqsembed-train show some improvements
+on accented speech but lag behind ET+phoneseqs-train,
+indicating that explicit phone information is more useful than
+cluster centroid sequences. This may be because of the discrete
+units themselves encode some accent bias; it may also be a
+result of lossiness in the representations of input speech or the
+pooling / clustering steps.
+8. Conclusion
+In this work, we characterize a systematic mode of error in
+LID systems for accented speech whereby L1-influenced L2-
+accented speech is classified as the L1 or a related language.
+Our experiments, error profiling, permutation and context anal-
+yses, and ablations provide evidence that accent-language con-
+fusion is a major problem for LID models that do not con-
+sider sequence order. This behavior results from models not
+effectively modeling long-enough input features to character-
+ize language rather than accent. We observe that models that
+are capable of modeling sequence information are accordingly
+more accent-robust. Following the above insights, we show
+that explicitly incorporating sequence level information at the
+phoneme level mitigates accent-language confusion, resulting
+in significantly improved performance on L2-accented speech.
+1491
+
+9. Acknowledgments
+We would like to thank Henry Li Xinyuan and Sanjeev Khudan-
+pur for the helpful discussions.
+10. References
+[1] J. E. Flege, “Second language speech learning: Theory, findings,
+and problems,” in Speech Perception and Linguistic Experience:
+Issues in Cross-Language Research, W. Strange, Ed. Baltimore,
+MD: York Press, 1995, pp. 233–277.
+[2] N. Markl and C. Lai, “Everyone has an accent,” in Proceedings of
+Interspeech 2023, 2023, pp. 4424–4427.
+[3] J. Valk and T. Alum ¨ae, “V oxLingua107: A Dataset for Spoken
+Language Recognition,” in Proceedings of the IEEE Spoken Lan-
+guage Technology Workshop (SLT), 2021.
+[4] B. Desplanques, J. Thienpondt, and K. Demuynck, “Ecapa-tdnn:
+Emphasized channel attention, propagation and aggregation in
+tdnn based speaker verification,” in Interspeech 2020, 2020, pp.
+3830–3834.
+[5] H. Li and B. Ma, “A phonotactic language model for spoken
+language identification,” in Proceedings of the 43rd Annual
+Meeting of the Association for Computational Linguistics
+(ACL’05), K. Knight, H. T. Ng, and K. Oflazer, Eds. Ann
+Arbor, Michigan: Association for Computational Linguistics,
+Jun. 2005, pp. 515–522. [Online]. Available: https://aclanthology.
+org/P05-1064/
+[6] M. Zissman, “Language Identification using Phoneme Recogni-
+tion and Phonotactic Language Modeling,” in 1995 International
+Conference on Acoustics, Speech, and Signal Processing , vol. 5,
+1995, pp. 3503–3506 vol.5.
+[7] D. Zhu and M. Adda-Decker, “Language identification using
+lattice-based phonotactic and syllabotactic approaches,” in 2006
+IEEE Odyssey - The Speaker and Language Recognition Work-
+shop, 2006, pp. 1–4.
+[8] P. Matejka, P. Schwarz, J. Cernock ´y, and P. Chytil, “Phonotactic
+language identification using high quality phoneme recognition,”
+in Interspeech 2005, 2005, pp. 2237–2240.
+[9] L. F. D’Haro, O. Glembek, O. Plchot, P. Mat ˇejka, M. Soufifar,
+R. Cordoba, and J. ˇCernock´y, “Phonotactic language recogni-
+tion using ivvectors and phoneme posteriogram counts,” in Inter-
+speech 2012, 2012, pp. 42–45.
+[10] K. Lakhotia, E. Kharitonov, W.-N. Hsu, Y . Adi, A. Polyak,
+B. Bolte, T.-A. Nguyen, J. Copet, A. Baevski, A. Mohamed,
+and E. Dupoux, “On generative spoken language modeling from
+raw audio,” Transactions of the Association for Computational
+Linguistics, vol. 9, pp. 1336–1354, 2021. [Online]. Available:
+https://aclanthology.org/2021.tacl-1.79/
+[11] P. Cormac English, J. D. Kelleher, and J. Carson-Berndsen,
+“Domain-Informed Probing of wav2vec 2.0 Embeddings for
+Phonetic Features,” in Proceedings of the 19th SIGMORPHON
+Workshop on Computational Research in Phonetics, Phonology,
+and Morphology , G. Nicolai and E. Chodroff, Eds. Seattle,
+Washington: Association for Computational Linguistics, Jul.
+2022, pp. 83–91. [Online]. Available: https://aclanthology.org/
+2022.sigmorphon-1.9/
+[12] J. Millet and E. Dunbar, “Do self-supervised speech models
+develop human-like perception biases?” in Proceedings of
+the 60th Annual Meeting of the Association for Computational
+Linguistics (Volume 1: Long Papers) , S. Muresan, P. Nakov,
+and A. Villavicencio, Eds. Dublin, Ireland: Association for
+Computational Linguistics, May 2022, pp. 7591–7605. [Online].
+Available: https://aclanthology.org/2022.acl-long.523/
+[13] M. Najafian and M. J. Russell, “Automatic accent identification as
+an analytical tool for accent robust automatic speech recognition,”
+Speech Communication, vol. 122, pp. 44–55, 2020.
+[14] S. J. Styles, V . Y . H. Chua, F. T. Woon, H. Liu, L. P. Garcia,
+S. Khudanpur, A. W. H. Khong, and J. Dauwels, “Investigating
+model performance in language identification: beyond simple er-
+ror statistics,” in Interspeech 2023, 2023, pp. 4129–4133.
+[15] S. Feng, O. Kudina, B. M. Halpern, and O. Scharenborg,
+“Quantifying Bias in Automatic Speech Recognition,” Apr. 2021.
+[Online]. Available: http://arxiv.org/abs/2103.15122
+[16] R. Sanabria, N. Bogoychev, N. Markl, A. Carmantini, O. Klejch,
+and P. Bell, “The Edinburgh International Accents of English
+Corpus: Towards the Democratization of English ASR,” Mar.
+2023. [Online]. Available: http://arxiv.org/abs/2303.18110
+[17] X. Shi, F. Yu, Y . Lu, Y . Liang, Q. Feng, D. Wang,
+Y . Qian, and L. Xie, “The Accented English Speech Recognition
+Challenge 2020: Open Datasets, Tracks, Baselines, Results
+and Methods,” ICASSP 2021 - 2021 IEEE International
+Conference on Acoustics, Speech and Signal Processing
+(ICASSP), pp. 6918–6922, Jun. 2021. [Online]. Available:
+https://ieeexplore.ieee.org/document/9413386/
+[18] C. Chandak, Z. Raeesy, A. Rastrow, Y . Liu, X. Huang, S. Wang,
+D. K. Joo, and R. Maas, “Streaming Language Identification using
+Combination of Acoustic Representations and ASR Hypotheses,”
+Jun. 2020. [Online]. Available: http://arxiv.org/abs/2006.00703
+[19] M. Shahin, Z. Nan, V . Sethu, and B. Ahmed, “Improv-
+ing wav2vec2-based spoken language identification by learning
+phonological features,” in Interspeech 2023 , 2023, pp. 4119–
+4123.
+[20] H. Liu, L. P. Garcia Perera, A. Khong, S. Styles, and S. Khudan-
+pur, “Pho-lid: A unified model incorporating acoustic-phonetic
+and phonotactic information for language identification,” inInter-
+speech 2022, 2022, pp. 2233–2237.
+[21] K. Kukk and T. Alum ¨ae, “Improving Language Identification
+of Accented Speech,” in Proc. Interspeech 2022 , 2022, pp.
+1288–1292. [Online]. Available: https://www.isca-archive.org/
+interspeech 2022/kukk22 interspeech.html
+[22] A. Conneau, M. Ma, S. Khanuja, Y . Zhang, V . Axelrod, S. Dalmia,
+J. Riesa, C. Rivera, and A. Bapna, “Fleurs: Few-shot learning
+evaluation of universal representations of speech,” in 2022 IEEE
+Spoken Language Technology Workshop (SLT) , 2023, pp. 798–
+805.
+[23] S. H. Weinberger and S. A. Kunath, “The speech accent archive:
+Towards a typology of english accents,” in Corpus-Based Studies
+in Language Use, Language Learning, and Language Documen-
+tation. Brill, 2011, pp. 265–281.
+[24] R. Ardila, M. Branson, K. Davis, M. Kohler, J. Meyer,
+M. Henretty, R. Morais, L. Saunders, F. Tyers, and G. Weber,
+“Common voice: A massively-multilingual speech corpus,” in
+Proceedings of the Twelfth Language Resources and Evaluation
+Conference, N. Calzolari, F. B ´echet, P. Blache, K. Choukri,
+C. Cieri, T. Declerck, S. Goggi, H. Isahara, B. Maegaard,
+J. Mariani, H. Mazo, A. Moreno, J. Odijk, and S. Piperidis,
+Eds. Marseille, France: European Language Resources
+Association, May 2020, pp. 4218–4222. [Online]. Available:
+https://aclanthology.org/2020.lrec-1.520/
+[25] P. Foley, M. Wiesner, B. Odoom, L. P. Garcia Perera, K. Murray,
+and P. Koehn, “Where are you from? Geolocating Speech
+and Applications to Language Identification,” in Proceedings
+of the 2024 Conference of the North American Chapter of the
+Association for Computational Linguistics: Human Language
+Technologies (Volume 1: Long Papers) , K. Duh, H. Gomez,
+and S. Bethard, Eds. Mexico City, Mexico: Association for
+Computational Linguistics, Jun. 2024, pp. 5114–5126. [Online].
+Available: https://aclanthology.org/2024.naacl-long.286/
+[26] Q. Xu, A. Baevski, and M. Auli, “Simple and effective zero-shot
+cross-lingual phoneme recognition,” in Interspeech 2022, 2022,
+pp. 2113–2117.
+[27] S. O. Sadjadi, T. Kheyrkhah, A. Tong, C. Greenberg, D. Reynolds,
+E. Singer, L. Mason, and J. Hernandez-Cordero, “The 2017 nist
+language recognition evaluation,” in The Speaker and Language
+Recognition Workshop (Odyssey 2018), 2018, pp. 82–89.
+1492

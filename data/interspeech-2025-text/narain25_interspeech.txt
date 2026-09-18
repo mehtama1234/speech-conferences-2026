@@ -1,0 +1,841 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+Voice Quality Dimensions as Interpretable Primitives for Speaking Style for
+Atypical Speech and Affect
+Jaya Narain1, Vasudha Kowtha1, Colin Lea1, Lauren Tooley1, Dianna Yee1, Vikramjit Mitra1, Zifang
+Huang1, Miquel Espi Marques1, Jon Huang1, Carlos Avendano1, Shirley Ren1
+1Apple, USA
+jnarain@apple.com
+Abstract
+Perceptual voice quality dimensions describe key characteris-
+tics of atypical speech and other speech modulations. Here we
+develop and evaluate voice quality models for seven voice and
+speech dimensions (intelligibility, imprecise consonants, harsh
+voice, naturalness, monoloudness, monopitch, and breathiness).
+Probes were trained on the public Speech Accessibility (SAP)
+project dataset with 11,184 samples from 434 speakers, using
+embeddings from frozen pre-trained models as features. We
+found that our probes had both strong performance and strong
+generalization across speech elicitation categories in the SAP
+dataset.
+We further validated zero-shot performance on ad-
+ditional datasets, encompassing unseen languages and tasks:
+Italian atypical speech, English atypical speech, and affective
+speech. The strong zero-shot performance and the interpretabil-
+ity of results across an array of evaluations suggests the utility of
+using voice quality dimensions in speaking style-related tasks.
+Index Terms: speech recognition, human-computer interac-
+tion, computational paralinguistics
+1. Introduction and Related Work
+Voice quality dimensions (VQDs) capture information about a
+speaker’s style and voice related to anatomy, vocal tract con-
+figuration, and learned components [1]. Voice quality can be
+impacted by disorders directly related to speech including struc-
+tural (e.g., voice nodules) and neurogenic conditions (e.g., spas-
+modic dysphonia), as well as by other long- and short-term
+health conditions (e.g., neuromotor conditions like ALS, and
+Parkinson’s and transient illnesses like colds and sore throats)
+[2, 3].
+Day-to-day voice fatigue and overuse also impacts
+speech, causing both short- and long-term changes [4].
+Evaluations by speech-language pathologists (SLP) include
+multiple dimensions of vocal attributes as in the CAPE-V [5]
+and GRBAS [6] which rate severity, roughness, breathiness, as-
+thenia, strain, pitch, and loudness. Modeling approaches that
+use an array of perceptual voice quality dimensions (VQDs)
+could provide a holistic view of voice for a variety of appli-
+cations; however, this area has been under-explored. For in-
+stance, automatic characterization of VQDs could enable im-
+proved data curation for and evaluation of automatic speech
+recognition (ASR) and could also help identify and character-
+ize speech differences - for instance related to wellbeing (e.g.,
+respiratory conditions, fatigue, and affect).
+Prior work in speech science has studied voice quality de-
+scriptors [7], including as they relate to affect [8, 9], atypical
+speech [10], speaker ID [11], and clinical uses [12]. In the com-
+putational and machine learning domain, there has been lim-
+ited work on models directly targeting interpretable VQDs. A
+study by [13] showed that models could predict GRBAS [6]
+scores on a dataset of n=20 speakers, though it did not eval-
+uate generalization or use public datasets.
+Other work has
+largely focused on acoustic feature correlates to voice proper-
+ties, as in [14–16] and on single dimensions of atypical speech,
+like dysfluency [17], paraphasia [18], and intelligibility [19].
+Prior work has extensively explored models and features for
+task-specific speaking styles – for example health (e.g., mental
+health [20], fatigue [21], respiratory conditions [22], and ALS
+and other neuromotor and neurologic conditions [23, 24]), and
+affect [20,25,26]. These works generally model a single factor,
+and often use a particular type of data and/or task (e.g., En-
+glish voice commands). Modeling approaches included using
+embeddings as features [19,25], fine-tuning [17,26], and super-
+vised models including classical algorithms [20–22], convolu-
+tional models [23], and transformers [18]. In the realm of gen-
+eral non-semantic speech understanding, prior work [27,28] has
+proposed benchmarks and models, with a focus on fine-tuning
+for specific tasks but not on zero-shot transfer or interpretable
+VQD primitives.
+Here we focus on seven VQDs (intelligibility, imprecise
+consonants, harsh voice, naturalness, monoloudness, mono-
+pitch, and breathiness) as interpretable primitives, as learned
+from atypical speech data which includes high expressivity
+across dimensions. We investigate three primary research ques-
+tions: (1) What is the relative performance of large pre-trained
+embedding models as feature extractors for predicting VQDs
+for atypical speech?
+(2) Do models generalize (zero-shot)
+across speakers, datasets, tasks, and languages for atypical
+speech? (3) Do models and dimensions generalize (zero-shot)
+beyond atypical speech to an affect dataset?
+Our models are trained on English data from the Speech Ac-
+cessibility Project (SAP) dataset, and are evaluated on SAP data
+and on three out-of-domain datasets: English atypical speech
+dataset, an Italian atypical dataset, and an affect dataset – cover-
+ing different phrase contents, speaker distributions, languages,
+and tasks. In the long run, methods that incorporate VQDs in
+modeling could improve accessibility and enable new speech
+technologies by helping isolate specific speaking styles, im-
+proving interpretability, and improving robustness by identify-
+ing aggressors and styles that might be easily confused with
+each other – for instance, some VQDs may be more related to
+atypical speech than affect and some may be impacted by both.
+2. Methods
+2.1. Training data and labels
+Probes were trained using the Speech Accessibility Project [29]
+a publicly available dataset of atypical speech. We used the sub-
+set of data with annotations from speech-language pathologists,
+which included 11,184 samples from 434 speakers (n=284 with
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+4628
+10.21437/Interspeech.2025-1133
+
+Parkinson’s Disease, 78 with Cerebral Palsy, 53 with ALS, 16
+with Down Syndrome, 2 with Ataxic Dysarthria, 1 with Flac-
+cid Dyarthria) from three speech categories (see [29] for ex-
+amples): digital voice commands (n=3,797; avg. length 5.00s,
+std. 4.65s), novel sentences (n=3,838; avg. length 9.03s, std.
+4.42s); and spontaneous speech samples (n=3,549; avg. length
+25.94s, std. 21.47s). We used the dataset’s speaker-stratified
+train (n=8,016), validation (n=1,194), and test splits (n=2,086).
+Each sample was annotated for each dimension from 1-7, with
+1 corresponding to typical and 7 to strongly atypical speech in
+that dimension. The dimensions used in this study were chosen
+because they had been rated for most samples, and because at
+least 10% of samples had a rating ≥2 for each dimension.
+Figure 1: Pearson correlations between annotations
+Fig. 1 shows correlations between ratings in the dataset.
+The annotated dimensions are not perfectly correlated – each
+captures some unique information, suggesting the utility of con-
+sidering each dimension as a modeling target. Some have mod-
+erately strong correlations (e.g., monoloudness & monopitch),
+while others have weak to no correlation (e.g., harsh voice &
+breathiness). Annotation distributions vary by the dimension
+itself and based on speech category type (Fig. 2), which moti-
+vates assessing generalizability in models between speech cate-
+gories, as does prior work in [30].
+2.2. Embedding extraction
+We used frozen audio embedding models as feature extractors:
+• HuBERT Large (315M parameters; emb. dim 1024), Hu-
+BERT model [31], self-supervised model trained via masking
+• HuBERT Large ASR (315M parameters; emb. dim 1024),
+HuBERT model fine-tuned for ASR [31]
+• Internal CLAP model (86M parameters; emb.
+dim 784),
+internal audio embedding model trained with masking fol-
+lowed by language alignment on audio samples with human-
+annotated captions describing sound
+• RawNet3 from ESPNet-SPK (28M parameters; emb. dim
+192) [32], pre-trained speaker identification model
+HuBERT Large and HuBERT Large ASR were included
+to investigate the impact of ASR-targeted fine-tuning and to
+compare with the CLAP training strategy. RawNet3 was in-
+cluded despite its smaller size to evaluate the use of a model
+trained for speaker ID, which could relate to VQDs as they may
+be tied to speaker characteristics. Leading and trailing silence
+was trimmed prior to embedding extraction for all samples a
+wav2vec2 forced alignment model [33] and annotated transcrip-
+tions (alignments were validated by spot checking a subset of
+data). We trained Lasso models as regression probes and lo-
+gistic regression models as binary classification probes for each
+Figure 2: Distributions of annotations for imprecise consonants
+and naturalness for each speech category
+Figure 3: Regression probes, showing clear progression of pre-
+dicted scores with rated severity
+VQD, using the validation set for selecting the regularization
+parameter value. We converted the annotated scores to a bi-
+nary label for classification, aiming for near 20% positive labels
+(selected to stabilize task difficulty and enable better compar-
+isons between model performance across dimensions). We also
+trained NN probes, but found that linear probes had consistently
+better performance.
+To benchmark with prior work, we also evaluated the pre-
+trained SpICE model [19], trained on 550K+ utterances to clas-
+sify speech intelligibility using a wav2vec2 backbone. We con-
+verted the multi-class prediction from the probe to a score by
+computing a label-weighted average of the model output.
+Figure 4: Zero-shot predictions from the HuBERT probe for
+each voice quality dimension on the Eds-vc dataset and on the
+EasyCall dataset, stratified by rated speech severity
+2.3. Generalization
+We investigated generalization between speech categories (by
+training probes independently on each speech category), and
+generalization to new datasets - including to a language not
+seen during probe training.
+To evaluate generalization to
+new datasets, probes were used for zero-shot predictions on
+two datasets of atypical speech: Eds-vc, an internal English
+4629
+
+dysarthric speech dataset of voice commands, and the Easy-
+Call Italian dataset [34].
+Eds-vc had 35,661 samples from
+n=32 speakers with moderate to severe dysarthric speech (ap-
+proximately 75% speakers with CP and the remaining with un-
+known etiologies). Each speaker contributed ten repetitions of
+105 phrases spread across five recording sessions, and speaker
+severity was annotated by an SLP. EasyCall [34] has 21,361
+Italian phrases recorded from n=51 participants (n=31 with
+dysarthria). Each speaker contributed 20 phrases and 46 words
+across 2-8 recording sessions. Severity labels are from assess-
+ments by a neurologist using the Therapy Outcome Measure.
+Note that compared to the data used to train each probe, the Eds-
+vc and EasyCall datasets had different participant etiology dis-
+tributions, recording protocols, and content and that the Easy-
+Call dataset was in a different language.
+2.4. Zero shot affect exploration
+To explore the broader utility of the VQD primitives, we ana-
+lyzed zero-shot predictions of the modeled VQD on an affective
+speech using ’high’ intensity samples from the Ryerson Audio-
+Visual Database of Emotional Speech and Song (RAVDESS)
+[35] dataset. RAVDESS is an acted affect dataset with seven
+categorical emotions: calm, happy, sad, angry, fearful, disgust,
+surprised.
+We used probes trained only on the SAP dataset
+(which has no elicited affective content) to generate predictions
+for each VQD. We tabulated the average dimensional score for
+each categorical emotion.
+3. Results and Discussion
+Embeddings and Speech Category Generalization. Ta-
+ble 1 lists Spearman correlations (similar trends were observed
+for the R2 and mean average error) between the regression
+probe prediction and ground truth annotation and the AUC for
+each classification probe, trained and evaluated on all speech
+categories. Figure 3 shows regression results for two VQDs.
+Table 2 has the average Spearman correlation across VQDs by
+speech category.
+HuBERT ASR features had strongest per-
+formance for dimensions tied to pronunciation, like intelligi-
+bility and imprecise consonants (Table 1), which may be be-
+Figure 5: Zero-shot predictions for each voice quality dimen-
+sion on RAVDESS using probes trained on HuBERT for each
+categorical emotion
+cause ASR is strongly tied to pronunciations. CLAP had strong
+performance for harshness, which is related strongly to tone.
+Probes generalized to unseen speech category types across all
+models (though performance was better when all categories
+were in training), showing utility of the probes on out of dis-
+tribution data (Table 2). Interestingly, probes trained only on
+novel sentences had poor generalization despite the training
+data having diverse phonetics. This may be because reading
+novel sentences may elicit less representative speech than other
+categories which are more related to day-to-day speech. Model
+performance was highest for spontaneous speech, even when it
+was not in training, perhaps due to its relatively longer sample
+lengths and more natural acoustic variations.
+Label characteristics. Model performance was generally
+strongest for imprecise consonants and naturalness and weakest
+for breathiness (Table 1). Imprecise consonants and naturalness
+had distinct annotation distributions from each other (Fig. 2),
+suggesting that the difference in model performance is not sim-
+ply a function of the data distribution. In addition to the strength
+of the signal related to the VQD itself, performance could also
+be impacted by annotator confidence, which might vary with
+speech category due to length and prosody differences. Future
+Table 1: Spearman correlations and AUC per VQD (95% CIs from bootstrapping). *SpICE was trained specifically for intelligibility
+Spearman correlation
+AUC
+CLAP
+HuBERT
+HuBERT
+ASR
+Raw-
+Net3
+SpICE
+CLAP
+HuBERT
+HuBERT
+ASR
+Raw-
+Net3
+SpICE
+Intellig.
+.45
+(.41, .48)
+.49
+(.49, .53)
+.52
+(.48, .55)
+.33
+(.30, .37)
+.41*
+(.37, .44)
+.78
+(.76, .80)
+.81
+(.78, .83)
+.82
+(.80, .84)
+.72
+(.69, .74)
+.75*
+(.72, .77)
+Impr.
+conson.
+.58
+(.55, .61)
+.68
+(.66, .70)
+.69
+(.67, .70)
+.51
+(.47, .55)
+.52
+(.49, .54)
+.84
+(.82, .86)
+.90
+(.89, .91)
+.91
+(.90, .92)
+.81
+(.79, .83)
+.82
+(.80, .84)
+Harsh
+voice
+.63
+(.59, .65)
+.55
+(.52, .58)
+.48
+(.48, .51)
+.55
+(.51, .58)
+.12
+(.07, .16)
+.86
+(.85, .89)
+.83
+(.81, .85)
+.80
+(.78, .82)
+.77
+(.74, .79)
+.53
+(.49, .57)
+Natural
+-ness
+.66
+(.63, .68)
+.72
+(.69, .74)
+.70
+(.67, .72)
+.51
+(.47, .54)
+.47
+(.44, .50)
+.86
+(.84, .88)
+.89
+(.87, .90)
+.89
+(.88, .91)
+.78
+(.75, .80)
+.81
+(.78, .83)
+Mono
+loud.
+.62
+(.59, .64)
+.61
+(.59, .53)
+.56
+(.54, .59)
+.41
+(.38, .44)
+.34
+(.30, .38)
+.82
+(.80, .84)
+.81
+(.79, .82)
+.80
+(.78, .82)
+.72
+(.70, .74)
+.68
+(.65, .70)
+Mono
+-pitch
+.56
+(.52, .58)
+.57
+(.54, .60)
+.53
+(.50, .56)
+.31
+(.27, .34)
+.30
+(.24, .33)
+.82
+(.81, .84)
+.81
+(.80, .84)
+.81
+(.79, .83)
+.70
+(.67, .82)
+.69
+(.67, .71)
+Breath
+-iness
+.31
+(.39, .35)
+.35
+(.31, .38)
+.30
+(.26, .33)
+.23
+(.20, .27)
+.21
+(.17, .25)
+.82
+(.79, .84)
+.82
+(.80, .85)
+.81
+(.78, .83)
+.74
+(.70, .77)
+.68
+(.65, .71)
+Avg./std.
+.54/.11
+.57/.11
+.54/.13
+.41/.11
+.33/.13
+0.83/.03
+0.84/.04
+0.84/.04
+0.75/.04
+0.71/.09
+4630
+
+Table 2: Regression Spearman correlations avgs.(stds.) across VQDs, by training and evaluation speech category.
+Eval.
+set
+DAC
+Novel
+Sent.
+Spont.
+Speech
+DAC
+Novel
+Sent.
+Spont.
+Speech
+DAC
+Novel
+Sent.
+Spont.
+Speech
+DAC
+Novel
+Sent.
+Spont.
+Speech
+Trained on all data
+Trained on DAC
+Trained on novel sent.
+Trained on spont. speech
+HuBERT
+.51
+(.12)
+.54
+(.12)
+.60
+(.13)
+.47
+(.11)
+.42
+(.10)
+.52
+(.10)
+.29
+(.09)
+.53
+(.12)
+.53
+(.15)
+.42
+(.10)
+.45
+(.13)
+.57
+(.13)
+HuB-ASR
+.52
+(.15)
+.50
+(.11)
+.55
+(.14)
+.49
+(.15)
+.40
+(.12)
+.49
+(.13)
+.34
+(.14)
+.51
+(.13)
+.47
+(.12)
+.43
+(.16)
+.41
+(.13)
+.54
+(.15)
+CLAP
+.49
+(.13)
+.53
+(.12)
+.55
+(.12)
+.49
+(.12)
+.45
+(.13)
+.50
+(.11)
+.31
+(.15)
+.50
+(.13)
+.49
+(.13)
+.42
+(.11)
+.49
+(.09)
+.53
+(.09)
+RawNet3
+.40
+(.11)
+.39
+(.14)
+.42
+(.12)
+.35
+(.12)
+.27
+(.17)
+.37
+(.14)
+.35
+(.09)
+.36
+(.12)
+.38
+(.11)
+.36
+(.11)
+.34
+(.15)
+.41
+(.13)
+work could include obtaining annotations from different raters
+to quantify annotator reliability and assess the impact on results.
+Figure 6: Affective predictions for more atypical speech shows
+less neutrality and higher sadness
+Unseen datasets The probes had strong zero-shot gener-
+alization to predicting atypical speech severity on both eval-
+uated datasets (Table 3 and Fig.
+4).
+Interestingly, breathi-
+ness was a stronger differentiator for Italian speech than En-
+glish speech in classifying severity (Table 4). The impact of
+VQDs on perceived atypical speech severity may vary depend-
+ing on the properties of a language. Future work will include
+evaluation with additional languages including tonal languages.
+The CLAP model had the strongest performance on the Italian
+dataset, suggesting that the general sound-understanding train-
+ing strategy generalizes particularly well across languages. De-
+spite training on a much smaller dataset, our probes had con-
+sistently higher performance than the SpICE models - includ-
+ing for intelligibility (the label learned by SpICE) evaluated on
+datasets out of domain for all approaches (Tables 1 and 3). Be-
+cause both our probes and the SpICE probes had low complex-
+ity, data and label quality may play a large role. There were
+Table 3: Zero-shot AUC for binary classification of atypical
+speech severity on out-of-domain datasets, per sample.
+The
+95% CI was within 0.01 of the reported score for all results.
+HuB. CLAP SpICE HuB. CLAP SpICE
+Eds-vc
+EasyCall
+Sum (all dims.) .89
+.87
+.79
+.72
+.78
+.66
+Intelligibility
+.85
+.88
+.79
+.69
+.70
+.58
+Impr. cons.
+.85
+.87
+.78
+.66
+.71
+.67
+Harsh voice
+.69
+.73
+.79
+.67
+.65
+.66
+Naturalness
+.88
+.83
+.79
+.70
+.74
+.65
+Monoloud.
+.84
+.80
+.64
+.65
+.74
+.66
+Monopitch
+.83
+.77
+.79
+.59
+.70
+.43
+Breathiness
+.59
+.57
+.31
+.67
+.66
+.66
+differences in protocols between datasets – for instance, the
+data used to train SpICE models was labeled on a coarser per-
+speaker basis compared to the per-utterance SAP labels.
+Affect Fig. 5 shows zero-shot predictions for each VQD
+on RAVDESS using HuBERT embeddings, grouped by cate-
+gorical emotion. There were clear, understandable trends in the
+predicted VQDs even though the probes were trained on data
+that did not have overt emotional content. For instance, angry
+speech had lower monoloudness scores, calm speech had less
+harshness, and sad speech had higher monopitch. The low intel-
+ligibility ratings for calm speech were surprising – one hypoth-
+esis is that this could be due to low volume and less prosodic
+variations in calm speech. The relationship between affect and
+VQD has been well explored, particularly in speech sciences
+[9,36] but less so in machine learning based models. Zero-shot
+model transferability, as illustrated in Fig. 5 by applying probes
+trained on neutral atypical speech to affective speech, suggests
+utility of VQD-based descriptions of speech in ML generally.
+However, because many modeling approaches rely directly on
+annotated affect labels, ML approaches to affect detection may
+also be biased for atypical speech. We evaluated the Odyssey af-
+fect model [26] on SAP data and found that affective predictions
+for more atypical speech shows less neutrality and more sad-
+ness, despite no purposeful affective variations in speech elici-
+tation or labeling (Fig. 6). While the general bias towards sad
+labels is not unique to atypical speech [37], the severity of the
+bias as a function of atypicality suggests particularly poor per-
+formance for people with atypical speech; extended evaluation
+is an area of future work.
+4. Conclusions
+The generalizability and interpretability of the trained VQD
+models across datasets, languages, and tasks highlights the util-
+ity of VQDs for modeling non-semantic speech dimensions.
+Additionally, VQD models can also act as explanations or in-
+terpretations of decisions made by application focused models,
+as illustrated by the presented affect exploration. Limitations
+of this work include only evaluating frozen embeddings with
+VQD linear probes, and the limited types of tasks. Future work
+should include additional approaches like few-shot learning and
+adapter training, as well as a deeper investigation of connections
+between VQDs and specific labels across broad tasks including
+whether there are dimensions and relationships between dimen-
+sions unique to specific labels (e.g., affect, atypical speech de-
+tection). Understanding perceptual ties between voice quality
+and other labels could improve interpretability, generalization,
+and robustness across speaking style related tasks.
+4631
+
+5. References
+[1] The National Center for Voice and Speech, “Voice qualities,”
+2024. [Online]. Available: https://ncvs.org
+[2] J. R. Green, “Artificial intelligence in communication sciences
+and disorders: Introduction to the forum,” pp. 4157–4161, 2024.
+[3] B. M. Bot, C. Suver, E. C. Neto, M. Kellen, A. Klein, C. Bare,
+M. Doerr, A. Pratap, J. Wilbanks, E. Dorsey et al., “The
+mPower study, Parkinson disease mobile data collected using Re-
+searchKit,” Scientific data, vol. 3, no. 1, pp. 1–9, 2016.
+[4] J. M. Wingate, W. S. Brown, R. Shrivastav, P. Davenport, and
+C. M. Sapienza, “Treatment outcomes for professional voice
+users,” Journal of voice, vol. 21, no. 4, pp. 433–449, 2007.
+[5] G. B. Kempster, B. R. Gerratt, K. V. Abbott, J. Barkmeier-
+Kraemer, and R. E. Hillman, “Consensus auditory-perceptual
+evaluation of voice: development of a standardized clinical proto-
+col,” 2009.
+[6] D. Weinstein,
+“Auditory perceptual voice analysis,”
+2010.
+[Online]. Available: https://alahns.org
+[7] J. Kreiman, “Information conveyed by voice quality,” The Journal
+of the Acoustical Society of America, vol. 155, no. 2, pp. 1264–
+1271, 2024.
+[8] K. Becker, L. Zimman et al., “Beyond binary gender: creaky
+voice, gender, and the variationist enterprise,” Language Varia-
+tion and Change, vol. 34, no. 2, pp. 215–238, 2022.
+[9] C. Gobl and A. N. Chasaide, “The role of voice quality in com-
+municating emotion, mood and attitude,” Speech communication,
+vol. 40, no. 1-2, pp. 189–212, 2003.
+[10] I. V. Bele, “Dimensionality in voice quality,” Journal of Voice,
+vol. 21, no. 3, pp. 257–272, 2007.
+[11] O. Baumann and P. Belin, “Perceptual scaling of voice identity:
+common dimensions for different vowels and speakers,” Psycho-
+logical Research PRPF, vol. 74, no. 1, pp. 110–120, 2010.
+[12] N. Roy, J. Barkmeier-Kraemer, T. Eadie, M. P. Sivasankar,
+D. Mehta, D. Paul, and R. Hillman, “Evidence-based clinical
+voice assessment: a systematic review,” 2013.
+[13] Z. Xie, C. Gadepalli, J. Farideh, B. M. Cheetham, and J. J. Homer,
+“Machine learning applied to GRBAS voice quality assessment,”
+Advances in Science, Technology and Engineering Systems Jour-
+nal, vol. 3, no. 6, pp. 329–338, 2018.
+[14] H. Dhamyal and R. Singh, “Objective measurements of voice
+quality,” arXiv preprint arXiv:2410.09578, 2024.
+[15] L. Eskenazi, D. G. Childers, and D. M. Hicks, “Acoustic corre-
+lates of vocal quality,” Journal of Speech, Language, and Hearing
+Research, vol. 33, no. 2, pp. 298–306, 1990.
+[16] Y. Shue, The voice source in speech production: Data, analysis
+and models.
+University of California, Los Angeles, 2010.
+[17] A. Romana, M. Niu, M. Perez, A. Roberts, and E. M. Provost,
+“Enabling off-the-shelf disfluency detection and categorization
+for pathological speech,” Proc. Interspeech 2022, pp. 1916–1920,
+2022.
+[18] M. Perez, D. Le, A. Romana, E. Jones, K. Licata, and E. M.
+Provost, “Seq2seq for automatic paraphasia detection in aphasic
+speech,” arXiv preprint arXiv:2312.10518, 2023.
+[19] S. Venugopalan, J. Tobin, S. J. Yang, K. Seaver, R. J. Cave, P.-P.
+Jiang, N. Zeghidour, R. Heywood, J. Green, and M. P. Brenner,
+“Speech intelligibility classifiers from 550k disordered speech
+samples,” in ICASSP 2023-2023 IEEE International Conference
+on Acoustics, Speech and Signal Processing (ICASSP).
+IEEE,
+2023, pp. 1–5.
+[20] F. Ringeval, B. Schuller, M. Valstar, N. Cummins, R. Cowie,
+L. Tavabi, M. Schmitt, S. Alisamir, S. Amiriparian, E.-M. Mess-
+ner et al., “AVEC 2019 workshop and challenge: state-of-mind,
+detecting depression with AI, and cross-cultural affect recogni-
+tion,” in Proceedings of the 9th International on Audio/visual
+Emotion Challenge and Workshop, 2019, pp. 3–12.
+[21] X. Gao, K. Ma, H. Yang, K. Wang, B. Fu, Y. Zhu, X. She, and
+B. Cui, “A rapid, non-invasive method for fatigue detection based
+on voice information,” Frontiers in Cell and Developmental Biol-
+ogy, vol. 10, p. 994001, 2022.
+[22] T. Talkar, D. M. Low, A. J. Simpkin, S. Ghosh, D. T. O’Keeffe,
+and T. F. Quatieri, “Dissociating COVID-19 from other respira-
+tory infections based on acoustic, motor coordination, and phone-
+mic patterns,” Scientific Reports, vol. 13, no. 1, p. 1567, 2023.
+[23] F. G. Vieira, S. Venugopalan, A. S. Premasiri, M. McNally,
+A. Jansen, K. McCloskey, M. P. Brenner, and S. Perrin, “A
+machine-learning based objective measure for ALS disease sever-
+ity,” NPJ digital medicine, vol. 5, no. 1, p. 45, 2022.
+[24] S. Luz, F. Haider, S. de la Fuente Garcia, D. Fromm, and
+B. MacWhinney, “Alzheimer’s dementia recognition through
+spontaneous speech,” p. 780169, 2021.
+[25] V. Mitra, J. Nie, and E. Azemi, “Investigating salient representa-
+tions and label variance in dimensional speech emotion analysis,”
+in ICASSP 2024-2024 IEEE International Conference on Acous-
+tics, Speech and Signal Processing (ICASSP).
+IEEE, 2024, pp.
+11 111–11 115.
+[26] L. Goncalves, A. N. Salman, A. R. Naini, L. M. Velazquez,
+T. Thebaud, L. P. Garcia, N. Dehak, B. Sisman, and C. Busso,
+“Odyssey 2024-speech emotion recognition challenge: Dataset,
+baseline framework, and results,” Development, vol. 10, no. 9,290,
+pp. 4–54, 2024.
+[27] J. Shor, A. Jansen, W. Han, D. Park, and Y. Zhang, “Universal
+paralinguistic speech representations using self-supervised con-
+formers,” in ICASSP 2022-2022 IEEE International Conference
+on Acoustics, Speech and Signal Processing (ICASSP).
+IEEE,
+2022, pp. 3169–3173.
+[28] G. Lin, C. Feng, W. Huang, Y. Tseng, T. Lin, C. Li, H. Lee, and
+N. G. Ward, “On the utility of self-supervised models for prosody-
+related tasks,” in 2022 IEEE Spoken Language Technology Work-
+shop (SLT).
+IEEE, 2023, pp. 1104–1111.
+[29] M. Hasegawa-Johnson, X. Zheng, H. Kim, C. Mendes, M. Dickin-
+son, E. Hege, C. Zwilling, M. M. Channell, L. Mattie, H. Hodges
+et al., “Community-supported shared infrastructure in support of
+speech accessibility,” Journal of Speech, Language, and Hearing
+Research, vol. 67, no. 11, pp. 4162–4175, 2024.
+[30] J. Tobin, P. Nelson, B. MacDonald, R. Heywood, R. Cave,
+K. Seaver, A. Desjardins, P.-P. Jiang, and J. R. Green, “Automatic
+speech recognition of conversational speech in individuals with
+disordered speech,” Journal of Speech, Language, and Hearing
+Research, vol. 67, no. 11, pp. 4176–4185, 2024.
+[31] W. Hsu, B. Bolte, Y. H. Tsai, K. Lakhotia, R. Salakhutdinov, and
+A. Mohamed, “HuBERT: Self-supervised speech representation
+learning by masked prediction of hidden units,” IEEE/ACM trans-
+actions on audio, speech, and language processing, vol. 29, pp.
+3451–3460, 2021.
+[32] J. Jung, W. Zhang, J. Shi, Z. Aldeneh, T. Higuchi, B. Theobald,
+A. H. Abdelaziz, and S. Watanabe, “ESPnet-SPK: full pipeline
+speaker embedding toolkit with reproducible recipes,
+self-
+supervised front-ends, and off-the-shelf models,” Proc. Inter-
+speech 2024, 2024.
+[33] Torchaudio contributors, “Wav2Vec2FABundle,” 2024. [Online].
+Available: https://pytorch.org
+[34] R. Turrisi, A. Braccia, M. Emanuele, S. Giulietti, M. Pugliatti,
+M. Sensi, L. Fadiga, and L. Badino, “Easycall corpus: a dysarthric
+speech dataset,” arXiv preprint arXiv:2104.02542, 2021.
+[35] S. R. Livingstone and F. A. Russo, “The Ryerson Audio-Visual
+Database of Emotional Speech and Song (RAVDESS): A dy-
+namic, multimodal set of facial and vocal expressions in North
+American English,” PloS one, vol. 13, no. 5, p. e0196391, 2018.
+[36] A. Anikin, “A moan of pleasure should be breathy: the effect of
+voice quality on the meaning of human nonverbal vocalizations,”
+Phonetica, vol. 77, no. 5, pp. 327–349, 2020.
+[37] R. Ma, A. Liusie, M. J. Gales, and K. M. Knill, “Investigating the
+emergent audio classification ability of ASR Foundation Models,”
+arXiv preprint arXiv:2311.09363, 2023.
+4632
+

@@ -1,0 +1,563 @@
+WhisperD: Dementia Speech Recognition and Filler Word Detection with
+Whisper
+Emmanuel Akinrintoyo, Nadine Abdelhalim, Nicole Salomons
+I-X and Department of Computing, Imperial College London, UK
+[e.akinrintoyo23, nadine.abdelhalim23, n.salomons]@imperial.ac.uk
+Abstract
+Whisper fails to correctly transcribe dementia speech because
+persons with dementia (PwDs) often exhibit irregular speech
+patterns and disfluencies such as pauses, repetitions, and frag-
+mented sentences. It was trained on standard speech and may
+have had little or no exposure to dementia-affected speech.
+However, correct transcription is vital for dementia speech for
+cost-effective diagnosis and the development of assistive tech-
+nology. In this work, we fine-tune Whisper with the open-
+source dementia speech dataset (DementiaBank) and our in-
+house dataset to improve its word error rate (WER). The fine-
+tuning also includes filler words to ascertain the filler inclu-
+sion rate (FIR) and F1 score. The fine-tuned models signif-
+icantly outperformed the off-the-shelf models. The medium-
+sized model achieved a WER of 0.24, outperforming previous
+work. Similarly, there was a notable generalisability to unseen
+data and speech patterns.
+Index Terms: Dementia, Whisper, ASR, Filler words, Speech-
+to-text, Speech recognition, Disfluency, Fine-tuning
+1. INTRODUCTION
+Dementia is an umbrella term that describes various symptoms
+that impact memory, thinking, communication, and social abil-
+ities [1]. Persons with dementia (PwDs) experience a cognitive
+decline that impacts their ability to communicate and use lan-
+guage effectively [1]. The decline stems from neurodegenera-
+tive changes in the brain that affect aspects of language such
+as speaking. PwDs may struggle to find the right words or form
+coherent sentences, often exhibiting incorrect or irregular gram-
+mar [2]. PwDs speak with nuances that includes an increased
+use of disfluencies, such as pauses, irregular pitch and volume
+of the voice, and filler words [2].
+Filler words are sounds or unnecessary words that do not
+contribute to the meaning of a sentence but are used by people
+to fill pauses or give themselves time to think [3, 4]. Filler words
+(such as uh and um) are prevalent in speech impairments asso-
+ciated with conditions such as dementia [2]. Patterns and use of
+fillers by PwDs are vital markers of cognitive impairment [5, 2].
+Fillers are used when a PwD is experiencing cognitive load or
+strain, is unsure of what to say, or is trying to process their re-
+sponse. Hence, fillers contain rich information that can be used
+to detect dementia or track its progression [6]. For instance,
+some previous research has shown the effectiveness of demen-
+tia detection from transcripts that included repeated speech por-
+tions and filler words [7].
+Adaptive and personalised responses can be provided by
+smart devices, such as conversational agents or robots through
+filler detection. By analysing fillers, a system can identify com-
+mon patterns of hesitation in the speech of a PwD. This can then
+be used to deliver a more tailored and supportive interaction.
+Furthermore, fillers can also help detect symptoms of dis-
+orientation during a conversation with a PwD [8]. Disorienta-
+tion is often reflected in an increased duration, frequency, and
+irregular usage of fillers. When a PwD is disorientated, they can
+struggle to process information or recall details, thus leading to
+an increase in filler words [9].
+In addition, the quality of speech of PwDs is degraded as the
+syndrome progresses [8, 2]. Thus, a longitudinal study of dis-
+fluencies and filler patterns over a period can be combined with
+other cognitive indicators to identify the progression of demen-
+tia. This can aid caregivers and dementia professionals in mak-
+ing proactive adjustments for a PwD’s cognitive care plan [10].
+Automatic Speech Recognition (ASR) systems such as
+OpenAI’s Whisper [11] offer cost-effective solutions for de-
+mentia speech understanding, including the ability to detect
+fillers. Despite its impressive performance for speech transcrip-
+tion, previous research has shown that Whisper has some limita-
+tions. Similar to previous ASR solutions, it suffers performance
+degradation with pathological speech [12]. Notably, Whisper is
+designed to generate clean output transcriptions. It mostly ex-
+cludes filler words from its outputs.
+1.1. Prior Work
+Previous work has explored various solutions for understand-
+ing dementia speech. This includes the conformer-based speech
+recognition system by Wang et al. [13]. The system’s accu-
+racy was assessed with the WER (word error rate). It achieved
+a reduction of 13.6% absolute (34.8% relative) to the baseline
+while also achieving the best-reported accuracy of 91.2% for
+Alzheimer’s detection. Others have used Whisper for dementia
+detection and classification [14, 15] and have recorded signif-
+icant performances compared to previous work with F1 scores
+of 86.42% and 84.50%.
+Other research has explored systems for filler detection and
+classification specifically for the dementia population [16, 17,
+10]. Previous work such by Soleimani et al. [18] found that
+dementia detection is feasible by encoding filler words (such as
+uh and um) in text-based language models.
+Sanguedolce et al. [12] demonstrated Whisper’s potential to
+achieve excellent performance when fine-tuned for pathological
+speech with fillers included. The authors fine-tuned Whisper
+for persons with stroke (PwS) and obtained a WER of 21.5%
+on the AphasiaBank dataset, surpassing previous models. Pre-
+vious research by Wagner et al. [19] examined Whisper’s fine-
+tuning for filler word inclusion. A state-of-the-art performance
+was achieved by adjusting the model tokeniser with F1 scores
+greater than 0.92 for collar values between 0.5 and 0.6 seconds
+on the PodcastFillers Corpus [4]. We adopt a similar approach
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+1413 10.21437/Interspeech.2025-2099
+
+to Wagner et al. [19] with Whisper by adjusting the tokeniser to
+train it on dementia speech.
+In this work, we explore Whisper’s performance when fine-
+tuned on the speech of PwDs for improved WER. Unlike pre-
+vious work, we utilise the DementiaBank’s Pitt and Kempler
+datasets with our internal dementia speech dataset, achieving
+state-of-the-art performance. We modify Whisper’s tokeniser
+to include filler words ( uh and um). Filler words are included
+in the dataset for the model’s training and inference. In the sub-
+sequent sections, we present the methodology adopted with the
+findings and evaluation of the model.
+2. METHODOLOGY
+2.1. Dataset
+The DementiaBank dataset was utilised to fine-tune Whisper.
+This comprised of the Pitt [20], and Kempler [21] datasets.
+The Pitt dataset consists of 306 PwDs in a longitudinal study.
+The participants completed tasks such as describing the Boston
+Cookie Theft stimulus photo [22], word fluency, story recall and
+sentence construction. Similarly, the Kempler dataset contains
+descriptions of the Cookie Theft picture and some conversations
+between the six participants and the investigators. The audio
+files were transcribed manually using the CHAT (Codes for the
+Human Analysis of Transcripts) protocol [23].
+In addition, we used our in-house CONNECT dataset col-
+lected from our robot-based individual cognitive stimulation
+therapy (iCST) [24, 25] sessions with PwDs. iCST is a non-
+pharmacological personalised intervention that aims to improve
+cognitive function, quality of life, and social participation of
+people with mild to moderate dementia [26]. Five PwDs ( ¯x =
+83.2 years) completed one-to-one 20-minutes sessions with a
+Misty robot [27] on two iCST activities. This included famous
+places and common sayings activities in which PwDs discussed
+about landmarks and popular proverbs and their meanings. The
+audio samples were transcribed and verified by two of the re-
+searchers.
+2.2. Dataset Pre-Preprocessing
+Sentence-level segmentation was adopted as a pre-processing
+step to divide continuous text into individual sentences. This
+was necessary to ensure that each audio segment remains within
+the optimal length constraint of 30 seconds. This was influenced
+by the design limitations of Whisper. Whisper is not optimised
+for processing audio inputs exceeding 30 seconds in a single
+pass. Hence, longer recordings must be segmented into smaller
+chunks to preserve the natural structure of the speech.
+The interviewers’ speech was removed from the audio dur-
+ing the segmentation, leaving only the speech of PwDs in the
+dataset. The transcriptions were cleaned to ensure text and lan-
+guage consistency. This involved deleting text markers such as
+“xxx”, which were used to indicate segments where the speech
+of a PwD could not be deciphered. It also included normalising
+informal or colloquial words such as “hafta” to “have to”.
+A similar training approach to the original methodology
+for Whisper is adopted by incorporating speech and non-speech
+segments. This is to enhance WhisperD’s ability to accurately
+detect and process dementia speech. It is crucial to improve
+voice activity detection (V AD), which is vital to differentiate
+between spoken and silent periods. This is particularly bene-
+ficial for dementia speech, where PwDs often speak with fre-
+quent pauses, extended silences, and irregular speech rhythms.
+Hence, the inclusion of non-speech segments reduces the like-
+lihood of misclassifying silence as speech or vice versa. More-
+over, it increases WhisperD’s robustness to real-world scenarios
+where speech is interspersed with silence, background noise, or
+other non-verbal sounds.
+Furthermore, we excluded audio files with a duration below
+one second from the dataset to avoid potential processing issues
+for Whisper. Hence, all audio files in the dataset have a length
+between 1 and 30 seconds, inclusive. The audio files were con-
+verted to .wav format to ensure suitability with the model. A
+resampling size of 16,000 Hz was used for all audio files, simi-
+lar to the off-the-shelf models.
+There were a total of 11,397 audio samples after cleaning
+and sentence-level segmentation. The speech dataset was a to-
+tal of 11.39 hours, with large portions of silence removed from
+the original datasets. The segmentation accuracy was verified
+by the authors. This was done by using the Whisper Large vari-
+ant to transcribe each audio sample for a comparison with the
+original transcripts obtained from the CHAT (Codes for the Hu-
+man Analysis of Transcripts) files. Audio files with a similarity
+index below 70% were then carefully reviewed to correct any
+transcription errors. 70% was chosen as a threshold to balance
+sensitivity and efficiency. Audio files with speech that were
+completely inaudible were excluded from the dataset.
+Disfluencies such as filler words ( uh and um) are included
+in the dataset to ensure it learns to include them in its output.
+There were a total of 1699 uh and 614 um in the dataset. We
+found that uh is more prevalent in dementia speech. Symbols
+and characters were excluded from the dataset, except apostro-
+phes. Extra spaces were also removed for clean transcriptions.
+2.3. Evaluation Metrics
+WhisperD’s performance was evaluated at the end of each
+epoch using the Word Error Rate (WER) metric. WER com-
+pares the overall accuracy of the ASR by comparing the pre-
+dicted transcript with the reference transcript. WER is the sum
+of substitutions, insertions and deletions divided by the total
+number of words in the reference transcription. A lower WER
+indicates better performance. WER is calculated as:
+WER = S + D + I
+N
+where:
+• S = Number of substitutions (incorrect words replacing cor-
+rect ones)
+• D = Number of deletions (words omitted from the reference)
+• I = Number of insertions (extra words added by the model)
+• N = Total number of words in the reference transcription
+Furthermore, Filler Inclusion Rate (FIR) was used as a met-
+ric. FIR measures how accurately the ASR transcribes filler
+words (uh and um) compared to the reference transcript. This
+is calculated by dividing the number of correctly detected fillers
+by the total number of fillers. FIR is set to one (i.e., a perfect
+score) to avoid division by zero when there are no filler words
+in the reference text.
+Since FIR ignores false positives, the F1 score was com-
+puted to provide a fuller picture of the model’s performance.
+The F1 score is the harmonic mean of precision and recall.
+2.4. Whisper Training
+Whisper is a transformer-based architecture consisting of an
+encoder and a decoder with similar width and transformer
+blocks [11]. An 80-channel log-magnitude Mel spectrogram is
+1414
+
+MODEL V ALIDA TION SET TEST SET
+WER FIR F1 WER FIR F1
+Whisper-T 0.77 0.03 0.05 0.89 0.07 0.13
+WhisperD-T 0.66 0.50 0.61 0.50 0.42 0.57
+Whisper-B 0.81 0.06 0.10 0.81 0.06 0.11
+WhisperD-B 0.39 0.35 0.49 0.43 0.33 0.46
+Whisper-S 0.45 0.05 0.08 0.48 0.05 0.11
+WhisperD-S 0.29 0.73 0.72 0.28 0.72 0.76
+Whisper-M 0.42 0.06 0.11 0.39 0.04 0.09
+WhisperD-M 0.25 0.64 0.71 0.24 0.70 0.73
+Table 1: Performance Metrics for Whisper Models (Tiny, Base, Small, Medium) and their WhisperD (fine-tuned) Variants: Comparison
+of Word Error Rate (WER), and Filler Inclusion Rate (FIR), F1 Score.
+T vs B T vs ST vs M B vs SB vs MS vs M
+0
+5
+10
+15
+20
+Model Comparisons
+Speed Factor (× Faster)
+Dementia
+Control
+Figure 1: Speed Comparison of Whisper Models (Tiny (T), Base
+(B), Small (S) and Medium (M)): Dementia vs Control Speech
+generated using 25-millisecond windows with a 10-millisecond
+stride. Whisper has different sizes: tiny (Whisper-T, 39M pa-
+rameters), base (Whisper-B, 74M parameters), small (Whisper-
+S, 244M parameters), medium (Whisper-M, 769M parameters)
+and large (Whisper-L, 1550M parameters). The tiny, base,
+small, and medium-sized models are examined in this work for
+developing variants of WhisperD.
+Pre-trained Whisper models were imported from Hugging
+Face. The PyTorch and Hugging Face Transformers libraries
+were used to fine-tune the standard models to develop Whis-
+perD. We fine-tuned all the layers of Whisper to include both
+the encoder and decoder for optimal performance. The fine-
+tuning process involved adjusting a model’s parameters to adapt
+it to the dementia speech dataset. Whisper’s tokeniser was mod-
+ified to include filler words (uh and um). This is to enhance the
+model’s ability to recognise and encode these filler words.
+The dataset was split with a ratio of 80-10-10% for the
+training, validation, and test sets. The training and validation
+sets contain the same speakers. However, these speakers were
+excluded from the test set. The speakers in the test set were se-
+lected from the Pitt dataset. This was done to ensure that the
+model is not evaluated on the speech patterns it encountered in
+the training phase. This prevents data leakage and allows for a
+more accurate assessment of the model’s ability to generalise to
+unseen speakers. This approach is reliable for measuring real-
+world performance.
+AdamW, an adaptive optimisation algorithm, was chosen to
+provide training stability and generalisation. A learning rate of
+1.2e-5 was used with a weight decay of 0.01 to reduce overfit-
+ting. The scheduler was set with a cosine learning rate decay.
+It had a warm-up period of 650 steps. Gradient accumulation
+was used with a batch size of eight and an accumulation step
+of eight, hence simulating a batch size of 64. The models were
+trained for a maximum of five epochs, and the best-performing
+model was chosen. Cross-entropy loss function was applied at
+each step to optimise token prediction. The loss is averaged
+across the batch during training.
+3. Evaluation and Results
+3.1. Off-the-Shelf Models
+We performed initial assessments of the off-the-shelf Whisper
+models. A transcription test was performed with 100 audio files
+with the tiny, base, small, and medium models. This was per-
+formed using Intel’s 13th Gen i7-1370P Processor 1900 MHz
+with 14 Core(s). The analysis revealed that due to Whisper’s
+sequence-to-sequence style, it often uses the context of the sen-
+tence or words preceding to match the words that align next.
+This was verified by examining Whisper’s token prediction ar-
+ray. For instance, the highest probability sequence for a speech
+segment was “Water is the picture, just tell me everything”.
+However, Whisper’s final output was “This is the picture, just
+tell me everything”.
+While the structured output ensures grammatical correct-
+ness and clarity, it can limit the performance in transcribing de-
+mentia speech. A PwD can make corrections while speaking.
+PwDs can often change their thoughts mid-sentence (referred
+to as thought derailment [28]) with hesitations and fragmented
+statements. These nuances may be lost when the model priori-
+tises fluency over authenticity.
+The test results (Figure 1) showed that the Whisper-T model
+was 1.83× faster than the Whisper-B, 7.92× faster than the
+Whisper-S, and 18.96× faster than the Whisper-M. Whisper-B
+was 4.32× faster than the Whisper-S model and 10.34× faster
+than Whisper-M. The Whisper-S model was 2.39× faster than
+the Whisper-M model. A similar test was performed with
+the control speech dataset. It revealed that Whisper-T was
+1.64× faster than Whisper-B, 3.99× faster than Whisper-S, and
+1415
+
+9.35× faster than Whisper-M. Whisper-B was 2.44× faster than
+Whisper-S and 5.71× faster than Whisper-M. Whisper-S was
+2.34× faster than the Whisper-M.
+The results revealed that transcribing dementia speech sig-
+nificantly impacts the processing speed of Whisper, especially
+for larger models. This could be due to the higher disfluency,
+increased ambiguity, and more decoding passes needed to tran-
+scribe dementia speech. Whisper may have to make repeated
+attempts at recognition.
+Since Whisper tends to omit filler words such as uh and um
+in its transcriptions, it often considers a filler word as part of
+the next word such that it mistranscribes the actual word. For
+instance, “uh distinct” is transcribed as “staked”. In addition,
+Whisper outputted nothing when the volume was low due to a
+PwD speaking with a low voice, and hallucinates when it fails to
+understand the speech of a PwD. Notably, it struggled with how
+PwDs pronounced words such as “bureau” which it transcribed
+as either “biro”, “b-roll”, “pure”, or “do you roll?”.
+3.2. WhisperD vs. Off-the-Shelf Models
+Table 1 compares the performance of four off-the-shelf Whis-
+per models (Whisper-T, Whisper-B, Whisper-S, and Whisper-
+M) with their fine-tuned versions (WhisperD variants). The re-
+sults show that the WhisperD models significantly outperform
+their corresponding Whisper models. Notably, the performance
+remains constant across both the validation and test sets for the
+best-performing models.
+WhisperD’s performance for the test set demonstrates its
+ability to generalise well to unseen data and speech patterns
+across the variants. It achieved a low WER for the test set, with
+a better WER performance than the validation sets for all sizes
+except WhisperD-B. The average WER reduction for Whis-
+perD models compared to their corresponding Whisper models
+is 0.36 and 0.43 for the validation and test sets, respectively.
+WhisperD-B and WhisperD-T have the highest WER perfor-
+mance improvement (0.42 and 0.39) from the standard models
+for the validation and test sets, respectively.
+WhisperD models outperform Whisper models in recall and
+precision (measured by F1 score) for filler word detection. They
+detect far more filler words in comparison to Whisper models.
+WhisperD-S has the best performance across the validation and
+test sets for filler detection. While FIR is high for WhisperD
+models, the increase in F1 indicates that it is due to improved
+detection rather than excessive false positives. WhisperD is not
+just over-inserting filler words, it is identifying them correctly.
+However, the F1 scores recorded in this work are below previ-
+ous work by Wagner et al. [19] which examined filler detection
+on standard speech with the PodcastFillers dataset containing
+over 17,000 instances of both uh and um individually.
+4. Discussion
+The standard Whisper models were trained on 30-second au-
+dio clips. This provides sufficient context for Whisper, such
+that it uses previously generated text tokens to ensure coher-
+ence in its prediction. WhisperD was trained with shorter au-
+dio clips. Hence, WhisperD is optimised to handle fragmented
+speech patterns, which are common in clinical and diagnostic
+settings. This allows it to excel in scenarios where short, iso-
+lated speech segments must be transcribed accurately without
+extended context. This is beneficial for use cases such as clini-
+cal interviews, cognitive assessments, and robot-assisted speech
+interventions, where responses are often brief with little or no
+contextual continuity.
+WhisperD was developed with the original DementiaBank
+datasets without noise filters applied, unlike those used for the
+dementia classification challenges. Hence, the reported results
+are indicative of the model’s real-world performance. Impor-
+tantly, this work demonstrates the potential to develop ASR sys-
+tems with an improved understanding of dementia speech. This
+is notable for ASRs with multi-lingual capabilities.
+WhisperD models can serve as a cost-effective screening
+tool for dementia, without tester variability. They can be used
+to process and analyse speech patterns to identify early signs of
+cognitive decline, and detect dementia with progression track-
+ing. Prior work such as Weiner et al. [29] has demonstrated
+the effectiveness of ASRs in dementia detection pipeline. No-
+tably, WhisperD demonstrates that a multilingual model has the
+potential to detect dementia speech patterns across various lan-
+guages and dialects when fine-tuned, providing accessibility for
+diverse populations.
+Overall, WhisperD-M and WhisperD-S are the best mod-
+els, balancing low WER and high F1 scores. WhisperD-S per-
+formed better with its highest F1 score (0.76 on the test set).
+However, WhisperD-M might be better for general use with
+its lowest WER (0.24 on the test set). The WER achieved by
+WhisperD-M outperforms previous work in [8, 30, 31, 13, 32].
+5. Limitations
+A dataset of 11.39 hours is relatively short. Expanding the train-
+ing dataset would likely yield better results in terms of Whis-
+perD’s ability to learn domain-specific patterns and acoustic
+variations. Techniques such as speed perturbation can be used
+to increase the size of the dataset. In addition, the inclusion of
+speech disfluency datasets such as PodcastFillers [4] may in-
+crease the performance of WhisperD for filler detection.
+The quality of the dataset also influenced the overall perfor-
+mance. A key challenge encountered was the presence of mum-
+bled and unclear speech in some audio samples. There were
+some unintelligible words that could not be transcribed in the
+DementiaBank datasets since they were too ambiguous or in-
+audible for human annotators and researchers. However, Whis-
+perD attempted to predict them using the surrounding context.
+While this is beneficial, it led to increased WER. This affected
+WhisperD’s performance, not necessarily due to poor transcrip-
+tion ability, but as a result of discrepancies between human-
+annotated transcripts and model predictions.
+6. Conclusion and Future Work
+In this work, WhisperD was proposed as a specialised model
+for transcribing dementia speech. It outperformed the standard
+Whisper models, highlighting its immense potential to serve
+as a comprehensive solution for dementia speech understand-
+ing with the inclusion of filler words. It achieved state-of-the-
+art WER performance, with strong generalisability to unseen
+speech. This can significantly improve early diagnosis and ac-
+cessibility to clinical assessments and assistive devices.
+Future work will examine the performance of the Whisper
+Large variant. It has the potential to achieve higher transcription
+accuracy and better robustness to disordered speech patterns.
+However, given the increased model complexity and parameter
+count, it may require more extensive datasets to reach its full
+potential. Therefore, future work will expand the dataset, espe-
+cially through the collection of speech data from PwDs through
+our robot-based iCST study.
+1416
+
+7. References
+[1] D. S. Geldmacher and P. J. Whitehouse, “Evaluation of dementia,”
+New England Journal of Medicine, vol. 335, no. 5, pp. 330–336,
+1996.
+[2] C. I. Guinn and A. Habash, “Language analysis of speakers with
+dementia of the alzheimer’s type,” in 2012 AAAI fall symposium
+series, 2012.
+[3] E. Duvall, A. Robbins, T. Graham, and S. Divett, “Exploring filler
+words and their impact,”Schwa. Language & Linguistics, vol. 11,
+pp. 35–49, 2014.
+[4] G. Zhu, J.-P. Caceres, and J. Salamon, “Filler word detection and
+classification: A dataset and benchmark,” in Proc. Interspeech
+2022, 2022.
+[5] H. Bortfeld, S. D. Leon, J. E. Bloom, M. F. Schober, and S. E.
+Brennan, “Disfluency rates in conversation: Effects of age, rela-
+tionship, topic, role, and gender,” Language and speech, vol. 44,
+no. 2, pp. 123–147, 2001.
+[6] D. Woszczyk, R. Aloufi, and S. Demetriou, “Prosody-driven
+privacy-preserving dementia detection,” in Proc. Interspeech
+2024, 2024.
+[7] L. Mato ˇsevi´c and A. Jovi´c, “Accurate detection of dementia from
+speech transcripts using Roberta model,” in 2022 45th Jubilee
+International Convention on Information, Communication and
+Electronic Technology (MIPRO). IEEE, 2022, pp. 1478–1484.
+[8] B. Mirheidari, D. Blackburn, T. Walker, A. Venneri, M. Reuber,
+and H. Christensen, “Detecting signs of dementia using word vec-
+tor representations.” in Interspeech, 2018, pp. 1893–1897.
+[9] I. Ovchinnikova and A. Pavlova, “Lexical substitution and para-
+phasia in advanced dementia of the alzheimer type,” Psychology
+of Language and Communication , vol. 21, no. 1, pp. 306–324,
+2017.
+[10] M. Zolnoori, A. Zolnour, and M. Topaz, “Adscreen: A speech
+processing-based screening system for automatic identification of
+patients with alzheimer’s disease and related dementia,” Artificial
+Intelligence in Medicine, vol. 143, p. 102624, 2023.
+[11] A. Radford, J. W. Kim, T. Xu, G. Brockman, C. McLeavey, and
+I. Sutskever, “Robust speech recognition via large-scale weak
+supervision,” in International conference on machine learning .
+PMLR, 2023, pp. 28 492–28 518.
+[12] G. Sanguedolce, S. Brook, D. C. Gruia, P. A. Naylor, and F. Ger-
+anmayeh, “When whisper listens to aphasia: Advancing robust
+post-stroke speech recognition,” in Proc. Interspeech 2024, 2024,
+pp. 1995–1999.
+[13] T. Wang, J. Deng, M. Geng, Z. Ye, S. Hu, Y . Wang, M. Cui,
+Z. Jin, X. Liu, and H. Meng, “Conformer based elderly speech
+recognition system for alzheimer’s disease detection,” inProc. In-
+terspeech 2022, 2022.
+[14] T. Deußer, A. M. Siddiqi, L. Sparrenberg, T. Adams, C. Bauck-
+hage, and R. Sifa, “Fusing speech and language models for de-
+mentia detection,” in 2024 IEEE International Conference on Big
+Data (BigData), 2024, pp. 3908–3914.
+[15] J. Li and W.-Q. Zhang, “Whisper-based transfer learning for
+alzheimer disease classification: Leveraging speech segments
+with full transcripts as prompts,” in ICASSP 2024 - 2024 IEEE
+International Conference on Acoustics, Speech and Signal Pro-
+cessing (ICASSP), 2024, pp. 11 211–11 215.
+[16] M. Rohanian, J. Hough, and M. Purver, “Alzheimer’s dementia
+recognition using acoustic, lexical, disfluency and speech pause
+features robust to noisy inputs,” in Proc. Interspeech 2021, 2021.
+[17] S. Nasreen, M. Rohanian, J. Hough, and M. Purver, “Alzheimer’s
+dementia recognition from spontaneous speech using disfluency
+and interactional features,” Frontiers in Computer Science, vol. 3,
+p. 640669, 2021.
+[18] R. Soleimani, S. Guo, K. L. Haley, A. Jacks, and E. Lobaton, “The
+impact of pause and filler word encoding on dementia detection
+with contrastive learning,” Applied Sciences, vol. 14, no. 19, p.
+8879, 2024.
+[19] L. Wagner, B. Thallinger, and M. Zusag, “Crisperwhisper: Accu-
+rate timestamps on verbatim speech transcriptions,” in Proc. In-
+terspeech 2024, 2024.
+[20] J. T. Becker, F. Boiler, O. L. Lopez, J. Saxton, and
+K. L. McGonigle, “The natural history of alzheimer’s disease:
+Description of study cohort and accuracy of diagnosis,”
+Archives of Neurology , vol. 51, no. 6, pp. 585–594, 06
+1994. [Online]. Available: https://doi.org/10.1001/archneur.1994.
+00540180063015
+[21] D. Kempler, S. Curtiss, and C. Jackson, “Syntactic preservation in
+alzheimer’s disease,” Journal of Speech, Language, and Hearing
+Research, vol. 30, no. 3, pp. 343–350, 1987. [Online]. Available:
+https://pubs.asha.org/doi/abs/10.1044/jshr.3003.343
+[22] C. Roth, “Boston diagnostic aphasia examination,” Encyclopedia
+of clinical neuropsychology, pp. 428–430, 2011.
+[23] B. MacWhinney, The CHILDES project: Tools for analyzing talk,
+Volume I: Transcription format and programs. Psychology Press,
+2014.
+[24] E. Akinrintoyo and N. Salomons, “Co-designing icst with so-
+cial robots for long-term in-home deployment for persons with
+dementia,” Proceedings of the 2024 ACM/IEEE International
+Conference on Human-Robot Interaction Workshop on Ageing in
+Place, 2024.
+[25] ——, “In-home social robots design for cognitive stimulation
+therapy in dementia care,” 2025 34th IEEE International Con-
+ference on Robot and Human Interactive Communication (RO-
+MAN), 2025.
+[26] L. A. Yates, P. Leung, V . Orgeta, A. Spector, and M. Orrell, “The
+development of individual cognitive stimulation therapy (iCST)
+for dementia,” Clinical interventions in aging, pp. 95–104, 2015.
+[27] S. Srinivasan, “Misty-A development platform for socially assis-
+tive robots [student’s corner],”IEEE Robotics & Automation Mag-
+azine, vol. 26, no. 2, pp. 103–105, 2019.
+[28] J. Jer ´onimo, T. Queir´os, E. Cheniaux, and D. Telles-Correia, “For-
+mal thought disorders–historical roots,” Frontiers in Psychiatry,
+vol. 9, p. 572, 2018.
+[29] J. Weiner, M. Engelbart, and T. Schultz, “Manual and automatic
+transcriptions in dementia detection from speech.” inInterspeech,
+2017, pp. 3117–3121.
+[30] Y . Pan, B. Mirheidari, M. Reuber, A. Venneri, D. Blackburn, and
+H. Christensen, “Improving detection of alzheimer’s disease using
+automatic speech recognition to identify high-quality segments
+for more robust feature extraction,” inProceedings of Interspeech
+2020. International Speech Communication Association (ISCA),
+2020, pp. 4961–4965.
+[31] Z. Ye, S. Hu, J. Li, X. Xie, M. Geng, J. Yu, J. Xu, B. Xue, S. Liu,
+X. Liu et al., “Development of the cuhk elderly speech recognition
+system for neurocognitive disorder detection using the demen-
+tiabank corpus,” in ICASSP 2021-2021 IEEE International Con-
+ference on Acoustics, Speech and Signal Processing (ICASSP) .
+IEEE, 2021, pp. 6433–6437.
+[32] Y . Pan, B. Mirheidari, D. Blackburn, and H. Christensen, “A two-
+step attention-based feature combination cross-attention system
+for speech-based dementia detection,” IEEE Transactions on Au-
+dio, Speech and Language Processing, 2025.
+1417

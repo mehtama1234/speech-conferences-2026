@@ -1,0 +1,556 @@
+Facilitating Personalized TTS for Dysarthric Speakers Using
+Knowledge Anchoring and Curriculum Learning
+Yejin Jeon1, Solee Im1, Youngjae Kim1, Gary Geunbae Lee1,2
+1GSAI, POSTECH, South Korea
+2CSE, POSTECH, South Korea
+jeonyj0612@postech.ac.kr, solee0022@postech.ac.kr, yj122198@postech.ac.kr,
+gblee@postech.ac.kr
+Abstract
+Dysarthric speakers experience substantial communication
+challenges due to impaired motor control of the speech appara-
+tus, which leads to reduced speech intelligibility. This creates
+significant obstacles in dataset curation since actual recording
+of long, articulate sentences for the objective of training person-
+alized TTS models becomes infeasible. Thus, the limited avail-
+ability of audio data, in addition to the articulation errors that
+are present within the audio, complicates personalized speech
+synthesis for target dysarthric speaker adaptation. To address
+this, we frame the issue as a domain transfer task and introduce
+a knowledge anchoring framework that leverages a teacher-
+student model, enhanced by curriculum learning through au-
+dio augmentation. Experimental results show that the proposed
+zero-shot multi-speaker TTS model effectively generates syn-
+thetic speech with markedly reduced articulation errors and high
+speaker fidelity, while maintaining prosodic naturalness.
+Index Terms: personalized speech synthesis, speech disorders,
+domain transfer
+1. Introduction
+Dysarthric speech emerges from a range of etiological factors,
+including cerebrovascular incidents such as strokes, as well
+as neuromuscular disorders linked to multiple sclerosis, cere-
+bral palsy, and Parkinson’s disease [1, 2, 3]. These condi-
+tions compromise the neuromuscular control of speech produc-
+tion mechanisms, resulting in slurred, unintelligible, and pho-
+netically distorted speech, which poses significant barriers to
+verbal communication. Given that speech is a fundamental
+medium for self-expression and social interaction, individuals
+with dysarthria frequently experience frustration, social isola-
+tion, and a diminished quality of life [4]. In response to these
+communication challenges, research has taken two primary di-
+rections: improving comprehension from the listener’s perspec-
+tive, and enhancing speech production from the speaker’s per-
+spective. Most existing research has prioritized the former by
+conducting research focusing on the enhancement of automatic
+speech recognition (ASR) systems so as to facilitate more ef-
+fective communication by enabling caregivers, medical pro-
+fessionals, and downstream assistive technologies to interpret
+dysarthric speech with greater accuracy [5, 6, 7, 8].
+While interpretation of affected speech is important, it is
+also crucial to empower dysarthric individuals by enhancing
+their ability to produce more intelligible speech and enhance
+their quality of life. Given that articulation deficits are a
+defining characteristic of dysarthria, early speaker-centric ap-
+proaches sought to improve intelligibility by substituting im-
+paired speech segments with unaffected ones [9, 10, 11]. How-
+ever, these approaches resulted in the loss of the speaker’s
+(a) Normal articulation.
+(b) Dysarthric articulation.
+Figure 1: Visualizations of the articulation differences between
+a highly intelligible female speaker and a low-intelligibility
+dysarthric speaker. The dysarthric speaker exhibits elongated
+speech production (2.0s vs. 0.6s) and segmented articulation.
+unique vocal identity as the average model voice was utilized.
+To mitigate this issue, voice banking emerged as an alternative,
+allowing individuals to pre-record speech samples before the
+onset of dysarthria for later reconstruction of their natural voice
+[12, 13]. Although effective for progressive degenerative con-
+ditions, this method is infeasible for individuals with sudden-
+onset dysarthria (e.g., stroke) as they lack pre-recorded samples.
+Multi-speaker text-to-speech (TTS) synthesis offers an effi-
+cient alternative by generating speech from textual input while
+simultaneously cloning the speaker’s voice from reference au-
+dio. However, training such models from scratch or even em-
+ploying few-shot learning using dysarthric speech presents sig-
+nificant challenges. Dysarthric speech often contains articu-
+lation errors, which if used as training data, result in models
+that produce unstable and unintelligible synthetic speech. Addi-
+tionally, TTS models typically require large-scale, high-quality
+training datasets, which makes it impractical to rely solely
+on dysarthric recordings. To circumvent these issues, prior
+works have explored hybrid approaches that sequentially utilize
+a single-speaker TTS and voice conversion model [14, 15].
+In order to address the aforementioned limitations that are
+inherent in few-shot and from-scratch approaches, we focus on
+zero-shot multi-speaker TTS [16, 17] since just a single ref-
+erence recording of the target speaker is required to conduct
+voice-preserving speech synthesis [16, 17]. Yet, extending this
+approach to the domain of dysarthric speech is not straightfor-
+ward because there exists a fundamental mismatch between the
+audio samples used for model training and inference. This do-
+main discrepancy is twofold; not only do variations in articula-
+tion exist, which range from highly intelligible to less intelligi-
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+2108 10.21437/Interspeech.2025-596
+
+ble speech, but dysarthric speech samples are often limited to
+single-word utterances [18] due to the speakers’ physical diffi-
+culties in speech production (Figure 1). This setting is in stark
+contrast to the much longer and well-articulated sentences typ-
+ical of standard TTS datasets [19, 20]. Consequently, this chal-
+lenge can be reframed as a zero-shot domain transfer problem,
+wherein the model must immediately and effectively extract
+speaker-specific vocal characteristics while remaining robust to
+articulation distortions in the input reference audio, which differ
+significantly from those encountered in the training data.
+To resolve the dual domain transfer challenge seen in zero-
+shot multi-speaker TTS for dysarthric speakers, we take in-
+spiration from pedagogical and physical therapy rehabilitation
+paradigms, where an expert plays a fundamental role in guid-
+ing a learner in the acquisition of a skill. To the best of our
+knowledge, we propose the first teacher-student framework for
+this task, in which a teacher model generates an anchored rep-
+resentation that stabilizes learning and guides a student model
+throughout a structured learning process. Furthermore, a key
+aspect of this structured training is its adherence to a curricu-
+lum learning strategy, where the student model is gradually in-
+troduced to progressively shorter inputs. As a result, the stu-
+dent model learns to generalize effectively to the short and
+highly variable nature of dysarthric speech during inference.
+In essence, our methodology enables the model to disentangle
+speaker identity from speech articulation distortions, thereby fa-
+cilitating the generation of highly intelligible speech that retains
+the distinct voice of the target dysarthric speaker. The efficacy
+of our approach is substantiated through both objective and sub-
+jective evaluations, and demonstrates its potential to enhance
+personalized communication for dysarthric individuals.
+2. Methodology
+Our multi-speaker TTS model is composed of three main com-
+ponents: a module for generating a speaker representation from
+reference audio, a backbone text-to-mel-spectrogram acoustic
+model, and a vocoder that converts the mel-spectrogram into au-
+dio. The backbone acoustic model adheres to the FastSpeech2
+architecture [21], which consists of a text encoder, a variance
+adaptor, and a decoder. To align with the objectives of multi-
+speaker TTS, we integrate the speaker representation that has
+been produced by the speaker encoder into the backbone TTS
+text encoder and decoder as in [22]. Moreover, HiFi-GAN
+is employed as the pretrained vocoder [23] for mel-to-audio
+generation. Given that the ultimate goal is to achieve zero-
+shot extraction and utilization of speaker representations from
+dysarthric reference audio, we focus on the speaker encoder,
+which is structured around two key components: knowledge
+anchoring by a teacher for the student model, and curriculum
+learning specifically designed for the student model (Figure 2).
+2.1. Knowledge Anchoring
+Unlike conventional multi-speaker TTS systems, where the ref-
+erence audio input during inference remains within the same
+domain as the training data, the task at hand requires effective
+extraction of timbre-specific features while remaining resilient
+to articulation distortions, as well as the scarcity of speaker in-
+formation inherent in short audio segments at inference time.
+However, attempting to simultaneously address this dual-task
+objective using a single speaker encoder as in typical multi-
+speaker TTS systems [24, 25, 26], is difficult. Therefore, to sim-
+plify this task, we separate it by introducing two collaborative
+Figure 2: Training and inference processes. During training,
+the teacher model conditions the backbone TTS model while
+serving as an anchor for the student model. The student model
+is trained using curriculum learning.
+teacher-student modules. A teacher speaker encoder initially
+captures the comprehensive information from the reference au-
+dio; this not only serves as an anchor for the student module to
+learn from, but also as a preliminary filter that removes irrele-
+vant acoustic properties. Both teacherθt and studentθs models
+share an identical architecture, where the mel-spectrogram of
+the input audio meli,j is passed through a speaker verification
+[27] network 1 θSV that is pretrained to compute the average
+embedding of each speaker. Formally, this is denoted as
+ei,j =θSV (meli,j) (1)
+ci = 1
+M
+MX
+j=1
+ei,j (2)
+whereci is the centroid for speaker i, and ei,j denotes the
+embedding of the j-th utterance from speaker i. The resulting
+embeddingc∈ R256 is then used as the input to pass through a
+linear projection layer, a fully connected (FC) block with Mish
+activation [28], and a GLU-gated convolution stack with resid-
+ual connections [29]. Another FC layer and temporal averag-
+ing results in two N-dimensional speaker style vectors ˆwt =
+{y1,y 2,··· ,y N} and ˆws ={x1,x 2,··· ,x N} from each of
+the teacher and student modules, respectively. The following
+knowledge anchoring relationship is subsequently formed:
+LM AE( ˆws, ˆwt) = 1
+N
+NX
+n=1
+||xn−yn||1 (3)
+2.2. Curriculum Learning (CL)
+Simply training the teacher and student models as described in
+the previous subsection presents two key challenges: (1) there
+is no direct connection between the training and inference do-
+mains, and (2) a trivial solution can emerge since both models
+share the same architecture and receive identical input data. To
+mitigate this, the student model is progressively trained with
+shorter segments of audio compared to the teacher model, en-
+forcing a non-trivial learning process. Formally, letS denote the
+total number of training steps andC the number of progressive
+1https://github.com/resemble-ai/Resemblyzer
+2109
+
+Algorithm 1: Multi-view Augmentation for CL
+Input : AudioA, Total Training StepsS, Number of
+Cropping StagesC, Current Steps
+Output: Student Representation ˆws
+Step 1: Compute Cropping Parameters
+Define steps of each cropping stage :Sc =S/C;
+Compute cropping ratios for each stage:
+r =
+1− 1
+C+1, 1− 2
+C+1, ..., 1− C
+C+1
+
+;
+Step 2: Progressive Audio Cropping
+stage←⌊ s
+Sc
+⌋;
+A′←A [:r[stage]× len(A)];
+return ˆws←θs(A′) ;
+cropping stages applied to the input audio. The number of train-
+ing steps allocated to each cropped audio stage is then given by
+S
+C . An overview of this multi-view audio augmentation process
+is provided in Algorithm 1.
+Moreover, when training the entire TTS framework, the
+style representation ˆwt that is generated by the teacher model
+is employed as the condition for the backbone TTS encoder and
+decoder, while at inference time, the style representation gen-
+erated by the student model ˆws is utilized. Conditioning is im-
+plemented as in [22], where text input feature of the backbone
+text encoderPtext ={p1,p 2,...,p K} of K-dimensions is fused
+with style representationw using its gaing and biasb.
+µ = 1
+H
+HX
+k=1
+pk ,σ =
+vuut
+HX
+k=1
+(pk−µ) (4)
+N (p) = p−µ
+σ (5)
+Fusion (Ptext, ˆw) =g( ˆw)⊙N (p) +b( ˆw) (6)
+The total loss is defined as a combination of the mel recon-
+struction loss between the synthesized audio and the original
+full reference audio used for the teacher model, and the loss
+between the style vectors that were computed by each of the
+teacher and student speaker encoders.
+LT otal =LM AE( ˆmel,mel ) +LM AE( ˆws, ˆwt) (7)
+3. Experimental Settings
+To validate our proposed methodology, we compare its perfor-
+mance against three zero-shot baseline models. The first em-
+ploys discriminators trained with style prototypes and episodic
+training [22]. While originally designed for normal speech,
+its method was also intended to generalize to unseen speak-
+ers, even those of short audio samples. On the other hand, the
+second and third baselines specifically target dysarthric speech:
+the former extracts a speaker representation using a pretrained
+speaker verification model [30], while the latter adopts a hybrid
+approach akin to [14]. In this framework, a single-speaker Fast-
+Pitch [31] model generates speech corresponding to the target
+input text, and then re-synthesized to match the target dysarthric
+speaker’s voice using the FreeVC [32] voice conversion model.
+To ensure fair comparisons, all experiments were conducted
+in identical conditions. Training was performed on a single
+Table 1: Comparisons with Adaptive [22], Conditional [30],
+and Hybrid [31, 32] baseline models. 95% confidence intervals
+are reported for MOS.
+Model
+Obj. Metrics Subj. Metrics
+PER (↓) Spk Sim ( ↑) MOS-Nat MOS-Spk
+Adaptive 64.455 0.570 2.908 ± 0.23 2.753 ± 0.24
+Conditional 47.696 0.647 2.839 ± 0.20 2.906 ± 0.21
+Hybrid 31.017 0.534 3.371 ± 0.15 3.731 ± 0.22
+Proposed 14.254 0.619 3.601± 0.18 3.909± 0.21
+Table 2: Subjective evaluations across different dysarthric
+speaker intelligibility (Int.) groups.
+V ery Low Int. Low Int. Middle Int. High Int.
+MOS-Spk
+Adaptive 2.722 3.053 3.000 3.000
+Conditional 2.789 2.947 2.895 2.763
+Hybrid 3.293 3.395 3.461 3.395
+Proposed 3.338 3.763 3.618 3.882
+MOS-Nat
+Adaptive 2.789 2.711 2.789 2.697
+Conditional 2.932 2.947 2.829 2.895
+Hybrid 3.699 3.737 3.763 3.750
+Proposed 3.692 4.066 3.869 4.171
+GPU for the proposed 33M-parameter model using the Lib-
+rispeech [19] dataset with multi-view audio augmentation as
+described in Section 2.2. Specifically, audio cropping was con-
+ducted three times over 500,000 training steps (i.e., approx-
+imately every 160,000 steps). Zero-shot synthesis was con-
+ducted on the UASpeech dysarthria dataset [18] and evaluated
+by employing both subjective and objective metrics. MOS rat-
+ings were gathered from 19 Amazon Mechanical Turk work-
+ers who assessed naturalness in terms of prosodic intonation,
+and vocal similarity. Moreover, objective evaluations were con-
+ducted with phoneme error rate (PER), and speaker similarity,
+which was computed using cosine similarity between synthe-
+sized and ground truth speech representations as in prior re-
+search [33].
+4. Results and Discussion
+4.1. Main Results
+The results presented in Table 1 underscore the efficacy of the
+proposed methodology in mitigating phonemic articulation er-
+rors while maintaining high speaker fidelity. PER demonstrates
+that the proposed methodology achieves a substantial reduction
+of over 50 points compared to the Adaptive [22] baseline, and
+over 15 points compared to highest performing baseline model.
+Notably, this improvement of articulation accuracy does not
+come at the cost of speaker similarity, as the proposed model
+maintains a high speaker similarity score of 0.619, which is
+comparable to or surpasses existing approaches. Additionally,
+subjective evaluations reveal that the proposed method achieves
+the highest perceived naturalness in terms of intonation and pro-
+nunciation (MOS-Nat: 3.601) and speaker similarity (MOS-
+Spk: 3.909), which reinforces its effectiveness in preserving
+both articulation clarity and speaker identity.
+Beyond overall performance, Table 2 provides a breakdown
+of subjective evaluations across dysarthric speaker groups cate-
+gorized by different intelligibility levels (Very Low, Low, Mid-
+dle, and High). The proposed model consistently outperforms
+other approaches in speaker similarity across all intelligibility
+groups. In terms of naturalness, while the proposed model
+shows marginally lower scores than that of the Hybrid model
+2110
+
+Table 3: Ablation studies on Knowledge Anchoring and Cur-
+riculum Learning. ‘Stu’ denotes the student model, while ‘w/out
+CL’ indicates direct training on the shortest audio inputs. CL
+is applied to the student model when present; otherwise, it is
+applied to the teacher model.
+Model
+Teacher Student
+PER (↓) Spk Sim ( ↑) PER ( ↓) Spk Sim ( ↑)
+w/out Stu. w/out CL 26.428 0.618 - -
+w/out Stu. w/ CL 22.846 0.623 - -
+w/ Stu w/out CL 21.935 0.647 15.579 0.613
+w/ Stu. w/ CL 20.559 0.646 14.254 0.619
+Table 4: Student-Teacher comparisons across different
+dysarthric speaker groups.
+Model
+Teacher Student
+PER (↓) Spk Sim ( ↑) PER ( ↓) Spk Sim ( ↑)
+Very Low Int. 20.528 0.586 15.157 0.556
+Low Int. 19.463 0.616 15.586 0.584
+Middle Int. 23.314 0.643 15.243 0.610
+High Int. 18.668 0.708 12.266 0.690
+Average 20.559 0.646 14.254 0.619
+for the Very Low category, the difference is only 0.007. More-
+over, it can be seen that the proposed model surpasses the other
+baseline models for all remaining intelligibility levels.
+4.2. Knowledge Anchoring and CL
+The importance of the knowledge anchoring framework can be
+assessed by comparing models trained with and without the stu-
+dent model while maintaining curriculum learning in its most
+restrictive form (w/out CL in Table 3). Note that this setting
+does not completely eliminate curriculum learning. Rather, it
+represents a scenario in which the speaker encoder is trained
+directly using the shortest audio from the multi-view augmenta-
+tion process, and bypasses the gradual transition from longer to
+shorter references. Under this condition, sole utilization of the
+teacher model as the TTS condition yields a high phoneme error
+rate (PER) of 26.428 (w/out Stu. w/out CL). However, introduc-
+ing the student model (w/ Stu. w/out CL) leads to a substantial
+reduction in PER to 15.579, which marks an improvement of
+10.849 points. Comparable speaker similarity scores are also
+retained between the teacher and student models. A plausible
+explanation for these improvements is that the teacher model
+truly functions as a filter, which enables the student model to fo-
+cus more effectively on speaker-specific timbre attributes. Thus,
+this reduces content leakage, since target timbre features do not
+inadvertently blend with miscellaneous acoustic factors, which
+would otherwise interfere with the target text’s pronunciation
+when conditioning the backbone TTS model. These findings
+highlight the necessity of distinct teacher and student learning
+processes for enhancing phonemic articulation.
+While the teacher-student framework alone offers substan-
+tial benefits, its effectiveness is further amplified by curriculum
+learning. By structuring training such that the student speaker
+encoder initially learns from longer, more informative refer-
+ences before adapting to shorter, more constrained inputs, this
+gradual adaptation results in a PER that decreases from 26.428
+(w/out Stu. w/out CL) to 22.846 (w/out Stu. w/ CL) for the
+teacher-only model, and from 15.579 (w/ Stu. w/out CL) to
+14.254 (w/ Stu. w/ CL) for the knowledge-anchored model.
+Speaker similarity also increases from 0.613 to 0.619 for the
+Figure 3: Variations of multi-view augmentation. Incrementally
+shortening audio significantly reduces PER while preserving
+speaker similarity comparable to the Random setting.
+student speaker encoder. To further analyze model performance
+across dysarthric speaker groups, Table 4 presents results strati-
+fied by intelligibility level. A clear trend emerges; both teacher
+and student models achieve lower PER and higher speaker sim-
+ilarity as intelligibility increases. When using the teacher model
+to condition the backbone TTS, PER decreases from 20.528
+(Very Low Intelligibility) to 18.668 (High Intelligibility), with
+speaker similarity improving from 0.586 to 0.708. Similarly, the
+student model’s PER drops from 15.157 to 12.266, with speaker
+similarity rising from 0.556 to 0.690. Notably, across all intelli-
+gibility levels, the student model consistently yields the lowest
+articulation errors. These results aligns well with the funda-
+mental goal of speech synthesis, which is to foremost produce
+speech with accurate pronunciation. These trends are also intu-
+itive, as higher intelligibility speakers exhibit fewer articulation
+distortions that obscure speaker-specific characteristics, which
+in turn leads to easier timbre extraction by the speaker encoder.
+4.3. Multi-view Audio Augmentation for CL
+In the proposed approach, the student model is trained using
+progressively shorter audio inputs to facilitate structured adap-
+tation. To evaluate the efficacy of this augmentation strategy, we
+conduct an additional experiment using a randomized setting,
+where input audio utilized for the student speaker encoder is
+randomly cropped at each training step using one of the prede-
+fined cropping ratios. As shown in Figure 3, the proposed pro-
+gressive strategy leads to a substantial reduction in PER while
+preserving speaker similarity. Although the randomized setting
+exhibits a marginal increase in speaker similarity of 0.003, this
+is likely attributable to the greater proportion of longer audio
+inputs encountered during training compared to the structured
+progressive setting that was originally utilized.
+5. Conclusion
+In this paper, we present a zero-shot multi-speaker TTS ap-
+proach to enhance personalized communication for dysarthric
+speakers. Unlike conventional single-encoder models, we in-
+troduce a knowledge anchoring framework with dual speaker
+encoders. Additionally, multiple views of the input reference
+audio is constructed and employed incrementally for curricu-
+lum learning. This approach effectively addresses the dual chal-
+lenge of mitigating articulation artifacts while extracting robust
+speaker representations from minimal speech input. Compre-
+hensive evaluations confirm that the synthesized speech remains
+highly intelligible, natural, and speaker-consistent.
+2111
+
+6. Acknowledgements
+This research was supported by Smart HealthCare for Police
+Officers Program(www.kipot.or.kr) through the Korea Insti-
+tutes of Police Technology(KIPoT) funded by the Korean Na-
+tional Police Agency(KNPA, Korea)(No. RS-2022-PT000186;
+47.5%), by the IITP(Institute of Information & Coummuni-
+cations Technology Planning & Evaluation)-ITRC(Information
+Technology Research Center) grant funded by the Korea gov-
+ernment(Ministry of Science and ICT)(IITP-2025-RS-2024-
+00437866; 47.5%), and by Institute of Information & communi-
+cations Technology Planning & Evaluation (IITP) grant funded
+by the Korea government(MSIT) (No.RS-2019-II191906, Arti-
+ficial Intelligence Graduate School Program(POSTECH); 5%).
+7. References
+[1] D. Mulfari, G. Meoni, M. Marini, and L. Fanucci, “Machine learn-
+ing assistive application for users with speech disorders,” in Ap-
+plied Soft Computing, 2021.
+[2] F. Darley, A. E. Aronson, and J. R. Brown, “Differential diag-
+nostic patterns of dysarthria,” in Journal of Speech and Hearing
+Research, 1969.
+[3] Y . Yunusova, G. Weismer, J. R. Westbury, and M. J. Lind-
+strom, “Articulatory movements during vowels in speakers with
+dysarthria and healthy controls,” in Journal of Speech and Hear-
+ing Research, 2021.
+[4] J. Mertl, E. ˘Z´a˘ckov´a, and B. ˘Repov´a, “Quality of life of patients
+after total laryngectomy: the struggle against stigmatization and
+social exclusion using speech synthesis,” inDisabil Rehabil Assist
+Technol., 2018.
+[5] S. Leivaditi, T. Matsushima, M. Coler, S. Nayak, and V . Verkho-
+danova, “Fine-Tuning Strategies for Dutch Dysarthric Speech
+Recognition: Evaluating the Impact of Healthy, Disease-Specific,
+and Speaker-Specific Data,” in Interspeech, 2024.
+[6] I.-T. Hsieh and C.-H. Wu, “Dysarthric Speech Recognition Us-
+ing Curriculum Learning and Articulatory Feature Embedding,”
+in Interspeech, 2024.
+[7] S. Wang, S. Zhao, J. Zhou, A. Kong, and Y . Qin, “Enhanc-
+ing Dysarthric Speech Recognition for Unseen Speakers via
+Prototype-Based Adaptation,” in Interspeech, 2024.
+[8] W.-Z. Leung, M. Cross, A. Ragni, and S. Goetze, “Training Data
+Augmentation for Dysarthric Automatic Speech Recognition by
+Text-to-Dysarthric-Speech Synthesis,” inInterspeech, 2024.
+[9] C. Veaux, J. Yamagishi, and S. King, “Using HMM-based Speech
+Synthesis to Reconstruct the V oice of Individuals with Degenera-
+tive Speech Disorders,” in Interspeech, 2024.
+[10] S. Creer, S. Cunningham, P. Green, and J. Yamagishi, “Building
+personalised synthetic voices for individuals with severe speech
+impairment,” in Computer Speech & Language, 2013.
+[11] Y . Wang, X. Wu, D. Wang, L. Meng, and H. Meng, “UNIT-
+DSR: Dysarthric Speech Reconstruction System Using Speech
+Unit Normalization,” in ICASSP, 2024.
+[12] H. T. Bunnell, J. Lilley, C. Pennington, B. Moyers, and J. Polikoff,
+“The ModelTalker System,” inThe Blizzard Challenge, 2010.
+[13] J. Yamagishi, C. Veaux, S. King, and S. Renals, “Speech synthesis
+technologies for individuals with vocal disabilities: V oice banking
+and reconstruction,” in Acoustical Science and Technology, 2012.
+[14] K. Matsubara, T. Okamoto, R. Takashima, T. Takiguchi,
+T. Toda, and Y . Shiga, “High-Intelligibility Speech Synthesis for
+Dysarthric Speakers with LPCNet-Based TTS and CycleV AE-
+Based VC,” in ICASSP, 2021.
+[15] R. Nanzaka and T. Takiguchi, “Hybrid Text-to-Speech for Artic-
+ulation Disorders with a Small Amount of Non-Parallel Data,” in
+APSIPS Annual Summit and Conference, 2018.
+[16] Y . Jeon, Y . Kim, and G. G. Lee, “Enhancing Zero-Shot Multi-
+Speaker TTS with Negated Speaker Representations,” inProceed-
+ings of the AAAI Conference on Artificial Intelligence, 2024.
+[17] B. J. Choi, M. Jeong, J. Y . Lee, and N. S. Kim, “SNAC: Speaker-
+Normalized Affine Coupling Layer in Flow-Based Architecture
+for Zero-Shot Multi-Speaker Text-to-Speech,” in IEEE Signal
+Processing Letters, 2023.
+[18] H. Kim, M. Hasegawa-Johnson, drienne Perlman, J. Gunderson,
+T. Huang, K. Watkin, and S. Frame, “Dysarthric Speech Database
+for Universal Access Research,” in Interspeech, 2008.
+[19] H. Zen, V . Dang, R. Clark, Y . Zhang, R. J. Weiss, Y . Jia, Z. Chen,
+, and Y . Wum, “LibriTTS: A Corpus Derived from LibriSpeech
+for Text-to-Speech,” inInterspeech, 2019.
+[20] K. Ito and L. Johnson, “The LJ Speech Dataset,” in https://
+keithito.com/LJ-Speech-Dataset/ , 2017.
+[21] Y . Ren, Y . Ruan, X. Tan, T. Qin, S. Zhao, Z. Zhao, and T.-Y . Liu,
+“FastSpeech: Fast, Robust and Controllable Text to Speech,” in
+NeurIPS, 2019.
+[22] D. Min, D. B. Lee, E. Yang, and S. J. Hwang, “Meta-stylespeech
+: Multi-speaker adaptive text-to-speech generation,” in Interna-
+tional Conference on Learning Representations (ICLR), 2021.
+[23] J. Kong, J. Kim, and J. Bae, “HiFi-GAN: Generative Adversarial
+Networks for Efficient and High FIdelity Speech Synthesis,” in
+NeurIPS, 2020.
+[24] N. Kumar and A. N. andBrejesh Lall, “Zero-Shot Normalization
+Driven Multi-Speaker Text to Speech Synthesis,” in IEEE/ACM
+Transactions on Audio, Speech, and Language Processing, 2022.
+[25] E. Casanova, J. Weber, C. Shulby, A. C. Junior, E. G ´’olge, and
+M. A. Ponti, “YourTTS: Towards Zero-Shot Multi-Speaker TTS
+and Zero-Shot V oice Conversion for Everyone,” inProceedings of
+Machine Learning Research, 2022.
+[26] E. Cooper, C.-I. Lai, Y . Yasuda, F. Fang, X. Wang, and N. Chen,
+“Zero-Shot Multi-Speaker Text-To-Speech with State-Of-The-Art
+Neural Speaker Embeddings,” in ICASSP, 2020.
+[27] L. Wan, Q. Wang, A. Papir, and I. L. Moreno, “Generalized End-
+to-End Loss for Speaker Verification,” inICASSP, 2018.
+[28] D. Misra, “Mish: A Self Regularized Non-Monotonic Activation
+Function,” in BMVC, 2020.
+[29] Y . N. Dauphin, A. Fan, M. Auli, and D. Grangier, “Language
+Modeling with Gated Convolutional Networks,” inProceedings of
+the 34th International Conference on Machine Learning, ICML ,
+2017.
+[30] K. Azizah, “Zero-Shot V oice Cloning Text-to-Speech for Dyspho-
+nia Disorder Speakers,” IEEE Access, vol. 12, pp. 63 528–63 547,
+2024.
+[31] A. Ła ´ncucki, “FastPitch: Parallel Text-to-speech with Pitch Pre-
+diction,” in ICASSP, 2021.
+[32] J. Lii, W. Tu, and L. Xiao, “Freevc: Towards High-Quality Text-
+Free One-Shot V oice Conversion,” inICASSP, 2023.
+[33] Y . Zhou1, C. Song, X. Li, L. Zhang, Z. Wu, Y . Bian, D. Su, and
+H. Meng, “Content-Dependent Fine-Grained Speaker Embedding
+for Zero-Shot Speaker Adaptation in Text-to-Speech Synthesis,”
+in Interspeech, 2022.
+2112

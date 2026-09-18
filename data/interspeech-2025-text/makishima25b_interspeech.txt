@@ -1,0 +1,590 @@
+Unified Audio-Visual Modeling for Recognizing Which Face Spoke When and
+What in Multi-Talker Overlapped Speech and Video
+Naoki Makishima, Naotaka Kawata, Taiga Yamane, Mana Ihori, Tomohiro Tanaka, Satoshi Suzuki,
+Shota Orihashi, Ryo Masumura
+NTT Corporation, Japan
+naoki.makishima@ntt.com
+Abstract
+We have developed a model that jointly recognizes which face
+spoke “when” and “what” from multi-talker overlapped speech
+and video of multiple speakers. For understanding of videos in
+which multiple speakers are speaking, it is important to recog-
+nize which face spoke “when” and “what” from the overlapped
+speech and multiple speakers’ videos. Conventional methods
+have to combine speech separation, active speaker detection,
+and audio-visual speech recognition to address this task. How-
+ever, the combined system makes the system complex and sub-
+optimal. To address this problem, our idea is to serialize “which
+face spoke when and what” of multiple speakers into a single to-
+ken sequence, which is recursively estimated with the proposed
+unified model using multiple speakers’ videos and overlapped
+speech as input. Experimental results demonstrate the validity
+of the proposed method.
+Index Terms : overlapped speech recognition, audio-visual
+speech recognition, active speaker detection
+1. Introduction
+For a comprehensive understanding of videos in which multiple
+speakers are speaking, it is important to recognize which face
+spoke “when” and “what”. Conversations such as meetings and
+chats typically include speech where multiple people are speak-
+ing simultaneously, so the video and speech in such situations
+include overlapped speech and simultaneously moving multi-
+ple faces, where it can be difficult to determine which face is
+speaking and what is being said.
+Several studies have tackled partial problems related to the
+task of recognizing which face spoke “when” and “what” from
+overlapped speech and multiple videos. The typical partial
+problem is to estimate what is spoken from a single video of
+the speaker’s mouth region, which is known as audio-visual
+speech recognition (A VSR). In [1–5], transcription of single-
+talker speech is estimated using the given video of the speaker.
+For addressing the overlapped speech, a popular approach is to
+train a model which transcribes the speech of the target speaker
+specified by the videos. In [6, 7], A VSR of overlapped speech
+was conducted by using videos of the speakers as keys to im-
+plicitly separate overlapping speech.
+In practice, multiple videos corresponding to all the peo-
+ple present in the scene are obtained. Thus, we have to decide
+which face to use before A VSR. The task to estimate which face
+is speaking is called active speaker detection [8–15]. In [15], to
+estimate which face spoke “what”, an attention layer is intro-
+duced to the encoder, which computes the attention score over
+multiple face tracks for each audio frame. Although the con-
+ventional studies have succeeded in estimating which face is
+speaking, they only address a single-talker speech, where the
+start and end time of the utterance is clear and only a single
+speaker’s video corresponds to the speech. In practice, the video
+can include multiple speaking faces as well as non-speaking
+faces, leading to overlapped speech caused by multiple speak-
+ers speaking simultaneously. Thus, to recognize which face
+spoke “when” and “what” from overlapped speech and multi-
+ple videos, we have to combine another system such as speech
+separation [16–20]. However, the combined system makes the
+system complex and suboptimal. To the best of our knowledge,
+no prior research has investigated a unified model that estimates
+which face spoke “when” and “what” from overlapped speech
+and videos of multiple speakers.
+To address this problem, our idea is to recursively estimate
+“which face spoke when and what” of multiple speakers uti-
+lizing overlapped speech and all videos of multiple speakers
+as input instead of the conventional approach that transcribes
+the single-speaker speech specified by a video. For the au-
+toregressive modeling, we serialize transcriptions, timestamp
+tags [21,22], and newly introduced video tags of multiple speak-
+ers in the same way as serialized output training (SOT) [23].
+The video tag is used to associate which face corresponds to the
+transcription and the timestamp tag represents the start and end
+time of the utterance.
+In this paper, we propose the unified modeling of recogniz-
+ing which face spoke “when” and “what” in multi-talker over-
+lapped speech and video. The proposed method estimates the
+serialized token sequence using multiple speakers’ videos and
+overlapped speech as input. The serialized token sequence con-
+sists of multiple speaker’s transcriptions, timestamp tags, and
+video tags that associate each transcription to the correspond-
+ing video. In our experiments, we introduce two new objective
+criteria to evaluate the prediction performance of which face
+spoke “when”, and which face spoke “what”. The experimental
+results demonstrate that the proposed method outperforms the
+combined system that separately estimates “when and what” is
+spoken and which face is speaking.
+2. Preliminaries
+2.1. Multi-talker ASR with SOT
+Our proposed method is related to SOT, which was origi-
+nally proposed to address overlapped speech in audio-only
+ASR [23]. In this section, we provide a brief explanation of
+SOT. We denote the acoustic feature of the input speech as
+X = (x1, . . . ,xT ), wherext∈ RF denotes the tth frame of
+the feature, F denotes its dimension, and T denotes the length
+of acoustic features. We denote utterance-level textual tokens
+of multiple speakers as W 1:K = ( W 1, . . . ,W K), where
+K denotes the number of speakers in the overlapped speech,
+W k = ( wk
+1 , . . . , wk
+N k) denotes the kth speaker’s textual to-
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+1838 10.21437/Interspeech.2025-451
+
+kens, N k denotes the length of the token, wk
+n∈V denotes the
+nth textual token of the kth speaker, andV denotes the vocab-
+ulary set. SOT was originally proposed for multi-talker ASR
+without using speech separation, where the model recursively
+transcribes each utterance of multiple speakers with a single
+output layer. SOT enables this by introducing a special token
+[sep] representing speaker change and transcribing the utter-
+ance of each speaker in first-in, first-out order [23, 24], where
+the transcription is estimated in the order of their utterance start
+time. To recognize multiple utterances with a single output
+layer,W 1:K is serialized into a single token sequence with spe-
+cial symbol [sep] representing speaker change. The serialized
+tokenS∈{V∪O} is given as
+S = (w1
+1, . . . , w1
+N 1 , [sep], w2
+1, . . . , w2
+N 2 , [sep],
+. . . , wK−1
+N K−1 , [sep], wK
+1 , . . . , wK
+N K , [eos]), (1)
+where [eos] denotes the end of a sentence,O ={[sep], [eos]},
+and we assume that W 1:K is sorted in order of utterance start
+times for simplicity.
+2.2. Joint modelinng of multi-talker ASR and timestamp
+prediction
+In [22], SOT was further extended to predict the timestamps
+of each utterance. We denote the start time token and the end
+time token of multiple speakers asT 1:K
+s = ([t1
+s], . . . ,[tK
+s ]) and
+T 1:K
+e = ([ t1
+e], . . . ,[tK
+e ]), respectively, where [tk
+s ] ∈ T and
+[tk
+e ]∈T denote the kth utterance’s start time token and end
+time token, respectively, andT denotes the quantized time to-
+ken label set. The quantized time token is obtained by rounding
+the continuous timestamp values to the nearest quantized value
+every Q seconds. The serialized token ¯S∈{V∪T ∪O} is
+given as
+¯S = ([t1
+s], [t1
+e], w1
+1, . . . , w1
+N 1 , [sep],
+[t2
+s], [t2
+e], w2
+1, . . . , w2
+N 2 , [sep],
+. . . ,[tK
+s ], [tK
+e ], wK
+1 , . . . , wK
+N K , [eos]). (2)
+Multi-talker ASR with SOT estimates the generation prob-
+ability of ¯S givenX as follows:
+P ( ¯S|X; ΘMT) =
+| ¯S|Y
+l=1
+P (¯sl|¯s1:l−1,X; ΘMT), (3)
+where ¯sl denotes the lth token of ¯S, ¯s1:l−1 = (¯s1, . . . ,¯sl−1),
+| ¯S| denotes the length of ¯S, and ΘMT denotes the parameter of
+the multi-talker ASR model. The parameter ΘMT is optimized
+with the following cross-entropy function:
+LMT =− log P ( ¯S|X; ΘMT). (4)
+3. Proposed Method
+3.1. Strategy
+As discussed in Section 1, for a comprehensive understanding
+of situations where multiple speakers are speaking, addressing
+the overlapped speech and multiple videos with a unified model
+is imperative. To address the overlapped speech and multi-
+ple speakers’ videos to estimate which face spoke “when” and
+“what”, we train the model so that it estimates the serialized to-
+ken sequence that reveals “which face spoke when and what” of
+multiple speakers utilizing overlapped speech and all the videos
+of multiple speakers.
+Single-channel
+overlapped speech
+Speech 
+Encoder
+Video
+ Encoder
+Video of speaker 1
+Video
+Encoder
+Video of speaker K
+・・・
+Concatenate
+Segment 
+information
+Embedding
+Transformer Encoder
+Transformer Decoder
+[0, 1, …, K]
+[0], [3], [video N], hello, [sep],
+ [5], [8], [video 1], long time no see, [eos]
+・・・
+Timestamp Video id Transcription・・・
+Figure 1: Overview of proposed method.
+Figure 1 shows an overview of the proposed method. The
+serialized token sequence consists of transcriptions, timestamp
+tags, and video tags that associate transcriptions to the corre-
+sponding video for each utterance. The model is trained to es-
+timate the serialized token sequence recursively with a single
+output layer using SOT. We train the model using cross-entropy
+loss w.r.t. the token sequence.
+3.2. Formulation
+We denote the video tag that indicates the corresponding video
+frames for each transcription as u = u1, . . . , uK, where uk∈
+U denotes the video tag for the kth utterance. For autoregres-
+sive modeling of transcriptions, timestamp tags, and video tags,
+we serialize them into a single sequence. When the video tag
+is placed in front of each transcription, the serialized sequence
+˜S∈{V∪T∪O∪U} is obtained as
+˜S = ([t1
+s], [t1
+e], u1, w1
+1, . . . , w1
+N 1 , [sep],
+[t2
+s], [t2
+e], u2, w2
+1, . . . , w2
+N 2 , [sep],
+. . . ,[tK
+s ], [tK
+e ], uK , wK
+1 , . . . , wK
+N K , [eos]). (5)
+Note that video tags can be placed after transcriptions instead
+of before, which can affect prediction performance for the au-
+toregressive modeling. We discuss the effect of this ordering in
+Section 4.4.
+3.3. Modeling
+We use a Transformer-based model. We denote the video
+frames of multiple speakers asV 1:K = (V 1, . . . ,V K), where
+V k = (V k
+1 , . . . ,V k
+M) denote the kth speaker’s video frames,
+V k
+m∈ RW×H×C denotes the mth frame of each video, M de-
+notes the video length, and W , H, and C denote the width,
+height, and channel of each frame, respectively. Since we input
+all the video frames corresponding to the overlapped speech,
+M is identical among all videos. To explicitly indicate which
+parts correspond to speech and which parts correspond to the
+videos of each speaker, we use the segment information g =
+(0, 1, . . . ,K), where 0 = (0 , . . . ,0) denotes the speech part
+whose length is T andk = ( k, . . . , k) denotes the video part
+of the kth speaker whose length is M. The joint generation
+1839
+
+probability is obtained as follows:
+Hs = SpeechEnc(X;θsenc), (6)
+H k
+v = VideoEnc(V k;θvenc), (7)
+E = Embed(g;θemb), (8)
+H = Concat(Hs,H1
+v , . . . ,H K
+v ) +E, (9)
+G = TransformerEnc(H;θenc), (10)
+P (˜sl|˜s1:l−1; Θ) = TransformerDec(G, ˜s1:l−1;θdec), (11)
+where SpeechEnc(·) is a speech encoder,θsenc denotes its pa-
+rameter, VideoEnc(·) is a video encoder,θvenc denotes its pa-
+rameter, Embed(·) is an embedding layer,θemb denotes its pa-
+rameter, Concat(·) denotes the concatenation along the time
+axis, TransformerEnc(·) is a Transformer encoder, θenc de-
+notes its parameters, TransformerDec(·) is a Transformer de-
+coder,θdec denotes its parameters, Linear(·) denotes a linear
+layer with softmax activation, θlinear denote its parameter, ˜sl
+denotes the lth token of ˜S, and ˜s1:l−1 = (˜s1, . . . ,˜sl−1). For
+time alignment, we utilize positional encoding to the output
+of the speech encoder and video encoder. The detailed archi-
+tecture of the model is described in Section 4.2. The gener-
+ation probability of ˜S is obtained as Eq. (3). The parameter
+Θ ={θsenc,θvenc,θemb,θenc,θdec} is optimized with the fol-
+lowing cross-entropy function:
+L =− log P ( ˜S|X,V 1, . . . ,V K; Θ). (12)
+4. Experiment
+4.1. Dataset
+We used the Lip Reading Sentences 3 (LRS3) dataset [25] for
+our experiments. Although the sentences of LRS3 in the train-
+val and test sets are clipped to 100 characters or 6 seconds,
+the pre-train set includes longer videos, which leads to a gap
+between the training set and the others. Thus, we mixed the
+original pre-train, train-val, and test sets and split them into
+new pre-train, train-val, and test sets so that speakers do not
+overlap between datasets and the train-val and test sets include
+longer audio. Since LRS3 consists of single-talker videos, we
+created two-speaker and three-speaker simulated mixtures by
+mixing the utterances of different speakers. When mixing the
+audio signals, the original volume of each utterance was kept
+unchanged, resulting in an average signal-to-interference ratio
+of about 0 dB. The delay values applied to each utterance were
+randomly chosen under the constraints presented in [23]. The
+start times of individual utterances differed by 0.5 s or longer
+so that every utterance in each mixed audio sample had at least
+one speaker-overlapped region with other utterances. Since the
+length of the created overlapped speech exceeds that of each
+speaker’s video, we copied the nearest frame of the video to fill
+the empty frames. For the memory constraint, we only used
+one frame every five frames, which resulted in 5 fps videos. We
+clipped 96× 96 regions around mouth and converted them to
+gray scale. We added Gaussian noise of standard deviation 0.05
+to every frame of the video.
+We used 80 log mel-scale filterbank coefficients as acoustic
+features, which were extracted using a 20-ms-long Hann win-
+dow with a 10-ms-long shift. We used 8K sentence pieces as
+textual tokens. We set Q to 0.5, which means continuous times-
+tamps were rounded every 0.5 s.
+4.2. Implementation
+For the video encoder, we used MobileNetV3-Small [26]. The
+speech encoder consists as follows. First, the acoustic feature
+was passed to layers composed of two 1× 1 convolutions with
+1× 1 strides, two max pooling with a stride of 2, two 3× 3
+depthwise convolutions with 1× 1 strides, and two long-short
+term memory layers with outputs of 256 dimensions. Next,
+we stacked eight Transformer encoder blocks, where the num-
+ber of heads in the multi-head attention was set to 4, the di-
+mensions of the output continuous representations were set to
+256, and the dimensions of the inner output in the position-wise
+feed-forward networks were set to 1,024. Before concatenation
+in Eq. (9), we added positional encoding to the output of the
+speech encoder and the video encoder so that the model cap-
+tures the temporal alignment. The dimension of the embedding
+in Eq. (8) was 256. We used a Transformer-based model [27,28]
+in this paper. For the Transformer encoder in Eq. (10) and
+the Transformer decoder in Eq. (11), we stacked two-layer
+Transformer encoder blocks and two-layer Transformer decoder
+blocks, respectively, where the settings were the same as those
+of the speech encoder. For the activation function, we used
+Swish [29].
+4.3. Settings
+We compared the following five methods: conventional single-
+talker ASR, conventional single-talker A VSR, combined sys-
+tem of multi-talker ASR and lip moving detection, combined
+system of multi-talker A VSR and lip moving detection, and the
+proposed method. The single-talker models were trained with
+single speaker speech and the corresponding video while the
+multi-talker models were trained with all the speech and the
+corresponding videos including single speaker, two speakers,
+and three speakers. For the fair comparison, the architecture
+of all the models was the same. The multi-talker A VSR is a
+model that adds multiple video inputs to the multi-talker ASR
+model, which estimates transcriptions and timestamp tags with-
+out video tags from overlapped speech and videos of multiple
+speakers. As a naive approach to estimate which face is speak-
+ing using the multi-talker ASR or multi-talker A VSR, we exper-
+imented with a combined system utilizing a lip moving detec-
+tion model. The lip moving detection model, which consists of
+the video encoder described in Section 4.2, four Transformer-
+encoder blocks, and a classification layer, estimates “1” when
+the lip is moving (otherwise, zero) in a frame-wise manner. It
+was trained with the multi-talker training data described in Sec-
+tion 4.1 so that the copied frames were predicted as zero and its
+accuracy on test data was 97.6%. To estimate video tags with
+the lip moving detection model, we calculated the match rate of
+all possible pairs of the predicted lip movement of each video
+and the predicted timestamp tag of each utterance, and assigned
+the video tag to each utterance with the highest match rate al-
+lowing duplication.
+To investigate the effect of the ordering of the transcrip-
+tions and video tags of the proposed method, we compared
+the following three methods: the proposed method without
+transcription, the proposed method with video tags in front of
+each transcription (Proposed method w/ tag front), and the pro-
+posed method with video tags after each transcription (Proposed
+method w/ tag end). In the proposed method without transcrip-
+tion, the model was trained to recursively estimate the quantized
+timestamp tokens T 1:K
+s andT 1:K
+e , the speaker change token
+[sep], and the video tagsu.
+The video encoder was pretrained with a lip reading task
+1840
+
+Table 1: Evaluation results.
+Number of speakers
+in test dataset Methods WER (%) VTER (%) VWER (%)
+1 Single-talker ASR 19.8 1.3 19.8
+Single-talker A VSR 18.8 1.1 18.8
+Multi-talker ASR + lip moving detection 19.5 1.2 19.5
+Multi-talker A VSR + lip moving detection 18.3 1.2 18.3
+Proposed method (w/o transcription) – 1.1 –
+Proposed method (w/ tag front) 18.3 1.1 18.3
+Proposed method (w/ tag end) 18.7 1.1 18.7
+2 Multi-talker ASR + lip moving detection 27.5 3.0 29.3
+Multi-talker A VSR + lip moving detection 25.8 2.8 27.5
+Proposed method (w/o transcription) – 1.3 –
+Proposed method (w/ tag front) 26.0 1.5 26.7
+Proposed method (w/ tag end) 25.9 1.8 26.4
+3 Multi-talker ASR + lip moving detection 35.6 6.4 39.7
+Multi-talker A VSR + lip moving detection 34.1 5.6 37.0
+Proposed method (w/o transcription) – 1.6 –
+Proposed method (w/ tag front) 34.4 2.6 35.6
+Proposed method (w/ tag end) 34.2 2.5 35.6
+using the single-talker speech and video of the LRS3 pre-train
+dataset. The output of the video encoder was fed into the two-
+layer Transformer decoder blocks to transcribe “what” is said
+only from video of the speaker. The speech encoder was pre-
+trained with a multi-talker ASR task utilizng the multi-talker
+speech training data of the LRS3 pre-train dataset in Section 4.1.
+The output of the speech encoder was fed into the two-layer
+Transformer decoder blocks to transcribe “what” is said only
+from speech.
+All models were optimized using the RAdam [30] algo-
+rithm. The speech encoder and lip moving detection model was
+trained with a mini-batch size of 32 and the learning rate of
+1e−4. The video encoder was trained with a mini-batch size of
+16 and the learning rate of1e−4. All other models were trained
+with a mini-batch size of 8 and the learning rate of1e−5 for the
+memory constraint. All parameters including that of the speech
+encoder and video encoder were trainable. The training steps
+were stopped if the loss on the validation set did not decrease
+for ten epochs in succession.
+We used the word error rate (WER), and the newly intro-
+duced visual word error rate (VWER) and visual time error rate
+(VTER) to evaluate the overall performance of the methods. In
+contrast to the original WER that only considers “what” is spo-
+ken, VWER is a criterion that evaluates the prediction perfor-
+mance of which face spoke what. In VWER, every video has
+a label transcription, and the predicted video tag’s transcription
+become the label for evaluating WER. In other words, when the
+predicted video tag is not correct, the predicted transcriptions
+are counted as error even when they match the transcriptions of
+another video. VTER is a criterion that evaluates the predic-
+tion performance of which face spoke when. In VTER, every
+video has an utterance-level timestamp label and the predicted
+video tag’s timestamp label become the label to calculate TER.
+TER was calculated as the sum of missed speaker rate and false
+alarm rate [22]. When comparing hypothesized boundaries to
+references, we used a tolerance of±250 ms. When calculating
+the original WER in multi-talker overlapped ASR settings, we
+compared hypotheses with references while considering the or-
+der of utterances. We only evaluated textual tokens excluding
+the special tokenO, the timestamp tokenT , and the video tag
+tokenU.
+4.4. Results
+Table 1 shows the result. Note that WER is relatively high com-
+pared to other studies using LRS3 because we used a different
+test set that includes longer audio, as explained in Section 4.1.
+We can see that the proposed method outperforms the combined
+system in terms of both VTER and VWER. Since the difference
+between VWER and WER arises from the prediction error of
+video tags, the combined system makes more errors on video
+tag assignment compared to the proposed method. We assume
+this is because although the combined system that utilizes the
+independently predicted lip movement and timestamp tags ac-
+cumulate errors, the proposed method is directly optimized to
+estimate it.
+We can see that the proposed method (w/ tag front) and
+the proposed method (w/ tag end) achieve almost the same per-
+formance in terms of both VTER and VWER while the pro-
+posed method (w/o transcription) outperforms them in terms of
+VTER. We assume this is because the prediction error of tran-
+scription causes the model to assign incorrect video tags. How-
+ever, transcriptions are expected to help estimating video tags
+in more challenging scenes where the speakers of some videos
+do not speak and the speakers not included in the video speak,
+which remains our future work.
+5. Conclusion
+In this paper, we proposed a unified model that jointly recog-
+nizes which face spoke “when” and “what” from multi-talker
+overlapped speech and video of multiple speakers. Most con-
+ventional methods have transcribed “what” is spoken from the
+given video frames, but in videos where multiple speakers are
+simultaneously speaking, figuring out which face spoke “when”
+and “what” is practically important. To address this problem,
+we proposed the unified model that is trained to estimate the
+serialized token sequence revealing which face spoke “when”
+and “what ” from videos of multiple speakers and overlapped
+speech. To evaluate the overall performance, we used newly
+introduced objective criteria named VWER and VTER in ad-
+dition to WER. Experimental results showed that although the
+proposed method is a single model that is much simpler than
+the combined system, it delivered the superior performance.
+1841
+
+6. References
+[1] T. Afouras, J. S. Chung, A. W. Senior, O. Vinyals, and A. Zis-
+serman, “Deep audio-visual speech recognition,” IEEE Trans. on
+pattern analysis and machine intelligence , vol. 44, no. 12, pp.
+8717–8727, 2018.
+[2] D. Serdyuk, O. Braga, and O. Siohan, “Audio-visual speech
+recognition is worth 32 × 32 × 8 voxels,” in Proc. ASRU, 2021,
+pp. 796–802.
+[3] P. Ma, S. Petridis, and M. Pantic, “End-to-end audio-visual speech
+recognition with conformers,” in Proc. ICASSP, 2021, pp. 7613–
+7617.
+[4] B. Shi, W. Hsu, and A. Mohamed, “Robust self-supervised audio-
+visual speech recognition,” in Proc. Interspeech, 2022, pp. 2118–
+2122.
+[5] J. Hong, M. Kim, J. Choi, and Y . M. Ro, “Watch or listen: Robust
+audio-visual speech recognition with visual corruption modeling
+and reliability scoring,” in Proc. CVPR, 2023, pp. 18 783–18 794.
+[6] R. Rose and O. Siohan, “End-to-end multi-talker audio-visual
+ASR using an active speaker attention module,” in Proc. Inter-
+speech, 2022, pp. 2828–2832.
+[7] Y . Wu, C. Li, S. Yang, Z. Wu, and Y . Qian, “Audio-visual multi-
+talker speech recognition in a cocktail party,” in Interspeech,
+2021, pp. 3021–3025.
+[8] J. S. Chung and A. Zisserman, “Out of time: Automated lip
+sync in the wild,” in Workshop on Multi-view Lip-reading, ACCV,
+C. Chen, J. Lu, and K. Ma, Eds., vol. 10117, 2016, pp. 251–263.
+[9] J. S. J. Ren, Y . Hu, Y . Tai, C. Wang, L. Xu, W. Sun, and Q. Yan,
+“Look, listen and learn - A multimodal LSTM for speaker identi-
+fication,” in Proc. AAAI, 2016, pp. 3581–3587.
+[10] S. Chung, J. S. Chung, and H. Kang, “Perfect match: Improved
+cross-modal embeddings for audio-visual synchronisation,” in
+Proc. ICASSP, 2019, pp. 3965–3969.
+[11] J. Roth, S. Chaudhuri, O. Klejch, R. Marvin, A. C. Gallagher,
+L. Kaver, S. Ramaswamy, A. Stopczynski, C. Schmid, Z. Xi, and
+C. Pantofaru, “Ava active speaker: An audio-visual dataset for
+active speaker detection,” inProc. ICASSP, 2020, pp. 4492–4496.
+[12] R. Tao, Z. Pan, R. K. Das, X. Qian, M. Z. Shou, and H. Li, “Is
+someone speaking?: Exploring long-term temporal features for
+audio-visual active speaker detection,” inProc. ACM Multimedia,
+2021, pp. 3927–3935.
+[13] Y . J. Kim, H. Heo, S. Choe, S. Chung, Y . Kwon, B. Lee, Y . Kwon,
+and J. S. Chung, “Look who’s talking: Active speaker detection
+in the wild,” in Proc. Interspeech 2021, 2021, pp. 3675–3679.
+[14] A. Wuerkaixi, Y . Zhang, Z. Duan, and C. Zhang, “Rethink-
+ing audio-visual synchronization for active speaker detection,” in
+Proc. MLSP, 2022, pp. 1–6.
+[15] O. Braga, T. Makino, O. Siohan, and H. Liao, “End-to-end
+multi-person audio/visual automatic speech recognition,” inProc.
+ICASSP, 2020, pp. 6994–6998.
+[16] J. R. Hershey, Z. Chen, J. L. Roux, and S. Watanabe, “Deep clus-
+tering: Discriminative embeddings for segmentation and separa-
+tion,” in Proc. ICASSP, 2016, pp. 31–35.
+[17] H. Seki, T. Hori, S. Watanabe, J. L. Roux, and J. R. Hershey, “A
+purely end-to-end system for multi-speaker speech recognition,”
+in Proc. ACL, 2018, pp. 2620–2630.
+[18] S. Settle, J. L. Roux, T. Hori, S. Watanabe, and J. R. Hershey,
+“End-to-end multi-speaker speech recognition,” in Proc. ICASSP,
+2018, pp. 4819–4823.
+[19] D. Raj, P. Denisov, Z. Chen, H. Erdogan, Z. Huang, M. He,
+S. Watanabe, J. Du, T. Yoshioka, Y . Luo, N. Kanda, J. Li, S. Wis-
+dom, and J. R. Hershey, “Integration of speech separation, diariza-
+tion, and recognition for multi-speaker meetings: System descrip-
+tion, comparison, and analysis,” in Proc. SLT, 2021, pp. 897–904.
+[20] S. Chen, Y . Wu, Z. Chen, J. Wu, J. Li, T. Yoshioka, C. Wang,
+S. Liu, and M. Zhou, “Continuous speech separation with con-
+former,” in Proc. ICASSP, 2021, pp. 5749–5753.
+[21] A. Radford, J. W. Kim, T. Xu, G. Brockman, C. McLeavey, and
+I. Sutskever, “Robust speech recognition via large-scale weak su-
+pervision,” arXiv preprint arXiv:2212.04356, 2022.
+[22] N. Makishima, K. Suzuki, S. Suzuki, A. Ando, and R. Masumura,
+“Joint autoregressive modeling of end-to-end multi-talker over-
+lapped speech recognition and utterance-level timestamp predic-
+tion,” in Proc. Interspeech, 2023, pp. 2913–2917.
+[23] N. Kanda, Y . Gaur, X. Wang, Z. Meng, and T. Yoshioka, “Seri-
+alized output training for end-to-end overlapped speech recogni-
+tion,” in Proc. Interspeech, 2020, pp. 2797–2801.
+[24] A. Tripathi, H. Lu, and H. Sak, “End-to-end multi-talker overlap-
+ping speech recognition,” inProc. ICASSP, 2020, pp. 6129–6133.
+[25] T. Afouras, J. S. Chung, and A. Zisserman, “LRS3-TED: a
+large-scale dataset for visual speech recognition,” arXiv preprint
+arXiv:1809.00496, 2018.
+[26] A. Howard, R. Pang, H. Adam, Q. V . Le, M. Sandler, B. Chen,
+W. Wang, L. Chen, M. Tan, G. Chu, V . Vasudevan, and Y . Zhu,
+“Searching for MobileNetV3,” in Proc. ICCV, 2019, pp. 1314–
+1324.
+[27] A. Vaswani, N. Shazeer, N. Parmar, J. Uszkoreit, L. Jones, A. N.
+Gomez, L. Kaiser, and I. Polosukhin, “Attention is all you need,”
+in Proc. NIPS, 2017, pp. 5998–6008.
+[28] L. Dong, S. Xu, and B. Xu, “Speech-transformer: A no-
+recurrence sequence-to-sequence model for speech recognition,”
+in Proc. ICASSP, 2018, pp. 5884–5888.
+[29] P. Ramachandran, B. Zoph, and Q. V . Le, “Searching for activa-
+tion functions,” in Proc. ICLR Workshop, 2018.
+[30] L. Liu, H. Jiang, P. He, W. Chen, X. Liu, J. Gao, and J. Han, “On
+the variance of the adaptive learning rate and beyond,” in Proc.
+ICLR, 2020.
+1842

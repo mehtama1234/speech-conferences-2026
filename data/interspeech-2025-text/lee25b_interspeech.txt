@@ -1,0 +1,941 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+Bridging Audio and Vision: Zero-Shot Audiovisual Segmentation by
+Connecting Pretrained Models
+Seung-jae Lee, Paul Hongsuck Seo
+Department of Computer Science and Engineering, Korea University, South Korea
+cid2rrrr@korea.ac.kr, phseo@korea.ac.kr
+Abstract
+Audiovisual segmentation (AVS) aims to identify visual regions
+corresponding to sound sources, playing a vital role in video
+understanding, surveillance, and human-computer interaction.
+Traditional AVS methods depend on large-scale pixel-level an-
+notations, which are costly and time-consuming to obtain. To
+address this, we propose a novel zero-shot AVS framework
+that eliminates task-specific training by leveraging multiple pre-
+trained models.
+Our approach integrates audio, vision, and
+text representations to bridge modality gaps, enabling precise
+sound source segmentation without AVS-specific annotations.
+We systematically explore different strategies for connecting
+pretrained models and evaluate their efficacy across multiple
+datasets. Experimental results demonstrate that our framework
+achieves state-of-the-art zero-shot AVS performance, highlight-
+ing the effectiveness of multimodal model integration for fine-
+grained audiovisual segmentation.1
+Index Terms: sound source segmentation, audiovisual recogni-
+tion, zero-shot AVS
+1. Introduction
+Audiovisual segmentation (AVS) is a fundamental task in mul-
+timodal learning, that aims to localize visual regions that cor-
+respond to sound sources through the alignment and fusion of
+audio and visual cues. This capability is essential for applica-
+tions in video understanding, surveillance, human-computer in-
+teraction, and autonomous systems. By effectively segmenting
+sound-emitting objects, AVS enables machines to better under-
+stand complex audiovisual scenes, enhancing both perception
+and interaction. Traditional AVS approaches rely on large-scale
+datasets with pixel-level annotations to achieve high perfor-
+mance. However, acquiring such annotations is labor-intensive,
+costly, and often impractical at scale, which limits the applica-
+bility of supervised approaches in real-world settings.
+To address these challenges, we propose a novel zero-
+shot AVS framework that eliminates the need for task-specific
+training by leveraging pretrained models. Instead of relying
+on AVS-specific annotations, our approach systematically inte-
+grates multiple pretrained models from different subdomains,
+including audio, vision, and text, to enable cross-modal rea-
+soning without additional annotations. By harnessing the com-
+plementary strengths of different pretrained models, our frame-
+work achieves accurate audiovisual segmentation in a zero-shot
+setting.
+Specifically, we investigate multiple strategies for integrat-
+ing pretrained models to enable zero-shot AVS. In particular,
+1The codes are avaliable at https://cid2rrrr.github.io/
+BAaV/
+we examine different approaches to bridge audio and visual
+modalities through text representations, leveraging recent ad-
+vances in multimodal learning. Our experiments demonstrate
+that our framework significantly outperforms existing unsuper-
+vised AVS methods, achieving state-of-the-art zero-shot per-
+formance.
+These findings suggest that effective multimodal
+reasoning—achieved by systematic composition of pretrained
+models—can open new directions for learning-based audiovi-
+sual scene understanding.
+Our contributions are threefold: (1) We propose a novel ap-
+proach to zero-shot AVS that leverages pretrained models from
+related tasks. (2) We systematically explore multiple strategies
+for integrating these pretrained models, conducting extensive
+evaluations. (3) Our final model achieves state-of-the-art zero-
+shot AVS performance, demonstrating the effectiveness of mul-
+timodal model fusion in this task.
+2. Related Works
+Sound Source Localization (SSL) is a fundamental task in au-
+diovisual learning that aims to localize sound-emitting objects
+within visual scenes. Many approaches leverage cross-modal
+attention [1, 2, 3] combined with contrastive learning [4, 5] to
+align audio and visual features. To improve robustness, various
+strategies such as noise contrastive estimation [6], hard negative
+mining [5], and transformation-invariant training [3] have been
+proposed. Additional enhancements include negative-margin
+contrastive learning [7] and the use of multiple positive pairs [2]
+for better cross-modal alignment. However, SSL often results in
+coarse localization without fine object boundaries.
+To address this limitation, Audio-Visual Segmentation
+(AVS) focuses on generating pixel-level masks of sounding
+objects. The introduction of AVSBench [8] enabled rigorous
+benchmarking, leading to methods such as bidirectional recon-
+struction [9], selective suppression [10], and the use of founda-
+tion models [11]. Despite these advances, existing AVS models
+remain reliant on task-specific training. In contrast, our work
+explores a training-free zero-shot framework that integrates pre-
+trained audio and vision models via textual representations,
+highlighting the potential of open-domain priors for scalable
+and robust multimodal segmentation.
+3. Proposed Method
+3.1. Audiovisual Segmentation
+Audiovisual Segmentation (AVS) aims to identify and segment
+regions in a visual frame that correspond to sound-emitting ob-
+jects, by jointly analyzing audio and visual modalities. Given
+a visual frame with synchronized audio, the goal is to gener-
+ate a binary segmentation mask highlighting the spatial regions
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+3145
+10.21437/Interspeech.2025-366
+
+in the image corresponding to the sound source. Formally, let
+I ∈RH×W ×3 be a visual frame, with height H and width
+W, and let A ∈RL be an audio synchronized with I, where
+L denotes the number of audio samples. Given an audiovi-
+sual input pair (I, A), a model predicts a binary segmentation
+mask M ∈{0, 1}H×W , where M(i, j) = 1 indicates that the
+pixel at location (i, j) belongs to a sound-emitting region, and
+M(i, j) = 0 otherwise.
+3.2. Zero-Shot Audiovisual Segmentation Approaches
+A key challenge in AVS is modeling the interactions between
+auditory and visual modalities. While supervised approaches
+rely on large-scale datasets of audiovisual streams annotated
+with dense segmentation maps, such data are scarce and ex-
+pensive to obtain. In contrast, extensive research [12, 13] and
+abundant data [14, 15, 16] exist for audio-text and vision-text
+associations, resulting in strong pretrained models in these do-
+mains. Building on these advancements, we propose zero-shot
+AVS strategies that interconnect multiple pretrained models,
+enabling segmentation without task-specific annotations. By
+leveraging existing multimodal models, our approach circum-
+vents the need for labor-intensive data collection while achiev-
+ing fine-grained segmentation in AVS.
+Notably, many existing pretrained models operate within a
+text-anchored representation space—for example, CLAP [13]
+and WavCaps [14] align audio with text, while BLIP [17] con-
+nects visual inputs with natural language. This observation al-
+lows us to utilize the text modality as a shared intermediary for
+bridging different models. Specifically, in this work, we ex-
+plore and systematically compare multiple potential approaches
+for integrating various pretrained models to achieve zero-shot
+AVS. A core component across all approaches is a pretrained
+model for referring image segmentation (RIS), which identifies
+the region mask M corresponding to a referring textual descrip-
+tion d within the image I. This is essential, as our target task
+aims to generate a fine-grained segmentation map. Given this
+framework, the primary design challenge becomes construct-
+ing an appropriate textual representation d from the audiovisual
+input pair (I, A)—a process that differentiates the approaches
+detailed below.
+Audio Classification
+Since our goal is to identify the visual
+region of the sound source, a na¨ıve approach would be to clas-
+sify the audio signals A to obtain a textual label (e.g., ‘vehicle’
+or ‘dog’) representing the sound source. This label can then be
+used to form the input d for the RIS model. Specifically, we use
+the common prompt ‘a photo of {c}.’ where c is the predicted
+class label.
+Audio Captioning
+An alternative approach to bridging the
+audio and text modalities is to generate a natural language de-
+scription rather than a predefined class label. For example, a
+caption such as “a girl is singing” provides richer contextual
+and semantic information compared to a single-word label like
+“girl,” potentially offering improved grounding for identifying
+the relevant visual region.
+Text Inversion
+While the former two approaches convert au-
+dio into explicit textual form, one can alternatively utilize a
+feature representation to bridge the audio and text modalities.
+Specifically, we can leverage an audio-text alignment model
+such as CLAP [13], which embeds audio and text features
+within a shared space in a semantically aligned manner. By
+training such a model with a frozen RIS text encoder, we can
+estimate text token embeddings ˆed of d, which is unknown, that
+correspond to the input audio A through textual inversion [18].
+“A photo of guitar”
+Audio
+Classifier
+𝐴
+𝑑
+guitar
+𝑐
+(a) Audio Classification
+“Guitar is being played”
+Audio
+Caption
+𝑑
+𝐴
+(b) Audio Captioning
+“A sound 
+   of  𝑊∗ ”
+Audio
+Encoder
+Text
+Encoder
+𝜓𝑎
+𝜓𝑡
+𝑒𝑑
+𝐴
+Ƹ𝑒𝑑= 𝑎𝑟𝑔𝑚𝑖𝑛 Φ(Ψ𝑡(𝐴), Ψ𝑡(𝑒𝑑))
+𝑒𝑑
+Ψ𝑡( Ƹ𝑒𝑑))
+Textual Inversion
+(c) Text Inversion
+“A photo of guitar”
+Audio
+Encoder
+BLIP
+“A  man  is playing a  guitar ”
+𝐴
+𝐼
+0.1
+0.7
+𝛷(·)
+Noun Parsing
+𝑑
+(d) Cross-modal Verification
+Figure 1: Overview of proposed zero-shot AVS approaches.
+Each subfigure shows a strategy to convert audiovisual inputs
+into textual queries for the RIS model (see Section 3.2).
+Formally, we estimate ˆed by
+ˆed = argmin
+ed
+ϕ(Ψa(A), Ψt(ed))
+(1)
+where Ψa is the audio encoder, Ψt is the text encoder without
+the embedding layer, ϕ(a, b) denotes the cosine similarity of
+a and b, and ˆed is the estimated text embeddings. Once ˆed is
+obtained, it is directly injected into the RIS model as the text
+representation, bypassing the standard text embedding stage.
+Cross-modal Verification
+While AVS is a multimodal task
+that connects audio and vision, the above approaches primarily
+focus on audio-only recognition, leaving visual understanding
+entirely to the RIS model. However, visual context can pro-
+vide crucial context for interpreting audio signals, particularly
+when distinguishing between similar sounds (e.g., distinguish-
+ing a buzzing bee from an electric shaver) [19]. To leverage this
+insight, we propose a cross-modal verification mechanism that
+jointly incorporate both the image I and audio A. Specifically,
+we employ an image captioning model to identify visual objects
+I, which helps constrain the audio classification model by re-
+jecting scores for objects that are not visually present. This mul-
+timodal verification step effectively reduces candidate sound
+classes to only those that align with the visual scene, eliminating
+ambiguous cases that can be clearly ruled out based on visual
+evidence (e.g., rejecting the bee class when no bee is visible).
+Alternatively, this process can be reversed by incorporating au-
+dio captioning and image classification models, where the iden-
+tified audio candidates help filter out inconsistent classes in the
+image classification step.
+3146
+
+4. Experiments
+4.1. Models
+Below, we elaborate on the final models built for each approach.
+For all models, we use the same RIS model, ASDA [20].
+Audio Classification
+For this approach, we use BEATs [21],
+a classifier pretrained on AudioSet [22].
+Audio Captioning
+We use WavCap [14] pretrained on the
+Audiocaps [15], Clotho [23], and WavCaps dataset [14].
+Text Inversion
+We employ CLAP [13], trained with a frozen
+CLIP [12] text encoder, ensuring that the model shares the same
+text encoder as the RIS model.
+Cross-modal Verification
+We use BLIP [17] for image
+captioning and CLAP [13] for open-vocabulary classification.
+Specifically, after BLIP generates a caption, we extract noun
+phrases using SpaCy [24] and use them as class labels for
+CLAP’s audio classification.
+In addition, we employ Wav-
+Caps [14] and CLIP [12] for the reverse process.
+4.2. Datasets
+We validate our proposed approaches on the following three
+datasets for AVS. Note that our method is entirely zero-shot and
+thus is evaluated exclusively on the test sets.
+IS3
+IS3 [2] is a large-scale test dataset for AVS with syn-
+thesized images. Each image is generated using Stable Diffu-
+sion [25], with prompts derived from the class labels of two
+randomly selected audio samples from VGGSound [26]. The
+GT (Ground Truth) segmentation mask for each image-audio
+pair is manually selected from the mask proposals generated by
+SAM [27]. The dataset comprises 3,240 examples, each con-
+taining an image paired with two audio samples, each corre-
+sponding to a different sound source with its own GT mask.
+AVSBench-S4
+We also evaluate our approaches on
+AVSBench-S4, a subset of AVSBench [8] containing video
+samples with a single sound source. It consists of manually
+curated 5-second videos with synchronized audio sourced from
+YouTube and provides pixel-level dense segmentation masks at
+1 fps. The dataset contains 740 videos in the test split.
+VPO-SS VPO-SS is a subset of the VPO dataset [28] contain-
+ing a single sound source. Each example is automatically con-
+structed by pairing an image and segmentation mask from MS-
+COCO [16] with an audio sample from VGGSound [26] based
+on their annotated labels. The test split includes 890 samples.
+4.3. Metrics
+For evaluation, we adopt mIoU, cIoU, AUC, and F-score, as
+introduced in [1]. While these metrics were originally mea-
+sured using the top 50% of pixels with the highest segmen-
+tation scores, we follow the adaptive pixel selection approach
+from [2]. This method instead selects the top-k pixels, where k
+corresponds to the number of pixels in the GT mask.
+mIoU
+mIoU computes the average Intersection over Union
+(IoU) between predicted and GT masks across all samples.
+cIoU
+This metric measures the proportion of samples that
+achieve an IoU score greater than 0.5.
+AUC
+AUC is computed by varying the IoU threshold used in
+cIoU and measuring the area under the resulting curve.
+F-score
+F-score balances precision and recall with β = 0.3
+comparing predicted and GT masks at pixel-level.
+J and F
+In addition to the above metrics that rely on GT
+mask sizes, we evaluate the mIoU (J ) and F-score (F) of the
+final predicted masks using thresholding [20]. For our model,
+we adopt the thresholds selected for the original RIS models.
+Table 1: Performance Comparison of proposed zero-shot AVS
+strategies across multiple datasets. Our VCap+ACls (Cross-
+modal Verification) approach consistently achieves the highest
+performance across all metrics. See Section 4.4 for details.
+Model
+cIoU
+AUC
+mIoU
+Fscore
+J
+F
+IS3
+Classification
+58.3
+53.8
+53.2
+59.3
+48.3
+54.4
+Captioning
+56.3
+52.0
+51.5
+58.1
+44.1
+51.3
+Inversion
+35.5
+35.0
+34.2
+40.9
+23.3
+29.7
+VCap+ACls
+65.4
+59.6
+59.1
+65.2
+54.2
+60.7
+ACap+VCls
+62.8
+57.8
+57.3
+63.5
+52.5
+58.8
+AVSBench-S4
+Classification
+59.8
+53.5
+53.0
+59.6
+48.0
+56.1
+Captioning
+63.8
+56.7
+56.2
+63.1
+48.9
+58.4
+Inversion
+31.8
+32.8
+32.2
+39.3
+19.2
+26.0
+VCap+ACls
+71.1
+62.4
+62.0
+69.2
+57.0
+66.0
+ACap+VCls
+70.2
+61.5
+61.1
+68.1
+55.6
+64.7
+VPO-SS
+Classification
+42.2
+35.7
+34.9
+43.4
+27.7
+38.5
+Captioning
+48.4
+39.3
+38.6
+47.6
+33.2
+45.7
+Inversion
+24.2
+25.0
+24.1
+31.9
+13.8
+21.2
+VCap+ACls
+54.6
+49.3
+48.5
+52.7
+46.0
+50.1
+ACap+VCls
+49.8
+39.4
+38.6
+47.2
+34.9
+47.4
+4.4. Results
+Comparisons of Proposed Zero-Shot Approaches
+In Ta-
+ble 1, we compare five zero-shot AVS strategies we pro-
+pose.Despite their simplicity, both Classification and Caption-
+ing achieve strong performances across all three datasets. In-
+terestingly, while Captioning generally outperforms Classifica-
+tion (on AVSBench-S4 and VPO-SS) due to its rich descrip-
+tions, it can sometimes confuse the RIS model, resulting in
+scattered segmentation masks and limited performance in cer-
+tain domains, such as IS3. Inversion yields the lowest perfor-
+mance among the proposed methods, likely due to the inher-
+ent difficulty of reconstructing well-aligned textual embeddings
+solely from audio features. A key limitation is that the text
+encoder—frozen to match the RIS model—was pretrained for
+vision-language alignment, not audio-text correspondence. Ad-
+ditionally, modality gaps in models like CLIP and CLAP fur-
+ther degrade alignment quality, making it difficult for Inversion
+to produce meaningful embeddings.
+Compared to the approaches that rely solely on the au-
+dio modality, Both cross-modal approaches, VCap+ACls and
+ACap+VCls, that leverage both audio and visual informa-
+tion achieve significantly stronger performance in most con-
+figurations. For instance, VCap+ACls outperforms the best-
+performing audio-only approach, Classification, by over 5.8%
+relative improvements on IS3 across all metrics. When compar-
+ing the two cross-modal methods, VCap+ACls demonstrated
+significantly higher performances than ACap+VCls.
+This is
+partly because visual captions provide a more reliable and con-
+crete representation of the scene, effectively constraining the
+audio classification process. In contrast, audio captions can be
+abstract or ambiguous, making it more challenging to filter out
+inconsistent visual classes. Note that aggressive rejection of
+object classes at an early stage can lead to severe error propaga-
+tion, resulting in significant performance drops.
+Comparisons to SOTA Methods In this section, we compare
+our zero-shot AVS approaches with existing unsupervised meth-
+ods in AVS under a zero-shot setting, including SSL-TIE [3],
+EZ-VSL [4], SLAVC [29], MarginNCE [7], FNAC [6], and SS-
+Lalign [2]. Table 2 presents quantitative comparisons across
+three benchmark datasets: IS3, AVSBench-S4, and VPO-SS.
+Notably, prior methods rely on self-supervised training to
+3147
+
+Table 2: Performance comparison with state-of-the-art unsu-
+pervised AVS methods in a zero-shot setting. Our approach out-
+performs them without additional training.
+Model
+cIoU
+AUC
+mIoU
+Fscore
+J
+F
+IS3
+LVS [5]
+11.1
+24.2
+23.9
+34.8
+21.2
+25.7
+EZ-VSL [4]
+13.4
+26.4
+26.0
+37.3
+20.7
+25.1
+SSL-TIE [3]
+20.7
+31.8
+31.5
+44.1
+27.8
+34.6
+SLAVC [29]
+15.1
+26.2
+25.7
+36.6
+18.1
+21.9
+MarginNCE [7]
+18.5
+30.8
+30.5
+42.9
+21.6
+26.0
+FNAC [6]
+14.7
+27.5
+27.1
+38.7
+19.4
+23.4
+SSLalign [2]
+28.5
+36.6
+36.4
+49.8
+31.0
+38.1
+Ours
+65.4
+59.6
+59.1
+65.2
+54.2
+60.7
+AVSBench-S4
+LVS [5]
+21.1
+30.6
+30.5
+42.4
+24.4
+29.2
+EZ-VSL [4]
+19.5
+30.8
+30.7
+42.8
+23.0
+27.3
+SSL-TIE [3]
+31.1
+38.5
+28.9
+52.5
+20.3
+26.2
+SLAVC [29]
+21.8
+32.8
+32.8
+45.5
+21.1
+25.1
+MarginNCE [7]
+25.2
+35.5
+35.4
+48.6
+23.9
+28.4
+FNAC [6]
+23.0
+33.1
+33.0
+45.6
+22.5
+26.7
+SSLalign [2]
+30.6
+39.2
+39.2
+53.0
+32.2
+38.8
+Ours
+71.1
+62.4
+62.0
+69.2
+57.0
+66.0
+VPO-SS
+LVS [5]
+14.6
+21.4
+20.5
+28.6
+18.8
+22.4
+EZ-VSL [4]
+12.2
+22.1
+21.2
+29.9
+18.3
+21.9
+SSL-TIE [3]
+20.4
+26.3
+25.4
+34.8
+21.3
+27.7
+SLAVC [29]
+15.3
+22.1
+21.2
+29.5
+17.1
+20.2
+MarginNCE [7]
+14.8
+23.4
+22.5
+31.4
+18.8
+22.3
+FNAC [6]
+15.7
+23.2
+22.2
+30.8
+18.0
+21.3
+SSLalign [2]
+17.6
+24.9
+24.1
+33.3
+22.0
+28.0
+Ours
+54.6
+49.3
+48.5
+52.7
+46.0
+50.1
+learn cross-modal associations, often using contrastive objec-
+tives or transformation constraints. However, they tend to pro-
+duce coarse masks due to low-resolution feature maps and lack
+of strong semantic grounding. whereas our zero-shot approach
+circumventsthis by integrating multiple pretrained models from
+different subdomains, enabling fine-grained segmentation with-
+out task-specific training.
+Across all datasets, our Cross-modal Verification approach
+consistently achieves state-of-the-art performance, surpassing
+existing unsupervised methods across all evaluation metrics by
+a significant margin.
+Notably, our method improves perfor-
+mance by approximately 2× across most metrics and attains a
+3× improvement in cIoU on the VPO-SS dataset. These re-
+sults underscore the effectiveness of our Cross-modal Verifica-
+tion approach in harnessing the generalization capabilities of
+pretrained models without the need for additional training. In
+contrast, prior methods struggle to generate accurate segmenta-
+tion masks due to their reliance on low-resolution feature maps
+and the inherent limitations of self-supervised learning.
+A qualitative comparison, presented in Fig. 2, further high-
+lights the superiority of our method. As previously discussed,
+existing methods produce overly coarse segmentation masks
+that frequently cover irrelevant objects within the scene. While
+these methods attempt to localize sound-emitting regions, their
+highest activation scores are often misplaced, indicating their
+difficulty to achieve precise localization.
+Our approach effectively utilizes the reasoning capabili-
+ties of RIS models through audiovisual Cross-modal Verifica-
+tion. By explicitly decomposing the segmentation process into
+a framework that leverages visual information to interpret au-
+dio cues, our method achieves precise, fine-grained pixel-level
+segmentation even in complex, multi-object scenarios.
+Ablations with Various RIS Models To evaluate the impact of
+RIS models on AVS performance, we conduct an ablation study
+Figure 2:
+Qualitative comparisons of segmentation results
+across datasets. Our method produces fine-grained masks for
+sounding objects, outperforming prior methods in visual accu-
+racy and boundary alignment.
+Table 3: Ablation study of different RIS models. Our approach
+with ASDA [20] achieves the best performance on all datasets.
+Model
+cIoU
+AUC
+mIoU
+Fscore
+J
+F
+IS3
+ASDA [20]
+65.4
+59.6
+59.1
+65.2
+54.2
+60.7
+ETRIS [30]
+64.3
+57.2
+56.8
+64.3
+52.3
+60.8
+CRIS [31]
+53.4
+47.0
+46.4
+53.4
+42.9
+50.9
+S4
+ASDA [20]
+71.1
+62.4
+62.0
+69.2
+57.0
+66.0
+ETRIS [30]
+59.2
+52.3
+51.8
+60.7
+46.5
+58.1
+CRIS [31]
+56.1
+50.0
+49.5
+57.4
+45.2
+55.3
+VPOSS
+ASDA [20]
+65.4
+59.6
+59.1
+65.2
+54.2
+60.7
+ETRIS [30]
+53.7
+46.4
+45.6
+50.7
+43.2
+48.9
+CRIS [31]
+51.8
+45.9
+45.0
+49.9
+42.9
+48.6
+where we replace the RIS model with different architectures.
+Table 3 compares our default RIS model, ASDA [20]—a state-
+of-the-art method for RIS—with two alternatives: ETRIS [30]
+and CRIS [31]. Our findings indicate that ASDA consistently
+outperforms across all datasets. This suggests that the choice of
+RIS model significantly influences segmentation performance.
+These results emphasize that selecting a high-quality RIS model
+is essential for achieving optimal zero-shot AVS performance.
+5. Conclusion
+Our study introduces a novel zero-shot audiovisual segmenta-
+tion framework that obviates the need for task-specific training
+by leveraging multiple pretrained models. By systematically
+integrating audio, vision, and text representations, we bridge
+modality gaps and achieve fine-grained segmentation without
+requiring AVS-specific annotations. Our approach outperforms
+existing unsupervised methods, demonstrating the effectiveness
+of multimodal model fusion for audiovisual scene understand-
+ing. Furthermore, our findings highlight the critical role of pre-
+trained model selection, particularly in RIS, in ensuring high
+segmentation accuracy.
+This work opens new directions for
+zero-shot audiovisual segmentation, paving the way for scalable
+and efficient multimodal learning in real-world applications.
+3148
+
+6. Acknowledgements
+This research was supported by IITP grants (IITP-2025-
+RS-2020-II201819,
+IITP-2025-RS-2024-00436857,
+IITP-
+2025-RS-2024-00398115,
+IITP-2025-RS-2025-02263754,
+IITP-2025-RS-2025-02304828) and the KOCCA grant (RS-
+2024-00345025) funded by the Korea government (MSIT,
+MOE and MSCT).
+7. References
+[1] A. Senocak, T.-H. Oh, J. Kim, M.-H. Yang, and I. S. Kweon,
+“Learning to localize sound sources in visual scenes: Analysis
+and applications,” IEEE transactions on pattern analysis and ma-
+chine intelligence, vol. 43, no. 5, pp. 1605–1619, 2019.
+[2] A. Senocak, H. Ryu, J. Kim, T.-H. Oh, H. Pfister, and J. S.
+Chung, “Aligning sight and sound:
+Advanced sound source
+localization through audio-visual alignment,” arXiv preprint
+arXiv:2407.13676, 2024.
+[3] J. Liu, C. Ju, W. Xie, and Y. Zhang, “Exploiting transformation in-
+variance and equivariance for self-supervised sound localisation,”
+in Proceedings of the 30th ACM International Conference on Mul-
+timedia, 2022, pp. 3742–3753.
+[4] S. Mo and P. Morgado, “Localizing visual sounds the easy way,”
+in European Conference on Computer Vision.
+Springer, 2022,
+pp. 218–234.
+[5] H. Chen, W. Xie, T. Afouras, A. Nagrani, A. Vedaldi, and A. Zis-
+serman, “Localizing visual sounds the hard way,” in Proceed-
+ings of the IEEE/CVF conference on computer vision and pattern
+recognition, 2021, pp. 16 867–16 876.
+[6] W. Sun, J. Zhang, J. Wang, Z. Liu, Y. Zhong, T. Feng, Y. Guo,
+Y. Zhang, and N. Barnes, “Learning audio-visual source local-
+ization via false negative aware contrastive learning,” in Proceed-
+ings of the IEEE/CVF Conference on Computer Vision and Pat-
+tern Recognition, 2023, pp. 6420–6429.
+[7] S. Park, A. Senocak, and J. S. Chung, “Marginnce: Robust sound
+localization with a negative margin,” in ICASSP 2023-2023 IEEE
+International Conference on Acoustics, Speech and Signal Pro-
+cessing (ICASSP).
+IEEE, 2023, pp. 1–5.
+[8] J. Zhou, J. Wang, J. Zhang, W. Sun, J. Zhang, S. Birchfield,
+D. Guo, L. Kong, M. Wang, and Y. Zhong, “Audio–visual segmen-
+tation,” in European Conference on Computer Vision.
+Springer,
+2022, pp. 386–403.
+[9] D. Hao, Y. Mao, B. He, X. Han, Y. Dai, and Y. Zhong, “Improving
+audio-visual segmentation with bidirectional generation,” in Pro-
+ceedings of the AAAI conference on artificial intelligence, vol. 38,
+no. 3, 2024, pp. 2067–2075.
+[10] J. Li, S. Yu, Y. Wang, L. Wang, and H. Lu, “Selm: Selective
+mechanism based audio-visual segmentation,” in Proceedings of
+the 32nd ACM International Conference on Multimedia, 2024, pp.
+3926–3935.
+[11] C. Liu, P. Li, H. Zhang, L. Li, Z. Huang, D. Wang, and X. Yu,
+“Bavs: Bootstrapping audio-visual segmentation by integrating
+foundation knowledge,” IEEE Transactions on Multimedia, 2024.
+[12] A. Radford, J. W. Kim, C. Hallacy, A. Ramesh, G. Goh, S. Agar-
+wal, G. Sastry, A. Askell, P. Mishkin, J. Clark et al., “Learning
+transferable visual models from natural language supervision,” in
+International conference on machine learning. PMLR, 2021, pp.
+8748–8763.
+[13] B. Elizalde, S. Deshmukh, and H. Wang, “Natural language
+supervision for general-purpose audio representations,” 2023.
+[Online]. Available: https://arxiv.org/abs/2309.05767
+[14] X. Mei, C. Meng, H. Liu, Q. Kong, T. Ko, C. Zhao, M. D.
+Plumbley, Y. Zou, and W. Wang, “WavCaps: A ChatGPT-assisted
+weakly-labelled audio captioning dataset for audio-language mul-
+timodal research,” IEEE/ACM Transactions on Audio, Speech,
+and Language Processing, pp. 1–15, 2024.
+[15] C. D. Kim, B. Kim, H. Lee, and G. Kim, “AudioCaps: Generating
+Captions for Audios in The Wild,” in NAACL-HLT, 2019.
+[16] T.-Y. Lin, M. Maire, S. Belongie, J. Hays, P. Perona, D. Ramanan,
+P. Doll´ar, and C. L. Zitnick, “Microsoft coco: Common objects in
+context,” in Computer Vision–ECCV 2014: 13th European Con-
+ference, Zurich, Switzerland, September 6-12, 2014, Proceedings,
+Part V 13.
+Springer, 2014, pp. 740–755.
+[17] J. Li, D. Li, C. Xiong, and S. Hoi, “Blip: Bootstrapping language-
+image pre-training for unified vision-language understanding and
+generation,” in ICML, 2022.
+[18] R. Gal, Y. Alaluf, Y. Atzmon, O. Patashnik, A. H. Bermano,
+G. Chechik, and D. Cohen-Or, “An image is worth one word:
+Personalizing text-to-image generation using textual inversion,”
+arXiv preprint arXiv:2208.01618, 2022.
+[19] D. Kim, S. J. Um, S. Lee, and J. U. Kim, “Learning to visually
+localize sound sources from mixtures without prior source knowl-
+edge,” in Proceedings of the IEEE/CVF Conference on Computer
+Vision and Pattern Recognition, 2024, pp. 26 467–26 476.
+[20] P. Yue, J. Lin, S. Zhang, J. Hu, Y. Lu, H. Niu, H. Ding, Y. Zhang,
+G. JIANG, L. Cao et al., “Adaptive selection based referring im-
+age segmentation,” in ACM Multimedia 2024.
+[21] S. Chen, Y. Wu, C. Wang, S. Liu, D. Tompkins, Z. Chen, and
+F. Wei, “Beats: Audio pre-training with acoustic tokenizers,”
+2022.
+[22] J. F. Gemmeke, D. P. Ellis, D. Freedman, A. Jansen, W. Lawrence,
+R. C. Moore, M. Plakal, and M. Ritter, “Audio set: An ontology
+and human-labeled dataset for audio events,” in 2017 IEEE inter-
+national conference on acoustics, speech and signal processing
+(ICASSP).
+IEEE, 2017, pp. 776–780.
+[23] K. Drossos, S. Lipping, and T. Virtanen, “Clotho: An audio cap-
+tioning dataset,” in ICASSP 2020-2020 IEEE International Con-
+ference on Acoustics, Speech and Signal Processing (ICASSP).
+IEEE, 2020, pp. 736–740.
+[24] M. Honnibal and I. Montani, “spaCy 2: Natural language under-
+standing with Bloom embeddings, convolutional neural networks
+and incremental parsing,” 2017, to appear.
+[25] R. Rombach, A. Blattmann, D. Lorenz, P. Esser, and B. Ommer,
+“High-resolution image synthesis with latent diffusion models,”
+2021.
+[26] H. Chen, W. Xie, A. Vedaldi, and A. Zisserman, “Vggsound: A
+large-scale audio-visual dataset,” in International Conference on
+Acoustics, Speech, and Signal Processing (ICASSP), 2020.
+[27] A. Kirillov, E. Mintun, N. Ravi, H. Mao, C. Rolland, L. Gustafson,
+T. Xiao, S. Whitehead, A. C. Berg, W.-Y. Lo, P. Doll´ar, and R. Gir-
+shick, “Segment anything,” 2023.
+[28] Y. Chen, Y. Liu, H. Wang, F. Liu, C. Wang, H. Frazer, and
+G. Carneiro, “Unraveling instance associations: A closer look for
+audio-visual segmentation,” 2024.
+[29] S. Mo and P. Morgado, “A closer look at weakly-supervised
+audio-visual source localization,” Advances in Neural Informa-
+tion Processing Systems, vol. 35, pp. 37 524–37 536, 2022.
+[30] Z. Xu, Z. Chen, Y. Zhang, Y. Song, X. Wan, and G. Li, “Bridg-
+ing vision and language encoders: Parameter-efficient tuning for
+referring image segmentation,” in Proceedings of the IEEE/CVF
+International Conference on Computer Vision, 2023, pp. 17 503–
+17 512.
+[31] Z. Wang, Y. Lu, Q. Li, X. Tao, Y. Guo, M. Gong, and T. Liu, “Cris:
+Clip-driven referring image segmentation,” in Proceedings of the
+IEEE/CVF conference on computer vision and pattern recogni-
+tion, 2022.
+3149
+

@@ -1,0 +1,563 @@
+Beyond Similarity Scoring: Detecting Entailment and Contradiction in
+Multilingual and Multimodal Contexts
+Othman Istaiteh, Salima Mdhaffar, Yannick Est`eve
+LIA, Avignon University, France
+{firstname.lastname}@univ-avignon.fr
+Abstract
+Natural Language Inference (NLI) determines whether a
+hypothesis entails, contradicts, or is neutral with respect to a
+premise. While text-based NLI is well-studied, its multimodal
+and multilingual extension remains underexplored. This paper
+introduces a multilingual, multimodal NLI framework classi-
+fying entailment, contradiction, and neutrality across text-text,
+text-speech, speech-text, and speech-speech pairs in same- and
+cross-lingual settings. A key motivation is improving transla-
+tion assessment, where similarity-based approaches may miss
+contradictions. The framework complements evaluation meth-
+ods and helps identify inconsistencies by detecting entailment
+and contradiction alongside semantic similarity. It also extends
+text-based datasets with speech-text and speech-speech pairs
+for multilingual multimodal inference.1 Experiments show the
+model outperforms BLASER in distinguishing entailment from
+non-entailment, achieving F1 gains of 0.19 in speech-speech
+and 0.13 in speech-text.
+Index Terms: Multimodal NLI, Speech Translation Evaluation
+1. Introduction
+NLI determines the logical relationship between a premise and
+a hypothesis. The premise is a given statement, and the hypoth-
+esis is evaluated against it. The relationship can be entailment
+(the hypothesis follows from the premise), contradiction (it con-
+flicts with the premise), or neutral (it is unrelated or ambigu-
+ous) [1, 2]. NLI is used in tasks like information extraction and
+virtual assistants [3, 4]. Multilingual and multimodal NLI ex-
+tends this capability to spoken and translated sentences, where
+implicit meaning shifts and contradictions can impact evalua-
+tion. In translation, bidirectional entailment [5] ensures that the
+translated and original sentences support each other and detects
+translations that contradict the original speech. Beyond trans-
+lation, NLI plays a crucial role in speech recognition, where
+phonetic variations and transcription errors can introduce con-
+tradictions. This is particularly relevant in morphologically rich
+languages like Arabic, where minor phonetic changes can alter
+meaning and impact transcription accuracy.
+Early NLI methods used syntactic and lexical features but
+struggled with semantic relationships [1, 6]. The shift to deep
+learning, particularly LSTM and attention-based mechanisms,
+enabled more robust semantic modeling and significantly im-
+proved inference performance [7]. Transformers advanced NLI
+using pre-trained contextualized representations. Models like
+BERT [8] and RoBERTa [9] improved performance by captur-
+ing semantic relationships more effectively. This progress ex-
+tended to multilingual models, such as mT5 [10] and mGPT
+1The dataset we created is available at: https://github.com/
+othman-istaiteh/multimodal-nli
+[11].
+Specialized models have further addressed challenges
+in cross-lingual representation learning:
+No Language Left
+Behind (NLLB) [12] enhances low-resource language perfor-
+mance, while LaBSE [13] improves multilingual retrieval by
+producing language-agnostic sentence embeddings. Together,
+these advancements have broadened the scope of NLI across
+languages and modalities.
+Expanding NLI to speech introduces challenges like accent
+variations, diverse patterns, and noise. Self-supervised mod-
+els like Wav2vec 2.0 [14] and HuBERT [15] generate high-
+dimensional representations that capture phonetic and linguistic
+features. However, ensuring alignment between speech and text
+embeddings is critical for multimodal NLI. SONAR [16] refines
+speech encoders using NLLB, aligning speech outputs with text
+embeddings at the sentence level.
+Similarly, SAMU-XLSR
+[17] leverages LaBSE for cross-lingual speech-text alignment.
+These models align speech and text in a shared space, improv-
+ing multimodal inference.
+Cosine similarity compares sentence embeddings based on
+their angular difference [18, 19]. Other metrics include Eu-
+clidean distance, dot product similarity, and learned similarity
+functions [20, 21]. BLASER 2.0 [22, 23], a three-layer dense
+neural network, computes semantic similarity between speech
+and text using a neural similarity function. It is trained with
+supervised learning on cross-lingual semantic textual similar-
+ity (XSTS) data [24], which provides human-annotated scores
+from 1 (unrelated) to 5 (fully equivalent). This training aligns
+BLASER’s similarity scores with human judgments.
+In the
+SeamlessM4T system, BLASER 2.0 ranks and retrieves match-
+ing speech and text segments for speech-text alignment and
+translation evaluation [22].
+Although these metrics measure overall similarity, they
+may assign high scores to sentences with high lexical overlap
+but opposite meanings. In our own evaluation, BLASER gives a
+4.79/5 similarity score to the sentences “The weather is sunny”
+and “The weather is not sunny” despite their contradiction. De-
+tecting contradiction prevents misleading similarity scores from
+affecting retrieval and evaluation. Explicit entailment detection
+filters mismatches, improving retrieval and avoiding contradic-
+tory pairs in multilingual and multimodal settings.
+This study presents a framework extending NLI to multilin-
+gual and multimodal contexts using semantic representations.
+It detects entailment and contradiction across input types: text-
+text, text-speech, speech-text, and speech-speech, within same-
+and cross-lingual settings. Unlike similarity-based methods, it
+explicitly classifies entailment, contradiction, and neutrality. It
+incorporates data generation for speech-text and speech-speech
+NLI pairs, aiding multimodal datasets. This approach applies
+to translation assessment, speech recognition, and multilingual
+multimodal retrieval.
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+286
+10.21437/Interspeech.2025-1825
+
+2. Methodology
+This NLI framework supports multilingual and multimodal
+inputs across text-text, text-speech, speech-text, and speech-
+speech in same- and cross-lingual settings. Text-text spans 15
+languages; speech-text and speech-speech include Arabic, En-
+glish, and French. First, input pairs are encoded into a shared
+semantic space for consistent cross-lingual and cross-modal
+representation. This uses a single encoder for speech and text or
+multiple aligned encoders for a unified representation. A fully
+connected neural network with a softmax layer classifies rela-
+tionships as entailment, contradiction, or neutral.
+2.1. Feature Combination of Embeddings
+The framework applies feature combination techniques from
+the BLASER architecture to process premise and hypothesis
+embeddings.
+After encoding input pairs into a shared se-
+mantic space, their embeddings are combined using element-
+wise subtraction (to highlight differences in meaning), element-
+wise multiplication (to capture interactions and shared seman-
+tic information), and concatenation (to merge the original, sub-
+tracted, and multiplied embeddings into a single vector). The
+resulting feature vector encodes the premise-hypothesis rela-
+tionship and has a dimensionality four times that of a single
+input embedding.
+2.2. Classification
+The classification module uses the combined feature vector to
+predict the premise-hypothesis relationship. A dense neural net-
+work classifier with a softmax layer assigns probabilities to the
+three NLI classes: entailment, contradiction, and neutral. By di-
+rectly modeling these relationships, the framework detects en-
+tailment and contradiction across different modalities and lan-
+guages. It also distinguishes contradiction from entailment in
+cases with high lexical overlap, where similarity-based models
+like BLASER may struggle.
+The classification network handles text-text, text-speech,
+speech-text, and speech-speech inputs within and across lan-
+guages.
+It directly models logical relationships between in-
+puts, providing a key advantage over regression-based similar-
+ity models. Figure 1 illustrates the proposed framework, outlin-
+ing the process from input encoding to classification. The blue
+blocks represent the original BLASER architecture, while the
+red blocks indicate the newly introduced components. This ca-
+pability benefits translation assessment, where entailment com-
+plements high semantic scores, and information retrieval, where
+logical consistency is essential.
+3. Experiments
+We conducted experiments to evaluate the proposed frame-
+work’s ability to classify entailment, contradiction, and neutral
+relationships across text-text, text-speech, and speech-speech
+inputs. The primary task was multiclass classification, distin-
+guishing among the three labels. Additionally, we performed
+binary classification, where entailment was treated as the pos-
+itive class, and contradiction and neutral were combined into
+a single negative class for comparison against BLASER. The
+experiments also examined the impact of generated data and
+compared performance on synthesized and natural speech.
+Figure 1: Workflow of the proposed multilingual and multi-
+modal NLI framework.
+3.1. Data Preparation
+The data preparation consists of two parts. The first utilizes ex-
+isting datasets, including SNLI [1], XNLI [25], and FLEURS
+[26]. The second generates additional multimodal and multilin-
+gual NLI data using synthetic techniques to extend the datasets
+into new modalities and languages.
+3.1.1. Datasets Utilized
+This work uses three publicly available datasets in two cate-
+gories:
+Text Datasets: The SNLI and XNLI corpora are used for
+NLI tasks. SNLI consists of English premise-hypothesis pairs
+labeled as entailment, contradiction, or neutral. XNLI extends
+NLI to 15 languages, with premise and hypothesis in the same
+language. This work uses the English subset of XNLI for train-
+ing and the multilingual subset for development and testing.
+Speech Dataset: The FLEURS dataset contains aligned
+text and speech data for 102 languages, with 11,000 samples
+per language. Each sample includes a sentence translation and
+its corresponding audio recording. This work focuses on En-
+glish, French, and Arabic pairs.
+3.1.2. Data Generation
+We used a two-step process to extend NLI text data to a multi-
+modal context, generating speech-text and speech-speech pairs
+from existing text-text pairs. Figure 2 illustrates the process.
+287
+
+Text-text Pairs: We fine-tuned the Mistral 7B v3 model
+[27] on the English portions of SNLI and XNLI. The model gen-
+erated premise-hypothesis pairs for entailment, contradiction,
+and neutral labels. Hypotheses for the English text in FLEURS
+were paired with their Arabic and French translations, forming
+English-English, English-Arabic, and English-French text-text
+NLI pairs.
+Speech-text Pairs:
+English NLI-generated pairs were
+aligned with the corresponding FLEURS speech, forming
+English-English, English-Arabic, and English-French speech-
+text NLI pairs.
+Speech-speech Pairs: We used the VITS multispeaker [28]
+implementation of the Coqui open-source framework [29] to
+generate speech-speech pairs. The 109 available speakers were
+split into training (77), validation (12), and testing (20), match-
+ing FLEURS proportions. Using VITS, we generated speech for
+NLI-generated pairs and paired it with corresponding FLEURS
+speech, forming English-English, English-Arabic, and English-
+French speech-speech pairs. The generated speech was also
+paired with its corresponding text, adding more speech-text
+data. Whisper v3 [30] generated transcriptions for the TTS-
+generated speech, with an average Word Error Rate (WER) of
+6.9%. To ensure quality, outputs with WER above 20% were fil-
+tered out, removing 884 of 10,677 samples, resulting in a final
+dataset with an average WER of 3.8%.
+The SNLI and XNLI datasets, along with the generated
+data, are balanced across the three NLI labels: entailment, con-
+tradiction, and neutral. In contrast, the control set contains only
+entailment examples, including text-text and speech-text trans-
+lations, as well as text paired with synthetic speech from TTS.
+Table 1 summarizes the size and composition of the dataset.
+3.2. Training Setup
+The training process integrates SONAR embeddings for a uni-
+fied representation of text and speech, ensuring alignment
+across languages and modalities. Each sentence, regardless of
+modality or language, is encoded into a 1024-dimensional vec-
+tor. SONAR uses a single text encoder for all languages and
+separate speech encoders for each language. This alignment
+makes SONAR suitable for text-text, text-speech, and speech-
+speech experiments.
+The classifier retains BLASER’s three-layer dense neural
+network but replaces the regression output with a three-node
+softmax layer to classify sentence pairs as entailment, contra-
+diction, or neutral.
+The input vector is formed by concate-
+nating the two 1024-dimensional sentence embeddings, along
+with their element-wise subtraction and multiplication, captur-
+ing their relationship. The resulting 4096-dimensional vector
+is fed into a three-layer dense network with hidden dimensions
+of 3072, 1536, and 3. The first two layers use the tanh activa-
+tion function, while the last applies softmax. Training employs
+a dropout rate of 0.1, a batch size of 2048, a learning rate of
+1 × 10−3, and 1000 epochs, using cross-entropy loss.
+Table 1: Data Summary (Number of Samples)
+Dataset
+Train
+Valid
+Test
+Languages
+SNLI
+548,814
+9,840
+9,824
+EN
+XNLI
+392,702
+37,350
+75,150
+15 Languages
+text-text
+40,881
+7,827
+9,882
+EN, AR, FR
+speech-text
+81,492
+14,978
+19,145
+EN, AR, FR
+speech-speech
+37,357
+7,151
+9,263
+EN, AR, FR
+Control
+83,141
+13,864
+18,542
+EN, AR, FR
+Table 2: Binary Classification Results (F1 Micro, Threshold:
+3.90 for BLASER)
+Dataset
+Baseline (BLASER)
+Our Model
+Dev All
+0.69
+0.84
+Test All
+0.69
+0.83
+XNLI Test
+0.67
+0.77
+SNLI Test
+0.66
+0.90
+Control Test
+0.88
+1.00
+speech-text Test
+0.63
+0.82
+text-text Test
+0.62
+0.84
+speech-speech Test
+0.62
+0.81
+3.3. Binary Classification: Baseline Comparison
+BLASER serves as the baseline due to its semantic scoring
+across multiple modalities, providing a meaningful comparison
+for our framework, which explicitly models entailment, contra-
+diction, and neutrality.
+To evaluate the framework’s performance and enable a di-
+rect comparison with the BLASER model, we created a binary
+classification task. The original task consists of three classes:
+entailment, contradiction, and neutral. We converted it to bi-
+nary classification, treating entailment as positive and merging
+contradiction and neutral into one negative class. This binary
+setup allowed us to assess the model’s ability to distinguish en-
+tailment from non-entailment relationships.
+The BLASER model predicts semantic similarity scores on
+a scale from 1 to 5. We used F1-Micro, calculating precision
+and recall globally across all classes without assigning weight
+to any class. F1-Micro is equivalent to F1-Binary for this binary
+classification task, as it aggregates precision and recall across
+both classes. Since BLASER is a regression model and does
+not require a threshold, we applied a threshold of 3.9, selected
+to maximize the F1 Score on the development set, enabling a
+direct comparison with our approach.
+Table 2 presents the results, showing that our model consis-
+tently outperforms BLASER across all test splits in terms of F1-
+Micro. These results highlight the framework’s effectiveness
+in distinguishing entailment from non-entailment with greater
+precision. Our model offers a complementary translation and
+transcription evaluation tool, where a high semantic score must
+align with a clear entailment relationship. This capability is
+also valuable for information extraction, ensuring that extracted
+content does not contradict the input sentence.
+As a comparison by example, Table 3 demonstrates a case
+where BLASER assigns a higher similarity score to a contra-
+dictory pair than to a correct translation. While both hypothe-
+ses are in French, only the first one (‘J’adore le chocolat.’) is
+a valid translation of ‘I love chocolate,’ yet BLASER assigns
+a higher similarity score (4.49) to the contradiction. In con-
+trast, our model correctly classifies the first as entailment and
+the second as a contradiction, demonstrating its ability to detect
+meaning differences beyond surface similarity.
+3.4. Impact of Generated and Synthesized Data on Multi-
+class Classification
+We assessed the impact of generated and synthesized data on
+multiclass NLI tasks through three experiments. The first ex-
+periment used only the XNLI and SNLI datasets as a baseline,
+achieving F1 Micro scores of 0.70 for speech-speech and 0.71
+for speech-text tasks. These results established a benchmark for
+288
+
+Figure 2: Overview of the data generation process. This includes text-text pairs generated using the Mistral 7B model, speech-text pairs
+aligned with the FLEURS dataset, and speech-speech pairs created using VITS and paired with FLEURS speech.
+Table 3: Comparison by Example: BLASER vs. Our Model
+Premise
+Hypothesis
+Hypothesis Translation
+BLASER
+Our Model
+I love chocolate.
+J’adore le chocolat.
+I love chocolate.
+4.39
+Entailment
+I love chocolate.
+Je d´eteste le chocolat.
+I hate chocolate.
+4.49
+Contradiction
+Table 4: Test Set Performance: Impact of Generated and Syn-
+thesized Data (F1 Micro). The Baseline includes XNLI-SNLI.
+The + GT adds Generated Text (text-text and speech-text pairs),
+while + GT + GTS adds both Generated Text and Speech
+Test Split
+Baseline
++ GT
++ GT + GTS
+speech-speech
+0.70
+0.70
+0.77
+speech-text
+0.71
+0.74
+0.76
+evaluating the effect of adding generated and synthesized data.
+In the second experiment, we introduced generated text
+paired with natural speech into the XNLI-SNLI training data.
+This improved F1 Micro scores to 0.70 for speech-speech and
+0.74 for speech-text tasks, demonstrating that generated text
+paired with natural speech enhances speech-text classification.
+The third experiment included generated speech alongside
+generated text and natural speech.
+The generated text was
+paired with both generated and natural speech, while the gener-
+ated speech was paired with natural speech. This setup yielded
+the highest scores, with 0.77 for speech-speech and 0.76 for
+speech-text, emphasizing the benefits of combining generated
+text and speech with natural data. Table 4 summarizes these
+results, showing that generated text paired with natural speech
+improves performance while adding generated speech further
+enhances it.
+4. Conclusion
+This paper introduced a multilingual and multimodal NLI
+framework that classifies relationships across text-text, speech-
+text, and speech-speech pairs in both same-language and cross-
+lingual settings.
+Using shared semantic representations, the
+framework models entailment, contradiction, and neutrality,
+overcoming the limitations of similarity-based models.
+Experiments demonstrated that the proposed model out-
+performs BLASER in distinguishing entailment from non-
+entailment, with notable improvements of 0.19 F1 in speech-
+speech classification and 0.13 F1 in speech-text classification.
+Multiclass experiments highlighted the effectiveness of combin-
+ing generated and natural data for improving multimodal NLI
+tasks. The framework identifies contradictions, offering addi-
+tional insights for translation and speech evaluation alongside
+semantic similarity in retrieval and assessment. Additionally,
+the generated dataset supports ongoing research in multimodal
+NLI and cross-lingual inference.
+However, performance on speech-text (F1 = 0.76) and
+speech-speech (F1 = 0.77) in the three-class NLI classification
+indicates room for improvement. While text-based evaluation
+was conducted on real data, speech-text, and speech-speech
+tasks relied primarily on generated text and synthesized speech.
+Further validation of real-world spoken data would strengthen
+the model’s applicability.
+289
+
+5. Acknowledgments
+This work was funded by the French Research Agency (ANR)
+through the TRADEF project.
+6. References
+[1] S. Bowman, G. Angeli, C. Potts, and C. D. Manning, “A large
+annotated corpus for learning natural language inference,” in Pro-
+ceedings of the 2015 Conference on Empirical Methods in Natural
+Language Processing, 2015, pp. 632–642.
+[2] B. MacCartney, Natural language inference. Stanford University,
+2009.
+[3] R. Gubelmann, I. Katis, C. Niklaus, and S. Handschuh, “Cap-
+turing the varieties of natural language inference: A systematic
+survey of existing datasets and two novel benchmarks,” Journal
+of Logic, Language and Information, vol. 33, no. 1, pp. 21–48,
+2024.
+[4] Y. Nie, A. Williams, E. Dinan, M. Bansal, J. Weston, and D. Kiela,
+“Adversarial nli: A new benchmark for natural language under-
+standing,” in Proceedings of the 58th Annual Meeting of the Asso-
+ciation for Computational Linguistics, 2020, pp. 4885–4901.
+[5] R. Khobragade, H. Patel, A. Namdev, A. Mishra, and P. Bhat-
+tacharyya, “Machine translation evaluation using bi-directional
+entailment,” arXiv preprint arXiv:1911.00681, 2019.
+[6] B. MacCartney and C. D. Manning, “An extended model of natu-
+ral logic,” in Proceedings of the eight international conference on
+computational semantics, 2009, pp. 140–156.
+[7] T. Rockt¨aschel, E. Grefenstette, K. M. Hermann, T. Koˇcisk`y, and
+P. Blunsom, “Reasoning about entailment with neural attention,”
+arXiv preprint arXiv:1509.06664, 2015.
+[8] J. Devlin, M.-W. Chang, K. Lee, and K. Toutanova, “Bert: Pre-
+training of deep bidirectional transformers for language under-
+standing,” in Proceedings of the 2019 Conference of the North
+American Chapter of the Association for Computational Linguis-
+tics: Human Language Technologies, Volume 1 (Long and Short
+Papers), 2019, pp. 4171–4186.
+[9] Y. Liu, “Roberta:
+A robustly optimized bert pretraining ap-
+proach,” arXiv preprint arXiv:1907.11692, vol. 364, 2019.
+[10] L. Xue, “mt5: A massively multilingual pre-trained text-to-text
+transformer,” arXiv preprint arXiv:2010.11934, 2020.
+[11] O. Shliazhko, A. Fenogenova, M. Tikhonova, V. Mikhailov,
+A. Kozlova, and T. Shavrina, “mgpt: Few-shot learners go multi-
+lingual,” arXiv preprint arXiv:2204.07580, 2022.
+[12] M. R. Costa-juss`a, J. Cross, O. C¸ elebi, M. Elbayad, K. Heafield,
+K. Heffernan, E. Kalbassi, J. Lam, D. Licht, J. Maillard et al., “No
+language left behind: Scaling human-centered machine transla-
+tion,” arXiv preprint arXiv:2207.04672, 2022.
+[13] F. Feng, Y. Yang, D. Cer, N. Arivazhagan, and W. Wang,
+“Language-agnostic bert sentence embedding,” in Proceedings of
+the 60th Annual Meeting of the Association for Computational
+Linguistics (Volume 1: Long Papers), 2022, pp. 878–891.
+[14] A. Baevski, Y. Zhou, A. Mohamed, and M. Auli, “wav2vec
+2.0: A framework for self-supervised learning of speech repre-
+sentations,” Advances in neural information processing systems,
+vol. 33, pp. 12 449–12 460, 2020.
+[15] W.-N. Hsu, B. Bolte, Y.-H. H. Tsai, K. Lakhotia, R. Salakhutdi-
+nov, and A. Mohamed, “Hubert: Self-supervised speech represen-
+tation learning by masked prediction of hidden units,” IEEE/ACM
+transactions on audio, speech, and language processing, vol. 29,
+pp. 3451–3460, 2021.
+[16] P.-A. Duquenne, H. Schwenk, and B. Sagot, “Sonar: sentence-
+level multimodal and language-agnostic representations,” arXiv
+e-prints, pp. arXiv–2308, 2023.
+[17] S. Khurana, A. Laurent, and J. Glass, “Samu-xlsr: Semantically-
+aligned multimodal utterance-level cross-lingual speech represen-
+tation,” IEEE Journal of Selected Topics in Signal Processing,
+vol. 16, no. 6, pp. 1493–1504, 2022.
+[18] D. Cer, Y. Yang, S.-y. Kong, N. Hua, N. Limtiaco, R. S. John,
+N. Constant, M. Guajardo-Cespedes, S. Yuan, C. Tar et al., “Uni-
+versal sentence encoder for english,” in Proceedings of the 2018
+conference on empirical methods in natural language processing:
+system demonstrations, 2018, pp. 169–174.
+[19] N. Reimers, “Sentence-bert: Sentence embeddings using siamese
+bert-networks,” arXiv preprint arXiv:1908.10084, 2019.
+[20] B. Zhang and C. Li, “Advancing semantic textual similarity mod-
+eling: A regression framework with translated relu and smooth k2
+loss,” arXiv preprint arXiv:2406.05326, 2024.
+[21] O. Nacar and A. Koubaa, “Enhancing semantic similarity under-
+standing in arabic nlp with nested embedding learning,” arXiv
+preprint arXiv:2407.21139, 2024.
+[22] L. Barrault, Y.-A. Chung, M. C. Meglioli, D. Dale, N. Dong, P.-
+A. Duquenne, H. Elsahar, H. Gong, K. Heffernan, J. Hoffman
+et al., “Seamlessm4t—massively multilingual & multimodal ma-
+chine translation,” ArXiv, 2023.
+[23] M. Chen, P.-A. Duquenne, P. Andrews, J. Kao, A. Mourachko,
+H. Schwenk, and M. R. Costa-juss`a, “Blaser:
+A text-free
+speech-to-speech translation evaluation metric,” arXiv preprint
+arXiv:2212.08486, 2022.
+[24] D. Licht, C. Gao, J. Lam, F. Guzm´an, M. Diab, and P. Koehn,
+“Consistent human evaluation of machine translation across lan-
+guage pairs,” in Proceedings of the 15th biennial conference of the
+Association for Machine Translation in the Americas (Volume 1:
+Research Track), 2022, pp. 309–321.
+[25] A. Conneau, R. Rinott, G. Lample, A. Williams, S. Bowman,
+H. Schwenk, and V. Stoyanov, “Xnli: Evaluating cross-lingual
+sentence representations,” in Proceedings of the 2018 Conference
+on Empirical Methods in Natural Language Processing, 2018, pp.
+2475–2485.
+[26] A. Conneau, M. Ma, S. Khanuja, Y. Zhang, V. Axelrod, S. Dalmia,
+J. Riesa, C. Rivera, and A. Bapna, “Fleurs: Few-shot learning
+evaluation of universal representations of speech,” in 2022 IEEE
+Spoken Language Technology Workshop (SLT).
+IEEE, 2023, pp.
+798–805.
+[27] A. Q. Jiang, A. Sablayrolles, A. Mensch, C. Bamford, D. S. Chap-
+lot, D. d. l. Casas, F. Bressand, G. Lengyel, G. Lample, L. Saulnier
+et al., “Mistral 7b,” arXiv preprint arXiv:2310.06825, 2023.
+[28] J. Kim, J. Kong, and J. Son, “Conditional variational autoencoder
+with adversarial learning for end-to-end text-to-speech,” in Inter-
+national Conference on Machine Learning.
+PMLR, 2021, pp.
+5530–5540.
+[29] E. G¨olge and T. C. T. Team, “Coqui tts,” 2021. [Online].
+Available: https://www.coqui.ai
+[30] A. Radford, J. W. Kim, T. Xu, G. Brockman, C. McLeavey, and
+I. Sutskever, “Robust speech recognition via large-scale weak
+supervision,” in International conference on machine learning.
+PMLR, 2023, pp. 28 492–28 518.
+290

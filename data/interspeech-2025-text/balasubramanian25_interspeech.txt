@@ -1,0 +1,572 @@
+SMARTMOS: Modeling Subjective Audio Quality Evaluation for Real-Time
+Applications
+Sivakumar Balasubramanian1, Jose Antonio Jimenez Amador1, Kaustubh Kalgaonkar1, King Wei
+Hor1, Sriram Srinivasan1
+1Meta Platforms, Inc., USA,
+{sivabala, josejia, kaustubhk, kingwei, sriramsri }@meta.com
+Abstract
+Evaluating audio quality is a crucial task, with subjective
+listening tests being the gold standard. However, these tests are
+time-consuming intrusive and expensive, making them imprac-
+tical for real-time applications like telecommunications. De-
+spite efforts to develop automatic methods that match human
+listener fidelity, current approaches have limitations that hinder
+their use in real-world scenarios.
+In this paper, we introduce SMARTMOS, a novel approach
+that addresses some of these gaps and enables accurate, real-
+time, non-intrusive, privacy aware audio quality assessment.
+We demonstrate the effectiveness of SMARTMOS through a
+case study on Noise Suppression (NS) and Packet Loss Con-
+cealment (PLC) modules. Furthermore, we show how semi-
+supervised learning techniques can be leveraged to build a joint
+MOS model that seamlessly covers both PLC and NS scenarios.
+Index Terms : perceived audio quality, noise suppression,
+packet loss concealment, on-device models
+1. Introduction
+Measurement of quality is a very important step in developing
+any audio processing system, algorithms or modules. The met-
+ric to measure perceived audio quality can differ based on the
+focus of audio processing modules (APM). For a noise suppres-
+sion system, one may be interested in measuring presence of
+residual noise and speech degradation due to aggressive NS,
+while for Packet Loss Concealment or Acoustic Echo Cancel-
+lation (AEC), one may want to assess the quality impact in the
+presence of artifacts and distortions to human speech. The ques-
+tion and design of the evaluation process are tailored to cater to
+these specific needs and hence, subjective tests usually yield the
+most accurate insights into the performance of the systems.
+Objective evaluations such as PESQ [1], POLQA [2], and
+VISQOL [3] use a reference audio (typically referred to as in-
+trusive technique) and aim to provide quality scores using hand-
+crafted features and metrics. These methods are easily scalable
+in certain scenarios, such as offline tests where clean references
+are available or can be synthetically generated. However, they
+are not suitable for scenarios without clean references, whether
+online, offline, or in product deployments. Subjective evalua-
+tions involve human labeling of processed audio, typically on a
+scale of 1-5 (1 being worst and 5 being best), to obtain opinion
+scores. This process is conducted either in a controlled environ-
+ment or through crowd sourcing, following ITU-T recommen-
+dations [4, 5, 6]. To ensure reliability, ratings from multiple
+raters are obtained for each audio sample and statistically ag-
+gregated to obtain the mean opinion score (MOS). While sub-
+jective scores are considered the gold standard for audio quality
+assessment, obtaining them can be expensive and not scalable
+for real-time scenarios.
+Measuring audio quality in real-time applications, such as
+telecommunication, requires on-device predictions without the
+need for a reference signal. This is because these applications
+involve multiple APMs, and assessing audio quality at differ-
+ent points after each APM is crucial. Therefore, the algorithms
+used must be low-footprint (low on memory, latency and com-
+putation) and not interfere with the primary application. To ad-
+dress this challenge, ML-based techniques have been employed
+to model the subjective MOS without relying on a reference sig-
+nal.
+Self-supervised techniques [7, 8] aim to enhance the gen-
+erality of model predictions using architectures like Wav2Vec
+[9] and HuBERT [10], and fine-tune the model for MOS pre-
+dictions. However, these models have high computational and
+memory requirements, making on-device deployment challeng-
+ing. SESQA [11] and MOSRA [12] provide overall audio qual-
+ity using semi-supervised learning/Teacher-Student approaches
+for unlabelled data, but do not offer scores for artifacts related
+to specific APMs. Models such as [13, 14, 15, 16, 17] pro-
+vide quality measurement for specific audio processing tasks,
+but using them require multiple models in the telecommunica-
+tion pipeline. Models such as [18, 19, 20] predict audio quality
+from human ratings for various artifacts across audio process-
+ing type and provide ratings for multiple perceptual quality di-
+mensions and overall quality. However, this requires obtaining
+human labels for every audio in the dataset along all the quality
+dimensions.
+In this work, we present a single low-footprint on-device
+model that predicts human subjective ratings for NS and PLC
+APMs using semi-supervised training techniques. Unlike [18,
+20], our model provides specific scores for each APM, with
+datasets collected separately and labeled specifically for each
+module. While we train models specifically per APM, we aim
+for generalisability within rating these APM modules. While
+the subjective nature of the task limits our ability to use other
+test sets and quality prediction models for direct comparisons,
+we provide real-world rating scenarios (Figure 4) that demon-
+strate the generalisability. We provide details on developing the
+joint model and compare its performance to standalone PLC and
+NS models. Additionally, we discuss techniques used to deploy
+this model on-device without CPU overloads using streaming
+inference and a state machine based sampling technique.
+2. Dataset
+A labeled dataset is one of the most important components for
+development of SMARTMOS. Our data collection/labeling pro-
+cess is designed with two major requirements: 1) To guarantee
+that the scores obtained across various sessions and raters are
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+3165 10.21437/Interspeech.2025-2198
+
+comparable and normalized. This process control ensures that
+models trained using our dataset are capturing the quality scores
+and not just the variability/noise in the scoring process. 2) Max-
+imize the diversity in the processing, scenarios and locales.
+To ensure consistency and accuracy in their ratings, the
+raters were provided with a set of golden audio clips rated by
+experts that served as reference points for S, N, and O MOS tar-
+gets. These golden clips were used to calibrate the raters at the
+start of each session, helping them to establish a common un-
+derstanding of the desired quality standards. In addition to the
+calibration exercise, each evaluation set of 15 audio clips in-
+cluded up to 2 golden reference clips, which were randomly in-
+serted among the other clips. However, these golden references
+were not explicitly identified as such to the raters, allowing us
+to assess their ability to consistently rate the clips without bias.
+If the raters failed to accurately score these golden references,
+the entire evaluation set was discarded to maintain the integrity
+of the rating process.
+We built an in-house dataset to assess audio quality in var-
+ious scenarios, including NS, AEC, and PLC. In this paper, we
+focus on a subset of the dataset that features speech audio clips
+with a single primary speaker. Other special scenarios, such
+as multiple speakers or equalization, is not the primary focus of
+this work. The overall collection comprises approximately 400k
+labelled audio clips, spanning eleven languages. For the NS re-
+lated dataset we included audios with different noise types and
+levels processed by several in-house and third party NS algo-
+rithms. We also included unprocessed noisy data to get scores
+in different ranges. Similarly, for PLC dataset, we included au-
+dios with different packet loss rates processed by different PLC
+algorithms. Each utterance is typically 10 seconds long and is
+evaluated by multiple trained raters (ten per clip). During a ses-
+sion, raters are presented with only one task (e.g., either NS or
+PLC). To prevent listener fatigue, a limit is placed on the num-
+ber of sessions that could be assigned to each rater.
+For the dataset related to noise suppression APM, we aim
+to capture not only the overall audio quality but also the quality
+of the main speaker and the impact of noise. To achieve this, we
+design questions that specifically focus on each aspect, includ-
+ing Speech MOS (SMOS) for the quality of the main speaker,
+Noise MOS (NMOS) for the quality as impacted by the pres-
+ence of noise, and Overall MOS (OMOS) for the overall audio
+quality. For the PLC APM, we label a smaller amount of data
+(1/3rd the size of NSMOS data) instructing raters to score these
+utterances solely for overall quality (i.e., OMOS).
+For each processing type, we divide the dataset into train-
+ing, validation, and testing sets in a 70:15:15 ratio, ensuring that
+the distribution is maintained across languages and locales. We
+also ensure that the speakers and utterances in each group are
+unique, and the test data is held back for final evaluations. The
+results presented in this paper are based solely on the test data.
+3. Model Training
+All the SMARTMOS models presented in this paper are trained
+to predict quality scores for an audio clip that is around 10 sec-
+onds. The model’s inputs are log-mel features computed over
+a 20 ms frame that is generated with 10 ms overlap. We use
+1024 size FFT and ablate over the number of mel-banks, details
+of this experiment is captured in Section 5. All the models use
+Adam optimizer and MSE loss for training. We use the mean of
+the ratings from all raters per audio clip as the label for training
+and testing the models.
+3.1. Small vs Large Models
+Standalone small models are trained to achieve low memory and
+computational efficiency for both Noise Suppression MOS (NS-
+MOS) and Packet Loss Concealment MOS (PLCMOS). The
+model architecture is similar to DNSMOS [14], with the num-
+ber of outputs of the model varied according to the processing
+type. It is observed that replacing the global max pool layer with
+a global average pool layer yields improved results in this setup.
+These group of models use 40 filter banks. Due to the limited
+availability of PLCMOS data, transfer learning techniques are
+employed, wherein the model is initially trained on the overall
+dataset and subsequently fine-tuned with the PLC dataset
+To further investigate the impact of model architecture on
+performance, larger SMARTMOS models are trained to exam-
+ine the effects of increased receptive field and improved con-
+text utilization. A secondary objective is to determine whether
+these larger models could be leveraged to augment the train-
+ing set with semi-supervised labels. This investigation entails
+the use of higher-resolution input, incorporating larger input fil-
+ter banks (e.g., 40, 80, and 120), as well as deeper and wider
+network architectures. Furthermore, SMARTMOS models with
+Emformer layers are trained to compare and contrast the atten-
+tion mechanism with convolutional neural networks (CNNs) for
+the tasks, providing insight into the relative strengths of each
+approach.
+Emformer [21] is a transformer architecture variant that
+uses a fixed-length context window to attend to the input se-
+quence, rather than attending to the entire sequence at once.
+In Emformers, the left and right context lengths determine the
+number of time steps the model considers before and after the
+current time step when processing the input sequence. The seg-
+ment size represents the chunk of the input sequence processed
+in the current time step. These parameters primarily impact the
+analysis context for the Emformer, while the number of lay-
+ers affects long-range dependencies. Feature stacking is a tech-
+nique used to increase context per time step by concatenating
+past and future time step features with the present time step.
+The receptive field can be controlled using both feature stack-
+ing and context lengths.
+3.2. Joint On-device Models
+SMARTMOS models trained for on-device deployment are
+based on CNN architecture and our goal is to train a sin-
+gle model to predict both the PLC and NS MOS scores. As
+explained in section 2 PLC (OMOS only) and NS data set
+have different types of MOS labels which complicates the joint
+model training.
+We try a semi-supervised approach to overcome this label
+mismatch issue by training a single SMARTMOS model with
+four output targets: three outputs for NS scores and one for pre-
+dicting the OMOS for PLC. Unlike traditional semi-supervised
+learning methods [22, 23, 24], which use a pre-trained model
+to generate same type of labels for unlabelled data, we use one
+model to generate labels for the dataset of another model, effec-
+tively bridging the gap between datasets. As shown in Table 1,
+we use standalone Emformer models trained for NS and PLC
+cases as teachers to predict pseudo-labels for the other dataset,
+thereby creating a cross model knowledge transfer. This ap-
+proach is non-trivial because the artifacts penalized by the MOS
+model during scoring differ between APMs. Scores do not cor-
+relate well when using NSMOS for PLC APM scoring and vice
+versa, with correlations as low as 50%.
+3166
+
+Table 1: Labels used for each dataset to train four score joint
+model.
+Data OMOS NS OMOS PLC N and S MOS
+NSMOS Human ratings PLCMOS Em-
+former Human ratings
+PLCMOS NSMOS
+Emformer Human ratings NSMOS
+Emformer
+4. On-Device model deployment
+The SMARTMOS model is developed with the aim to deploy it
+in V oIP apps so we can understand, monitor and improve quality
+of audio for Meta Communication services. To ensure seamless
+calling experience for the user we have to ensure the models
+are running efficiently on-device and have minimal impact on
+memory, CPU and battery. These aims are achieved by imple-
+menting a smart strategy to select audio segments, rate limit-
+ing number of MOS evaluations during a call and restructuring
+the SMARTMOS model to prevent single shot processing of 10
+seconds audio data.
+4.1. Audio Segment Selection
+The selection of the best available 10 second segment of audio
+is done by using a voice activity detector(V AD) in combination
+with a small state machine as shown in Figure 1. The sampler
+operates with predetermined action in one of the three states:
+”speech” , ”silence”, and ”null”. While in ”speech” state the
+sampler actively buffers the frames of processing if voice ac-
+tivity is present otherwise it transitions to ”silence” sate. The
+sampler only invalidates the buffered data if ”silence” detected
+for X seconds and the sampler then transitions to ”null” state.
+As seen from the figure we build stickiness in each state to pre-
+vent unnecessary invalidation of accumulated audio. We also
+use the sampler to rate limit the the MOS evaluations to Y in Z
+minutes. We initialize the sampler from the ”null” state at the
+start of the call. The values of parameters are X, Y and Z are
+tuned heuristically.
+null
+Initialization
+is_speech
+speech
+is_speech 
+silence
+is_silence
+is_speech
+< 
+X 
+ms 
+since 
+is_speech 
+or 
+is_silence
+> 
+X 
+ms 
+since 
+is_speech
+Rate 
+limited
+Rate 
+limited 
+Rate 
+limited 
+or 
+is_silence
+Figure 1: Smart Sampler Operation.
+4.2. Reducing CPU Spikes
+Evaluating over 10 second segment of audio in single shot
+causes unnecessary spike in CPU. To address this, we split the
+model into two parts: encoder, which contains all the convolu-
+tion layers and predictor, which has the fully connected compo-
+nents as seen in the Figure 2. The input audio segment is split
+into chunks (e.g. 0.1 seconds each) and processed through the
+encoder at a slower rate, the embedding from the encoder are
+accumulated and processed in single shot when the embedding
+for full segments are available.
+We compare the CPU usage of the streaming model with
+Figure 2: Streaming inference with encoder predictor structure
+state machine based sampling against the non-streaming model
+on-device. As shown in Figure 3, the modified model’s CPU
+usage remains within a range and predicts Y times every Z
+minute, whereas the non-streaming model peaks every 10 sec-
+onds, which is not desirable for a real-time system.
+Figure 3: CPU usage for streaming model w/ sampler vs non-
+streaming model, where (X, Y , Z) = (2s, 1, 1min)
+5. Experiments and results
+In the following subsections, we analyze the performance of
+the models through a series of experiments. Specifically, we
+employ Pearson Correlation Coefficient (PCC) [25] to compare
+the correlation between the mean scores from subjective evalu-
+ations and the model’s MOS predictions per audio clip.
+The SMARTMOS models are trained to mimic our sub-
+jective evaluation process and predict the scores similar to the
+trained raters that we used during our study.
+These scores might be different than the ones predicted by
+other SOTA models like DNSMOS or TorchSquim [26]. This
+mismatch does not mean one model is superior to another, it
+just highlights the inherent variability of subjective testing and
+each model is trying to predict/conform to its training dataset or
+achieve a particular objective.
+For example, while the DNSMOS model has a PCC
+of 69.2% when evaluated on our test dataset, SMARTMOS
+achieves a PCC of 92% for OMOS. A direct comparison of the
+model’s capabilities and presenting this number to readers will
+incorrectly reflect poorly on capabilities of the DNSMOS mod-
+els.
+We also make a deliberate choice to not present objective
+scores such as PESQ in this study because these metrics don’t
+correlate well with human ratings [14].
+3167
+
+Table 2: PCC % for best CNN and Emformer models on held
+out test sets.
+MOS Type Num
+Param
+OMOS
+NS
+OMOS
+PLC NMOS SMOS
+PLC CNN 45K NA 85.1 NA NA
+PLC CNN 68K NA 84.1 NA NA
+PLC EMF 1M NA 85.5 NA NA
+NS CNN 45K 90.8 NA 87.8 89.7
+NS CNN 68K 91.2 NA 89.1 89.2
+NS EMF 1M 92.9 NA 91.6 91.5
+Joint CNN
+(3S) 45K 91.5 82.3 89.7 89.8
+Joint CNN
+(4S) 45K 91.9 84.6 90.1 90.3
+5.1. Correlation to Human Opinion Scores
+Table 2 presents the correlations of the top-performing CNN
+and Emformer models. The results are calculated on the held-
+out test sets corresponding to each dataset. Notably, the joint
+MOS model with four scores outperforms the standalone NS-
+MOS model for the NS task and achieves comparable per-
+formance to the standalone PLCMOS models for the PLC
+task. This improvement is attributed to the inclusion of semi-
+supervised labels from the best offline models. In contrast, the
+joint three scores model shows a degradation in the OMOS PLC
+correlation. This regression might be caused by (1) data imbal-
+ance between the two datasets or (2) differences in the quality
+prediction task between the processing algorithms. The Em-
+former models do exhibit better performance which is accom-
+panied with larger model size.
+Table 3: PCC % for Emformer NSMOS models with just OMOS
+on heldout test sets. LMEL denotes number of log-mel filter-
+banks used and L, R denotes left and right context respectively
+LMEL Num Layers [L,R] OMOS
+120 (FS)
+5 [10, 1] 92.2
+2 [10, 1] 91.7
+2 [4, 1] 91.5
+3 [10, 1] 92.6
+40 (FS) 2 [10, 1] 91.5
+10 [4, 1] 92.1
+40 3 [4, 1] 90.1
+Table 4: PCC % for best Emformer NSMOS models with all 3
+scores on held out test sets. LMEL denotes number of log-mel
+filterbanks used.
+LMEL Num
+Layers [L,R] OMOS SMOS NMOS
+40 (FS) 3 [10, 1] 92.9 91.5 91.5
+120 (FS)
+3 [10, 1] 92.9 91.5 91.6
+9 [10, 1] 92.7 91.2 91.7
+3 [30, 2] 92.8 91.4 91.4
+9 [30, 2] 92.2 91.1 90.7
+5.2. Emformer Ablations
+We conduct ablations on the Emformers by fixing the segment
+size to ten but varying the size of left and right context and
+the number of Emformer layers. Each input feature consists of
+four stacked frames. We perform two experiments for NSMOS
+dataset, one with OMOS score predictions (Table 3) and another
+that predicts all three sets of MOS scores. (Table 4).
+The gap between the performance of the CNN and Em-
+former for both NS and PLC cases is not significantly large (Ta-
+ble 2). We hypothesize that the local context is more important
+for predicting quality than a larger receptive field. Therefore
+Emformers do not benefit a lot over the CNN’s even when they
+are able to attend to the entire feature dimension over a larger
+context. The Emformer benefit more from the stacked features
+as compared to the CNN models. However, increasing the re-
+ceptive field through feature stacking or context lengths comes
+at a high computational cost. The best-performing Emformers
+have nearly one million parameters (Table 2), making CNNs a
+better choice for on-device deployments due to their lower com-
+putational requirements. Additionally, We also see that predict-
+ing the three scores together improves OMOS correlations.
+5.3. Correlation in Real-Time Calls
+We deployed SMARTMOS models on-device using techniques
+mentioned in section 4 to generate audio quality scores that fo-
+cused on measuring the performance of noise suppression (NS)
+modules in two calling apps. The score generation was done
+in real-time to maintain user privacy, covering approximately
+200k calls per app. The OMOS NS scores from SMARTMOS
+models were reported back along with user surveys. When users
+rate call quality, they often use star ratings that reflect a mix of
+issues caused by both network and audio processing algorithms.
+These comparisons demonstrate the generalisability of the
+MOS model in rating the APM (in this case NS), as real-world
+calls involve diverse background noise scenarios not seen dur-
+ing training. They also have different on-device NS APMs
+(hardware/software) depending on the user’s calling device.
+Our experiments found calls with higher quality scores tend to
+have fewer noise related complaints and vice versa. This sug-
+gests that our SMARTMOS models are effective at measuring
+call quality issues specific to an APM. Additionally, this is also
+significant because real-world surveys are often sparse, and the
+SMARTMOS models serve as a proxy to fill gaps in the surveys,
+providing valuable insights into real-world calls.
+6. Conclusion and future work
+We train SMARTMOS a single joint audio quality prediction
+model for rating both Noise Suppression and Packet Loss Con-
+cealment APMs in real-time telecommunication, using semi-
+supervised techniques. We demonstrate techniques that make
+the SMARTMOS model work on-device without increasing
+CPU load and show correlation with metrics from real-time
+calls. Additionally, we find Emformers with larger receptive
+fields slightly outperform CNNs but at a high computational
+cost, making CNNs a better choice for on-device deployments.
+Future work includes expanding SMARTMOS models to
+rate other modules like AEC and experimenting with ensemble
+techniques to model the rating process as a whole, providing
+insights into how hard a particular audio is to rate.
+7. Acknowledgement
+The authors would like to thank Yun Li and Corey Bofill for
+helping with experiments in section 5.3.
+3168
+
+8. References
+[1] A. Rix, J. Beerends, M. Hollier, and A. Hekstra, “Perceptual eval-
+uation of speech quality (pesq)-a new method for speech quality
+assessment of telephone networks and codecs,” in 2001 IEEE In-
+ternational Conference on Acoustics, Speech, and Signal Process-
+ing. Proceedings (Cat. No.01CH37221) , vol. 2, 2001, pp. 749–
+752 vol.2.
+[2] J. G. Beerends, C. Schmidmer, J. Berger, M. Obermann,
+R. Ullmann, J. Pomy, and M. Keyhl, “Perceptual objective
+listening quality assessment (polqa), the third generation itu-
+t standard for end-to-end speech quality measurement part
+i-temporal alignment,” Journal of The Audio Engineering
+Society, vol. 61, pp. 366–384, 2013. [Online]. Available:
+https://api.semanticscholar.org/CorpusID:14345244
+[3] A. Hines, J. Skoglund, A. Kokaram, and N. Harte, “Visqol: The
+virtual speech quality objective listener,” in IWAENC 2012; In-
+ternational Workshop on Acoustic Signal Enhancement, 2012, pp.
+1–4.
+[4] B. Naderi and R. Cutler, “An open source implementation of
+itu-t recommendation p. 808 with validation,” arXiv preprint
+arXiv:2005.08138, 2020.
+[5] ——, “A crowdsourcing extension of the itu-t recommendation p.
+835 with validation,” arXiv e-prints, 2020.
+[6] ITU-T, “Subjective diagnostic test method for conversational
+speech quality analysis,” International Telecommunication Union,
+Recommendation P.804, 2017.
+[7] E. Cooper, W.-C. Huang, T. Toda, and J. Yamagishi, “Generaliza-
+tion ability of mos prediction networks,” in ICASSP 2022 - 2022
+IEEE International Conference on Acoustics, Speech and Signal
+Processing (ICASSP), 2022, pp. 8442–8446.
+[8] P. Manocha and A. Kumar, “Speech quality assessment through
+mos using non-matching references,” in Interspeech, 2022.
+[Online]. Available: https://arxiv.org/abs/2206.12285
+[9] A. Baevski, H. Zhou, A. Mohamed, and M. Auli, “wav2vec 2.0:
+a framework for self-supervised learning of speech representa-
+tions,” in Proceedings of the 34th International Conference on
+Neural Information Processing Systems , ser. NIPS ’20. Red
+Hook, NY , USA: Curran Associates Inc., 2020.
+[10] W.-N. Hsu, B. Bolte, Y .-H. H. Tsai, K. Lakhotia, R. Salakhut-
+dinov, and A. Mohamed, “Hubert: Self-supervised speech rep-
+resentation learning by masked prediction of hidden units,”
+IEEE/ACM Transactions on Audio, Speech, and Language Pro-
+cessing, vol. 29, pp. 3451–3460, 2021.
+[11] J. Serr `a, J. Pons, and S. Pascual, “Sesqa: Semi-supervised learn-
+ing for speech quality assessment,” in ICASSP 2021 - 2021 IEEE
+International Conference on Acoustics, Speech and Signal Pro-
+cessing (ICASSP), 2021, pp. 381–385.
+[12] J. Coldenhoff, A. Harper, P. Kendrick, T. Stojkovic, and M. Cer-
+nak, “Multi-channel mosra: Mean opinion score and room acous-
+tics estimation using simulated data and a teacher model,” in
+ICASSP 2024 - 2024 IEEE International Conference on Acous-
+tics, Speech and Signal Processing (ICASSP), 2024, pp. 381–385.
+[13] M. Purin, S. Sootla, M. Sponza, A. Saabas, and R. Cutler, “Aec-
+mos: A speech quality assessment metric for echo impairment,”
+in ICASSP 2022 - 2022 IEEE International Conference on Acous-
+tics, Speech and Signal Processing (ICASSP), 2022, pp. 901–905.
+[14] C. K. A. Reddy, V . Gopal, and R. Cutler, “Dnsmos p.835: A
+non-intrusive perceptual objective speech quality metric to eval-
+uate noise suppressors,” in ICASSP 2022 - 2022 IEEE Interna-
+tional Conference on Acoustics, Speech and Signal Processing
+(ICASSP), 2022, pp. 886–890.
+[15] L. Diener, M. Purin, S. Sootla, A. Saabas, R. Aichner, and
+R. Cutler, “Plcmos–a data-driven non-intrusive metric for the
+evaluation of packet loss concealment algorithms,”arXiv preprint
+arXiv:2305.15127, 2023.
+[16] C.-C. Lo, S.-W. Fu, W.-C. Huang, X. Wang, J. Yam-
+agishi, Y . Tsao, and H. Wang, “Mosnet: Deep learn-
+ing based objective assessment for voice conversion,”
+ArXiv, vol. abs/1904.08352, 2019. [Online]. Available:
+https://api.semanticscholar.org/CorpusID:118686423
+[17] B. Patton, Y . Agiomyrgiannakis, M. Terry, K. W. Wil-
+son, R. A. Saurous, and D. Sculley, “Automos: Learn-
+ing a non-intrusive assessor of naturalness-of-speech,”
+ArXiv, vol. abs/1611.09207, 2016. [Online]. Available:
+https://api.semanticscholar.org/CorpusID:15948725
+[18] G. Yi, W. Xiao, Y . Xiao, B. Naderi, S. Moller, W. Wardah, G. Mit-
+tag, R. Cutler, Z. Zhang, D. S. Williamson, F. Chen, F. Yang, and
+S. Shang, “Conferencingspeech 2022 challenge: Non-intrusive
+objective speech quality assessment (nisqa) challenge for on-
+line conferencing applications,” in Interspeech, 2022. [Online].
+Available: https://api.semanticscholar.org/CorpusID:247794123
+[19] Z. Zhang, P. Vyas, X. Dong, and D. S. Williamson, “An end-to-
+end non-intrusive model for subjective and objective real-world
+speech assessment using a multi-task framework,” in ICASSP
+2021 - 2021 IEEE International Conference on Acoustics, Speech
+and Signal Processing (ICASSP), 2021, pp. 316–320.
+[20] B. Naderi, R. Cutler, and N.-C. Ristea, “Multi-dimensional speech
+quality assessment in crowdsourcing,” in ICASSP 2024 - 2024
+IEEE International Conference on Acoustics, Speech and Signal
+Processing (ICASSP), 2024, pp. 696–700.
+[21] Y . Shi, Y . Wang, C. Wu, C.-F. Yeh, J. Chan, F. Zhang, D. Le,
+and M. Seltzer, “Emformer: Efficient memory transformer based
+acoustic model for low latency streaming speech recognition,” in
+ICASSP 2021 - 2021 IEEE International Conference on Acous-
+tics, Speech and Signal Processing (ICASSP) , 2021, pp. 6783–
+6787.
+[22] A. Krizhevsky, I. Sutskever, and G. E. Hinton, “Semi-supervised
+learning for image classification,” inAdvances in Neural Informa-
+tion Processing Systems, 2012, pp. 1097–1105.
+[23] G. E. Dahl, D. Yu, L. Liu, and A. Acero, “Semi-supervised learn-
+ing for speech recognition,” in IEEE International Conference
+on Acoustics, Speech and Signal Processing (ICASSP), 2012, pp.
+4773–4776.
+[24] T. M. Mitchell, W. W. Cohen, R. Caruana, D. Freitag, and
+F. Pereira, “Semi-supervised learning for natural language pro-
+cessing,” in Advances in Neural Information Processing Systems,
+2010, pp. 1097–1105.
+[25] K. Pearson, “Notes on regression and inheritance in the case of
+two parents,”Proceedings of the Royal Society of London, vol. 58,
+pp. 240–242, 1895.
+[26] A. Kumar et al., “Torchaudio-squim: Reference-less speech qual-
+ity and intelligibility measures in torchaudio,” in ICASSP 2023-
+2023 IEEE International Conference on Acoustics, Speech and
+Signal Processing (ICASSP). IEEE, 2023.
+3169

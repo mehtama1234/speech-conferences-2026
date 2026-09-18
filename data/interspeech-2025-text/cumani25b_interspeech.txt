@@ -1,0 +1,879 @@
+A copula-based generative score-level fusion model for speaker verification
+Sandro Cumani
+Politecnico di Torino, Italy
+sandro.cumani@polito.it
+Abstract
+In this work we present a novel generative approach for the
+score-level fusion of speaker verification systems.
+The pro-
+posed method employs a copula-based representation of the
+joint score distribution of multiple speaker recognizers that al-
+lows decoupling the dependency structure from the characteri-
+zation of the marginal densities of the scores of different sys-
+tems. This allows us to combine complex Variance-Gamma
+marginals with a simple Gaussian copula to obtain a character-
+ization of the joint target and non-target score distribution that
+can be effectively employed for the score-level combination of
+multiple recognizers. Our results on NIST SRE 2019 and SITW
+datasets show that our approach is competitive with respect to
+state-of-the-art discriminative score fusion techniques, provid-
+ing both accurate and well-calibrated scores, with a measured
+Cllr reduction of up to 7% relative with respect to discrimina-
+tive linear fusion methods.
+Index Terms: Speaker verification, score-level fusion, Gaus-
+sian copula, Variance-Gamma distribution, score calibration
+1. Introduction
+The combination of multiple speaker verification systems is of-
+ten an effective strategy to improve the accuracy of a speaker
+recognizer. Typical use-cases involve the combination of sys-
+tems that employ different front-ends (e.g. different speaker
+embedding extractors) [1, 2, 3, 4, 5, 6, 7], however even the
+combination of different back-end classifiers sharing a same
+front-end is often beneficial [8, 9]. Usually the combination
+is implemented at score level, where a single score is computed
+from a vector of scores of individual systems [10, 11, 1, 2, 3, 4,
+5, 7]. Alternative approaches that operate at earlier stages of the
+speaker verification pipelines have been proposed in the past,
+including, for example, embedding-level [6, 12] fusion, where
+the output of different front-ends are combined and jointly clas-
+sified by a single back-end. Score-level fusion, however, has
+become the most preminent approach, thanks to its good per-
+formance and its greater flexibility. One of the main advan-
+tages of score-level fusion is that it’s independent of the sys-
+tem structure, i.e. it can be employed for systems that do not
+directly produce speaker embeddings, systems that share the
+same front-end, systems that may require different back-ends
+for different front-ends, or even multi-modal systems [1, 2]. It
+also requires the estimation of a small number of parameters,
+thus reducing the risk of overfitting. The standard approach
+for score-level fusion is based on a linear score combination,
+whose weights are estimated by means of discriminative prior-
+weighted logistic regression [10, 11, 13]. The approach can
+be seen as an extension of linear logistic regression score cal-
+ibration [11, 14], and indeed tipically produces scores that are
+well calibrated [10]. Recently, generative calibration models
+have been introduced as an alternative to discriminative calibra-
+tion [15, 16, 17, 18, 19, 20, 21]. These approaches represent
+the target and non-target score distribution of individual sys-
+tems in terms of parametric densities, whose parameters are, in
+some cases, expression of the characteristics of the classifica-
+tion back-end, of the back-end training data and of the calibra-
+tion population [15, 16]. These methods have proven to be ef-
+fective, outperforming in several cases linear discriminative cal-
+ibration models, also thanks to their ability to estimate effective
+non-linear calibration transformations with a limited number of
+parameters [15, 19]. In this work we propose an extension of
+generative calibration suited for score-level fusion of multiple
+systems. Our approach is based on modeling the joint target
+and non-target score distribution using a copula-based repre-
+sentation [22, 23] that allows us to decouple modeling the rela-
+tionships between the different systems from the model of the
+marginal score distribution of each individual system. This in
+turn allows us to employ accurate but complex marginal models
+such as the Variance-Gamma (VΓ) approach of [15] and sim-
+ple but effective models for the characterization of the scores
+dependency structure. The joint distribution parameters can be
+efficiently estimated using inference function for margins [23]
+approach, allowing us to incrementally estimate the joint model
+starting from the estimates of generative calibration models for
+the individual systems. As shown in Section 5, the resulting
+model provides a characterization of the joint target and non
+target score distributions that allows for effective score-level fu-
+sion, as confirmed by our experiments on NIST SRE 2019 [24]
+and SITW [25] datasets.
+The paper is organized as follows. Section 2 briefly recalls
+generative calibration models. Section 3 introduces the copula-
+based framework. Section 4 presents our proposed Variance-
+Gamma Gaussian-copula (VΓ-GC) fusion model. Experimen-
+tal results are provided in Section 5, and conclusions are given
+in Section 6.
+2. Generative score models
+Generative models have recently gained attention as an alterna-
+tive to dicriminative methods to calibrate speaker verification
+systems [15, 16, 19, 20, 21]. Generative approaches are based
+on the characterization of the distribution of same-speaker (tar-
+get) and different-speaker (non-target) scores, either through
+an explicit parametric model [15, 19] or through an implicit
+parametrization that describes well calibrated scores and the
+form of the calibration transformation [21, 17]. In both cases,
+given a score s, a well-calibrated score scal(s) can be computed
+as the Log-Likelihood Ratio (LLR) between the same-speaker
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+3723
+10.21437/Interspeech.2025-147
+
+S and different-speaker D hypotheses
+scal(s) = log fS|S(s|θS)
+fS|D(s|θD) ,
+(1)
+where fS|S(s|θS) and fS|D(s|θD) are the target and non-
+target score distribution densities, respectively, with parameters
+θS and θD. In [21], the authors propose a generative Con-
+strained Maximum Likelihood Gaussian (CMLG) model where
+fS|S and fS|D are Gaussian densities with tied variance:
+fS|S(s) = N (s|µS, v) ,
+fS|D(s) = N (s|µD, v) .
+(2)
+The parameters µS, µD and v can be estimated by Maximum
+Likelihood (ML) over a calibration set. Unsupervised varia-
+tions of CMLG have been presented in [20], and generative ap-
+proaches were further extended in [19], where the authors con-
+sider different parametric distribution families. More recently,
+an analysis of the theoretical score distribution of Gaussian-
+distributed speaker embeddings has been introduced in [17, 18],
+and further refined in [15, 16], where the authors have analyzed
+the effects of embedding population mismatch on the target and
+non-target score distribution of Probabilistic Linear Discrimi-
+nant Analysis (PLDA) and PLDA-derived classifiers.
+These
+works have shown that properly tied Variance-Gamma (VΓ)
+densities provide powerful and accurate score models for sev-
+eral practical use-cases. In this work we employ the VΓ model
+of [15, eq. (42)] to characterize the marginal densities of in-
+dividual speaker verification systems. The model describes the
+target and non-target scores in terms of Variance-Gamma [26]
+densities
+fS|S(s) = fVΓ
+
+s|λ, µS, αS
+aS , βS
+aS
+
+,
+fS|D(s) = fVΓ (s|λ, µD, αD, βD) ,
+(3)
+where fVΓ is the Variance-Gamma density
+fVΓ(s|λ, α, β, µ) =
+γ2λ|x −µ|λ−1
+2 Kλ−1
+2 (α|x −µ|)
+√πΓ(λ)(2α)λ−1
+2
+eβ(x−µ).
+(4)
+The model parameters θS = (λ, µS, αS, βS, aS) and θD =
+(λ, µD, αD, βD) are tied, and depend on a set of “effec-
+tive” variance parameters bM, wM, bC, wC and free parameters
+λ, µD, µS, aS as
+tM = bM + wM ,
+tC = bC + wC ,
+ΣM,S =
+
+tM
+bM
+bM
+tM
+
+,
+ΣM,D =
+
+tM
+0
+0
+tM
+
+,
+A = Σ−1
+M,D −Σ−1
+M,S ,
+ΣS =
+
+tC
+bC
+bC
+tT
+
+,
+ΣD =
+
+tC
+0
+0
+tT
+
+,
+βS = −1
+2
+Tr(AΣS)
+det(AΣS) ,
+βD = −1
+2
+Tr(AΣD)
+det(AΣD) ,
+γ2
+S = −
+1
+det(AΣS) ,
+γ2
+D = −
+1
+det(AΣD) ,
+α2
+S = γ2
+S + β2
+S ,
+α2
+D = γ2
+D + β2
+D .
+(5)
+3. Joint score models
+A straightforward extension of generative calibration to score-
+level fusion consists in replacing univariate densities with mul-
+tivariate models that characterize the joint distribution of the
+target and non-target scores. Let S = (S1, . . . , Sd) be a Ran-
+dom Vector that represents the scores of d speaker verification
+systems, and let fS|S(s|θS) and fS|D(s|θD) denote joint con-
+ditional densities for S, with parameters θS and θD, respec-
+tively. A fusion score sf for the score vector s can be computed
+as the LLR
+sf(s) = log fS|S(s|θS)
+fS|D(s|θD) .
+(6)
+To model the target and non-target conditional densities we start
+considering a simple multivariate Gaussian model
+fS|S(s) = N(s|µS, ΣS) ,
+fS|D(s) = N(s|µD, ΣD) , (7)
+where µS, ΣS, µD, ΣD are parameters that can be estimated
+by ML on a development set. The joint model induces a form
+for the marginal densities that corresponds to a calibration trans-
+formation for the individual systems. Ideally we would like the
+marginal densities to preserve the characteristics of generative
+calibration models. For example, CMLG marginals can be re-
+covered by imposing that the covariance matrices ΣS and ΣD
+share the same diagonal:
+Σh =
+
+
+v1
+rh,12
+. . .
+rh,1d
+rh,12
+v2
+. . .
+rh,2d
+...
+. . .
+...
+...
+rh,1d
+rh,2d
+. . .
+vd
+
+,
+h ∈{S, D} .
+(8)
+As we show in the experimental section, model (7), (8) does
+not prove accurate enough for score-level fusion. The Gaus-
+sian marginal assumption is indeed often quite crude, and the
+inaccuracies in modeling the marginal densities are inherited
+by the joint density model. In the context of calibration VΓ
+densities were introduced as a more flexible and powerful al-
+ternative to Gaussian models. The rationale behind VΓ densi-
+ties derives from an analysis of the score distribution induced
+by Gaussian-distributed embedding for PLDA-like classifiers.
+Although a similar analysis may eventually lead to the defi-
+nition of a robust joint score model, such a model may eas-
+ily become intractable, due to the complexity in characterizing
+the dependency sources of different setups (e.g. same embed-
+ding with different back-ends, same back-end used for different
+front-ends, and so on) and the lack of closed form expressions
+for the complex distribution densities that would arise1. To keep
+the model tractable, we adopt a different approach and, follow-
+ing Sklar’s theorem [27], we employ a copula-based represen-
+tation [22, 23] of the joint densities that decouples modeling
+of the scores marginals from the characterization of the scores
+dependencies. As shown in Section 4, this allows us to keep
+the benefits of the accurate Variance-Gamma characterization
+of target and non target scores of individual systems. We con-
+sider models that can be expressed as
+fS|h(s|θh, ρh) = ch
+ FS1|h(s1|θh,1) . . . FSd|h(sd|θh,d)|ρh
+
+·
+d
+Y
+i=1
+fSi|h(si|θh,i) ,
+h ∈{S, D} ,
+(9)
+where fSi|h(si|θS,i) and fSi|D(si|θD,i) are the marginal tar-
+get and non-target score distribution densities for the i-th indi-
+vidual system (component si of the score vector s), with pa-
+rameters θS,i and θD,i, respectively.
+FSi|S and FSi|D are
+1The VΓ calibration approach of [15] already requires simplifying
+assumptions to keep the derivations tractable.
+3724
+
+the corresponding cumulative distribution functions (CDF), and
+cS(u1 . . . un|ρS) and cD(u1 . . . un|ρD) are parametric copula
+density functions, with parameters ρS and ρD, that capture the
+relationships among the different scores. Given a score vector
+s, the fused score sf(s) is can be computed as
+sf(s) = log fS|S(s|θS, ρS)
+fS|D(s|θD, ρD)
+=
+d
+X
+i=1
+log fSi|S(si|θS,i)
+fSi|D(si|θD,i)
++ log cS
+ FS1|S(s1|θS,1) . . . FSd|S(sd|θS,d)|ρS
+
+cD
+ FS1|D(s1|θD,1) . . . FSd|D(sd|θD,d)|ρD
+,
+i.e., the sum of the recalibrated scores of the individual systems
+and an additional term that accounts for the dependency struc-
+ture induced by the copula functions [22].
+4. Gaussian copula models
+From Sklar’s theorem [27], we can freely combine marginal
+and copula densities and obtain valid joint density models. The
+Gaussian model (7), (8) can be represented as the combination
+of CMLG marginals with a Gaussian copula, by letting
+fSi|h(si) = N(si|µh,i, vi) ,
+h ∈{S, D} ,
+(10)
+combined with the Gaussian copula
+Ch(u1 . . . ud|Rh) = Φ
+ Φ−1(u1) . . . Φ−1(ud)|Rh
+
+,
+(11)
+whose density is given by
+ch(u1 . . . ud|Rh) =
+N
+
+Φ−1(u1) . . . Φ−1(ud)
+T  0, Rh
+
+Qd
+i=1 N(Φ−1(ui)|0, 1)
+.
+(12)
+Φ(·|R) is the CDF of a zero-mean multivariate normal distri-
+bution with covariance matrix R and Φ−1(·) is the inverse CDF
+of a standard normal distribution. The copula parameters RS
+and RD are correlation matrices
+Rh =
+
+
+1
+ρh,12
+. . .
+ρh,1d
+ρh,12
+1
+. . .
+ρh,2d
+...
+...
+...
+...
+ρh,1d
+ρh,2d
+. . .
+1
+
+,
+h ∈{S, D} , (13)
+and fully specify the dependency structure of the model. The
+multivariate CMLG extension in (7), (8) can be obtained
+from (10), (12) and (13) setting rh,ij = ρh,ij√vivj.
+To address the limitations of CMLG-based fusion, in this
+work we propose to preserve the Gaussian copula dependency
+structure (12), but we replace the Gaussian marginals with the
+more accurate VΓ model (3). The joint target and non-target
+densities are given by
+fS|h(s|θh, Rh) = cg(FVΓ(s1|θh,i) . . . FVΓ(sd|θh,i)|Rh)
+·
+d
+Y
+i=1
+fVΓ(s|θh,i) ,
+h ∈{S, D} ,
+(14)
+where θS = (θS,1 . . . θS,d) and θD = (θD,1 . . . θD,d) are
+the parameters of the marginal target and non-target score dis-
+tribution of the individual systems, and FVΓ denotes the VΓ
+CDF. The model parameters can be extimated by maximizing a
+weighted log-likelihood
+L(θS, θD, RS, RD) =
+ζ
+|SS|
+X
+s∈SS
+log fS|S (s|θS, RS)
++ 1 −ζ
+|SD|
+X
+s∈SD
+log fS|D (s|θD, RD) ,
+(15)
+where SS and SD are the sets of target and non-target score
+vectors, and ζ ∈(0, 1) is a tunable weight.
+Direct optimization of the likelihood is complex due to the
+presence of the VΓ CDF, which cannot be expressed in closed
+form, and depends on the optimization parameters. We there-
+fore employ a two-step approach, known as inference function
+for margins [23], that consists in the independent ML optimiza-
+tion of the marginal densities, i.e., the estimation of the individ-
+ual calibration model parameters θS, θD, followed by ML esti-
+mation of the copula parameters RS and RD. We can estimate
+the marginal density parameters θS,i, θD,i by maximizing, as
+in [15], the marginal weighted log-likelihood
+Lm(θS,i, θD,i) =
+ζ
+|SS|
+X
+s∈SS,i
+log fVΓ(s|θS,i)
++ 1 −ζ
+|SD|
+X
+s∈SD,i
+log fVΓ(s|θD,i) ,
+(16)
+where SS,i and SD,i are the sets of target and non-target scores
+of the i–th system. Once we have obtained the marginal pa-
+rameters, we maximize the joint log-likelihood L in (15) with
+respect to the copula parameters RS and RD. We observe that,
+since the marginals do not depend on RS and RD, we can re-
+place maximization of L with the maximization of
+L′(RS, RD) =
+ζ
+|SS|
+X
+s∈SS
+ℓ(g(s, θS)|RS)
++ 1 −ζ
+|SD|
+X
+s∈SD
+ℓ(g(s, θD)|RD) ,
+(17)
+where function g transforms a d-dimensional score vector s =
+[s1 . . . sd]T into a d-dimensional vector
+g(s, θ) =
+
+Φ−1(FVΓ(si|θi) . . . Φ−1(FVΓ(si|θi)
+T ,
+(18)
+i.e., the d scores of the score vector s are transformed through
+the CDF of the corresponding VΓ marginal and through the in-
+verse CDF of a standard normal distribution. Function ℓis given
+by
+ℓ(x) = log N(x|0, R) .
+(19)
+We can observe that (17) requires optimizing a normal log-
+likelihood over the transformed score vectors g(s, θD) and
+g(s, θS), with the constraint that RS and RD represent corre-
+lation matrices (i.e., their diagonal should be 1). Since the VΓ
+CDF cannot be expressed in closed form, we employ numerical
+integration to compute FVΓ.
+5. Experimental results
+To assess the performance of our approach we compare our VΓ
+marginal Gaussian Copula (VΓ-GC) model with the state-of-
+the-art linear Logistic Regression (Log-Reg) method [10, 11,
+3725
+
+Table 1: Cllr, EER % and Cprim of different calibration and fusion models on the SRE 2019 Evaluation set. Rows labeled min. cost
+show the minimum costs for the non-calibrated scores.
+Cllr
+EER %
+Cprim
+Cllr
+EER %
+Cprim
+Cllr
+EER %
+Cprim
+Cllr
+EER %
+Cprim
+S1 ECAPA - PLDA
+S2 ECAPA - PSVM
+S3 FTDNN - PLDA
+S4 FTDNN - PSVM
+min. cost
+0.176
+4.7
+0.365
+0.135
+3.5
+0.330
+0.163
+4.3
+0.326
+0.145
+3.7
+0.350
+Log-Reg (π = 0.1)
+0.191
+4.7
+0.376
+0.145
+3.5
+0.337
+0.176
+4.3
+0.332
+0.154
+3.7
+0.361
+Log-Reg (π = 0.5)
+0.187
+4.7
+0.419
+0.143
+3.5
+0.370
+0.172
+4.3
+0.371
+0.152
+3.7
+0.397
+CMLG
+0.187
+4.7
+0.455
+0.147
+3.5
+0.429
+0.172
+4.3
+0.432
+0.155
+3.7
+0.467
+VΓ
+0.178
+4.7
+0.366
+0.137
+3.5
+0.332
+0.165
+4.3
+0.333
+0.147
+3.7
+0.352
+S1 + S2 (ECAPA)
+S2 + S4 (PSVM)
+S2 + S3
+S1 + S2 + S3 + S4
+Log-Reg (π = 0.1)
+0.142
+3.4
+0.311
+0.123
+2.8
+0.268
+0.129
+3.0
+0.266
+0.120
+2.7
+0.249
+Log-Reg (π = 0.5)
+0.140
+3.4
+0.352
+0.121
+2.8
+0.300
+0.126
+3.0
+0.296
+0.118
+2.7
+0.281
+CMLG-GC
+0.167
+3.9
+0.349
+0.129
+2.9
+0.342
+0.141
+3.3
+0.319
+0.168
+3.7
+0.279
+VΓ-GC
+0.133
+3.4
+0.309
+0.115
+2.8
+0.270
+0.120
+2.9
+0.268
+0.114
+2.8
+0.262
+13]. A first set of experiments on the SRE 2019 Evaluation set is
+presented in Table 1. We consider two different embedding ex-
+tractors: a CNN-ECAPA architecture that combines an ECAPA
+network [28] with CNN input blocks [29], and a Factorized
+Time-Delay (FTDNN) architecture, implemented as in [30].
+The front-ends have been trained on a common list including
+VoxCeleb1 and VoxCeleb2 [31], Mixer 4,5 and 6 [32, 33] and
+Switchboard [34, 35, 36, 37, 38, 39] data. The MUSAN [40]
+and the AIR [41] datasets were used for data augmentation. We
+also consider two different front-ends: Probabilistic Linear Dis-
+criminant Analysis (PLDA) [42, 43, 44] and Pairwise Support
+Vector Machine (PSVM) [45, 46, 47, 48, 49]. We consider three
+metrics: the calibration-sensitive Cllr [10], the actual primary
+cost Cprim, as defined by NIST for SRE 2019 [24], and the
+calibration-insensitive Equal Error Rate (EER). The calibration
+models employed as marginal densities for our fusion models
+and the copula density parameters have been estimated on a
+subset of the SRE 2019 Progress set. Since the quality of the
+marginal density models affects the generative fusion, we also
+report the calibration results for individual systems. For cal-
+ibration, we consider prior-weighted logistic regression mod-
+els [11, 14], the CMLG approach [21] and the VΓ method
+of [15], corresponding to the marginal models employed by
+VΓ-GC. For fusion, in addition the Log-Reg baseline we con-
+sider the Gaussian-copula extension of the CMLG (CMLG-GC)
+presented in Section 3. For discriminative models we show re-
+sults with target prior π set to 0.1 and to 0.5, respectively, with
+the latter models providing minor Cllr improvements but at the
+cost of significant degradation of Cprim. For generative mod-
+els we employ a weight ζ = 0.5. The first five rows of the
+table show minimum costs and calibration performance of dif-
+ferent models for different front-end / back-end combinations.
+The last four rows compare our VΓ-GC with our baselines for
+different systems combinations. We can observe that fusion
+and calibration results are consistent. CMLG calibration mod-
+els are able to provide acceptable Cllr, but present significant
+degradation in terms of Cprim, due to their weaker characteri-
+zation of the score distribution [17]. The issue is amplified in
+CMLG-GC models, that behave significantly worse than other
+approaches. VΓ calibration models are able to better capture
+the scores characteristics, achieving the best Cllr, and optimal
+or close-to-optimal Cprim, despite not being trained for a spe-
+cific working point. The VΓ-GC fusion benefits from the more
+accurate VΓ marginals, and achieves again optimal Cllr and
+optimal or close-to-optimal Cprim.
+A second set of experiments was conducted on the
+SITW [25] Evaluation dataset. In this case, we consider two
+systems, an ECAPA - PSVM and a FTDNN - PSVM. The re-
+sults are shown in Table 2. The calibration and fusion models
+were trained on the SITW Development set. As for SRE 2019,
+we can observe that VΓ-GC provides competitive results with
+respect to state-of-the-art approaches, although the gains of all
+the methods are smaller than in the SRE19 scenario.
+Table 2: Cllr, EER % and Cprim of different calibration and
+fusion models on the SITW Evaluation set. Rows labeled min.
+cost show the minimum costs for the non-calibrated scores.
+Cllr
+EER %
+Cprim
+ECAPA
+min. cost
+0.07
+1.9
+0.22
+Log-Reg (π = 0.1)
+0.08
+1.9
+0.23
+CMLG
+0.08
+1.9
+0.22
+VΓ
+0.08
+1.9
+0.22
+FTDNN
+min. cost
+0.11
+3.1
+0.30
+Log-Reg (π = 0.1)
+0.11
+3.1
+0.36
+CMLG
+0.12
+3.1
+0.38
+VΓ
+0.11
+3.1
+0.31
+FUSION
+Log-Reg (π = 0.1)
+0.07
+1.7
+0.20
+CMLG-GC
+0.08
+1.9
+0.21
+VΓ-GC
+0.07
+1.7
+0.19
+6. Conclusions
+We have presented a novel generative approach for the score-
+level fusion of speaker verification systems.
+The method
+is based on the combination of a robust Variance-Gamma
+marginal model, able to well characterize the score distribution
+of individual systems, and a Gaussian copula that captures the
+relationships between scores of different systems. The resulting
+model provides competitive results with respect to state-of-the-
+art discriminative methods, successfully extending recent gen-
+erative calibration models to multi-system score level fusion.
+Future work will analyze more complex copula functions, with
+the aim of further improving the fusion performance.
+3726
+
+7. References
+[1] M. J. Alam et al., “Development of ABC systems for the 2021
+edition of NIST speaker recognition evaluation,” in Proc. Odyssey
+2022, 06 2022, pp. 346–353.
+[2] J. Villalba et al., “Advances in cross-lingual and cross-source
+audio-visual speaker recognition: The JHU-MIT system for NIST
+SRE21,” in Proc. Odyssey 2022, 06 2022, pp. 213–220.
+[3] K. A. Lee et al., “I4U system description for NIST SRE-20 CTS
+challenge,” in SRE 2021, NIST Speaker Recognition Evaluation
+Workshop, NIST, Ed., 2021.
+[4] M. J. Alam et al., “Analysis of ABC submission to NIST SRE
+2019 CMN and VAST challenge,” in Proc. Odyssey 2020, 11
+2020, pp. 289–295.
+[5] D. Colibro et al., “Nuance - Politecnico di Torino’s 2016 NIST
+Speaker Recognition Evaluation system,” in Proc. Interspeech
+2017, 2017, pp. 1338–1342.
+[6] L. Ferrer et al., “A noise-robust system for NIST 2012 speaker
+recognition evaluation,” in Proc. Interspeech 2013, 2013.
+[7] D. Colibro and al., “Nuance–Politecnico di Torino 2012 NIST
+Speaker Recognition Evaluation system,” in Proc. Interspeech
+2013, 2013, pp. 1996–2000.
+[8] S. Cumani and P. Laface, “Joint estimation of PLDA and non–
+linear transformations of speaker vectors,” IEEE/ACM Trans. on
+Audio, Speech, and Language Processing, vol. 25, no. 10, pp.
+1890–1900, 2017.
+[9] S. Cumani et al., “Analysis of the ABC classification backends for
+NIST SRE24,” in Proc. of Interspeech 2025, 2025.
+[10] N. Brümmer, “Measuring, refining and calibrating speaker and
+language information extracted from speech,” Ph.D. dissertation,
+Stellenbosch University, South Africa, 2010.
+[11] N. Brummer et al., “Fusion of heterogeneous speaker recognition
+systems in the STBU submission for the NIST Speaker Recogni-
+tion Evaluation 2006,” IEEE Trans. Audio, Speech and Language
+Processing, vol. 15, no. 7, pp. 2072–2084, 2007.
+[12] M. Kockmann et al., “Ivector fusion of prosodic and cepstral fea-
+tures for speaker verification,” in Proc. Interspeech 2011, 2011.
+[13] N.
+Brümmer,
+“Focal
+toolkit,”
+Available
+at
+http://sites.google.com/site/nikobrummer/focal.
+[14] N. Brümmer and G. R. Doddington, “Likelihood-ratio calibration
+using prior-weighted proper scoring rules,” in Proc. Interspeech
+2013, 2013.
+[15] S. Cumani and S. Sarni, “The distributions of uncalibrated speaker
+verification scores: a generative model for domain mismatch and
+trial-dependent calibration,” IEEE/ACM Trans. on Audio, Speech,
+and Language Processing, pp. 1–16, 01 2023.
+[16] S. Cumani and S. Sarni, “A generative model for duration-
+dependent score calibration,” in Proc. Interspeech 2021, 2021, pp.
+4598–4602.
+[17] S. Cumani, “On the distribution of speaker verification scores:
+Generative models for unsupervised calibration,” IEEE/ACM
+Trans. on Audio, Speech, and Language Processing, vol. 29, pp.
+547–562, 2021.
+[18] S. Cumani, “Normal variance-mean mixtures for unsupervised
+score calibration,” in Interspeech 2019, 2019, pp. 401–405.
+[19] N. Brümmer, A. Swart, and D. van Leeuwen, “A comparison of
+linear and nonlinear calibrations for speaker recognition,” in Proc.
+Odyssey 2014, 2014, pp. 14–18.
+[20] N. Brümmer and D. Garcia-Romero, “Generative modelling for
+unsupervised score calibration,” in Proc. ICASSP 2014, 2014, pp.
+1680–1684.
+[21] D. van Leeuwen and N. Brümmer, “The distribution of calibrated
+likelihood-ratios in speaker recognition,” in Proc. Interspeech
+2013, 2013, pp. 1619–1623.
+[22] S. C. Dass, K. Nandakumar, and A. K. Jain, “A principled ap-
+proach to score level fusion in multimodal biometric systems,”
+in Audio- and Video-Based Biometric Person Authentication.
+Springer, 2005, pp. 1049–1058.
+[23] H. Joe and J. J. Xu,
+“The estimation method of infer-
+ence functions for margins for multivariate models,”
+Oct
+1996. [Online]. Available: https://open.library.ubc.ca/collections/
+facultyresearchandpublications/52383/items/1.0225985
+[24] S. O. Sadjadi et al., “The 2019 NIST Speaker Recognition Evalu-
+ation CTS challenge,” in Proc. Odyessy 2020, 2020.
+[25] M. McLaren et al., “The Speakers in the Wild (SITW) Speaker
+Recognition Database,” in Proc. Interspeech 2016, 2016.
+[26] D. Madan, P. Carr, and E. Chang, “The Variance Gamma process
+and option pricing,” Eurepean Finance Review, vol. 2, pp. 79–105,
+1998.
+[27] M. Sklar, “Fonctions de répartition à n dimensions et leurs
+marges,” Annales de l’ISUP, 1959.
+[28] B. Desplanques et al., “ECAPA-TDNN: Emphasized channel at-
+tention, propagation and aggregation in tdnn based speaker verifi-
+cation,” in Proc. Interspeech 2020, 2020.
+[29] J. Thienpondt et al., “Integrating frequency translational invari-
+ance in tdnns and frequency positional information in 2d resnets
+to enhance speaker verification,” in Proc. Interspeech 2021, 2021.
+[30] J. Villalba et al., “State-of-the-art speaker recognition with neural
+network embeddings in NIST SRE18 and speakers in the wild
+evaluations,” Computer Speech & Language, vol. 60, 2020.
+[31] A. Nagrani et al., “Voxceleb: Large-scale speaker verification in
+the wild,” Computer Science and Language, 2019.
+[32] C. Cieri, L. Corson, D. Graff, , and K. Walker, “Resources for new
+research directions in speaker recognition: the Mixer 3, 4 and 5
+corpora,” in Proc. Interspeech 2007, 2007.
+[33] L. Brandschain et al., “The Mixer 6 corpus: resources for cross-
+channel and text independent speaker recognition,” in Proc. LREC
+2010, 2010.
+[34] J. Godfrey and E.Holliman, “Switchboard-1 release 2,” 1993.
+[35] D. Graff et al., “Switchboard-2 phase I,” 1998.
+[36] ——, “Switchboard-2 phase II,” 1999.
+[37] ——, “Switchboard-2 phase III,” 2002.
+[38] ——, “Switchboard cellular part 1 audio,” 2001.
+[39] ——, “Switchboard cellular part 2 audio,” 2004.
+[40] D. Snyder, G. Chen, and D. Povey, “MUSAN: a music, speech,
+and noise corpus,” 2015, arXiv:1510.08484v1.
+[41] T. Ko et al., “A study on data augmentation of reverberant speech
+for robust speech recognition,” in Proc. ICASSP 2017, 2017.
+[42] S. Ioffe, “Probabilistic linear discriminant analysis,” in Proc.
+ECCV’06, 2006.
+[43] P. Kenny, “Bayesian speaker verification with Heavy-Tailed Pri-
+ors,” in Keynote presentation, Proc. Odyssey 2010, 2010.
+[44] N. Brümmer et al., “Gaussian meta-embeddings for efficient scor-
+ing of a heavy-tailed plda model,” in Proc. Odyssey 2018, 2018.
+[45] S. Cumani and P. Laface, “Large scale training of Pairwise Sup-
+port Vector Machines for speaker recognition,” IEEE/ACM Trans.
+on Audio, Speech, and Language Processing, vol. 22, no. 11, pp.
+1590–1600, 2014.
+[46] S. Cumani and P. Laface, “Training pairwise support vector ma-
+chines with large scale datasets,” in Proc. ICASSP 2014, 2014.
+[47] S. Cumani, N. Brümmer, L. Burget, P. Laface, O. Plchot, and
+V. Vasilakakis, “Pairwise discriminative speaker verification in the
+i-vector space,” IEEE/ACM Trans. on Audio, Speech, and Lan-
+guage Processing, vol. 21, no. 6, pp. 1217–1227, 2013.
+[48] S. Cumani et al., “Gender independent discriminative speaker
+recognition in i-vector space,” in Proc. of ICASSP 2012, 2012.
+[49] S. Cumani and P. Laface, “Generative pairwise models for speaker
+recognition,” in Proc. of Odyssey 2014, 2014.
+3727

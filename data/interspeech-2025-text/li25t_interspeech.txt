@@ -1,0 +1,558 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+SA-RAS: Speaker-Aware Style Retrieval Augmented Generation for
+Expressive Zero-Shot Text-to-Speech Synthesis
+Xueru Li1, Jingyuan Xing1, Xiaofen Xing1,∗, Zhipeng Li1, Xiangmin Xu1,2
+1South China University of Technology, China
+2Pazhou Lab, China
+202130240695@mail.scut.edu.cn, 1121795901@qq.com,
+xfxing@scut.edu.cn,eeleezp@mail.scut.edu.cn,xmxu@scut.edu.cn
+Abstract
+Zero-shot text-to-speech (TTS) models can clone an un-
+seen speaker by reference speech.
+Given multiple reference
+speeches, Retrieval Augmented Generation (RAG) shows po-
+tential in enhancing synthesis quality.
+The existing method
+faces two key limitations: semantically-biased retrieval tends
+to introduce style mismatch, and the deterministic mapping be-
+tween text and speech fails to fully capture the unique style
+of the speaker. To solve these, we propose a Speaker-Aware
+Retrieval Augmented TTS Synthesis (SA-RAS) model.
+It
+consists of a two-stage TTS model, Split-TTS and a zero-
+shot CLAP. The former embeds style and timbre separately
+to obtain a style space for retrieval. The latter optimizes the
+correlation between text and style by incorporating speaker
+information into the retrieval model.
+Experiments prove
+that SA-RAS boosts the style expressiveness of synthesized
+speech.
+Speech samples are available at the following link
+https://zuoguaidong.github.io/2025interspeech/.
+Index Terms: Zero-shot TTS, retrieval augmentation, con-
+trastive learning
+1. Introduction
+Zero-shot text-to-speech (TTS) is a powerful synthesis model
+[1] [2]. It can extract features such as prosody and speaker fea-
+tures from reference speech to generate natural speech for un-
+seen speakers [3] [4]. In practical applications, it is quite com-
+mon to have multiple speeches of the target speaker available as
+references. The key to fully leveraging the value of these data
+lies in precisely selecting the most fitting reference speech for
+TTS according to the target synthesized text. This process is of
+great significance for enhancing the style expressiveness of the
+synthesized speech [5].
+Retrieval-Augmented Generation (RAG) has achieved re-
+markable success in optimizing the generation performance of
+large language models (LLMs) [6] [7]. In light of this suc-
+cess, RAG has also started to penetrate into audio tasks and is
+applied in audio deepfake detection [8], audio captioning [9],
+and speech synthesis [10]. Xue et al. [10] used Context-Aware
+Contrastive Language-Audio Pretraining (CA-CLAP) as the re-
+trieval method to select text and audio prompts. This optimiza-
+tion of speech prompts effectively enhanced the synthesis per-
+formance of the prompt-based TTS system. However, there is
+still a phenomenon of style retrieval bias, which is mainly at-
+tributable to the following two causes.
+Firstly, both speech and text contain rich semantic informa-
+tion, and different audio encoders can extract various features,
+such as content, prosody, and timbre [11]. With Contrastive
+*Corresponding author.
+Figure 1: Comparison between the previous and the proposed
+RAG-enhanced zero-shot TTS frameworks
+Language-Audio Pretraining (CLAP) [12] being trained to learn
+the correspondence between speech and text for retrieval, the
+embeddings of speech and text are mapped into a shared la-
+tent space. This embedding-mapping process, in turn, guides
+the audio encoder in CLAP to tend to extract semantic features.
+However, there are cases of high semantic similarity but low
+style similarity. Directly establishing a retrieval relationship in
+the semantic space is highly likely to result in retrieving audio
+with a mismatched style, as shown in Figure 1(A).
+Secondly, there exists a one-to-many relationship between
+text and styles. Different speakers may exhibit style differences
+when expressing the same text [13]. If retrieval is conducted
+based on the deterministic mapping between text and speech, it
+becomes impossible to capture and represent the distinct style
+characteristics of each individual speaker, let alone those of un-
+seen speakers. Consequently, further improving the retrieval
+model to adapt to zero-shot TTS is needed.
+For the first issue, it is the text embedding that should be
+mapped into the style space. Speaking style and speaker timbre
+are highly entangled as both of them affect the prosody patterns
+of speech. However, timbre, tied to a speaker’s unique phys-
+iology, doesn’t relate directly to text-conveyed style and can
+disrupt style retrieval. Therefore, it’s necessary to construct a
+TTS framework that can split timbre and style, so as to obtain a
+style encoder that can extract timbre-independent style feature
+for the retrieval model. In regard to the second issue, inspired
+by zero-shot [14], we introduce speaker information into the
+retrieval model. It serves to direct the model to dynamically ad-
+just the retrieval relationship between text and style, addressing
+the one-to-many relationship between text and styles caused by
+speakers. Moreover, it enables the model to maintain the abil-
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+4388
+10.21437/Interspeech.2025-1684
+
+Figure 2: (A) An overview of our proposed Split-TTS (B) The features extraction process (C) The details of the Text-to-NTF Model
+ity to conduct personalized retrieval even for unseen speakers.
+The enhancements in these two facets pave the way for the suc-
+cessful transfer of the RAG method, which is usually utilized in
+strong semantic-matching tasks, to the zero-shot TTS task.
+Therefore, as shown in Figure 1(B), we propose the
+Speaker-Aware
+Retrieval-Augmented
+Synthesis
+(SA-RAS)
+model. We propose Split-TTS, a two-stage TTS framework,
+to obtain a style encoder capable of extracting style feature in-
+dependent of timbre and semantics for the text to style retrieval.
+The style and timbre of the reference speech are respectively
+embedded in two stages, ensuring a retrieval-compatible style
+encoder.
+To improve the retrieval model, we propose the Zero-shot
+Contrastive Language-Audio Pre-training (Zero-shot CLAP)
+model. With the aid of speaker embedding, Zero-shot CLAP is
+trained to learn the correspondence between texts and styles of
+different speakers, extracting appropriate style-related features
+from the text for retrieval. By this method, it breaks through the
+limitations of deterministic mapping.
+Overall, our paper makes the following contributions:
+• We propose Zero-shot CLAP and innovatively incorporate
+speaker embedding into the retrieval model.
+• To achieve a retrieval between text and style, we design a
+two-stage Split-TTS, which separates style and non-style fea-
+tures, to obtain a retrieval-compatible style encoder.
+• We conduct a comprehensive evaluation on the LibriTTS [15]
+and ESD [16] datasets, demonstrating that SA-RAS improves
+the style expressiveness of zero-shot TTS with multiple ref-
+erences.
+2. Methodology
+The SA-RAS consists of two parts: the style retrieval model
+Zero-shot CLAP and the speech generation model Split-TTS.
+These two models assist each other. Zero-shot CLAP uses the
+style encoder well-trained in Split-TTS to train a semantic style
+encoder for style retrieval. Split-TTS, on the other hand, lever-
+ages the retrieval ability of Zero-shot CLAP to augment the ex-
+pressiveness of the synthesized speech.
+2.1. Split-TTS Model
+The proposed Split-TTS, a two-stage zero-shot TTS model, is
+trained to provide a style encoder and perform speech synthesis
+for SA-RAS. Split-TTS is capable of splitting and separately
+embedding style and timbre.
+An overview of the Split-TTS
+framework is presented in Figure 2(A). The first stage is a gen-
+eration process from text to non-timbre features (NTF), and the
+second stage is from NTF to speech synthesis.
+Before training the model, feature extraction is required to
+obtain the NTF and timbre features needed for the two-stage
+training of Split-TTS, as shown in Figure 2(B). Seed-VC[17],
+which has the main architecture of a diffusion transformer and
+a length regulator, has powerful voice conversion capability. We
+use Seed-VC to process the data: fixing one speech as reference
+to extract NTF with a unified timbre. By doing so, the features
+are completely stripped of effective timbre information. Since
+the second-stage model is based on Seed-VC, we extract timbre
+features in Seed-VC for timbre embedding.
+The text-to-NTF model is based on VITS [18], which
+adopts the architecture of conditional variational autoencoder
+(CVAE), significantly enhancing the naturalness of speech gen-
+eration. The architectural details are shown in Figure 2(C). We
+introduce the GST [19] as the style encoder to extract global
+style embedding from the NTF. The extracted global style em-
+bedding is then added to the input of the duration predictor, nor-
+malizing flow, posterior encoder, and decoder. In the second
+stage, we design the NTF-to-speech model based on Seed-VC.
+We perform adaptive fine-tuning on the diffusion transformer to
+recover speech from timbre features and the NTF generated in
+the first stage.
+2.2. Zero-shot CLAP
+Inspired by CA-CLAP [10], we employ CLAP [12] to train a
+semantic style encoder for multi-modal retrieval in style space.
+The overall architecture is shown in Figure 3(A).
+4389
+
+Figure 3: An overview of our proposed Zero-shot CLAP and the application of the SA-RAS
+Our model utilizes three encoders to separately process the
+audio data Xa
+i and text data Xt
+i , where
+ Xa
+i , Xt
+i
+
+is one of the
+audio-text pairs indexed by i. Specifically, the style embedding
+Esty
+i
+and the speaker embedding Espk
+i
+are respectively obtained
+from the style encoder fsty(·) trained in Split-TTS and the pre-
+trained speaker encoder H/ASP [20] fspk(·). We sum and aver-
+age all the Espk
+i
+of the same speaker to obtain the speaker em-
+bedding Espk. The text encoder RoBERTa [21] ftext(·) generates
+the text embedding Et
+i . Et′
+i is obtained by concatenating Espk
+and Et
+i to achieve information fusion.
+Esty
+i
+= MLPaudio(fsty(Xa
+i ))
+(1)
+Espk = 1
+K
+K
+X
+i=0
+fspk(Xa
+i )
+(2)
+Et′
+i = MLPtext(ftext(Xt
+i ) cat Espk)
+(3)
+K refers to the number of speech utterances owned by a
+certain speaker. The multi-layer perceptron (MLP) serves as a
+projection layer, which maps Et′
+i and Esty
+i
+to the same dimen-
+sion.
+During the training process, we use N pairs of
+ Xa
+i , Xt
+i
+
+from the same speaker, along with the speaker’s Espk
+i
+as inputs,
+and feed them into the Zero-shot CLAP encoder. This results in
+N pairs of
+
+Et′
+i , Esty
+i
+
+. Subsequently, we compute the cosine
+similarity for every pair among these pairs, thus generating an
+N × N matrix. Among them, the N values on the diagonal of
+the matrix correspond to the cosine similarities of the correctly
+matched pairs in each batch. We follow the same contrastive
+learning loss as that in [12].
+L =
+1
+2N
+N
+X
+i=1
+(log
+exp(Esty
+i
+· Et′
+i /τ)
+PN
+j=1 exp(Esty
+i
+· Et′
+j /τ)
++ log
+exp(Et′
+i · Esty
+i /τ)
+PN
+j=1 exp(Et′
+i · Esty
+j /τ)
+)
+(4)
+The loss aims to maximize the cosine similarity values corre-
+sponding to the N correct pairs (Esty
+i
+· Et′
+i ) while minimizing
+the remaining N 2 −N incorrect pairs.
+Only the text encoder and the MLP layers are optimized
+in the training. As a result, neither the style embedding space
+obtained from the training of Split-TTS nor the speaker embed-
+ding space is affected.
+2.3. Inference stage
+As shown in Figure 3(B), the application of the SA-RAS in-
+cludes three steps: indexing, retrieval, and synthesis.
+• Indexing: We utilize the style encoder and timbre encoder
+to encode all the available reference speeches into style em-
+bedding and timbre features constructing a database. And we
+compute the average speaker embedding from all candidate
+speeches for CA-CLAP.
+• Retrieval: The input text is encoded and fused with the
+speaker embedding to generate the retrieval query. The style
+embeddings in the database are then projected through the
+MLP layer, and similarity scores are calculated between the
+query and each embedding to select the top one.
+• Synthesis: With the retrieved style embedding and timbre
+features from the selected reference speech, Split-TTS gen-
+erates the target speech.
+3. Experiment
+3.1. Datasets
+We use the LibriTTS [15] and ESD [16] datasets in the experi-
+ment and adjust the sampling rate to 22050Hz.
+LibriTTS is a multi-speaker English corpus that contains
+approximately 585 hours of speech from over 2300 speakers.
+We merge all the training and validation sets of LibriTTS and
+carry out a random re-splitting according to speakers. The val-
+idation set and the test set contain all the data from 10 and 12
+speakers respectively. This data partitioning method is applica-
+ble to both the Zero-shot CLAP and Split TTS models.
+ESD is an Emotional Speech Database that consists of 350
+parallel utterances spoken by 10 native English and 10 native
+Chinese speakers and covers 5 emotion categories. We employ
+this dataset to evaluate the retrieval space.
+4390
+
+Table 1: Objective and subjective experiments comparing TTS performance across various retrieval methods. We evaluate the 95%
+confidence intervals for NMOS, S-SMOS and ST-MOS.
+model
+MCD↓
+Energy↓
+F0 ↓
+EECS↑
+NMOS↑
+S - SMOS↑
+ST-MOS↑
+Self
+6.003
+6.710
+20.036
+0.896
+4.046±0.133
+3.980±0.147
+3.913±0.145
+CA - CLAP
+6.678
+7.935
+22.688
+0.864
+3.408±0.122
+3.117±0.143
+3.189±0.134
+Random
+7.022
+8.648
+24.186
+0.840
+2.347±0.155
+2.964±0.148
+2.934±0.164
+w/o Speaker
+6.670
+6.935
+22.183
+0.873
+3.505±0.121
+3.168±0.139
+3.124±0.145
+Proposed
+6.860
+7.494
+21.559
+0.872
+3.827±0.135
+3.556±0.143
+3.653±0.136
+3.2. Comparison Experiments
+Our work focuses on enhancing the style expressiveness of
+zero-shot TTS through retrieval. Thus, we conduct compara-
+tive experiments of different retrieval methods on Split–TTS,
+including the speech paired with the target text, CA-CLAP [10],
+the randomly selected speech, and Zero-shot CLAP.
+For CA-Clap, The model and hyperparameters are kept
+consistent with those in [10]. Since context is not considered
+in the experiment, we remove the context-related modules in
+the model for comparison.
+We train the first stage of Split-TTS for 100k steps on one
+NVIDIA RTX 2080 GPU with a batch size of 32. For both Zero-
+shot CLAP and CA-CLAP, 32 epochs of training are performed
+with a batch size of 32.
+The comparison experiment is conducted on unseen speak-
+ers. To ensure there are sufficient samples to support the re-
+trieval, apart from the speech that matches the currently synthe-
+sized text, all the other speeches are used as samples in the style
+database for selection.
+3.3. Objective Evaluation
+Following the experiment of CA-CLAP, We utilize three met-
+rics including energy, F0, and mel-cepstral distortion (MCD)
+aligned by Dynamic Time Warping (DTW). We also evalu-
+ate the Emotion Cosine Similarity (EECS) between synthesized
+speech and ground-truth speech using emotion2vec [22], which
+serves to assess the similarity of style from an emotional per-
+spective.
+The objective evaluation results are presented in Table 1.
+Comprehensively considering multiple metrics, the results show
+that 1) Using the speech that is paired with the text for recon-
+struction yields the best results. 2) Zero-shot CLAP compre-
+hensively demonstrates a better performance than CA-CLAP,
+further enhancing the style expressiveness of TTS. 3) Random
+selection leads to the worst results, which shows that retrieval
+augmentation is of great significance in TTS.
+Speeches conveying the same emotion possess certain sim-
+ilarities in style. Therefore, from the ESD dataset, we select
+speeches where the same speaker expressed identical text with
+happy and sad emotions respectively. Then embeddings are ex-
+tracted from the audio encoders used in Zero-shot CLAP and
+CA-CLAP to study their embedding space. We use t-SNE [23]
+to visualize the results. As shown in Figure 4, the result shows
+that the audio encoder’s embedding distribution of CA-CLAP
+is uniform across emotions, while Zero-shot CLAP can better
+distinguish between different emotions, which demonstrates the
+superiority of Zero-shot CLAP in style retrieval.
+3.4. Subjective evaluation
+We conduct three Mean Opinion Score (MOS) subjective tests.
+The Naturalness MOS (NMOS) is used to evaluate the natural-
+Figure 4: The visualization of the speech embeddings from dif-
+ferent retrieval models
+ness and quality. The Style Similarity MOS (S-SMOS) is em-
+ployed to compare the style similarity between the ground-truth
+speech and the synthesized speech. The Style and Text com-
+patibility MOS (ST-MOS) is carried out to assess the degree of
+compatibility between the style of the synthesized speech and
+the text.
+We invite 15 native listeners to rate 15 samples on a scale
+from 1 to 5. The samples are selected from three unseen speak-
+ers with different speaking styles and are relatively representa-
+tive. The results of the subjective evaluation are presented in
+Table 1. The results show that our proposed model outperforms
+all the comparative models, which demonstrates its powerful
+retrieval capabilities.
+3.5. Ablation Study
+To study the impact of incorporating speaker embedding into
+the retrieval model, we conducted an ablation experiment. We
+removed the speaker encoder from Zero-shot CLAP and then
+carried out training with the same settings. The results shown
+in Table 1 indicate that 1) style-based retrieval after ablation is
+still better than semantics-based retrieval. 2) In subjective eval-
+uation, incorporating speaker information can boost the style
+expressiveness of the synthesized speech.
+4. Conclusion
+In this paper, we propose SA-RAS, a speaker-aware style
+retrieval-augmented zero-shot TTS architecture tailored for
+multiple reference-speech scenarios. The proposed model is
+composed of Split-TTS and Zero-shot CLAP. Split-TTS obtains
+a style encoder for both TTS and the retrieval model. And the
+Zero-shot CLAP is a speaker-aware style retrieval model. It
+enables the optimal selection of reference speeches by effec-
+tively leveraging the RAG paradigm in zero-shot TTS. Evalua-
+tions conducted on the LibriTTS and ESD datasets demonstrate
+that the SA-RAS model enhances the style expressiveness of the
+synthesized speech.
+4391
+
+5. Acknowledgements
+The work is supported in part by the Key-Area Research and
+Development Program of Guangdong Province under Grant
+2022B0101010003; in part by Guangdong Basic and Applied
+Basic Research Foundation 2025A1515011203; in part by the
+Guangdong Provincial Key Laboratory of Human Digital Twin
+2022B1212010004.
+6. References
+[1] E. Casanova, J. Weber, C. D. Shulby, A. C. Junior, E. G¨olge, and
+M. A. Ponti, “Yourtts: Towards zero-shot multi-speaker tts and
+zero-shot voice conversion for everyone,” in International Con-
+ference on Machine Learning.
+PMLR, 2022, pp. 2709–2720.
+[2] C. Wang, S. Chen, Y. Wu, Z. Zhang, L. Zhou, S. Liu, Z. Chen,
+Y. Liu, H. Wang, J. Li et al., “Neural codec language mod-
+els are zero-shot text to speech synthesizers,” arXiv preprint
+arXiv:2301.02111, 2023.
+[3] Z. Du, Q. Chen, S. Zhang, K. Hu, H. Lu, Y. Yang, H. Hu,
+S. Zheng, Y. Gu, Z. Ma et al., “Cosyvoice: A scalable multi-
+lingual zero-shot text-to-speech synthesizer based on supervised
+semantic tokens,” arXiv preprint arXiv:2407.05407, 2024.
+[4] Y. Wang, H. Zhan, L. Liu, R. Zeng, H. Guo, J. Zheng, Q. Zhang,
+X. Zhang, S. Zhang, and Z. Wu, “Maskgct: Zero-shot text-to-
+speech with masked generative codec transformer,” arXiv preprint
+arXiv:2409.00750, 2024.
+[5] C. Gong, L. Wang, Z. Ling, J. Zhang, and J. Dang, “Using mul-
+tiple reference audios and style embedding constraints for speech
+synthesis,” in ICASSP 2022-2022 IEEE International Conference
+on Acoustics, Speech and Signal Processing (ICASSP).
+IEEE,
+2022, pp. 7912–7916.
+[6] P. Lewis, E. Perez, A. Piktus, F. Petroni, V. Karpukhin, N. Goyal,
+H. K¨uttler, M. Lewis, W.-t. Yih, T. Rockt¨aschel et al., “Retrieval-
+augmented generation for knowledge-intensive nlp tasks,” Ad-
+vances in Neural Information Processing Systems, vol. 33, pp.
+9459–9474, 2020.
+[7] M. Riedler and S. Langer, “Beyond text: Optimizing rag with
+multimodal inputs for industrial applications,” arXiv preprint
+arXiv:2410.21943, 2024.
+[8] Z. Kang, Y. He, B. Zhao, X. Qu, J. Peng, J. Xiao, and J. Wang,
+“Retrieval-augmented audio deepfake detection,” in Proceedings
+of the 2024 International Conference on Multimedia Retrieval,
+2024, pp. 376–384.
+[9] C. Changin, L. Sungjun, and R. Wonjong, “Audio captioning
+via generative pair-to-pair retrieval with refined knowledge base,”
+arXiv preprint arXiv:2410.10913, 2024.
+[10] J. Xue, Y. Deng, Y. Gao, and Y. Li, “Retrieval augmented gen-
+eration in prompt-based text-to-speech synthesis with context-
+aware contrastive language-audio pretraining,” in Proc. Inter-
+speech 2024, 2024, pp. 1800–1804.
+[11] Z. Ju, Y. Wang, K. Shen, X. Tan, D. Xin, D. Yang, Y. Liu, Y. Leng,
+K. Song, S. Tang et al., “Naturalspeech 3: zero-shot speech syn-
+thesis with factorized codec and diffusion models,” in Proceed-
+ings of the 41st International Conference on Machine Learning,
+2024, pp. 22 605–22 623.
+[12] Y. Wu, K. Chen, T. Zhang, Y. Hui, T. Berg-Kirkpatrick, and
+S. Dubnov, “Large-scale contrastive language-audio pretraining
+with feature fusion and keyword-to-caption augmentation,” in
+ICASSP 2023-2023 IEEE International Conference on Acoustics,
+Speech and Signal Processing (ICASSP).
+IEEE, 2023, pp. 1–5.
+[13] Y. Wu, X. Wang, S. Zhang, L. He, R. Song, and J.-Y. Nie,
+“Self-supervised context-aware style representation for expressive
+speech synthesis,” in Proc. Interspeech 2022, 2022, pp. 5503–
+5507.
+[14] C. H. Lampert, H. Nickisch, and S. Harmeling, “Attribute-
+based classification for zero-shot visual object categorization,”
+IEEE transactions on pattern analysis and machine intelligence,
+vol. 36, no. 3, pp. 453–465, 2013.
+[15] H. Zen, V. Dang, R. Clark, Y. Zhang, R. J. Weiss, Y. Jia, Z. Chen,
+and Y. Wu, “Libritts: A corpus derived from librispeech for text-
+to-speech,” Interspeech 2019, 2019.
+[16] K. Zhou, B. Sisman, R. Liu, and H. Li, “Seen and unseen emo-
+tional style transfer for voice conversion with a new emotional
+speech dataset,” in ICASSP 2021-2021 IEEE International Con-
+ference on Acoustics, Speech and Signal Processing (ICASSP).
+IEEE, 2021, pp. 920–924.
+[17] S. Liu, “Zero-shot voice conversion with diffusion transformers,”
+arXiv preprint arXiv:2411.09943, 2024.
+[18] J. Kim, J. Kong, and J. Son, “Conditional variational autoencoder
+with adversarial learning for end-to-end text-to-speech,” in Inter-
+national Conference on Machine Learning.
+PMLR, 2021, pp.
+5530–5540.
+[19] Y. Wang, D. Stanton, Y. Zhang, R.-S. Ryan, E. Battenberg, J. Shor,
+Y. Xiao, Y. Jia, F. Ren, and R. A. Saurous, “Style tokens: Un-
+supervised style modeling, control and transfer in end-to-end
+speech synthesis,” in International conference on machine learn-
+ing.
+PMLR, 2018, pp. 5180–5189.
+[20] H. S. Heo, B.-J. Lee, J. Huh, and J. S. Chung, “Clova baseline sys-
+tem for the voxceleb speaker recognition challenge 2020,” arXiv
+preprint arXiv:2009.14153, 2020.
+[21] Y. Liu, “Roberta:
+A robustly optimized bert pretraining ap-
+proach,” arXiv preprint arXiv:1907.11692, vol. 364, 2019.
+[22] Z. Ma, Z. Zheng, J. Ye, J. Li, Z. Gao, S. Zhang, and X. Chen,
+“emotion2vec: Self-supervised pre-training for speech emotion
+representation,” in Findings of the Association for Computational
+Linguistics ACL 2024, 2024, pp. 15 747–15 760.
+[23] L. Van der Maaten and G. Hinton, “Visualizing data using t-sne.”
+Journal of machine learning research, vol. 9, no. 11, 2008.
+4392
+

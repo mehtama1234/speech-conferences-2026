@@ -1,0 +1,560 @@
+Pathology-Aware Speech Encoding and Data Augmentation for
+Dysarthric Speech Recognition
+Ilja Baumann1, Dominik Wagner1, Korbinian Riedhammer1, Tobias Bocklet1
+1Technische Hochschule N¨urnberg Georg Simon Ohm, Germany
+firstname.lastname@th-nuernberg.de
+Abstract
+Automatic speech recognition (ASR) for pathologic speech
+remains a major challenge due to high variability in articu-
+lation, phonation, and prosody distortions. In this work, we
+propose a pathology-aware speech encoder based on BEST-RQ
+pre-training, which incorporates 46k hours of speech, including
+pathologic and atypical speech. We continue pre-training for
+domain adaptation and experiment with etiology-specific code-
+books. We achieve a 13.2% relative word error rate (WER)
+improvement using the pathology-aware speech encoder with
+etiology-specific continued pre-training. Additionally, we ex-
+amine the impact of incorporating synthetic and out-of-domain
+(OOD) data to further enhance ASR performance. Synthetic
+data reduces WER by up to 8.7%, while OOD data improves
+WER by 12.2%. Finally, we introduce a semantic similarity-
+based data augmentation technique to optimize data selection,
+achieving a WER improvement of up to 9.7% while minimizing
+the need for additional training data.
+Index Terms: pathologic speech recognition, speech augmen-
+tation, self-supervised learning
+1. Introduction
+Automatic speech recognition (ASR) has made significant
+progress, yet recognizing pathological speech remains a ma-
+jor challenge due to high variability in articulation, phonation,
+and prosody distortions. Limited annotated data further exacer-
+bates this issue, making it difficult for ASR models to general-
+ize across different speech impairments. To address these chal-
+lenges, we introduce a pathology-aware speech encoder trained
+using BEST-RQ [1] and investigate data augmentation strate-
+gies to improve ASR performance. We pre-train a conformer
+[2] model using BEST-RQ with speech data incorporating both
+pathologic and healthy speech. We continue pre-training us-
+ing only pathologic speech and explore etiology-specific code-
+books. Additionally, we investigate whether adding more syn-
+thetic and OOD data consistently improves ASR performance.
+Our study also introduces a semantic similarity-based data aug-
+mentation approach, which enhances model training by select-
+ing optimal training samples from OOD datasets. By combin-
+ing these approaches, we aim to improve the robustness and
+accuracy of ASR systems for pathologic speech. Our findings
+contribute to the broader field of inclusive speech technology.
+This work is a contribution to the Speech Accessibility Project
+Challenge1.
+1https://eval.ai/web/challenges/challenge-page/2362/overview
+1.1. Related work
+Continued pre-training on domain-specific data has been shown
+to enhance performance in specialized settings such as medi-
+cal transcription [3] and accented speech recognition [4]. Hsu
+et al. [5] found that continued pre-training on in-domain data
+helps the HuBERT model capture better phonetic representa-
+tions for low-resource languages. Early approaches to dataset
+augmentation in ASR primarily involved modifying raw audio
+signals. Techniques such as time stretching, pitch shifting, and
+noise addition have been widely adopted to enhance model ro-
+bustness. Ko et al. [6] introduced SpecAugment, a method that
+applies time warping, frequency masking, and time masking to
+spectrogram representations, significantly improving ASR per-
+formance without requiring additional labeled data. Another
+area of research has focused on generating synthetic speech to
+increase data diversity. Jia et al. [7] demonstrated the effec-
+tiveness of text-to-speech (TTS) models in augmenting training
+datasets, particularly for low-resource languages. Furthermore,
+Kim et al. [8] explored the use of voice conversion techniques to
+synthesize speech with varying speaker characteristics, improv-
+ing ASR generalization. In context of pathologic speech, sev-
+eral works [9, 10, 11, 12, 13, 14] evaluated data augmentation
+techniques, including input signal modification and generative
+adversarial networks (GANs) [15].
+2. Data
+We use the Speech Accessibility Project 2 2024-11-30 dataset,
+which comprises a train and dev set, from 374 speakers and
+56 speakers, respectively. In further use, we denote the dataset
+as SAPC. Speech recordings of five etiologies amyotrophic
+lateral sclerosis (ALS), cerebral palsy (CP), Down syndrome
+(DS), Parkinson’s Disease (PD) and stroke (SK) are part of the
+dataset. The most dominant etiology is PD with ∼74%, fol-
+lowed by ALS with∼14%, CP with∼6%, DS with∼4% and
+SK with∼2%. The challenge evaluation is performed on two
+non-publicly available test sets, test1 and test2, consisting of
+7601 and 8043 utterances. We create a separate dev set using
+10% of the train speakers for model selection and report the
+results on the original dev set throughout this work.
+Word error rate (WER) and semantic score (SemScore) are
+the two evaluation measures used in our experiments. The Sem-
+Score is a weighted combination of the BERT score [16], pho-
+netic distance3, and natural language inference probability [17].
+The metrics used in this work are computed using the provided
+template by the challenge hosts4.
+2https://speechaccessibilityproject.beckman.illinois.edu/
+3https://ics.uci.edu/˜dhirschb/genealogy/Miller/javascrp/soundex.htm
+4https://github.com/xiuwenz2/SAPC-template
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+3289 10.21437/Interspeech.2025-2724
+
+3. Method
+3.1. Pathology-aware speech encoder
+BERT-based Speech pre-Training with Random-projection
+Quantizer (BEST-RQ) [1] is a self-supervised learning method
+for automatic speech recognition (ASR). The core concept in-
+volves utilizing a random-projection quantizer (RQ) to convert
+speech signals into discrete labels, which serve as training tar-
+gets. The RQ applies a fixed projection matrix to map input
+features onto a vector aligned with the codebook dimension k.
+Given an input speech signal X, latent representations are ex-
+tracted using the convolutional frontend: H = fθ(X), where
+each feature vector ht lies in a d-dimensional space. To intro-
+duce target projection, a fixed, randomly initialized projection
+matrix W ∈ Rd×k, where k < d, is used to obtain the pro-
+jected features Z = HW . The most similar codebook entry
+is then identified using cosine similarity, and its index is used
+as the target label. The RQ operates as a non-trainable trans-
+formation that maps high-dimensional speech representations
+into a lower-dimensional space. Following [18, 19] we employ
+multiple codebooks during pre-training to stabilize the training.
+The speech encoder is composed of 12 stacked conformer lay-
+ers, each incorporating multi-head self-attention with 8 atten-
+tion heads. Cosine similarity between projected features and
+codebook entries is used to select the target index. We use
+cross-entropy and auxiliary Kullback-Leibler divergence loss
+proposed in [19]. Following [18], we use a multi-codebook
+setup with 16 equally weighted codebooks in pre-training.
+3.1.1. Continued pre-training
+To further adapt the pre-trained speech encoder to pathologic
+speech, we continue pre-training in two ways. Initially, using
+only SAPC data and equally weighted codebooks following the
+preceding setup. Subsequently, we experiment with etiology-
+specific codebooks to determine if speech variations associ-
+ated with different pathologies can be effectively captured. For
+this, we employ only the first five codebooks for each etiology
+and discard the remaining in continued training. During pre-
+training, the loss for each sample is weighted based on its cor-
+responding etiology. A primary weight wp is assigned to the
+codebook specific to the sample’s etiology, while a secondary
+weightws is applied to the remaining codebook losses. To en-
+sure a stronger focus on etiology-specific representations, we
+enforce the constraint wp≥ 6ws. This weighting strategy pri-
+oritizes learning from pathology-relevant codebooks while still
+allowing generalization across different etiologies. For both
+pre-training setups, we use AdamW [20] (ϵ = 10 −9,β1 = 0.9,
+β2 = 0.98) optimizer and maintain the same learning rate of
+2× 10−4 without warmup, matching the final learning rate used
+in the multi-corpus pretraining.
+3.1.2. Pre-training datasets
+We pre-train the speech encoder on SAPC data and expand
+it with Multilingual LibriSpeech (MLS) [21] (44k hours, pre-
+dominantly English) for diversity. To enhance robustness, we
+include 1k hours of children’s speech, as both children and
+individuals with speech impairments share high acoustic vari-
+ability, weaker articulation, and altered phonation, resembling
+characteristics of neurodegenerative conditions (e.g., ALS, PD).
+We include My Science Tutor [22], CSLU Kids (OGI Kids)
+[23], PhattSessionz [24], Samr ´omur Children [25] and cor-
+pora from PhonBank: Icelandic M ´asd´ottir [26, 27], Luxem-
+bourgish Bracci [28], Portuguese Amorim [29], Portuguese
+"READ MY BOOK"
+train transcript
+Sentence Transformer
+mel-spectrogram
+Encoder
+n x Linear2x BiLSTM
+"GET MY BOOK READ"
+out-of-domain transcript
+Sentence Transformer
+cosine similarity (s)
+LCTC(s •) Lcos +
+CNN
+Figure 1: Semantic similarity augmentation: Out-of-domain ut-
+terance selection on the left, fine-tuning using additional OOD
+utterances and embedding similarity loss on the right.
+Ramalho [30], French Warnier [31], Spanish-Galician Koin ´e
+[32], Chilean-Spanish Vivar [33] and Arabic Kuwaiti [34]. All
+datasets sum up to∼46k hours of speech.
+3.2. Synthetic data augmentation
+We enhance the dataset using XTTS [35] in a zero-shot setting,
+generating speech from reference audio. Only samples ≥15s
+are selected to ensure sufficient reference speech. A time scal-
+ing factorα∼U (0.7, 1.0) sampled from a uniform distribution
+was used to simulate the slower speech rates occurring in patho-
+logic speech. Transcripts of the SAPC train set are employed as
+prompt for generation.
+3.3. Out-of-domain data augmentation
+Unlike synthetic data, which demands computational resources
+even for zero-shot generation, we expand the fine-tuning dataset
+beyond SAPC data by incorporating OOD datasets. Specifi-
+cally, we utilize widely employed datasets such as LibriSpeech
+[36], Common V oice [37], and People’s Speech [38]. For our
+experiments, we select an equal number of samples from each
+dataset, a maximum of ∼66k samples of each dataset. Addi-
+tionally, we investigate the impact of OOD data on fine-tuning
+by using varying portions of LibriSpeech, Common V oice, and
+People’s Speech.
+3.3.1. Semantic similarity data augmentation
+Instead of randomly selecting OOD speech samples, we employ
+a semantic similarity-based approach using Sentence Trans-
+former [39, 40] embeddings. For each unique transcript in the
+SAPC dataset, we identify the most semantically similar and
+the most dissimilar utterances from the OOD datasets. The se-
+lection process relies on cosine similarity scores computed be-
+tween the embedding representations of the transcripts. During
+fine-tuning, we construct training triplets by selecting the clos-
+est and farthest OOD utterances: (1) the SAPC utterance as the
+anchor a, (2) the most similar OOD utterance as the positive p,
+and (3) the most dissimilar OOD utterance as the negative n.
+The additional loss is calculated on the mean embeddings from
+the speech encoder and can be formulated as:
+Lsem = (1− cos(a, p)) + (1 + cos( a, n)) (1)
+Since not every transcript in the SAPC dataset has a closely
+matching OOD utterance, we introduce an additional weight
+based on the cosine similarity of the transcript embeddings.
+This way, not appropriately matching OOD utterances are less
+weighted. The overall proposed setup is illustrated in Figure 1.
+3290
+
+4. Experiments
+All experiments share the same fine-tuning setup. Fine-tuning is
+performed by adding a two layer bidirectional LSTM [41, 42]
+on top of the encoder. The learning rate is set to 3× 10−4,
+AdamW (ϵ = 10 −9, β1 = 0.9, β2 = 0.98) is used as opti-
+mizer. We employ connectionist temporal classification (CTC)
+[43] objective and fine-tune all models for 30 epochs. Best
+model is selected based on the WER of our dev set.
+4.1. Baselines
+We begin by utilizing widely adopted pre-trained speech en-
+coders, including wav2vec 2.0 [44], HuBERT [5], and BEST-
+RQ [19], which we fine-tune on the SAPC dataset to estab-
+lish our baselines. All models are used in their self-supervised
+pre-trained versions, ensuring direct comparability as they fall
+within a similar parameter range. Table 1 presents the baseline
+results. Among them, wav2vec 2.0 performs the worst over-
+all, while BEST-RQ achieves the best fine-tuning results, with
+a WER of 22.73 and a SemScore of 83.01. However, a more
+detailed analysis across different etiologies reveals that while
+BEST-RQ is superior for PD, HuBERT outperforms the other
+models across all remaining etiologies.
+4.2. Pathology-aware speech encoder
+Building on the baseline experiments, we pre-train a pathology-
+aware speech encoder using BEST-RQ. We choose BEST-RQ
+for its simpler training process, avoiding the multi-stage pre-
+training and clustering required by HuBERT, while ensuring
+greater stability than wav2vec 2.0. We first pre-train the speech
+encoder on SAPC data, assigning a separate codebook per eti-
+ology, following the feature-level clustering approach in [19].
+As shown in Table 2, this pre-training approach leads to lower
+WER and SemScore compared to the same model pre-trained
+on LibriSpeech in Table 1. To enhance performance, we pre-
+train the speech encoder on a diverse 46k-hour dataset, de-
+scribed in Section 3.1.2. The results in Table 2 show that the
+multi-corpus pre-trained speech encoder (base-MC) achieves an
+11.8% relative WER improvement over the baseline model.
+4.2.1. Effect of continued pre-training
+To examine continued pre-training for domain adaptation, we
+refine the 46k-hour pre-trained model by further training on
+SAPC data for 20k additional steps. We compare two setups:
+(1) shared codebooks, following the initial pre-training, and
+(2) etiology-specific codebooks for targeted adaptation. Ta-
+ble 2 presents the results for both, continued pre-training and
+etiology-specific codebook pre-training. Continued pre-training
+with shared codebooks does not show a significant positive or
+negative effect on the general performance metrics. However,
+incorporating etiology-specific codebooks during pre-training
+yields the best WER and SemScore results compared to the
+shared codebooks setup. Using etiology-specific codebooks
+in continued pre-training (base-ESC) not only improves over-
+all performance — achieving a 13.2% relative WER reduction
+— but also leads to notable improvements for the ALS and CP
+etiologies. Given its superior performance, we select the base-
+ESC model for subsequent experiments.
+4.3. Synthetic data augmentation
+We expand the dataset by generating XTTS synthetic speech
+using SAPC reference audio, at 50% to 100% of the training
+set. While XTTS improves WER, it is computationally inten-
+sive. As shown in Table 3, 50% synthetic augmentation reduces
+WER by 8.7%, benefiting underrepresented etiologies (ALS,
+CP). However, exceeding 100% synthetic data leads to dimin-
+ishing returns, likely due to artifacts affecting generalization.
+4.4. Out-of-domain augmentation
+We evaluate OOD data from LibriSpeech, Common V oice, and
+People’s Speech for fine-tuning, optimizing augmentation ratios
+for ASR performance. As shown in Table 3, OOD data consis-
+tently improves generalization, with the best results at 150%
+augmentation, reducing WER to 17.32% and increasing Sem-
+Score to 86.12. However, excessive OOD data slightly degrades
+performance, especially for DS, emphasizing the need for care-
+ful data selection to match pathological speech characteristics.
+4.5. Semantic similarity augmentation
+To identify the most similar and dissimilar utterances from
+OOD datasets, we leverage Sentence Transformer (ST) embed-
+dings, extracted from transcripts. The selected utterances ac-
+count for an additional∼29% of the SAPC dataset. For embed-
+ding extraction, we use the pre-trained all-MiniLM-L6-v2
+model across all transcripts. We begin with a na ¨ıve approach,
+where each SAPC utterance is paired with its most similar OOD
+counterpart in training batches (OOD-b) without further modifi-
+cations. Next, we introduce an additional cosine similarity loss
+between the embeddings of a SAPC utterance and its most sim-
+ilar OOD utterance (OOD-bl). This loss is further weighted by
+the similarity score computed from the ST embeddings (OOD-
+blw). Inspired by triplet loss, we extend the approach by incor-
+porating the most dissimilar utterance alongside the most simi-
+lar one (OOD-t). Finally, we apply per triplet of samples a loss
+weighted by the transcript similarity score (OOD-tw).
+Table 3 presents the results of fine-tuning with semantically
+selected utterances from OOD datasets. The na ¨ıve approach
+without an additional loss yields diminishing returns. Introduc-
+ing an embedding loss (OOD-bl) between only positive pairs re-
+sults in a 9.1% relative WER improvement. Weighting the loss
+by transcript cosine similarities (OOD-blw) leads to a slight but
+consistent WER improvement, from 17.93% to 17.81%, across
+almost all etiologies. In contrast, using unweighted triplets with
+an additional embedding loss (OOD-t) performs worse than
+positive pairs alone, and applying weighting (OOD-tw) does
+not yield significant gains. The training process suggests that
+the harder training objective may require longer fine-tuning to
+surpass the performance of positive pairs alone.
+5. Discussion
+This study demonstrates that pre-training a speech encoder on
+diverse datasets significantly improves ASR performance for
+pathological speech. By leveraging a pathology-aware speech
+encoder with BEST-RQ and incorporating multiple data aug-
+mentation strategies, we effectively mitigate the challenges
+posed by high speech variability and data scarcity.
+Our findings highlight the effectiveness of etiology-specific
+codebooks in capturing distinct speech patterns associated with
+different pathologies. This approach led to a 13.2% relative
+WER improvement compared to baseline models, confirming
+that targeted representation learning enhances ASR accuracy for
+dysarthric speech. While continued pre-training using SAPC
+alone did not significantly impact performance, the integration
+of etiology-specific codebooks proved beneficial, particularly
+3291
+
+Table 1: Baseline models WER (↓) and SemScore (↑) per etiology. Each model is pre-trained on 960 hours of speech from LibriSpeech.
+Underlined results are the best per table, while bold results indicate overall best results.
+Model ALS CP DS PD SK Overall
+WER SemScore WER SemScore WER SemScore WER SemScore WER SemScore WER SemScore
+wav2vec 2.0 18.86 84.75 32.95 72.61 30.06 72.91 24.49 83.34 12.95 88.90 24.51 82.18
+HuBERT 18.34 84.82 31.73 73.87 28.53 74.80 23.98 84.01 12.89 89.27 23.84 82.91
+BEST-RQ 18.65 84.25 32.87 72.20 33.06 71.49 22.19 84.81 13.47 88.31 22.73 83.01
+Table 2: BEST-RQ conformer WER and SemScore per etiology for SAPC only pre-training (base-SAPC), multi-corpus pre-training
+(base-MC), continued pre-training (base-C) using SAPC data and continued etiology-specific codebook pre-training (base-ESC).
+Model ALS CP DS PD SK Overall
+WER SemScore WER SemScore WER SemScore WER SemScore WER SemScore WER SemScore
+base-SAPC 26.28 80.32 40.13 67.18 37.14 67.71 31.47 80.38 15.01 87.19 31.44 78.84
+base-MC 16.17 85.14 29.92 73.61 29.25 74.09 19.47 86.05 10.05 90.53 20.04 84.50
+base-C 15.86 85.27 30.05 73.43 29.84 73.31 19.60 85.91 10.77 90.10 20.00 84.34
+base-ESC 15.53 85.52 29.06 74.52 28.51 74.04 19.26 86.39 10.09 90.59 19.73 84.78
+Table 3: Synthetic and out-of-domain data augmentation in fine-tuning using the BEST-RQ pretrained conformer with continued pre-
+training using etiology-specific codebooks (ESC).
+Model ALS CP DS PD SK Overall
+WER SemScore WER SemScore WER SemScore WER SemScore WER SemScore WER SemScore
+base-ESC 15.53 85.52 29.06 74.52 28.51 74.04 19.26 86.39 10.09 90.59 19.73 84.78
+XTTS-50 13.83 85.97 27.95 74.74 29.73 72.02 17.48 87.85 10.47 91.03 18.02 85.83
+XTTS-100 13.77 85.97 28.23 74.72 30.89 71.11 17.56 87.67 10.62 90.75 18.13 85.61
+OOD-50 14.42 86.07 28.77 74.68 31.45 70.29 17.52 88.15 10.47 90.58 18.20 85.97
+OOD-100 13.93 86.43 28.46 74.55 31.96 70.28 16.97 88.14 9.84 90.86 17.71 85.90
+OOD-150 13.33 86.70 28.23 74.20 32.30 69.96 16.57 88.39 9.84 91.47 17.32 86.12
+OOD-b 16.34 84.72 32.18 72.55 31.33 70.91 19.25 86.37 9.92 90.63 19.92 84.76
+OOD-bl 14.31 86.22 28.49 74.73 31.27 70.89 17.24 89.01 9.87 90.84 17.93 86.47
+OOD-blw 14.25 86.20 28.32 74.91 31.35 70.76 17.13 89.27 9.81 90.88 17.81 86.52
+OOD-t 14.54 85.97 28.62 74.61 31.47 70.29 17.53 88.58 10.14 90.16 18.12 86.07
+OOD-tw 14.50 85.80 28.56 74.73 31.44 70.21 17.46 88.69 10.23 89.91 18.05 86.19
+for ALS and CP speech. These results suggest that incorporat-
+ing disorder-specific representations helps models better gener-
+alize.
+Data augmentation emerged as a crucial factor in improving
+ASR generalization, with both synthetic and OOD data playing
+a key role. Using XTTS-generated speech provided an 8.7% rel-
+ative WER reduction. However, our results indicate diminish-
+ing returns when the synthetic-to-real data ratio exceeds 100%,
+likely due to the introduction of artifacts that affect model gen-
+eralization. Incorporating speech from external datasets such
+as LibriSpeech, Common V oice, and People’s Speech improved
+WER by 12.2% at an optimal augmentation ratio of 150%. Se-
+lecting OOD utterances based on Sentence Transformer embed-
+dings further refined augmentation by prioritizing semantically
+similar data. This method resulted in a 9.7% relative WER im-
+provement, demonstrating that quality selection of augmenta-
+tion data is more impactful than simply increasing dataset size.
+Despite these advancements, our study identified areas that
+require further investigation. Unlike other etiologies, DS speech
+did not benefit from augmentation techniques at all. Only the
+etiology-specific pre-training improved the results. Future re-
+search could analyze phonetic and acoustic properties of DS
+speech to develop specialized augmentation strategies. The im-
+pact of extended fine-tuning on harder training objectives, such
+as weighted triplet loss, remains unexplored and requires further
+research.
+6. Conclusion
+We introduced a pathology-aware speech encoder utilizing
+BEST-RQ pre-training and evaluated multiple data augmenta-
+tion techniques to improve ASR performance for pathologic
+speech. Our results demonstrate that etiology-specific code-
+books effectively enhance recognition accuracy, yielding an
+overall 13.2% improvement in WER compared to baseline. This
+underscores the importance of explicitly modeling pathology-
+specific variations in speech processing. Additionally, we found
+that synthetic data augmentation significantly reduces WER,
+particularly when used in moderate amounts, while excessive
+reliance on synthetic data can lead to diminishing returns. Out-
+of-domain data augmentation further improved ASR general-
+ization, with the best performance observed with most out-
+of-domain data. The semantic similarity-based augmentation
+strategy also contributed positively, demonstrating that targeted
+transcript selection enhances fine-tuning efficiency.
+3292
+
+7. References
+[1] C.-C. Chiu, J. Qin, Y . Zhang, J. Yu, and Y . Wu, “Self-supervised learning
+with random-projection quantizer for speech recognition,” in International
+Conference on Machine Learning, 2022, pp. 3915–3924.
+[2] A. Gulati, J. Qin, C.-C. Chiu, N. Parmar, Y . Zhang, J. Yu, W. Han, S. Wang,
+Z. Zhang, Y . Wu, and R. Pang, “Conformer: Convolution-augmented trans-
+former for speech recognition,” in Interspeech 2020, 2020, pp. 5036–5040.
+[3] J. Maclean, L. Zhao, and A. Kumar, “Domain adaptation for medical speech
+recognition using continued pre-training of ssl models,”IEEE Transactions
+on Biomedical Engineering, 2023.
+[4] J. Wang, X. Yu, and P. Li, “Improving accented speech recognition with
+unsupervised data augmentation and continued pre-training,” Speech Com-
+munication, 2022.
+[5] W.-N. Hsu, B. Bolte, Y .-H. H. Tsai, K. Lakhotia, R. Salakhutdinov, and
+A. Mohamed, “Hubert: Self-supervised speech representation learning by
+masked prediction of hidden units,” IEEE/ACM Trans. Audio, Speech and
+Lang. Proc., vol. 29, p. 3451–3460, Oct. 2021.
+[6] T. Ko, V . Peddinti, D. Povey, and S. Khudanpur, “Audio augmentation for
+speech recognition,” in Interspeech 2015, 2015, pp. 3586–3589.
+[7] Y . Jia, Y . Zhang, R. J. Weiss, Q. Wang, J. Shen, F. Ren, P. Nguyen, R. Pang,
+I. L. Moreno, and Y . Wu, “Transfer learning from speaker verification to
+multispeaker text-to-speech synthesis,” in Advances in Neural Information
+Processing Systems, 2018.
+[8] J. Kim, S. Kim, J. Kong, and S. Yoon, “V oice transformer network:
+Sequence-to-sequence voice conversion using transformer,” inAdvances in
+Neural Information Processing Systems, 2019.
+[9] F. Javanmardi, S. R. Kadiri, and P. Alku, “A comparison of data augmenta-
+tion methods in voice pathology detection,” Computer Speech Language ,
+vol. 83, p. 101552, 2024.
+[10] M. Geng, X. Xie, S. Liu, J. Yu, S. Hu, X. Liu, and H. Meng, “Investiga-
+tion of data augmentation techniques for disordered speech recognition,” in
+Interspeech 2020, 2020, pp. 696–700.
+[11] P. N. Sudro, R. K. Das, R. Sinha, and S. R. Mahadeva Prasanna, “Sig-
+nificance of data augmentation for improving cleft lip and palate speech
+recognition,” in2021 Asia-Pacific Signal and Information Processing Asso-
+ciation Annual Summit and Conference (APSIPA ASC), 2021, pp. 484–490.
+[12] Z. Jin, M. Geng, X. Xie, J. Yu, S. Liu, X. Liu, and H. Meng, “Adversarial
+data augmentation for disordered speech recognition,” inInterspeech 2021,
+2021, pp. 4803–4807.
+[13] M. Soleymanpour, M. T. Johnson, R. Soleymanpour, and J. Berry, “Ac-
+curate synthesis of dysarthric speech for asr data augmentation,” Speech
+Communication, vol. 164, p. 103112, 2024.
+[14] Z. Jin, X. Xie, M. Geng, T. Wang, S. Hu, J. Deng, G. Li, and X. Liu, “Adver-
+sarial data augmentation using vae-gan for disordered speech recognition,”
+in ICASSP 2023-2023 IEEE International Conference on Acoustics, Speech
+and Signal Processing (ICASSP). IEEE, 2023, pp. 1–5.
+[15] I. Goodfellow, J. Pouget-Abadie, M. Mirza, B. Xu, D. Warde-Farley,
+S. Ozair, A. Courville, and Y . Bengio, “Generative adversarial nets,” Ad-
+vances in neural information processing systems, vol. 27, 2014.
+[16] T. Zhang*, V . Kishore*, F. Wu*, K. Q. Weinberger, and Y . Artzi,
+“Bertscore: Evaluating text generation with bert,” in International Con-
+ference on Learning Representations, 2020.
+[17] Y . Chen and S. Eger, “MENLI: Robust evaluation metrics from natural lan-
+guage inference,” Transactions of the Association for Computational Lin-
+guistics, vol. 11, pp. 804–825, 2023.
+[18] Y . Zhang, W. Han, J. Qin, Y . Wang, A. Bapna, Z. Chen, N. Chen, B. Li,
+V . Axelrod, G. Wang, Z. Meng, K. Hu, A. Rosenberg, R. Prabhavalkar,
+D. S. Park, P. Haghani, J. Riesa, G. Perng, H. Soltau, T. Strohman, B. Ram-
+abhadran, T. N. Sainath, P. J. Moreno, C.-C. Chiu, J. Schalkwyk, F. Beau-
+fays, and Y . Wu, “Google usm: Scaling automatic speech recognition be-
+yond 100 languages,” ArXiv, vol. abs/2303.01037, 2023.
+[19] I. Baumann, D. Wagner, K. Riedhammer, and T. Bocklet, “Optimized self-
+supervised training with best-rq for speech recognition,” in ICASSP 2025
+- 2025 IEEE International Conference on Acoustics, Speech and Signal
+Processing (ICASSP), 2025.
+[20] I. Loshchilov and F. Hutter, “Decoupled weight decay regularization,” in
+International Conference on Learning Representations, 2017.
+[21] V . Pratap, Q. Xu, A. Sriram, G. Synnaeve, and R. Collobert, “Mls: A large-
+scale multilingual dataset for speech research,” in Interspeech 2020, 2020,
+pp. 2757–2761.
+[22] S. Pradhan, R. A. Cole, and W. H. Ward, “My science tutor (MyST)–a
+large corpus of children‘s conversational speech,” in Proceedings of the
+2024 Joint International Conference on Computational Linguistics, Lan-
+guage Resources and Evaluation (LREC-COLING 2024), N. Calzolari, M.-
+Y . Kan, V . Hoste, A. Lenci, S. Sakti, and N. Xue, Eds. Torino, Italia:
+ELRA and ICCL, May 2024, pp. 12 040–12 045.
+[23] K. Shobaki, J.-P. Hosom, and R. Cole, “The ogi kids’ speech corpus and
+recognizers,” in Proc. of ICSLP, 2000, pp. 564–567.
+[24] C. Draxler and A. Steffen, “Phattsessionz: recording 1000 adolescent
+speakers in schools in germany,” inInterspeech 2005, 2005, pp. 1597–1600.
+[25] C. Mena, M. Borsky, D. E. Mollberg, S. F. Gumundsson, S. Hedstr ¨om,
+R. P´alsson, ´O. Helgi, J´onsson, S. orsteinsd´ottir, J. V . Gumundsd´ottir, E. H.
+Magn´usd´ottir, R. ´orhallsd´ottir, and J. Gudnason, “Samr ´omur Children Ice-
+landic Speech 21.09.” Reykjavik University: Language and V oice Lab,
+2021.
+[26] T. M ´asd´ottir, “Hlj ´or´oun ´ıslenskra barna ´a aldrinum tveggja til ´atta
+´ara//speech sound acquisition of icelandic-speaking children at two to eight
+years of age,” 11 2019.
+[27] T. M ´asd´ottir, S. McLeod, and K. Crowe, “Icelandic children’s acquisition
+of consonants and consonant clusters,” Journal of Speech, Language, and
+Hearing Research, vol. 64, no. 5, pp. 1490–1502, 2021.
+[28] A. Bracci, “Investigating the comparability of phonological processes in
+luxembourgish and german using the luxembourgish adaptation of the
+plakss-ii,” 2018.
+[29] C. Amorim, “Padr ˜ao de aquisic ¸˜ao de contrastes do pe: a interac ¸ ˜ao entre
+trac ¸os, segmentos e s´ılabas.” 2015.
+[30] A. M. Ramalho, “Aquisic ¸˜ao fonol´ogica na crianc ¸a: traduc ¸˜ao e adaptac ¸˜ao de
+um instrumento de avaliac ¸˜ao interlingu´ıstico para o pe.” 2017.
+[31] M. Warnier, C. Maillart, Y . Rose, and A. MacLeod, “Exploring word pro-
+duction in three-year-old monolingual french-speaking children,” Clinical
+Linguistics Phonetics , vol. 37, 07 2022.
+[32] M. Fern ´andez P ´erez, “El corpus koin ´e de habla infantil. l ´ıneas maestras,”
+Ling¨u´ıstica de corpus y adquisici´on de la lengua, pp. 11–36, 2011.
+[33] P. Vivar and H. Le ´on, “Aplicaci´on del cuestionario para la evaluaci ´on de
+la fonolog´ıa infantil (cefi) a una muestra de ni ˜nos chilenos de diferente
+nivel socioecon ´omico.” Revista Chilena de Fonoaudiolog´ıa 8(1), pp. 17–
+31, 2007.
+[34] S. Alqattan, “Early phonological acquisition by kuwaiti arabic children.”
+2015.
+[35] E. Casanova, K. Davis, E. G ¨olge, G. G¨oknar, I. Gulea, L. Hart, A. Aljafari,
+J. Meyer, R. Morais, S. Olayemi, and J. Weber, “Xtts: a massively mul-
+tilingual zero-shot text-to-speech model,” in Interspeech 2024, 2024, pp.
+4978–4982.
+[36] V . Panayotov, G. Chen, D. Povey, and S. Khudanpur, “Librispeech: An
+asr corpus based on public domain audio books,” 2015 IEEE International
+Conference on Acoustics, Speech and Signal Processing (ICASSP) , pp.
+5206–5210, 2015.
+[37] R. Ardila, M. Branson, K. Davis, M. Kohler, J. Meyer, M. Henretty,
+R. Morais, L. Saunders, F. Tyers, and G. Weber, “Common voice: A
+massively-multilingual speech corpus,” in Proceedings of the Twelfth Lan-
+guage Resources and Evaluation Conference . Marseille, France: Euro-
+pean Language Resources Association, May 2020, pp. 4218–4222.
+[38] D. Galvez, G. Diamos, J. Ciro, J. F. Cer ´on, K. Achorn, A. Gopi, D. Kan-
+ter, M. Lam, M. Mazumder, and V . J. Reddi, “The people’s speech: A
+large-scale diverse english speech recognition dataset for commercial us-
+age,” CoRR, vol. abs/2111.09344, 2021.
+[39] N. Reimers and I. Gurevych, “Sentence-bert: Sentence embeddings using
+siamese bert-networks,” in Proceedings of the 2019 Conference on Empiri-
+cal Methods in Natural Language Processing. Association for Computa-
+tional Linguistics, 11 2019.
+[40] ——, “Making monolingual sentence embeddings multilingual using
+knowledge distillation,” in Proceedings of the 2020 Conference on Empiri-
+cal Methods in Natural Language Processing. Association for Computa-
+tional Linguistics, 11 2020.
+[41] M. Schuster and K. K. Paliwal, “Bidirectional recurrent neural networks,”
+IEEE transactions on Signal Processing , vol. 45, no. 11, pp. 2673–2681,
+1997.
+[42] A. Graves, S. Fern ´andez, and J. Schmidhuber, “Bidirectional lstm networks
+for improved phoneme classification and recognition,” inInternational con-
+ference on artificial neural networks. Springer, 2005, pp. 799–804.
+[43] A. Graves, S. Fern ´andez, F. Gomez, and J. Schmidhuber, “Connectionist
+temporal classification: Labelling unsegmented sequence data with recur-
+rent neural ’networks,” vol. 2006, 01 2006, pp. 369–376.
+[44] A. Baevski, H. Zhou, A. Mohamed, and M. Auli, “wav2vec 2.0: a frame-
+work for self-supervised learning of speech representations,” in Proceed-
+ings of the 34th International Conference on Neural Information Process-
+ing Systems, ser. NIPS ’20, 2020.
+3293

@@ -1,0 +1,591 @@
+TS-URGENet: A Three-stage Universal Robust and Generalizable Speech
+Enhancement Network
+Xiaobin Rong1,2, Dahan Wang1,2, Qinwen Hu1,2, Yushi Wang1,2, Yuxiang Hu2, Jing Lu1,2
+1Key Laboratory of Modern Acoustics, Nanjing University, China
+2NJU-Horizon Intelligent Audio Lab, Horizon Robotics, China
+{xiaobin.rong, dahan.wang, qinwen.hu, yushi.wang }@smail.nju.edu.cn,
+yuxiang.hu@horizon.cc, lujing@nju.edu.cn
+Abstract
+Universal speech enhancement aims to handle input speech with
+different distortions and input formats. To tackle this challenge,
+we present TS-URGENet, a Three-Stage Universal, Robust,
+and Generalizable speech Enhancement Network. To address
+various distortions, the proposed system employs a novel three-
+stage architecture consisting of a filling stage, a separation
+stage, and a restoration stage. The filling stage mitigates packet
+loss by preliminarily filling lost regions under noise interfer-
+ence, ensuring signal continuity. The separation stage sup-
+presses noise, reverberation, and clipping distortion to improve
+speech clarity. Finally, the restoration stage compensates for
+bandwidth limitation, codec artifacts, and residual packet loss
+distortion, refining the overall speech quality. Our proposed TS-
+URGENet achieves outstanding performance in the Interspeech
+2025 URGENT Challenge, ranking 2nd in Track 1.
+Index Terms: universal speech enhancement, three-stage, uni-
+versality, robustness, generalizability
+1. Introduction
+Conventional speech enhancement (SE) primarily focuses on
+eliminating undesired signals such as noise and reverberation.
+In contrast, a more general SE task proposed in the Speech
+Signal Improvement (SSI) Challenges aims to improve speech
+quality by considering a broader range of factors, including col-
+oration, discontinuity, and loudness, in addition to noise and
+reverberation [1, 2]. Recently, the concept of universal speech
+enhancement (USE) has been proposed. Compared to general
+SE, USE considers using a single model to handle diverse in-
+put formats, including variable channels, lengths, and sampling
+frequencies, in addition to various distortions [3]. In the Inter-
+speech 2025 URGENT Challenge1 [4], a concrete task for USE
+is proposed: to build a single model capable of addressing seven
+types of distortions while accommodating sampling frequency
+flexibility. The distortions include additive noise, reverberation,
+clipping, bandwidth limitation, codec artifacts, packet loss, and
+wind noise. The supported sampling frequencies include 8, 16,
+22.05, 24, 32, 44.1, and 48 kHz.
+To build a USE system flexible with different sampling fre-
+quencies, one straightforward solution is to always upsample
+the speech to 48 kHz as pre-processing, allowing the model to
+process data with a fixed sampling frequency. The output is then
+downsampled to the original sampling frequency as the final en-
+hanced speech. Alternatively, sampling-frequency-independent
+(SFI) approaches can directly adapt to various sampling fre-
+quencies [5]. Extensive research has been conducted on ad-
+1https://urgent-challenge.github.io/
+urgent2025/
+dressing individual distortion types separately [6, 7, 8, 9]. How-
+ever, recent advances have revealed that various distortion types
+can be effectively handled using a unified framework, which
+can be classified into two categories: single-stage and multi-
+stage methods. In single-stage approaches, all distortions are
+addressed simultaneously. For instance, V oiceFixer [10] em-
+ploys ResUNet [11] to address additive noise, reverberation,
+clipping, and bandwidth limitation in the Mel domain, and uti-
+lizes a neural vocoder to synthesize a waveform. In [12], a
+score-based diffusion model is proposed to tackle 55 different
+distortions at the same time. In multi-stage approaches, dis-
+tortions are grouped into different stages based on their char-
+acteristics. In [13], a pipeline cascades a time-domain U-Net
+for clipping and packet loss with a time-frequency U-Net for
+codec distortions. In the winning solutions of the SSI Chal-
+lenges, two-stage frameworks are widely employed, where the
+first stage addresses various distortions simultaneously, and the
+second stage eliminates residual noise and artifacts produced by
+the first stage [14, 15, 16, 17].
+The complex acoustic scenarios in the URGENT Chal-
+lenge, where speech can be contaminated by strong noise, re-
+verberation, and other distortions, make a single-stage frame-
+work highly challenging. This limitation can hinder the model’s
+generalization ability and ultimately degrade enhancement per-
+formance. On the other hand, the two-stage “restoration and
+enhancement” framework performs more effectively in high
+signal-to-noise ratio (SNR) scenarios. When applied to data
+with strong noise and reverberation, it may inadvertently gen-
+erate noise instead of restoring speech, resulting in additional
+artifacts in the processed output. Considering the distinct char-
+acteristics of the seven targeted distortions, we propose a three-
+stage universal, robust, and generalizable speech enhancement
+network named TS-URGENet, which divides the complex en-
+hancement into three stages: filling, separation, and restoration.
+Specifically, the filling stage fills the gaps caused by packet loss
+distortion; the separation stage simultaneously handles noise,
+reverberation, and clipping distortion; and the restoration stage
+addresses bandwidth limitation, codec artifacts, and residual
+packet loss distortion. Our contributions are as follows:
+• We propose a novel filling-separation-restoration framework
+for universal speech enhancement, to address various distor-
+tions with different input sampling frequencies.
+• We introduce an effective metric-aware fine-tuning loss
+function to directly and collaboratively optimize multiple
+target metrics.
+• Our proposed TS-URGENet achieves outstanding perfor-
+mance in the Interspeech 2025 URGENT Challenge, ranking
+2nd in Track 1.
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+863 10.21437/Interspeech.2025-734
+
+TF-GridNet-S
+TF-GridNet-L
+TF-GridNet-S
+Filling Separation
+CWS Merge
+CWS Split
+Restoration
+Resample
+Resample
+Figure 1: Overview of the TS-URGENet framework.
+2. Method
+As shown in Fig. 1, our proposed framework is composed of
+three parts: filling, separation, and restoration stages. We first
+employ a small-scale TF-GridNet [18] (TF-GridNet-S) as the
+filling module to fill the gaps caused by packet loss distortion.
+A residual connection is added after the filling stage to mini-
+mize information loss. Subsequently, a larger-scale TF-GridNet
+(TF-GridNet-L) is applied as the separation module for denois-
+ing, dereverberation, and declipping. Finally, we sequentially
+integrate the channel-wise subband (CWS) [19] splitting oper-
+ation, TF-GridNet, and the CWS merging operation to create
+CWS-TF-GridNet as the restoration module, which performs
+bandwidth extension (BWE), codec artifact reduction, and fur-
+ther packet loss concealment (PLC).
+As TF-GridNet inherently satisfies the sampling-frequency-
+independent (SFI) requirement, both the filling and separation
+stages are adaptive to various sampling frequencies. However,
+due to the constraints imposed by the CWS operation, CWS-
+TF-GridNet is restricted to processing signals at a fixed sam-
+pling frequency. To address this limitation, resampling mod-
+ules are incorporated at both the input and output of the restora-
+tion stage. All the stages operate at the time-frequency (T-F)
+domain, the short-time Fourier transform (STFT) and inverse
+STFT (iSTFT) are integrated at the input and output of the net-
+work in each stage, while omitted in Fig. 1 for simplicity.
+2.1. Filling stage
+We found that speech discontinuity caused by packet loss can
+degrade the performance of the separation module. Therefore,
+we first incorporate a filling stage, which is expected to restore
+the components of the lost regions while maintaining the in-
+tegrity of the other regions. Although in practice, we found
+that the model often fills the gaps with noise rather than valid
+speech, this approach helps improve the continuity of signals,
+which in turn facilitates the subsequent separation stage.
+We use a GAN-based approach to perform the filling. TF-
+GridNet-S is employed as the generator. A residual connec-
+tion is added afterward to minimize information loss. As for
+the discriminators, the multi-period discriminator (MPD) and
+the multi-resolution discriminator (MRD) used in BigVGAN
+[20] are adopted together. We employ the same training loss
+as in Gesper [14], consisting of reconstruction, adversarial, and
+feature-matching terms, with respective weights of 20, 1, and 1.
+2.2. Separation stage
+Inspired by [6], we group clipping, noise, reverberation, and
+wind noise together to be handled during the separation stage.
+TF-GridNet-L is employed to achieve high-performance sepa-
+ration.
+We adopt an effective metric-aware fine-tuning (MAFT)
+paradigm. In the first step, the model is trained using a conven-
+tional loss function applied to both waveform and spectrogram
+domains, which consists of a signal-to-distortion ratio (SDR)
+term, a log-spectral distance (LSD) term, and multiple mean
+square error (MSE) terms:
+L1 = 2LSDR + 1.5LLSD + 70Lmag + 30 (Lreal +Limag) (1)
+with each term calculated as:
+LSDR =− log10( ||s||2
+||s− ˆs||2 ) (2)
+LLSD = 1
+T
+TX
+t=1
+vuut 1
+F
+FX
+f =1
+ 
+log10(|S|
+| ˆS|
+)
+!2
+(3)
+Lmag = MSE(|S|0.3,| ˆS|0.3) (4)
+Lreal = MSE(Sr/|S|0.7, ˆSr/| ˆS|0.7) (5)
+Limag = MSE(Si/|S|0.7, ˆSi/| ˆS|0.7) (6)
+whereT andF denote the time and frequency dimensions of the
+spectrogram, respectively.S and ˆS are the clean and enhanced
+spectrograms, respectively.Sr,Si, ˆSr, and ˆSi represent the real
+and imaginary parts of the clean and enhanced spectrograms,
+respectively.
+After convergence, the model is fine-tuned for a few ad-
+ditional epochs using our elaborately designed metric-aware
+loss functions. We implement various metric-aware loss func-
+tions, including Mel cepstral distortion (MCD) [21], percep-
+tual evaluation of speech quality (PESQ) [22], DNSMOS [23],
+and UTMOS [24]. The MCD-aware term is computed as the
+MSE between the Mel-frequency cepstral coefficients (MFCC)
+of clean and enhanced speech. For the PESQ-aware term, we
+adopt a differentiable implementation 2. As for the DNSMOS
+and UTMOS-aware terms, we utilize corresponding pre-trained
+models from the official evaluation scripts3 for loss calculation.
+For downstream-task-related metrics including phoneme
+similarity (PhnSim) [25], SpeechBERTScore [26], speaker sim-
+ilarity (SpkSim), and character accuracy (CAcc), we use the
+representations of WavLM [27] to construct a loss function,
+aiming to fit these metrics. We use the continuous distillation
+loss function proposed in [28] to measure the similarity between
+clean and enhanced speech representations, formulated as:
+LWavLM =− 1
+T
+1
+D
+TX
+t=1
+DX
+d=1
+log10(σ(cos(R, ˆR))) (7)
+whereR and ˆR denote the WavLM representations of clean and
+enhanced speech, respectively,D represents the feature dimen-
+sion, σ(·) denotes the sigmoid activation, and cos(·,·) repre-
+sents cosine similarity. We utilize the WavLM Base+ model 4
+for feature extraction.
+The complete metric-aware loss function is formulated
+as a weighted combination of L1 and the aforementioned
+components:
+L2 =L1 + 0.004LMCD + 0.5LPESQ (8)
++0.5LUTMOS + 0.4LDNSMOS + 2.5LWavLM (9)
+We conduct an exhaustive investigation to determine the
+components that are retained in the final loss function, which
+will be discussed in Sec. 4.1.2.
+2https://github.com/audiolabs/torch-pesq
+3https://github.com/urgent-challenge/
+urgent2025_challenge/blob/main/evaluation_
+metrics
+4https://github.com/microsoft/unilm/tree/
+master/wavlm
+864
+
+2.3. Restoration stage
+In this stage, distorted speech is expected to recover from band-
+width limitations, codec artifacts, and residual packet loss. The
+speech is first resampled to 48 kHz and then processed by our
+proposed CWS-TF-GridNet. After applying the STFT, the
+fullband complex spectrogram is divided into three subbands,
+which are concatenated along the channel dimension as input.
+The merging procedure mirrors the splitting process: the net-
+work output is split channel-wise into predictions for each sub-
+band, and then concatenated along the frequency dimension.
+The output undergoes the iSTFT and is then resampled back to
+its original sampling frequency. A skip connection is also added
+at both ends of the stage to minimize information loss. GAN is
+also employed in the restoration stage, where CWS-TF-GridNet
+serves as a generator while MRD and multi-band discriminators
+(MBD) proposed in [14] are utilized to improve the perceptual
+quality of the generated speech. The loss function in this stage
+is consistent with that described in Sec. 2.1.
+In a multi-stage framework training, a fine-tuning strategy
+is commonly adopted to accelerate convergence [16]. Initially,
+the model is trained independently on distorted data, which is
+simulated by corrupting clean speech with specific distortions.
+Upon reaching convergence, the model is further fine-tuned us-
+ing the output from the previous stage to mitigate domain mis-
+match. This approach is termed stage-aware fine-tuning (SAFT)
+in this paper. In practice, we observe that while SAFT enhances
+overall speech quality to some extent, it significantly degrades
+certain intrusive metrics. To circumvent this drawback, we pro-
+pose a novel approach that integrates SAFT with MAFT to
+form a joint stage and metric-aware fine-tuning (JFT) strategy.
+Specifically, JFT utilizes data output from previous models for
+training, similar to SAFT; however, it adopts the metric-aware
+loss employed in MAFT, while incorporating additional adver-
+sarial and feature-matching components:
+L3 = 10L2 +Ladv + 0.2Lfeat (10)
+3. Experiments
+3.1. Datasets
+We use the data provided in Track 1 of the Interspeech 2025
+URGENT Challenge and employ the official scripts 5 for simu-
+lation. The training data are dynamically simulated during the
+training process. The specific configuration is as follows:
+• Filling stage: We use all data with a sampling rate of at least
+16 kHz, with all samples downsampled to 16 kHz for train-
+ing. The input consists of noisy speech degraded by packet
+loss distortion, with other distortion types introduced at a pre-
+defined probability. The target output is the corresponding
+sample with packet loss distortion removed.
+• Separation stage: Similar to the filling stage, we use all data
+with a sampling rate of no less than 16 kHz, with all samples
+downsampled to 16 kHz for training. The input is speech im-
+paired by noise, reverberation, clipping, and wind noise dis-
+tortion, with additional distortion types introduced at a spe-
+cific probability (excluding packet loss distortion). The target
+output is the corresponding sample free from noise, reverber-
+ation, and clipping distortion.
+• Restoration stage: We exclusively use data with a sampling
+rate of 48 kHz. The input is speech corrupted by bandwidth
+5https://github.com/urgent-challenge/
+urgent2025_challenge/tree/main/simulation
+Table 1: Configuration of TF-GridNet-S hyperparameters
+Symbols Descriptions Value
+D Embedding dimension 48
+B Number of blocks 5
+I Kernel size for Unfold 4
+J Stride size for Unfold 1
+H Number of hidden units in LSTM 100
+E Number of output channels in self-attention 2
+L Number of heads in self-attention 4
+Table 2: Training configurations of different stages.
+Stage Bs Len Ts Ws Minlr Maxlr
+Fill 6 2 s 50,000 5,000 1e-6 1e-3
+Sep 1 4 s 200,000 20,000 1e-6 1e-3
+MAFT 1 4 s 5,000 1,500 1e-6 1e-4
+Res 6 2 s 100,000 10,000 1e-6 5e-4
+SAFT/JFT 6 2 s 25,000 2,500 1e-6 1e-4
+limitation, codec artifacts, and packet loss distortion. The
+target output is the corresponding clean sample.
+The official validation set comprises 1,000 noisy-clean data
+pairs, simulated in the same manner as the training data. The of-
+ficial blind set, used for the final ranking, comprises 900 noisy
+utterances, with 50% being real recordings and the remaining
+synthetic. Additionally, it includes data in an unseen language,
+data from unseen corpora, and data distorted by previously un-
+encountered distortion types.
+3.2. Experimental setup
+The STFT is computed using a Hann window with a length of
+32 ms, a hop length of 16 ms, and an FFT size equal to the win-
+dow size. The hyperparameter configuration of TF-GridNet-S
+employed in the filling stage is detailed in Table 1. For TF-
+GridNet-L utilized in the separation stage, the parametersI and
+J remain the same as those in TF-GridNet-S, while all other
+hyperparameters are doubled in size. The TF-GridNet module
+in CWS-TF-GridNet in the restoration stage adopts the same
+configuration as TF-GridNet-S.
+The models in each stage are trained independently on 8
+NVIDIA 4090 GPUs. All models use the AdamW optimizer
+with a linear-warm-up-cosine-annealing scheduler for learn-
+ing rate adjustment. Table 2 presents a detailed overview of
+the training configurations across different stages (Fill for fill-
+ing, Sep for separation, and Res for restoration), including
+the MAFT and SAFT/JFT phases. These configurations in-
+clude batch size per GPU (Bs), utterance length (Len), train-
+ing steps (Ts), warm-up steps (Ws), and the specified min-
+imum (Minlr) and maximum learning rates (Maxlr). The
+whole framework has 30.40 M parameters, with a computa-
+tional cost of 493.0 GMACs per second for 16-kHz input, and
+1360.5 GMACs per second for 48-kHz input.
+4. Results and Analysis
+In this section, we evaluate the proposed system using the offi-
+cially specified metrics6.
+6https://urgent-challenge.github.io/
+urgent2025/rules/
+865
+
+Table 3: Results of the ablation study on the official validation set.
+IDs Methods DNSMOS↑ NISQA↑ UTMOS↑ PESQ↑ ESTOI [29]↑ SDR (dB)↑ MCD↓ LSD↓ SpeechBERTScore↑ PhnSim↑ SpkSim↑ CAcc (%)↑
+- Noisy 1.78 1.56 1.51 1.26 0.57 3.28 8.94 5.91 0.72 0.60 0.59 79.49
+1 Sep+Res 3.05 3.48 2.47 2.49 0.80 13.03 3.86 3.20 0.82 0.82 0.79 87.32
+2 Fill+Sep+Res 3.08 3.67 2.54 2.54 0.81 13.19 3.73 3.01 0.83 0.83 0.83 86.23
+3 Fill+Sep 3.08 3.59 2.52 2.56 0.81 13.28 4.03 3.88 0.83 0.83 0.76 86.53
+4 Fill+Sep-MAFTv1 3.07 3.44 2.52 2.54 0.81 13.27 3.62 3.81 0.83 0.83 0.77 86.37
+5 Fill+Sep-MAFTv2 3.07 3.47 2.51 2.60 0.81 13.27 3.65 3.84 0.83 0.83 0.77 86.49
+6 Fill+Sep-MAFTv3 3.14 3.69 2.71 2.59 0.81 13.23 3.69 3.86 0.83 0.83 0.77 85.74
+7 Fill+Sep-MAFTv4 3.13 3.64 2.70 2.58 0.81 13.23 3.69 3.83 0.83 0.82 0.77 85.72
+8 Filll+Sep-MAFTv5 3.13 3.66 2.70 2.59 0.81 13.23 3.68 3.82 0.83 0.82 0.77 85.82
+9 Fill+Sep-MAFTv3+Res 3.14 3.77 2.72 2.58 0.81 13.15 3.50 2.85 0.83 0.82 0.80 85.27
+10 Fill+Sep-MAFTv3+Res-SAFT 3.14 3.88 2.70 2.39 0.80 12.16 3.75 2.93 0.82 0.81 0.79 84.19
+11 Fill+Sep-MATFv3+Res-JFT 3.14 3.92 2.76 2.48 0.80 11.95 3.77 2.97 0.83 0.82 0.80 84.36
+12 Fill+Sep-MATFv3+Res-JFT+BW AI 3.14 3.86 2.75 2.56 0.80 12.71 3.60 2.90 0.83 0.82 0.80 84.69
+Table 4: Results of the evaluations on the official blind test set. BOLD indicates the best score in each metric.
+Methods DNSMOS↑ NISQA↑ UTMOS↑ POLQA [30]↑ PESQ↑ ESTOI↑ SDR (dB)↑ MCD↓ LSD↓ SpeechBERTScore↑ PhnSim↑ SpkSim↑ CAcc (%)↑ MOS↑
+Noisy 1.90 1.58 1.55 1.83 1.31 0.58 3.24 9.34 5.84 0.70 0.51 0.55 73.41 2.13
+Baseline 2.85 2.77 1.92 2.99 2.24 0.76 10.24 3.80 2.72 0.82 0.67 0.70 75.60 2.96
+TS-URGENet 2.92 3.24 2.16 3.17 2.47 0.79 11.10 3.96 2.99 0.84 0.70 0.74 76.06 3.32
+4.1. Ablation study
+4.1.1. Effects of the filling stage
+A key novelty of our proposed three-stage framework is the
+positioning of the filling stage first, which is designed to fill
+the packet loss regions under noise interference. To validate
+the effectiveness of this approach, we compare two scenarios:
+separation-restoration and filling-separation-restoration. The
+results are presented in Table 3 (ID1 and ID2). It is evident that
+performing the filling stage prior to the separation and restora-
+tion stages improves all the metrics except for CAcc, which
+shows a minor decline. Notably, significant enhancements are
+observed in NISQA, UTMOS, PESQ, MCD, and LSD.
+4.1.2. Effects of metric-aware fine-tuning
+While metric-specific loss functions effectively optimize indi-
+vidual metrics, multi-metric scenarios often lead to conflicting
+gradient directions, requiring careful analysis. We investigate
+five progressively enhanced metric-aware loss configurations:
+• MAFTv1: add MCD-aware term;
+• MAFTv2: add MCD and PESQ-aware terms;
+• MAFTv3: add MCD, PESQ, and UTMOS-aware terms;
+• MAFTv4: add MCD, PESQ, UTMOS, and DNSMOS-aware
+terms;
+• MAFTv5: add MCD, PESQ, UTMOS, DNSMOS, and
+WavLM-aware terms.
+The results are presented in Table 3 (ID3-8). A comparison
+between ID3 and ID4 reveals that the MCD-aware compo-
+nent significantly enhances MCD and slightly improves LSD.
+The addition of the PESQ-aware term (ID5) boosts PESQ and
+contributes to a minor recovery in NISQA, albeit at the cost
+of a slight degradation in MCD and LSD. Incorporating the
+UTMOS-aware term (ID6) leads to notable improvements in
+all non-intrusive metrics but causes a slight decline in other
+metrics, including SDR, MCD, LSD, and CAcc. Further in-
+clusion of the DNSMOS-aware term (ID7) and WavLM-aware
+term (ID8) does not yield improvements in the corresponding
+metrics. These findings suggest that different metric-aware loss
+components may conflict with each other. Nevertheless, by ap-
+propriately combining these components, substantial improve-
+ments can still be achieved.
+4.1.3. Effects of joint stage and metric-aware fine-tuning
+A comparison between ID6 and ID9 highlights the effective-
+ness of the restoration stage, which enhances nearly all met-
+rics, with a particularly significant improvement in LSD. Fur-
+ther fine-tuning using the SAFT strategy (ID10) results in an
+additional boost in NISQA, but causes a noticeable decline in
+several other metrics, especially PESQ. However, it is worth
+noting that SAFT delivers a clear improvement in subjective
+listening quality, which cannot be fully captured in the table.
+By replacing SAFT with our proposed JFT (ID11), NISQA and
+UTMOS show further gains, and PESQ obtains a significant re-
+covery. Nevertheless, SNR, MCD, and LSD exhibit a decline
+once again.
+Since we have observed that the subjective quality improve-
+ment brought by fine-tuning is more evident for bandwidth-
+limited speech, we employ a bandwidth-aware inference
+(BW AI) strategy to balance objective metrics and subjective
+quality. During inference, the speech identified as bandwidth-
+limited undergoes the fine-tuned restoration module; otherwise,
+it is processed through the original restoration module. The re-
+sult, as shown in ID12, demonstrates an improvement in NISQA
+and UTMOS compared to ID9, along with an enhancement in
+subjective quality, although at the cost of hampering some in-
+trusive metrics, including SDR, MCD, and LSD. Considering
+the trade-off between objective metrics and subjective quality,
+we ultimately selected ID12 as our final submission.
+4.2. Evaluation on the official blind test set
+Evaluation results on the official blind test set are presented in
+Table 4. Compared to the baseline, TS-URGENet achieves sig-
+nificant improvements in terms of all metrics except for MCD
+and LSD, which shows the superiority of our proposed system.
+5. Conclusion
+This paper presents our submission to the Interspeech 2025 UR-
+GENT Challenge. We introduce a three-stage framework capa-
+ble of handling input speech with different distortions and sam-
+pling frequencies. Additionally, we propose an effective metric-
+aware fine-tuning function to boost various evaluation metrics
+specified in the challenge. Our system achieves outstanding per-
+formance in the Interspeech 2025 URGENT Challenge, ranking
+2nd in Track 1.
+866
+
+6. Acknowledgment
+This work was supported by the National Natural Science Foun-
+dation of China (Grant No. 12274221) and the Yangtze River
+Delta Science and Technology Innovation Community Joint Re-
+search Project (Grant No. 2024CSJGG1100).
+7. References
+[1] R. Cutler, A. Saabas, B. Naderi, N.-C. Ristea, S. Braun, and
+S. Branets, “ICASSP 2023 speech signal improvement challenge,”
+IEEE Open Journal of Signal Processing, 2024.
+[2] N.-C. Ristea, B. Naderi, A. Saabas, R. Cutler, S. Braun, and
+S. Branets, “ICASSP 2024 speech signal improvement challenge,”
+IEEE Open Journal of Signal Processing, 2025.
+[3] W. Zhang, K. Saijo, Z.-Q. Wang, S. Watanabe, and Y . Qian, “To-
+ward universal speech enhancement for diverse input conditions,”
+in 2023 IEEE Automatic Speech Recognition and Understanding
+Workshop (ASRU). IEEE, 2023, pp. 1–6.
+[4] K. Saijo, W. Zhang, S. Cornell, R. Scheibler, C. Li, Z. Ni, A. Ku-
+mar, M. Sach, Y . Fu, W. Wang, T. Fingscheidt, and S. Watanabe,
+“Interspeech 2025 URGENT speech enhancement challenge,”Ac-
+cepted by Interspeech, 2025.
+[5] W. Zhang, K. Saijo, Z.-Q. Wang, S. Watanabe, and Y . Qian, “To-
+ward universal speech enhancement for diverse input conditions,”
+in 2023 IEEE Automatic Speech Recognition and Understanding
+Workshop (ASRU). IEEE, 2023, pp. 1–6.
+[6] W. Mack and E. A. Habets, “Declipping speech using deep filter-
+ing,” in 2019 IEEE Workshop on Applications of Signal Process-
+ing to Audio and Acoustics (WASPAA). IEEE, 2019, pp. 200–204.
+[7] Y .-X. Lu, Y . Ai, H.-P. Du, and Z.-H. Ling, “Towards high-quality
+and efficient speech bandwidth extension with parallel amplitude
+and phase prediction,”ArXiv preprint, vol. abs/2401.06387, 2024.
+[8] A. Biswas and D. Jia, “Audio codec enhancement with genera-
+tive adversarial networks,” in 2020 IEEE International Confer-
+ence on Acoustics, Speech and Signal Processing, ICASSP 2020,
+Barcelona, Spain, May 4-8, 2020. IEEE, 2020, pp. 356–360.
+[9] Z. Zhang, J. Sun, X. Xia, C. Huang, Y . Xiao, and L. Xie, “Bs-
+plcnet: Band-split packet loss concealment network with multi-
+task learning framework and multi-discriminators,” in 2024 IEEE
+International Conference on Acoustics, Speech, and Signal Pro-
+cessing Workshops (ICASSPW), 2024, pp. 23–24.
+[10] H. Liu, X. Liu, Q. Kong, Q. Tian, Y . Zhao, D. Wang, C. Huang,
+and Y . Wang, “V oicefixer: A unified framework for high-fidelity
+speech restoration,” in Interspeech 2022, 2022, pp. 4232–4236.
+[11] Q. Kong, Y . Cao, H. Liu, K. Choi, and Y . Wang, “Decoupling
+magnitude and phase estimation with deep resunet for music
+source separation,” in Proceedings of the 22nd International So-
+ciety for Music Information Retrieval Conference. ISMIR, Nov.
+2021, pp. 342–349.
+[12] J. Serr `a, S. Pascual, J. Pons, R. O. Araz, and D. Scaini, “Universal
+speech enhancement with score-based diffusion,” ArXiv preprint,
+vol. abs/2206.03065, 2022.
+[13] A. A. Nair and K. Koishida, “Cascaded time + time-frequency
+unet for speech enhancement: Jointly addressing clipping, codec
+distortions, and gaps,” in IEEE International Conference on
+Acoustics, Speech and Signal Processing, ICASSP 2021, Toronto,
+ON, Canada, June 6-11, 2021. IEEE, 2021, pp. 7153–7157.
+[14] J. Chen, Y . Shi, W. Liu, W. Rao, S. He, A. Li, Y . Wang, Z. Wu,
+S. Shang, and C. Zheng, “Gesper: A unified framework for gen-
+eral speech restoration,” in IEEE International Conference on
+Acoustics, Speech and Signal Processing ICASSP 2023, Rhodes
+Island, Greece, June 4-10, 2023. IEEE, 2023, pp. 1–2.
+[15] G. Yu, R. Han, C. Xu, H. Zhao, N. Li, C. Zhang, X. Zheng,
+C. Zhou, Q. Huang, and B. Yu, “Ks-net: Multi-band joint speech
+restoration and enhancement network for 2024 icassp ssi chal-
+lenge,” in 2024 IEEE International Conference on Acoustics,
+Speech, and Signal Processing Workshops (ICASSPW), 2024, pp.
+33–34.
+[16] M. Liu, Z. Chen, X. Yan, Y . Lv, X. Xia, C. Huang, Y . Xiao, and
+L. Xie, “Rad-net: A repairing and denoising network for speech
+signal improvement,” in 2024 IEEE International Conference on
+Acoustics, Speech, and Signal Processing Workshops (ICASSPW),
+2024, pp. 49–50.
+[17] Q. Hu, T. Tan, M. Tang, Y . Hu, C. Zhu, and J. Lu, “General speech
+restoration using two-stage generative adversarial networks,” in
+2024 IEEE International Conference on Acoustics, Speech, and
+Signal Processing Workshops (ICASSPW). IEEE, 2024, pp. 31–
+32.
+[18] Z.-Q. Wang, S. Cornell, S. Choi, Y . Lee et al. , “Tf-gridnet:
+Integrating full-and sub-band modeling for speech separation,”
+IEEE/ACM Transactions on Audio, Speech, and Language Pro-
+cessing, 2023.
+[19] H. Liu, L. Xie, J. Wu, and G. Yang, “Channel-wise subband input
+for better voice and accompaniment separation on high resolution
+music,” in Interspeech 2020. ISCA, 2020, pp. 1241–1245.
+[20] S. Lee, W. Ping, B. Ginsburg, B. Catanzaro, and S. Yoon, “Bigv-
+gan: A universal neural vocoder with large-scale training,” in The
+Eleventh International Conference on Learning Representations,
+ICLR 2023, Kigali, Rwanda, May 1-5, 2023 . OpenReview.net,
+2023.
+[21] R. Kubichek, “Mel-cepstral distance measure for objective speech
+quality assessment,” in Proceedings of IEEE pacific rim confer-
+ence on communications computers and signal processing, vol. 1.
+IEEE, 1993, pp. 125–128.
+[22] I.-T. Recommendation, “Perceptual evaluation of speech quality
+(pesq): An objective method for end-to-end speech quality as-
+sessment of narrow-band telephone networks and speech codecs,”
+Rec. ITU-T P . 862, 2001.
+[23] C. K. A. Reddy, V . Gopal, and R. Cutler, “Dnsmos P.835: A non-
+intrusive perceptual objective speech quality metric to evaluate
+noise suppressors,” in IEEE International Conference on Acous-
+tics, Speech and Signal Processing, ICASSP 2022, Virtual and
+Singapore, 23-27 May 2022. IEEE, 2022, pp. 886–890.
+[24] T. Saeki, D. Xin, W. Nakata, T. Koriyama, S. Takamichi, and
+H. Saruwatari, “UTMOS: utokyo-sarulab system for voicemos
+challenge 2022,” in Interspeech 2022. ISCA, 2022, pp. 4521–
+4525.
+[25] J. Pirklbauer, M. Sach, K. Fluyt, W. Tirry, W. Wardah, S. Moeller,
+and T. Fingscheidt, “Evaluation metrics for generative speech en-
+hancement methods: Issues and perspectives,” inSpeech Commu-
+nication; 15th ITG Conference. VDE, 2023, pp. 265–269.
+[26] T. Saeki, S. Maiti, S. Takamichi, S. Watanabe, and H. Saruwatari,
+“Speechbertscore: Reference-aware automatic evaluation of
+speech generation leveraging nlp evaluation metrics,” in Inter-
+speech 2024, 2024, pp. 4943–4947.
+[27] S. Chen, C. Wang, Z. Chen, Y . Wu, S. Liu, Z. Chen, J. Li,
+N. Kanda, T. Yoshioka, X. Xiaoet al., “Wavlm: Large-scale self-
+supervised pre-training for full stack speech processing,” IEEE
+Journal of Selected Topics in Signal Processing , vol. 16, no. 6,
+pp. 1505–1518, 2022.
+[28] X. Zhang, D. Zhang, S. Li, Y . Zhou, and X. Qiu, “Speechtok-
+enizer: Unified speech tokenizer for speech language models,”
+in The Twelfth International Conference on Learning Representa-
+tions, 2024.
+[29] J. Jensen and C. H. Taal, “An algorithm for predicting the in-
+telligibility of speech masked by modulated noise maskers,”
+IEEE/ACM Transactions on Audio, Speech, and Language Pro-
+cessing, vol. 24, no. 11, pp. 2009–2022, 2016.
+[30] J. G. Beerends, C. Schmidmer, J. Berger, M. Obermann, R. Ull-
+mann, J. Pomy, and M. Keyhl, “Perceptual objective listening
+quality assessment (polqa), the third generation itu-t standard for
+end-to-end speech quality measurement part i—temporal align-
+ment,” Journal of the Audio Engineering Society , vol. 61, no. 6,
+pp. 366–384, 2013.
+867

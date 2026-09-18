@@ -1,0 +1,772 @@
+MEDUSA: A Multimodal Deep Fusion Multi-Stage Training Framework for
+Speech Emotion Recognition in Naturalistic Conditions
+Georgios Chatzichristodoulou∗1, Despoina Kosmopoulou∗1,2, Antonios Kritikos∗1, Anastasia
+Poulopoulou1, Efthymios Georgiou†1,3, Athanasios Katsamanis3, Vassilis Katsouros3, Alexandros
+Potamianos1,2
+1ECE, National Technical University of Athens, Greece, 2Archimedes, Athena RC, Greece, 3ILSP, Athena RC, Greece
+{el20125, el20001, el20025, el20074, efthygeo}@mail.ntua.gr,
+{nkatsam, vsk}@athenarc.gr, potam@central.ntua.gr
+Abstract
+SER is a challenging task due to the subjective nature of hu-
+man emotions and their uneven representation under naturalis-
+tic conditions. We propose MEDUSA, a multimodal framework
+with a four-stage training pipeline, which effectively handles
+class imbalance and emotion ambiguity. The first two stages
+train an ensemble of classifiers that utilize DeepSER, a novel
+extension of a deep cross-modal transformer fusion mechanism
+from pretrained self-supervised acoustic and linguistic repre-
+sentations. Manifold MixUp is employed for further regular-
+ization. The last two stages optimize a trainable meta-classifier
+that combines the ensemble predictions. Our training approach
+incorporates human annotation scores as soft targets, coupled
+with balanced data sampling and multitask learning. MEDUSA
+ranked 1st in Task 1: Categorical Emotion Recognition in the
+Interspeech 2025: Speech Emotion Recognition in Naturalistic
+Conditions Challenge.
+Index Terms: speech emotion recognition, deep fusion, meta-
+classifier, multi-stage training
+1. Introduction
+Speech Emotion Recognition (SER) is a fundamental affective
+computing problem that aims to automatically identify emo-
+tional states from human speech [1], with significant technolog-
+ical applications in healthcare [2], intelligent driving [3], and
+call centers [4]. Despite the advancement in deep learning (DL)
+methodologies [5, 6], SER faces several critical challenges.
+The primary is the limited availability of large annotated SER
+databases across domains and languages. Moreover, the inher-
+ent ambiguity in human emotion perception leads to annotator
+disagreement, and in naturalistic conditions the speech emotion
+palette is heavily imbalanced, making category-specific classi-
+fication and data collection difficult. These challenges require
+careful consideration in real-world SER systems.
+The Interspeech 2025: Speech Emotion Recognition in Nat-
+uralistic Conditions Challenge [7] offers such a realistic SER
+scenario exhibiting both annotator disagreement (ambiguity)
+and class-imbalance across emotion categories. Utilizing the
+MSP-Podcast corpus, a collection of speech segments from
+audio-sharing websites [8], participants are required to develop
+SER systems for either categorical emotion recognition or emo-
+tional attribute prediction. The first task involves classification
+across eight distinct emotional classes (anger, happiness, sad-
+ness, fear, surprise, contempt, disgust and neutral), while the
+*Equal contribution authors
+†Corresponding authors
+second predicts emotional attributes, i.e., arousal (calm to ac-
+tive), valence (negative to positive), and dominance (weak to
+strong), within a range of 1 to 7.
+In this work, we introduce MEDUSA, a multimodal and
+multi-stage training framework for Task 1: “Categorical Emo-
+tion Recognition”.
+MEDUSA incorporates DeepSER, a deep
+fusion architecture, which effectively captures acoustic and
+linguistic information, through a four-stage training pipeline.
+Stage 1 trains the DeepSER model on the complete dataset,
+while Stage 2 resumes training with balanced subsets, to ad-
+dress class imbalance. Stage 3 trains a meta-classifier to com-
+bine ensemble predictions, and Stage 4 implements a model
+soup [9] over different meta-classifiers. MEDUSA achieves first
+place in Task 1 of the challenge. Our contributions are:
+• We develop DeepSER, a novel extension of a deep fusion
+architecture [10], which integrates transformer-based mod-
+els and expands beyond two modalities for enhanced cross-
+modal integration.
+• We present a two-stage training recipe for DeepSER, utiliz-
+ing detailed annotator scores and Manifold MixUp regular-
+ization, to address annotation ambiguity and class-imbalance.
+• We use a trainable meta-classifier over the ensemble, which
+learns model and class reliability coefficients (Stage 3), and
+is further enhanced via model soup averaging (Stage 4).
+• The overall framework, MEDUSA, achieves 1st place in Task
+1 of Interspeech 2025: Speech Emotion Recognition in Nat-
+uralistic Conditions Challenge. ‡
+2. Related Work
+SER spans a wide range of setups, from acted emotions [11]
+to naturalistic [8] and in-the-wild scenarios [12]. Research ap-
+proaches are typically supervised and use raw speech signals,
+mel-spectrograms and extracted features [13]. Other learning
+approaches employ self-supervised learning (SSL), as shown by
+emotion2vec [5] and WavLLM [14]. Multimodal methods inte-
+grate acoustic, linguistic and visual signals. MEDUSA focuses
+specifically on acoustic and linguistic modalities. Our fusion
+strategy, DeepSER, draws inspiration from DHF [10] and ex-
+tends it. Several components of MEDUSA are based on concep-
+tually related work in computational paralinguistics: soft target
+learning strategy [15], mixing-based regularization [16, 17] and
+mulitask learning [18]. For ensemble methods, model diver-
+sity [19] is a helpful factor. The meta-classifier [20] idea has
+also been investigated independently. MEDUSA combines these
+approaches into a unified SER framework.
+‡Code is available at: https://github.com/emopodntua/medusa
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+4683
+10.21437/Interspeech.2025-2636
+
+Figure 1: An overview of MEDUSA. Different modalities are
+combined on each model using DeepSER. In total, 14 differ-
+ent such models are trained leveraging 2 or 3 modalities as
+their backbone. The training process employs standard train-
+ing (Stage 1) on the full training dataset, balanced subset train-
+ing (Stage 2) and a linear meta-classifier on top for ensembling
+(Stage 3). Six different runs of the meta-classifier are merged
+into a model soup by averaging the weights (Stage 4).
+3. Method
+3.1. Overview
+The novelty of our approach stems from three key directions: 1)
+architecture, 2) data utilization and 3) training recipe. The pro-
+posed architecture, DeepSER, is a novel extension of a deep fu-
+sion approach [10]. Different DeepSER instances are combined
+via a meta-classifier and form MEDUSA. For data utilization,
+MEDUSA leverages detailed human annotator scores as soft tar-
+gets, e.g., two annotators voting for happy and one for neutral.
+The training recipe follows a four-staged pipeline. The first
+two stages train the DeepSER models with soft targets and Man-
+ifold MixUp [16] (M.MixUp) regularization, with Stage 1 using
+standard training, and Stage 2 employing balanced subset train-
+ing. The final two stages of the pipeline form the MEDUSA en-
+semble, where a meta-classifier learns to combine the posterior
+distributions of individual classifiers using Stage’s 2 balanced
+training approach. The synergy of these components yields sig-
+nificant performance improvements. An overview of MEDUSA
+is illustrated in Figure 1.
+3.2. The MSP-Podcast dataset
+The MSP-Podcast [8] Interspeech 2025 SER Challenge ver-
+sion [7] consists of audio recordings, their transcriptions, their
+respective forced alignments, speaker metadata (IDs and gen-
+ders), and detailed annotator decisions for both categorical and
+regression tasks. For the held-out test set, only audio files are
+included. MEDUSA utilizes the audio files, detailed voting deci-
+sions (soft targets) and emotional attribute ratings (multi-task).
+Soft
+Targets:
+Understanding
+the
+nature
+of
+annotator
+(dis)agreement provides crucial insights, i.e., whether disagree-
+ment stems from poor sample quality or proximity to multiple
+emotions. Using the full decision vector, rather than one-hot
+representations, offers two advantages: it enables us to leverage
+the entire dataset, including samples without consensus (∼20K
+samples), and helps the model develop more nuanced decision
+boundaries. We normalize these decision vectors consistently
+across all samples.
+Emotional Attributes:
+The emotional attributes (valence,
+arousal, dominance) are incorporated into the model’s multitask
+learning objective, providing additional regularization.
+3.3. Feature Extraction
+We leverage multiple pretrained self-supervised learning (SSL)
+models to achieve representational pluralism.
+Speech Features:
+We extract features using transformer-
+based [21] models: WavLM* [22] and HuBERT† [23] which pro-
+cess raw audio signals, and the Whisper-v3‡ encoder [24],
+which processes mel-spectrograms.
+Text Features:
+Linguistic information is extracted using
+the Whisper-v3‡ Automatic Speech Recognition (ASR)
+model, which transcribes speech into text that is then fed into
+RoBERTa§ [25] and ModernBERT¶ [26] language encoders
+for feature extraction. ASR is used consistently across training
+and testing to prevent train/test distribution shift.
+3.4. Deep fusion architecture - DeepSER
+Drawing inspiration from the Deep Hierarchical Fusion (DHF)
+scheme [10], which combines unimodal representations at mul-
+tiple layers, we propose a novel extension named DeepSER.
+Our extension makes two key advancements.
+First, we re-
+place the original LSTM-based [27] architecture with trans-
+formers [21] to better capture unimodal and cross-modal rela-
+tionships. Second, we extend the fusion mechanism to handle
+N arbitrary modalities, enabling integration of multiple hetero-
+geneous feature streams.
+DeepSER utilizes a base transformer encoder architecture
+(Algorithm 1) as its fundamental building block for both uni-
+modal and fusion processing. The overall fusion process (Al-
+gorithm 2) operates by first extracting intermediate representa-
+tions from each unimodal encoder’s layers. These representa-
+tions are then fed into fusion encoders, which combine them
+hierarchically, i.e., each fusion stage processes both the current
+unimodal features and, when available, the fusion representa-
+tions from previous stages, enabling deep multimodal integra-
+tion. MEDUSA’s implementation utilizes DeepSER architecture
+with a two-layer transformer encoder (ENC), and for 2 and 3
+modalities||.
+Algorithm 1 Base Transformer Encoder (ENC)
+Defn: Wi(·): linear map, σ(·) : ReLU
+Input: Tensor x: (B,L,D)
+Output: List of (hidden) tensors hi
+x ←W2(σ(W1(x)))
+▷map seq. to fixed dimension
+h1 ←TransformerLayer(x)
+▷First Layer: (B,L,D)
+h2 ←TransformerLayer(h1)
+▷Second Layer: (B,L,D)
+h3 ←POOL(h2)
+▷Pooling Layer: (B,D)
+return [h1, h2, h3]
+3.5. Meta-classifier
+MEDUSA leverages multiple SSL models for both text and
+speech, leading to several (DeepSER) trained models with dif-
+ferent configurations.
+To effectively combine these models’
+complementary strengths, we implement a meta-classifier layer.
+*https://huggingface.co/microsoft/wavlm-large
+†https://huggingface.co/facebook/hubert-large-ls960-ft
+‡https://huggingface.co/openai/whisper-large-v3
+§https://huggingface.co/FacebookAI/roberta-large
+¶https://huggingface.co/answerdotai/ModernBERT-large
+||Our implementation, shown here for a two-layer transformer with
+three modalities, can be easily extended to any number of layers and
+modalities. A detailed technical report covering these extensions will
+be available in our GitHub repository.
+4684
+
+Algorithm 2 DeepSER
+Input: Tensors h0, g0, z0
+Input: Labels yc, yr
+Output: Output tensors yc, yr
+[h1, h2, h3] ←ENCh(h0)
+▷h unimodal enc.
+[g1, g2, g3] ←ENCg(g0)
+▷g unimodal enc.
+[z1, z2, z3] ←ENCz(z0)
+▷z unimodal enc.
+[ , f (1)
+2
+, ] ←ENCf(1)(h1||g1||z1)
+▷f (1) 1st fusion
+[ , , f (2)
+3
+] ←ENCf(2)(h2||g2||z2||f (1)
+2
+)
+▷f (2) 2nd fusion
+x ←W(h3||g3||z3||f (2)
+3
+)
+▷pooled representation fusion
+x, yc, yr ←MixUp(x, yc, yr)
+▷M.MixUp
+yc ←Wc(σ(x))
+▷Classification Map
+yr ←Wr(σ(x))
+▷Regression Map
+return yc, yr
+While traditional ensemble methods like soft or hard voting
+proved ineffective to combine diverse posterior predictions, we
+found that a simple linear layer trained on top of the models’
+predictions yields superior results. This meta-classifier learns
+to combine individual model predictions and also, through bal-
+anced training, helps mitigate the class imbalance problem by
+promoting more uniform distribution in MEDUSA’s output.
+3.6. Multistage Training Recipe
+To address the significant class imbalance problem, we intro-
+duce a four-stage training process for MEDUSA. During Stage
+1, we train a multimodal DeepSER instance (model) on the full
+training dataset. At Stage 2, we continue training using bal-
+anced data subsets, where each epoch uses randomly sampled
+balanced subsets from the training data, ensuring equal (sam-
+ple) representation across emotion categories. Stages 1 and 2
+are repeated for each classifier in the ensemble. At Stage 3,
+we train a linear meta-classifier to combine the posteriors of the
+DeepSER ensemble, using the balanced sampling of Stage 2. At
+Stage 4 (post-training), we enhance meta-classifier’s robustness
+via model soup [9] weight averaging across different seeds.
+3.7. Manifold MixUp
+Manifold MixUp [16] (M.MixUp) is a regularization technique
+that interpolates between latent representations of input ex-
+amples. For a pair of examples with hidden representations
+hi, hj ∈Rn and corresponding labels yi, yj, M.MixUp com-
+putes mixed features ˜h = λhi + (1 −λ)hj and labels ˜y =
+λyi + (1 −λ)yj, where λ ∈[0, 1] is drawn from a Beta(α, α)
+distribution. Drawing connections to vicinal risk minimization
+(VRM) [28], this approach creates virtual training points in the
+latent space, proving particularly beneficial for our SER task
+with its class imbalance and annotator ambiguity challenges.
+In our implementation, M.MixUp is applied with probability p
+during training, before the classification head of DeepSER.
+3.8. Loss Function
+The training objective for Stages 1, 2, 3 is defined as
+L = λ1 · LCE + λ2 · LMSE
+(1)
+where LCE is the weighted cross-entropy loss for emotion clas-
+sification task, and LMSE is the mean squared error (MSE) loss
+for the emotional attribute prediction. This multitask scheme
+serves as additional regularization.
+During Stage 1, we ad-
+dress class imbalance by weighting the cross-entropy loss with
+αc = (
+N
+|C|·fc )0.5, where N is the total samples, |C| is the num-
+ber of classes, and fc is the frequency of class c. Stages 2, 3 use
+uniform class weights due to their balanced sampling strategy.
+4. Experimental Setup
+DeepSER models are trained with batch size 16 and learning
+rate 1e-5 during Stages 1 & 2, with M.MixUp’s p = 0.3. The
+Stage 3 meta-classifier uses batch size 128 and learning rate
+1e-3 without M.MixUp. DeepSER utilizes transformer en-
+coders (see Algorithm 1) with two layers across both unimodal
+and fusion processing, with hidden dimension of 1024. The
+loss weights are set to λ1 = 1.5 and λ2 = 0.4. We optimize
+MEDUSA’s parameters across all Stages using AdamW [29].
+We create an in-house 90-10 train-test split, used consistently
+across all models and stages. Model selection is based on the
+best average Macro-F1 (F1)† on balanced internal held-out test-
+sets. All models are implemented in PyTorch [30] and trained
+on one RTX 3090 GPU.
+5. Experimental Results
+5.1. Challenge Result
+MEDUSA ranked 1st on the Challenge’s leaderboard, demon-
+strating remarkably consistent performance across all metrics
+on the held-out test set: Macro-F1 of 0.4316, Micro-F1 of
+0.4319, and Accuracy of 0.4319. This balance between macro
+and micro metrics suggests that MEDUSA effectively handles
+both majority and minority emotion classes, addressing the
+class imbalance challenge, which is the primary problem of the
+Challenge. The configurations of the 14 individual DeepSER
+models utilized by MEDUSA are illustrated in Table 1.
+Table 1: Configurations of MEDUSA’s DeepSER models and
+their (F1) score in our internal test-set. ID: refers to DeepSER
+model ID; MODEL: refers to SSL feature extractor; F1: macro-
+F1 score.
+ID
+MODEL 1
+MODEL 2
+MODEL 3
+F1↑
+1
+HuBERT
+RoBERTa
+-
+0.368
+2
+WavLM
+HuBERT
+RoBERTa
+0.434
+3
+WavLM
+Whisper
+HuBERT
+0.394
+4
+WavLM
+ModernBERT
+-
+0.427
+5
+WavLM
+RoBERTa
+-
+0.430
+6
+WavLM
+RoBERTa
+-
+0.425
+7
+WavLM
+RoBERTa
+-
+0.437
+8
+WavLM
+RoBERTa
+-
+0.440
+9
+Whisper
+ModernBERT
+-
+0.406
+10
+Whisper
+ModernBERT
+-
+0.403
+11
+Whisper
+RoBERTa
+-
+0.392
+12
+Whisper
+RoBERTa
+-
+0.405
+13
+Whisper
+WavLM
+-
+0.403
+14
+Whisper
+WavLM
+ModernBert
+0.410
+Average DeepSER
+0.413
+Top DeepSER
+0.440
+MEDUSA
+0.472
+5.2. DeepSER-level Ablation
+Overview: We conduct a DeepSER-level ablation study to in-
+vestigate the impact of each architectural and training compo-
+nent. We select models 2, 8, 9 and 13 from Table 1 for this
+†Throughout this paper, F1 refers to Macro-F1 score.
+4685
+
+Table 2: DeepSER-level ablation. F1: denotes macro-F1 score; MODEL ID: denotes a model from Table 1; ACC: denotes accuracy;
+AVG: denotes average performance across the examined models; ∆: relative F1 degradation (minus sign) from DeepSER.
+MODEL 2
+MODEL 8
+MODEL 9
+MODEL 13
+AVG
+∆(%)
+F1
+ACC
+F1
+ACC
+F1
+ACC
+F1
+ACC
+F1
+ACC
+DeepSER
+0.434
+0.441
+0.440
+0.450
+0.406
+0.421
+0.403
+0.419
+0.421
+0.432
+–
+w. One-hot targets
+0.431
+0.440
+0.402
+0.423
+0.368
+0.392
+0.353
+0.384
+0.389
+0.410
+-8.23
+w. Late Fusion
+0.413
+0.428
+0.410
+0.428
+0.393
+0.405
+0.368
+0.395
+0.396
+0.414
+-6.31
+w/o MixUp
+0.434
+0.444
+0.421
+0.437
+0.395
+0.409
+0.384
+0.406
+0.409
+0.424
+–2.93
+w/o multitask
+0.436
+0.440
+0.411
+0.429
+0.410
+0.437
+0.390
+0.409
+0.412
+0.429
+-2.18
+w/o Stage 2
+0.434
+0.440
+0.419
+0.432
+0.403
+0.450
+0.409
+0.418
+0.416
+0.435
+-1.20
+Table 3: MEDUSA-level ablation: We combine different number of models from Table 1 within the MEDUSA framework and experiment
+with different ensemble aggregation techniques. F1: denotes macro-F1 score; ACC: denotes accuracy.
+TECHNIQUE
+MEDUSA (14 MODELS)
+MEDUSA (TOP-7 MODELS)
+MEDUSA (TOP-5 MODELS)
+F1
+ACC
+F1
+ACC
+F1
+ACC
+Majority Voting
+0.439
+0.454
+0.436
+0.449
+0.437
+0.450
+Soft Voting
+0.439
+0.453
+0.439
+0.453
+0.439
+0.453
+Meta-classifier (Single)
+0.471
+0.470
+0.465
+0.465
+0.468
+0.462
+Meta-classifier (Soup)
+0.472
+0.471
+0.467
+0.466
+0.445
+0.441
+analysis, as they represent both top-performing configurations
+and diverse model architectures with varying feature sets and
+SSL extractors. In each experiment, we replace a key compo-
+nent with its standard implementation and evaluate on our bal-
+anced test sets. The ablated components include: deep fusion
+replaced with late fusion, soft targets with one-hot labels, and
+training without (w/o) M.MixUp, w/o Stage 2 (balanced train-
+ing), and w/o multitask loss.
+Results: All components consistently improve F1 performance,
+with results averaged across multiple DeepSER models for ro-
+bust conclusions. The complete ablation results are presented
+in Table 2. Soft targets emerge as the most impactful com-
+ponent, as removing them leads to an average 8.23% relative
+degradation in F1 score. This suggests that leveraging detailed
+human annotations helps models better capture nuanced emo-
+tion boundaries.
+Deep fusion proves vital for performance,
+with its removal causing a 6.31% degradation, highlighting
+the importance of deep multimodal information integration for
+SER. M.MixUp’s removal also results in significant perfor-
+mance drops, likely due to losing the virtual training points
+that smooth decision boundaries around existing soft targets.
+Removing Stage 2 (balanced training) and multitask learning
+also degrades performance. These results demonstrate the ef-
+fectiveness and synergistic nature of our architectural and train-
+ing components.
+5.3. MEDUSA-level Ablation
+Overview: We conduct a MEDUSA-level ablation study ex-
+ploring two key directions: 1) the optimal number of models
+in the ensemble and 2) the effectiveness of different ensemble
+aggregation techniques. We compare four voting approaches:
+hard voting, soft voting, single-run meta-classifier and meta-
+classifier soup, where we average meta-classifier weights over
+multiple runs to smooth decision boundaries [9].
+Results: The results, presented in Table 3, demonstrate that
+both meta-classifier variants consistently outperform soft and
+hard voting approaches, indicating the significance of this ap-
+proach. Compared to the top DeepSER model (see Table 1),
+MEDUSA shows a 7.23% relative improvement. Furthermore,
+Table 3 shows that while meta-classifier (single run) performs
+better when combining the top-5 models of Table 1, the meta-
+classifier soup shows slight advantages when incorporating
+more models, i.e., 7 and 14. Based on these findings, we opted
+for the meta-classifier soup in our final MEDUSA submission.
+Finally, we limit our ensemble to 14 models, as doubling from
+7 to 14 models showed diminishing improvements.
+6. Discussion
+In this paper,
+we present MEDUSA,
+a multimodal and
+multi-stage framework that achieved first place in the Inter-
+speech 2025 Challenge. The MEDUSA framework integrates
+DeepSER, a novel deep fusion architectural extension, with soft
+targets, mixing-based regularization, and multi-stage training to
+address annotation ambiguity and class imbalance. A meta-
+classifier (soup) layer enables robust ensemble prediction ag-
+gregation. Our ablation studies reveal the significant impact of
+each component: for MEDUSA ensemble, the meta-classifier
+layer and model diversity are the most important factors, while
+for DeepSER, soft targets, deep fusion architecture, and mixing-
+based regularization emerge as the most crucial elements for
+addressing SER in naturalistic conditions.
+Future research directions include integrating forced align-
+ment and speaker information to enrich the feature space, and
+exploring modality-agnostic augmentations for improved gen-
+eralization. The deep fusion architecture could be extended to
+incorporate more SSL models and feature types, while the meta-
+classifier could be enhanced by utilizing pre-logit representa-
+tions and deeper architectures. These extensions could further
+improve the framework’s ability to handle the complexities of
+emotion recognition in naturalistic conditions.
+7. Acknowledgments
+This work is supported by the European Union’s Horizon Eu-
+rope Research and Innovation Programme under Grant No
+101061303, project PREMIERE (Performing arts in a new era:
+AI and VR tools for better understanding, preservation, enjoy-
+ment and accessibility).
+4686
+
+8. References
+[1] R. Cowie, E. Douglas-Cowie, N. Tsapatsoulis, G. Votsis, S. Kol-
+lias, W. Fellenz, and J. Taylor, “Emotion recognition in human-
+computer interaction,” IEEE Signal Processing Magazine, vol. 18,
+no. 1, pp. 32–80, 2001.
+[2] H.-C. Li, T. Pan, M.-H. Lee, and H.-W. Chiu, “Make patient
+consultation warmer: A clinical application for speech emotion
+recognition,” Applied Sciences, vol. 11, no. 11, 2021.
+[3] S. Shafaei, T. Hacizade, and A. Knoll, “Integration of driver be-
+havior into emotion recognition systems: A preliminary study on
+steering wheel and vehicle acceleration,” in Computer Vision –
+ACCV 2018 Workshops, G. Carneiro and S. You, Eds.
+Cham:
+Springer International Publishing, 2019, pp. 386–401.
+[4] M. Bojani´c, V. Deli´c, and A. Karpov, “Call redistribution for a call
+center based on speech emotion recognition,” Applied Sciences,
+vol. 10, no. 13, 2020.
+[5] Z. Ma, Z. Zheng, J. Ye, J. Li, Z. Gao, S. Zhang, and X. Chen,
+“emotion2vec: Self-supervised pre-training for speech emotion
+representation,” in Findings of the Association for Computational
+Linguistics: ACL 2024, L.-W. Ku, A. Martins, and V. Srikumar,
+Eds.
+Bangkok,
+Thailand:
+Association for Computational
+Linguistics, Aug. 2024, pp. 15 747–15 760. [Online]. Available:
+https://aclanthology.org/2024.findings-acl.931/
+[6] G. Trigeorgis, F. Ringeval, R. Brueckner, E. Marchi, M. A. Nico-
+laou, B. Schuller, and S. Zafeiriou, “Adieu features? end-to-end
+speech emotion recognition using a deep convolutional recurrent
+network,” in 2016 IEEE International Conference on Acoustics,
+Speech and Signal Processing (ICASSP), 2016, pp. 5200–5204.
+[7] A. Reddy Naini, L. Goncalves, A. N. Salman, P. Mote, I. R. ¨Ulgen,
+T. Thebaud, L. Velazquez, L. P. Garcia, N. Dehak, B. Sisman, and
+C. Busso, “The interspeech 2025 challenge on speech emotion
+recognition in naturalistic conditions,” in Interspeech 2025, vol.
+Under submission, Rotterdam, The Netherlands, August 2025.
+[8] R. Lotfian and C. Busso, “Building naturalistic emotionally bal-
+anced speech corpus by retrieving emotional speech from existing
+podcast recordings,” IEEE Transactions on Affective Computing,
+vol. 10, no. 4, pp. 471–483, 2019.
+[9] M. Wortsman, G. Ilharco, S. Y. Gadre, R. Roelofs, R. Gontijo-
+Lopes, A. S. Morcos, H. Namkoong, A. Farhadi, Y. Carmon,
+S. Kornblith, and L. Schmidt, “Model soups: averaging weights of
+multiple fine-tuned models improves accuracy without increasing
+inference time,” 2022.
+[10] E. Georgiou, C. Papaioannou, and A. Potamianos, “Deep hier-
+archical fusion with application in sentiment analysis,” in Inter-
+speech 2019, 2019, pp. 1646–1650.
+[11] C. Busso, M. Bulut, C.-C. Lee, A. Kazemzadeh, E. Mower,
+S. Kim, J. N. Chang, S. Lee, and S. S. Narayanan, “Iemocap:
+Interactive emotional dyadic motion capture database,” Language
+Resources and Evaluation, vol. 42, no. 4, pp. 335–359, 2008.
+[12] A. Zadeh, P. P. Liang, S. Poria, E. Cambria, and L.-P. Morency,
+“Multimodal language analysis in the wild: Cmu-mosei dataset
+and interpretable dynamic fusion graph,” in Annual Meeting of
+the Association for Computational Linguistics, 2018. [Online].
+Available: https://api.semanticscholar.org/CorpusID:51868869
+[13] M. Shah Fahad, A. Ranjan, J. Yadav, and A. Deepak, “A survey
+of speech emotion recognition in natural environment,” Digital
+Signal Processing, vol. 110, p. 102951, 2021.
+[14] S. Hu, L. Zhou, S. Liu, S. Chen, L. Meng, H. Hao, J. Pan,
+X. Liu, J. Li, S. Sivasankaran, L. Liu, and F. Wei, “WavLLM:
+Towards robust and adaptive speech large language model,”
+in Findings of the Association for Computational Linguistics:
+EMNLP 2024, Y. Al-Onaizan, M. Bansal, and Y.-N. Chen,
+Eds.
+Miami, Florida, USA: Association for Computational
+Linguistics, Nov. 2024, pp. 4552–4572. [Online]. Available:
+https://aclanthology.org/2024.findings-emnlp.263/
+[15] A. Ando, S. Kobashikawa, H. Kamiyama, R. Masumura, Y. Ijima,
+and Y. Aono, “Soft-target training with ambiguous emotional ut-
+terances for dnn-based speech emotion classification,” in 2018
+IEEE International Conference on Acoustics, Speech and Signal
+Processing (ICASSP), 2018, pp. 4964–4968.
+[16] V. Verma, A. Lamb, C. Beckham, A. Najafi, I. Mitliagkas,
+D. Lopez-Paz, and Y. Bengio, “Manifold mixup: Better represen-
+tations by interpolating hidden states,” in International conference
+on machine learning.
+PMLR, 2019, pp. 6438–6447.
+[17] E. Georgiou, Y. Avrithis, and A. Potamianos, “Powmix: A versa-
+tile regularizer for multimodal sentiment analysis,” IEEE Transac-
+tions on Audio, Speech, and Language Processing, vol. 32, 2024.
+[18] X. Cai, J. Yuan, R. Zheng, L. Huang, and K. Church, “Speech
+emotion recognition with multi-task learning,” in Interspeech
+2021, 2021, pp. 4508–4512.
+[19] M. Chen, H. Zhang, Y. Li, J. Luo, W. Wu, Z. Ma, P. Bell, C. Lai,
+J. Reiss, L. Wang et al., “1st place solution to odyssey emotion
+recognition challenge task1: Tackling class imbalance problem,”
+arXiv preprint arXiv:2405.20064, 2024.
+[20] M. Cieliebak, O. D¨urr, and F. Uzdilli, “Meta-classifiers easily im-
+prove commercial sentiment detection tools,” in Proceedings of
+the Ninth International Conference on Language Resources and
+Evaluation (LREC‘14), N. Calzolari, K. Choukri, T. Declerck,
+H. Loftsson, B. Maegaard, J. Mariani, A. Moreno, J. Odijk, and
+S. Piperidis, Eds.
+Reykjavik, Iceland: European Language Re-
+sources Association (ELRA), May 2014, pp. 3100–3104.
+[21] A. Vaswani, N. Shazeer, N. Parmar, J. Uszkoreit, L. Jones, A. N.
+Gomez, L. u. Kaiser, and I. Polosukhin, “Attention is all you
+need,” in Advances in Neural Information Processing Systems,
+I. Guyon, U. V. Luxburg, S. Bengio, H. Wallach, R. Fergus,
+S. Vishwanathan, and R. Garnett, Eds., vol. 30.
+Curran Asso-
+ciates, Inc., 2017.
+[22] S. Chen, C. Wang, Z. Chen, Y. Wu, S. Liu, Z. Chen, J. Li,
+N. Kanda, T. Yoshioka, X. Xiao, J. Wu, L. Zhou, S. Ren, Y. Qian,
+Y. Qian, J. Wu, M. Zeng, X. Yu, and F. Wei, “Wavlm: Large-scale
+self-supervised pre-training for full stack speech processing,”
+IEEE Journal of Selected Topics in Signal Processing, vol. 16,
+no. 6, p. 1505–1518, Oct. 2022.
+[23] W.-N. Hsu, B. Bolte, Y.-H. H. Tsai, K. Lakhotia, R. Salakhutdi-
+nov, and A. Mohamed, “Hubert: Self-supervised speech represen-
+tation learning by masked prediction of hidden units,” 2021.
+[24] A. Radford, J. W. Kim, T. Xu, G. Brockman, C. McLeavey, and
+I. Sutskever, “Robust speech recognition via large-scale weak su-
+pervision,” 2022.
+[25] Y. Liu, M. Ott, N. Goyal, J. Du, M. Joshi, D. Chen, O. Levy,
+M. Lewis, L. Zettlemoyer, and V. Stoyanov, “Roberta: A robustly
+optimized bert pretraining approach,” 2019.
+[26] B. Warner, A. Chaffin, B. Clavi´e, O. Weller, O. Hallstr¨om,
+S. Taghadouini, A. Gallagher, R. Biswas, F. Ladhak, T. Aarsen,
+N. Cooper, G. Adams, J. Howard, and I. Poli, “Smarter, better,
+faster, longer: A modern bidirectional encoder for fast, memory
+efficient, and long context finetuning and inference,” 2024.
+[27] S. Hochreiter and J. Schmidhuber, “Long short-term memory,”
+Neural Computation, vol. 9, no. 8, pp. 1735–1780, 1997.
+[28] O. Chapelle, J. Weston, L. Bottou, and V. Vapnik, “Vicinal risk
+minimization,” in Advances in Neural Information Processing
+Systems, T. Leen, T. Dietterich, and V. Tresp, Eds., vol. 13.
+MIT
+Press, 2000.
+[29] I. Loshchilov and F. Hutter, “Decoupled weight decay regulariza-
+tion,” 2019.
+[30] A. Paszke, S. Gross, F. Massa, A. Lerer, J. Bradbury, G. Chanan,
+T. Killeen, Z. Lin, N. Gimelshein, L. Antiga, A. Desmaison,
+A. K¨opf, E. Yang, Z. DeVito, M. Raison, A. Tejani, S. Chil-
+amkurthy, B. Steiner, L. Fang, J. Bai, and S. Chintala, “Py-
+torch: An imperative style, high-performance deep learning li-
+brary,” 2019.
+4687

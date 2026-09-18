@@ -1,0 +1,513 @@
+Spoken Language Understanding on Unseen Tasks With In-Context Learning
+Neeraj Agrawal1,2, Sriram Ganapathy1
+1Indian Institute of Science, Bangalore, India
+2Google, Bangalore, India
+aneeraj@iisc.ac.in, sriramg@iisc.ac.in
+Abstract
+Spoken language understanding (SLU) tasks involve diverse
+skills that probe the information extraction, classification and/or
+generation capabilities of models. In this setting, task-specific
+training data may not always be available. While traditional
+task-specific SLU models are unable to cater to such require-
+ments, the speech-text large language models (LLMs) offer a
+promising alternative with emergent abilities. However, out-
+of-the-box, our evaluations indicate that the zero/few-shot per-
+formance of prominent open-source speech-text LLMs on SLU
+tasks are not up to the mark. In this paper, we introduce a novel
+approach to robust task-agnostic fine-tuning using randomized
+class labels. With this proposed fine-tuning, we illustrate that
+the performance of the speech-text LLMs on an unseen task is
+significantly improved over standard approaches. Critically, the
+proposed approach avoids the requirement of task-specific data
+annotations for enabling new tasks in speech-text LLMs.
+Index Terms: Spoken Language Understanding (SLU), Large
+Language Models (LLMs), In-Context Learning (ICL), Symbol
+fine-tuning.
+1. Introduction
+Although human-computer interactions have become increas-
+ingly natural, Spoken Language Understanding (SLU), the task
+of uncovering the semantic properties of the speech signal, is
+one of the key outstanding skills that is still challenging for ma-
+chines. Examples of SLU tasks include, recognizing the intent
+[1], identifying named entities [2], categorizing the sentiments
+[3], and classifying dialogue acts [4]. While automatic speech
+recognition (ASR) focuses only on the modality transfer from
+speech to text, the SLU tasks attempt to directly access the se-
+mantic properties of the speech data, thereby enabling the next-
+level of multi-modal capabilities in the quest towards artificial
+general intelligence (AGI).
+The traditional SLU systems often rely on supervised learn-
+ing with labeled data, which can be expensive and time-
+consuming to acquire. Unlike tasks like speech recognition, the
+availability of large labeled corpora is a significant challenge
+in the development of SLU systems. Further, the task is also
+more complicated than the corresponding text-based semantic
+reasoning tasks, as speech is multi-layered and nuanced com-
+pared to the corresponding text data [5]. Most of the successful
+approaches, until recently, have been based on the cascaded set-
+ting, where the ASR system first converts the speech to text,
+which is followed by a natural language understanding (NLU)
+module that interprets the semantic properties of the text [6].
+This approach suffers from the cascading of the errors, where
+the ASR errors as well as the NLU errors directly affect the per-
+formance on SLU tasks. Further, the cascaded setting does not
+allow the end-to-end optimization of the models for the SLU
+objective. Recently, end-to-end SLU systems [7] have been at-
+tempted to directly infer the SLU labels from the speech data.
+On the other hand, development of large language mod-
+els (LLMs) have substantially improved the semantic reason-
+ing and NLU capabilities of text-based models. Although text-
+based LLMs show emergent abilities in zero-shot settings, in
+the scheme of multi-modal speech-text LLMs, we illustrate that
+they exhibit limited zero-shot SLU capabilities. In such a sce-
+nario, this paper explores the direction of in-context-learning
+(ICL) aided with limited (and task mis-matched) fine-tuning to
+enable novel SLU tasks with speech-text LLMs. The approach
+of ICL [8, 9, 10] allows models to learn new tasks with the aid
+of only a few examples [10, 11].
+The ICL capabilities have largely been shown for text-based
+tasks [12, 13], while multi-modal ICL (M-ICL) has proved to be
+more challenging [14, 15, 16]. These works show that M-ICL
+heavily relies on text-driven mechanisms, with minimal influ-
+ence from the other modalities. It is also observed many open-
+source smaller models have limited M-ICL capabilities com-
+pared to large black-models like GPT-4o and Gemini [17].
+With the exception of a small number of studies [18], M-
+ICL has not been explored in the past for SLU tasks using
+speech-text LLMs. However, we argue that the ICL capability
+is particularly beneficial for the SLU setting, as it often involves
+diverse and complex tasks with limited supervised task-specific
+data. Additionally, very few past efforts have focused on the
+cross task capabilities [19, 20] and the ability to generalize to
+unseen tasks [21, 22]. In this paper, we develop ICL strategies
+for multi-modal (audio-text) unseen tasks with symbolic based
+fine-tuning and randomized label fine-tuning. We illustrate that
+the random label based fine-tuning enables the few-shot capa-
+bilities of the speech-text LLM on a completely unseen task.
+2. Related Work
+In context learning (ICL) : The field of in-context learning
+(ICL) has witnessed significant progress, particularly with the
+demonstration that large language models (LLMs) can perform
+few-shot learning without explicit fine-tuning, simply by con-
+ditioning on context [23]. This paradigm has been extended to
+multimodal settings, with models like Flamingo demonstrating
+effective ICL by conditioning on both textual and visual inputs
+[15]. In contrast to these works which focus on text or vision,
+our research explores ICL specifically for spoken language un-
+derstanding, leveraging both text and audio modalities.
+Zero shot and few-shot evaluation of SLU: Zero-shot probing
+of SLU tasks has gained prominence recently, with methods like
+cross-modal selective self-training [24]. Few-shot ICL has also
+demonstrated potential, with studies comparing ICL to super-
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+4103 10.21437/Interspeech.2025-1467
+
+Figure 1: Examples of different strategies for fine-tuning including regular fine-tuning, symbol based fine-tuning and random label
+fine-tuning.
+vised fine-tuning and instruction tuning [25] and investigating
+the generalization capabilities of few-shot fine-tuning. Unlike
+these studies, our work explores a novel approach to improve
+generalization across tasks and modalities.
+Emergent Abilities For Novel Tasks : Recent work has ex-
+plored ICL for speech classification using textless speech lan-
+guage models [18], improving ASR in low-resource languages
+with Meta-ICL [26], and evaluating Whisper’s ability to per-
+form ICL directly with speech input [27, 28]. Other research
+has focused on using LLMs for SLU tasks with textual input
+[28] and data-efficient instruction tuning of speech models [29].
+Cross-task ICL has also been investigated, with approaches in-
+volving training small LLMs to retrieve prompts [20] and eval-
+uating zero-shot cross-task performance with multiple LLMs
+[19]. In contrast, our work introduces a novel fine-tuning ap-
+proach to address the combined challenges of cross-task and
+cross-modal generalization in speech-text LLMs. Our work
+builds upon previous research on symbol tuning for ICL [30]
+and instruction tuning for multi-modal tasks [31], extending
+these concepts to the domain of multi-modal task-agnostic ICL.
+3. Fine-Tuning Strategies
+We explore different strategies (depicted in Figure 1) for fine-
+tuning speech-text LLM models.
+3.1. Overall Setting
+In all the settings, the instructions and class-definitions are
+given in textual form while the final query is provided in speech
+form. There are two distinct tasks involved - i) the fine-tuning
+task (TF T ), where the data with the annotations are used to up-
+date the speech-text LLM model parameter weights and ii) the
+evaluation task (TE), where the performance is measured. In
+a match setting, both the fine-tuning and evaluation tasks are
+identical, while in a mis-match setting, the evaluation task is
+different from the fine-tuning task and is unseen. For the per-
+formance evaluation, we explore zero-shot as well as few-shot
+prompting. The few-shot prompting presents a small number of
+examples with correct responses to guide the model to perform
+the task at hand. We refer to the few-shot examples as “Demon-
+strations” (D) to the model. We experiment with demonstra-
+tions in textual form (using transcriptions of the audio), de-
+noted as D(T ). In the fine-tuning stage, a random number of
+demonstrations in text are also appended along with the speech-
+prompts. We use the SALMONN speech-text LLM [32] in all
+our experiments and fine-tune the speech encoder, Q-former pa-
+rameters as well as the LoRA parameters in the LLaMa LLM
+model. Also, due to the context size (with demonstrations) and
+model size (SALMONN-13B) limitations, all the fine-tuning
+experiments were performed with a batch size of 1.
+3.2. Regular Fine-tuning
+In the regular fine-tuning, we follow the instructions using the
+definition of the classes given in the fine-tuning task directly.
+This is shown in the left panel of the Figure 1. The model
+learns the mapping between the speech queries (along with the
+text demonstrations) and the class-labels. During the evalua-
+tion, with a mis-match task, the model is required to generalize
+to a novel task with a new-set of target classes. The regular
+fine-tuning is the most common mode of supervised fine-tuning
+utilized in LLMs.
+3.3. Symbol Fine-tuning
+The class names (like “positive” or “neutral”) have semantic
+associations with English words. Thus, the regular fine-tuning
+inherently combines the representations of the class names with
+the model’s internal representations that have been learned dur-
+ing pre-training. To avoid this composition of class-names and
+their semantic counter-parts, we define the class names symbol-
+ically (alpha,beta etc). This is inspired by symbol-tuning work
+by Wei et. al [30]. In the matched evaluation setting, the class
+definitions are reverted back to the original definitions. While
+this creates a difference in matched setting between the class-
+definitions, we hypothesize that symbolic definitions allow an
+improved cross-task transfer of ICL capabilities. This setting is
+shown in the middle panel of Figure 1.
+4104
+
+Eval.
+Task (TE)
+FT
+Task (TF T )
+FT
+Strategy
+# of Demonstrations in Eval.
+0 1 2 3 4 5
+HVB
+No FT 1.3 31.6 22.2 14.9 14.6 12.5
+HVB
+Regular FT 37.9 49.8 51.6 52.0 53.1 53.1
+Symbol FT 20.9 34.6 38.1 40.0 43.9 45.6
+Random Label FT 14.1 16.7 23.6 31.9 38.9 45.8
+V oxceleb
+Regular FT 0.8 24.2 22.7 23.5 21.7 19.3
+Symbol FT 0.8 25.2 21.7 22.8 22.4 22.6
+Random Label FT 3.8 41.1 39.8 42.2 45.2 47.0
+V oxceleb
+No FT 36.2 16.9 20.7 24.1 25.0 28.3
+V oxceleb
+Regular FT 61.1 64.3 63.3 63.6 64.3 64.7
+Symbol FT 52.0 63.4 63.0 63.4 64.0 63.2
+Random Label FT 46.4 56.7 54.2 53.8 53.7 54.3
+HVB
+Regular FT 34.5 31.3 35.8 39.1 41.0 42.3
+Symbol FT 42.8 40.1 43.7 43.9 45.4 44.7
+Random Label FT 36.2 40.2 42.9 44.2 44.8 46.1
+V oxpopuli
+No FT 0.4 4.3 2.4 1.4 1.0 1.1
+V oxceleb
+Regular FT 7.9 11.1 11.9 12.5 13.0 11.4
+Symbol FT 4.1 17.4 19.3 18.1 17.4 17.3
+Random Label FT 8.3 17.9 19.3 22.1 22.3 21.5
+Table 1: Table shows different fine-tuning (FT) strategies for cross task learning and cross modal ICL. In all cases, the query is speech
+(S), while the demonstrations are in text (T). The focus of the work is on generalization towards unseen/mis-matched tasks (TE̸=TF T ).
+Hence, the best performance on a given SLUE task in an mis-match setting is given in bold. The best performance among the few-shot
+cases in the matched setting (TE =TF T ) is highlighted in underline.
+3.4. Random Label Fine-tuning
+We propose a novel framework for fine-tuning to improve
+task agnostic generalization of speech-text LLM capabilities to
+novel unseen tasks in the mis-matched setting. The goal of this
+strategy is to enable the model to follow the instructions care-
+fully for each sample and to facilitate the abstraction of the task
+requirements beyond the specific fine-tuning task being solved.
+By striving to achieve this goal, the speech-text LLM model is
+more flexible to follow specific instructions at evaluation which
+may differ from those provided during the fine-tuning stage.
+The random label fine-tuning also forces the model to ignore
+any prior semantic definitions of the class-labels.
+In order to achieve this goal, we propose to randomly per-
+mute the definition of classes at every mini-batch of fine-tuning.
+For example, in one mini-batch, the definition of “neutral” class
+is any hint of approval or happiness , while in another mini-
+batch the definition is of “neutral” class is modified to any hint
+of criticism or sadness . Note that, the class-definition for a
+given example is uniform across the text demonstration (few
+shot examplesD(T )) and the speech query. During evaluation,
+the class definitions pertaining to the task are directly used. This
+setting is shown in the right panel of Figure 1.
+4. Data
+We have evaluated our approach on three tasks, SLUE V ox-
+Celeb [33], the SLUE-HVB [34] and SLUE-V oxPopuli [33].
+SLUE-Voxceleb: SLUE-V oxceleb is based on audio extracted
+from YouTube videos, collected as part of the V oxCeleb corpus
+[33]. In this dataset, each spoken utterance is labeled with one
+of three sentiment classes: positive, negative, and neutral. To
+assess the sentiment analysis performance, we calculate macro-
+averaged F1 score. Hence, this task is a 3-class classification
+setting. For this task, the model is fine-tuned on 5, 777 samples
+and evaluated on 3, 553 samples. This dataset contains 1454
+validation examples.
+SLUE-HVB: HarperValley Bank corpus consists of scripted di-
+alogues between bank employees and customers [34]. The dia-
+log act labels in SLUE-HVB include18 actions (fine-grained la-
+beling scheme). Each recording can also have multiple actions.
+We evaluate the speech-text LLMs on their ability to classify
+fine-grained labels using macro-averaged F1 score. Hence, this
+setting is a multi-label 18-class classification setting and thus,
+inherently more complex compared to the SLUE-V oxceleb task.
+There are 11, 344 samples for fine-tuning and 6, 121 samples
+for evaluation. HVB dataset have 1690 validation samples.
+SLUE-VoxPopuli: The V oxpopuli dataset for SLUE [33]
+relates to the task of Named Entity Recognition (NER). NER
+is the process of identifying named entities in a sentence and
+assigning them with appropriate labels (types). Named entities
+are phrases—often, composed of proper nouns—that represent
+specific entities such as individuals, locations, organizations,
+numerical values, and more. Model is evaluated on 7 combined
+NER entity tags. Similar to HVB this is also multi-label
+classification task. We use the micro-averaged F1 score to
+measure the performance on the SLUE-V oxPopuli dataset.
+The evaluation data consists of 1, 843 speech recordings.
+V oxPopuli contains1753 samples in validation split. We use
+4105
+
+the SLUE-V oxPopuli only in the evaluation and do not perform
+any fine-tuning on this dataset.
+5. Experimental Setup
+5.1. Prompt Structure and fine-tuning Procedure
+We employed a consistent prompt structure across all fine-
+tuning strategies, consisting of:
+• Task Instruction: A clear instruction defining the task, such
+as ” You are a dialogue analysis expert.
+Based on the statement below, identify
+all applicable dialogue actions from the
+given categories. ”
+• Class Definitions: Precise definitions of each categorical
+class pertinent to the task.
+• General Guidelines: Instructions regarding output format,
+the number of outputs (single or multiple), and other task-
+specific guidelines.
+• Few-shot demonstrations: A variable number of few-shot
+demonstrations presented in text format with text labels.
+• Input Speech Query: The actual speech input which the
+model uses to predict the output labels.
+• True Label: The corresponding ground truth label for the
+input query (used in fine-tuning).
+All speech queries and speech demonstrations are enclosed
+within the special tokens <Speech> and </Speech>. Dur-
+ing the fine-tuning stage, the number of few-shot demonstra-
+tions are randomly selected between 0 and 5. The demonstra-
+tions for few-shot prompting are obtained using text-embedding
+semantic similarity score between query under consideration
+(textual form of speech query is available in the dataset) with
+the textual form of training samples [35]. The ASR transcripts
+of the speech query and training examples would also allow the
+few-shot example creation.
+For the V oxCeleb SLU random label fine-tuning, we cre-
+ated six training combinations by swapping each label defini-
+tion, while for the HVB dataset, we generated ten random la-
+bel definitions. During inference, the same prompt structure
+is used, but with a different set of few-shot examples choosen
+from train and validation dataset based on the embedding simi-
+larity score.
+5.2. Fine-tuning Details
+We employed LoRA with a rank (r) of 8, alpha (α) of 32, and a
+dropout rate of 0.1 [36]. The cross-entropy loss was calculated
+between the predicted output tokens for labels and the target la-
+bels. We optimized the model using Adam with an initial learn-
+ing rate of 1e− 5, warm-up steps of 100, and a cosine anneal-
+ing learning rate scheduler. Gradient accumulation and gradi-
+ent clipping were implemented to expedite training and prevent
+gradient explosions. Each model was trained for 15 epochs.
+6. Results and Discussion
+Table 1 presents the performance of the SALMONN architec-
+ture under various experimental conditions, focusing on the im-
+pact of fine-tuning strategies on cross-task and cross-modal in-
+context learning (ICL). We compare the performance on var-
+ious combinations of fine-tuning ( TF T ) and evaluation ( TE)
+tasks. The SLUE-V oxPopuli setup is only used in the evalua-
+tion, where the model was fine-tuned in SLUE-V oxceleb task.
+The following are the key-takeaways from the experimental
+analysis.
+• The performance in the no-fine-tuning (No FT) for all
+the tasks is significantly inferior to those achieved with
+match/mis-match fine-tuning. The No FT results form the
+lower bound for the performance on the task. This trend mo-
+tivates the need for SLU fine-tuning even if the fine-tuning
+task is mis-matched to the evaluation.
+• In all the experiments, both matched and mismatched, the
+few-shot performance improves over the zero-shot case. This
+improvement emphasizes the value of ICL for SLU tasks.
+• While stating the obvious, the matched FT provides the best
+performance in SLUE-HVB and SLUE-V oxceleb evaluations
+with the regular FT strategy. These result form the upper-
+bound of the task performance. The few-shot performance
+is also seen to improve the performance over the zero-shot
+setting.
+• In mis-matched settings, three cases are considered
+- i) TE=SLUE-HVB, with TF T =SLUE-V oxceleb, ii)
+TE=SLUE-V oxceleb, with TF T =SLUE-HVB, and iii)
+TE=SLUE-V oxpopuli, withTF T =SLUE-V oxceleb.
+The random-label FT provides the best mis-matched per-
+formance on most of the zero-shot and few-shot settings.
+In case of mis-matched evaluation with TE=SLUE-HVB, the
+random-label FT achieves a performance that is 21.6% rela-
+tively lower than the upper-bound (matched setting with reg-
+ular FT), while in the case of mis-matched evaluation with
+TE=SLUE-V oxceleb, the random-label FT achieves a perfor-
+mance that is 54.5% relatively lower than the upper-bound. In
+all cases, the random-label FT significantly improves over the
+No-FT as well as the regular-FT approaches. On the average,
+over all the few-shot cases, the random label fine-tuning pro-
+vides a relative improvement of 10.1% on the SLUE-V oxceleb
+mis-match evaluation over the regular fine-tuning, while pro-
+viding a relative improvement of 95.3% over the regular fine-
+tuning on the SLUE-HVB mis-match evaluations. On the
+SLUE-V oxpopuli evaluations, the random fine-tuning improves
+by 64.3% over the regular fine-tuning. To the best of our knowl-
+edge, our proposal of random label fine-tuning, to enable task-
+agnostic learning, is explored for the first time in LLMs. The
+experimental results show that, a randomized label based fine-
+tuning strategy on a mis-matched FT task, enables the unlocking
+of emergent abilities of the models to unseen SLU tasks.
+7. Conclusion
+In this paper, we considered the emergent capabilities of
+speech-text LLMs on SLU tasks that are unseen during train-
+ing and fine-tuning. For such a setting, we explored multiple
+strategies with a SALMONN based speech-text model. In order
+to avoid the dependence on the training-labels used in a regular
+fine-tuning setup, we proposed a symbol based fine-tuning and a
+randomized label based fine-tuning strategy. Extensive evalua-
+tion experiments were performed on 3 SLU tasks in matched
+and mis-matched settings. We performed both zero-shot as
+well as few-shot (textual few-shot examples in context) eval-
+uations. In these experiments, we illustrate that the randomized
+label fine-tuning provides the best performance, while signifi-
+cantly improving over the regular fine-tuning or no-fine-tuning
+approaches. The future efforts in our work would attempt to de-
+velop the theoretical understanding of randomized label-based
+fine-tuning in the context of LLMs and to extend the empirical
+study to a wider range of data and tasks.
+4106
+
+8. References
+[1] L. Lugosch and et. al., “Speech model pre-training for
+end-to-end spoken language understanding,” arXiv preprint
+arXiv:1904.03670, 2019.
+[2] M. Del Rio and et. al., “Earnings-21: A practical benchmark for
+asr in the wild,” arXiv preprint arXiv:2104.11348, 2021.
+[3] Z. Lu and et. al., “Speech sentiment analysis via pre-trained fea-
+tures from end-to-end asr models,” in ICASSP 2020-2020 IEEE
+International Conference on Acoustics, Speech and Signal Pro-
+cessing (ICASSP). IEEE, 2020, pp. 7149–7153.
+[4] D. Ortega and N. T. Vu, “Lexico-acoustic neural-based models for
+dialog act classification,” in 2018 IEEE International Conference
+on Acoustics, Speech and Signal Processing (ICASSP) . IEEE,
+2018, pp. 6194–6198.
+[5] S. Arora and et. al., “Espnet-SLU: Advancing spoken language
+understanding through espnet,” inICASSP 2022-2022 IEEE Inter-
+national Conference on Acoustics, Speech and Signal Processing
+(ICASSP). IEEE, 2022, pp. 7167–7171.
+[6] Y . Peng and et. al., “A study on the integration of pre-trained
+SSL, ASR, LM and SLU models for spoken language under-
+standing,” in 2022 IEEE Spoken Language Technology Workshop
+(SLT). IEEE, 2023, pp. 406–413.
+[7] M. Saxon and et. al., “End-to-end spoken language un-
+derstanding for generalized voice assistants,” arXiv preprint
+arXiv:2106.09009, 2021.
+[8] Q. Dong and et. al., “A survey on in-context learning,” in Pro-
+ceedings of the 2024 Conference on Empirical Methods in Natural
+Language Processing, 2024, pp. 1107–1128.
+[9] Y . Zhou and et. al., “The mystery and fascination of LLMs: A
+comprehensive survey on the interpretation and analysis of emer-
+gent abilities,” arXiv preprint arXiv:2311.00237, 2023.
+[10] M. Luo and et. al., “In-context learning with retrieved demon-
+strations for language models: A survey,” arXiv preprint
+arXiv:2401.11624, 2024.
+[11] C. Highmore, “In-context learning in large language models: A
+comprehensive survey,” 07 2024.
+[12] Y . Fei and et. al., “Mitigating label biases for in-context learning,”
+arXiv preprint arXiv:2305.19148, 2023.
+[13] S. Min and et. al., “Rethinking the role of demonstrations:
+What makes in-context learning work?” in Proceedings of the
+2022 Conference on Empirical Methods in Natural Language
+Processing. Abu Dhabi, United Arab Emirates: Association
+for Computational Linguistics, Dec. 2022, pp. 11 048–11 064.
+[Online]. Available: https://aclanthology.org/2022.emnlp-main.
+759/
+[14] S. Doveh and et. al., “Towards multimodal in-context learning
+for vision & language models,”arXiv preprint arXiv:2403.12736,
+2024.
+[15] J.-B. Alayrac and et. al., “Flamingo: a visual language model
+for few-shot learning,” Advances in neural information process-
+ing systems, vol. 35, pp. 23 716–23 736, 2022.
+[16] D. Chen and et. al., “Visual instruction tuning with polite
+flamingo,” in Proceedings of the AAAI Conference on Artificial
+Intelligence, vol. 38, no. 16, 2024, pp. 17 745–17 753.
+[17] Y . Jiang and et. al., “Many-shot in-context learning in multimodal
+foundation models,” arXiv preprint arXiv:2405.09798, 2024.
+[18] K.-W. Chang and et. al., “Exploring in-context learning of textless
+speech language model for speech classification tasks,” in Proc.
+Interspeech 2024, 2024, pp. 4139–4143.
+[19] A. Chatterjee and et. al., “Language models can exploit cross-task
+in-context learning for data-scarce novel tasks,” arXiv preprint
+arXiv:2405.10548, 2024.
+[20] D. Cheng and et. al., “UPRISE: Universal prompt retrieval for
+improving zero-shot evaluation,” inProceedings of the 2023 Con-
+ference on Empirical Methods in Natural Language Processing ,
+Singapore, 2023, pp. 12 318–12 337.
+[21] S. Min and et. al., “MetaICL: Learning to learn in context,” arXiv
+preprint arXiv:2110.15943, 2021.
+[22] Y . Wang and et. al., “Super-natural instructions: Generalization
+via declarative instructions on 1600+ nlp tasks,” arXiv preprint
+arXiv:2204.07705, 2022.
+[23] T. B. Brown and et. al., “Language models are few-shot learners,”
+CoRR, vol. abs/2005.14165, 2020.
+[24] J. He and et. al., “Zero-shot end-to-end spoken language under-
+standing via cross-modal selective self-training,” arXiv preprint
+arXiv:2305.12793, 2023.
+[25] E. Razumovskaia, I. Vuli ´c, and A. Korhonen, “Analyzing and
+adapting large language models for few-shot multilingual nlu: Are
+we there yet?” arXiv preprint arXiv:2403.01929, 2024.
+[26] M.-H. Hsu, K. P. Huang, and H.-y. Lee, “Meta-whisper: Speech-
+based meta-icl for asr on low-resource languages,” arXiv preprint
+arXiv:2409.10429, 2024.
+[27] S. Wang and et. al., “Can whisper perform speech-based
+in-context learning?” in ICASSP 2024-2024 IEEE Interna-
+tional Conference on Acoustics, Speech and Signal Processing
+(ICASSP). IEEE, 2024, pp. 13 421–13 425.
+[28] M. He and P. N. Garner, “Can ChatGPT detect intent? evaluating
+large language models for spoken language understanding,”arXiv
+preprint arXiv:2305.13512, 2023.
+[29] J. Pan and et. al., “Cosmic: Data efficient instruction-tuning for
+speech in-context learning,” arXiv preprint arXiv:2311.02248 ,
+2023.
+[30] J. Wei and et. al., “Symbol tuning improves in-context learning in
+language models,” arXiv preprint arXiv:2305.08298, 2023.
+[31] S. Li and et. al., “Instruction-following evaluation through verbal-
+izer manipulation,” arXiv preprint arXiv:2307.10558, 2023.
+[32] C. Tang and et. al., “SALMONN: Towards generic hearing
+abilities for large language models,” in The Twelfth International
+Conference on Learning Representations , 2024. [Online].
+Available: https://openreview.net/forum?id=14rn7HpKVk
+[33] S. Shon and et. al., “SLUE: New benchmark tasks for spoken lan-
+guage understanding evaluation on natural speech,” in ICASSP
+2022-2022 IEEE International Conference on Acoustics, Speech
+and Signal Processing (ICASSP). IEEE, 2022, pp. 7927–7931.
+[34] S. Shon, “SLUE phase-2: A benchmark suite of diverse
+spoken language understanding tasks,” in Proceedings of the 61st
+Annual Meeting of the Association for Computational Linguistics
+(Volume 1: Long Papers) . Toronto, Canada: Association for
+Computational Linguistics, Jul. 2023, pp. 8906–8937. [Online].
+Available: https://aclanthology.org/2023.acl-long.496/
+[35] K. Luo and et. al., “BGE landmark embedding: A chunking-
+free embedding method for retrieval augmented long-context
+large language models,” 2024. [Online]. Available: https:
+//arxiv.org/abs/2402.11573
+[36] J. E. Hu and et. al., “LoRA: Low-Rank Adaptation of Large
+Language Models,” ArXiv, vol. abs/2106.09685, 2021. [Online].
+Available: https://api.semanticscholar.org/CorpusID:235458009
+4107

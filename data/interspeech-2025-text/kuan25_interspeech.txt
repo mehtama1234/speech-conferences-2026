@@ -1,0 +1,719 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+Teaching Audio-Aware Large Language Models What Does Not Hear:
+Mitigating Hallucinations through Synthesized Negative Samples
+Chun-Yi Kuan, Hung-yi Lee
+Graduate Institute of Communication Engineering, National Taiwan University, Taiwan
+chunyi.kuan.tw@gmail.com, hungyilee@ntu.edu.tw
+Abstract
+Recent advancements in audio-aware large language models
+(ALLMs) enable them to process and understand audio inputs.
+However, these models often hallucinate non-existent sound
+events, reducing their reliability in real-world applications. To
+address this, we propose LISTEN (Learning to Identify Sounds
+Through Extended Negative Samples), a contrastive-like train-
+ing method that enhances ALLMs’ ability to distinguish be-
+tween present and absent sounds using synthesized data from
+the backbone LLM. Unlike prior approaches, our method re-
+quires no modification to LLM parameters and efficiently inte-
+grates audio representations via a lightweight adapter. Exper-
+iments show that LISTEN effectively mitigates hallucinations
+while maintaining impressive performance on existing audio
+question and reasoning benchmarks. At the same time, it is
+more efficient in both data and computation.
+Index Terms: audio hallucination, audio-aware large language
+models, audio understanding
+1. Introduction
+Audio-aware large language models (ALLMs) expand on tradi-
+tional text-based LLMs by incorporating the ability to process
+audio. These models can process audio, speech, and text in-
+puts at the same time, using text prompts to extract relevant
+information from audio and speech. This advancement enables
+large language models to understand multimodal information
+and interact with users by extracting information based on user
+instructions.
+However, recent studies [1, 2] have found that
+ALLMs, like text-based LLMs [3–7], are prone to hallucina-
+tion issues. For example, they may incorrectly identify sound
+events that do not exist in the audio, affecting their reliability
+and safety in understanding and processing audio. A model
+might, for instance, mistake a siren for music, leading to missed
+alerts in an emergency response system and potentially delaying
+critical actions.
+To address the hallucination issues in models, we propose
+a contrastive-like training method that not only teaches the
+model to recognize sounds present in the audio but also helps
+it learn which sounds are absent by leveraging data synthesized
+by the backbone LLMs. Unlike traditional methods for train-
+ing ALLMs, which often require extensive audio instruction-
+following datasets to align audio and text modalities, our ap-
+proach uses a simple, efficient, and effective automatic pipeline
+inspired by previous works [8, 9] to generate audio-text pairs.
+Additionally, this pipeline also produces contrastive data, in-
+corporating both positive and negative training samples to inject
+audio understanding into the model.
+Our experimental results show that our method not only
+mitigates audio hallucinations but also achieves competitive
+performance on audio question-answering benchmarks and ad-
+vanced audio reasoning tasks. We find that using self-generated
+data is beneficial, and incorporating negative samples within
+this synthesized data further improves the model’s ability to
+reduce audio hallucinations. In addition, the total duration of
+training data required is only 3% of the largest dataset used by
+the baseline model with the most extensive training data.
+Compared to the most common approaches [10–13] that in-
+corporate LoRA [14] into LLMs for training or even fine-tune
+the entire model, our method does not add or modify any pa-
+rameters of the large language model during training. Instead,
+inspired by the previous work [15–17], we train a simple adapter
+that maps audio representations to the input dimensions of the
+LLM. This approach makes our method more efficient in terms
+of both training data and training time. We provide illustrative
+examples on our demo page 1. In conclusion, our contributions
+are outlined as follows:
+1. Hallucination Mitigation:
+This work is the first to ad-
+dress hallucination in audio-aware large language models. To
+tackle this issue, we propose LISTEN (Learning to Identify
+Sounds Through Extended Negative Samples), a contrastive-
+like method that helps models distinguish between present
+and absent sounds, effectively reducing hallucination and im-
+proving reliability.
+Our findings show that self-generated
+data plays a crucial role, and incorporating negative sam-
+ples further enhances the model’s ability to mitigate hallu-
+cinations.
+2. Efficient Data Utilization and Training: Our method in-
+tegrates general audio representations into LLMs using a
+lightweight adapter without modifying any LLM parameters,
+requiring only 3% to 30% of the dataset used by baseline
+models. This is achieved by leveraging a backbone-LLM-
+synthesized dataset, which automatically generates audio-
+text pairs and contrastive data across general audio scenarios.
+This process eliminates the need for extensive instruction-
+following dataset, ensuring robust learning while minimizing
+data requirements.
+2. Related Work
+Audio-aware large language models (ALLMs) extend tradi-
+tional LLMs by incorporating audio perception, enabling them
+to process both audio and text inputs for a wider range of audio-
+related tasks.
+Recent advancements [8–13, 16–20] have fo-
+cused on bridging modality gaps by generating paired audio-
+text data, often leveraging powerful large language models [21]
+to create training datasets. For instance, these models generate
+question-answering format data based on the metadata in au-
+1https://kuan2jiu99.github.io/Balsa
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+2073
+10.21437/Interspeech.2025-324
+
+Figure 1: Data Construction Stage uses a backbone large language model to generate audio-text aligned descriptions. Training Stage
+focuses on audio-text alignment by training an audio modality adapter, while the backbone large language model remains frozen.
+dio datasets. While many approaches rely on external LLMs
+for data generation, our method takes a different approach by
+utilizing the backbone LLM of the ALLM itself, similar to pre-
+vious work [8, 16, 17]. Although our approach follows a sim-
+ilar strategy, we are the first to apply it to general audio tasks,
+demonstrating its effectiveness. In addition, we explore the use
+of self-generated data and synthesized negative samples, fur-
+ther enhancing the model’s learning process. This eliminates
+text discrepancies, leverages the model’s inherent understand-
+ing of audio dataset metadata, and reduces the need for complex
+and extensive training datasets, significantly improving data ef-
+ficiency.
+Despite these advancements, hallucination remains a major
+challenge in ALLMs, where models misidentify non-existent
+sound events, limiting their reliability [1, 2] in practical ap-
+plications.
+While prior studies have noted this issue, none
+have addressed it from a model training perspective. Our work
+addresses this gap by improving ALLM reliability through a
+contrastive-like training approach to reduce hallucinations.
+3. Method
+3.1. Data Construction
+During the data construction stage, inspired by [8, 9], our goal
+is to create audio-text pair data with minimal textual discrepan-
+cies between the underlying LLM used in the ALLM and the
+constructed training data. While LLMs cannot directly process
+audio, they excel at understanding and interpreting textual meta-
+data [2]. Therefore, we utilize the meta-information from the
+original audio datasets, which commonly include two types of
+annotations: human-annotated captions (Dcaption) and sound
+event tags (Dtag).
+To further minimize textual discrepancies and avoid the
+need to specifically design question-answer pairs for format-
+ting the training data, we developed a structured format called
+the seed prompt (Pseed). The seed prompt could be either au-
+dio captions or sound event tags, depending on the annotation
+format of the original dataset. We then append the generation
+prompts (Pgen) to the seed prompt and feed it into the LLM,
+enabling it to generate descriptions that match the audio. There
+are three types of generation prompts:
+1. Positive Samples Generation Prompt (Ppos) aims to gen-
+erate descriptions of sound events that actually occur in the
+audio. For example, Replay the audio.
+2. Negative Samples Generation Prompt (Pneg) aims to gen-
+erate descriptions of sound events that are not present in the
+audio. For example, Identify sounds that are absent as con-
+trasting examples.
+3. Combined Samples Generation Prompt (Pcomb) integrates
+both of the above prompts. It aims to generate descriptions of
+both the sound events that are present and those that are ab-
+sent in the audio. For example, Replay the audio and identify
+sounds that are absent as contrasting examples.
+In summary, the final input prompt (Pfinal) to the LLM can
+be expressed in Equation (1).
+Pfinal = [Begin of audio] Pseed [End of audio] Pgen,
+Pseed ∈{Dcaption, Dtag},
+Pgen ∈{Ppos, Pneg, Pcomb}.
+(1)
+In Equation (1), [Begin of audio] and [End of audio] are ex-
+pressed in natural language format, with the purpose of indicat-
+ing to the model that the information between them represents
+the content from the audio. When training audio-aware large
+language models, the position where Pseed is located will be
+replaced with audio representation. These generated responses
+(RLLM) to the input context Pfinal are then used as our train-
+ing targets. Actual examples are shown in Table1.
+3.2. Model Design and Training Approach
+Figure 1 illustrates the architecture of our model.
+1. Audio Encoder. We utilize the foundation model Whisper2
+[22] as our audio encoder. Prior studies [23, 24] have high-
+lighted Whisper’s impressive performance on various audio-
+related tasks, despite its original design for automatic speech
+2huggingface.co/openai/whisper-small
+2074
+
+Table 1: Examples generated under different sampling prompts.
+Input Audio:
+Audio Caption: A woman talks nearby as water pours.
+Positive Samples Generation Prompt (Ppos):
+Replay the audio.
+Response:
+Water pouring sounds, woman talking in the background
+Negative Samples Generation Prompt (Pneg):
+Identify sounds that are absent as contrasting examples.
+Response:
+Based on the provided audio, here are some specific sound
+events that are not present in the audio:
+1. A car driving by
+2. Birds chirping
+3. A dog barking
+Combined Samples Generation Prompt (Pcomb):
+Replay the audio and identify sounds that are absent as
+contrasting examples.
+Response:
+Specific sound events detected in the provided audio:
+1. A woman’s voice
+2. Water pouring
+Contrastive examples of specific sound events not present
+in the provided audio:
+1. A car driving by
+2. A dog barking
+3. The door bang
+recognition and speech translation tasks. As Whisper fol-
+lows an encoder-decoder architecture, we utilize only its en-
+coder component. To retain the advantages of the pre-trained
+model, the audio encoder’s parameters remain frozen.
+2. Backbone Large Language Model.
+This study employs
+the instruction-tuned LLaMA-3.1-8B3 [25] as the core large
+language model.
+To preserve the model’s original text-
+processing capabilities, we opted not to apply LoRA [14] or
+fine-tune any of its parameters.
+3. Audio Modality Adapter. The only trainable component
+is the audio modality adapter, which is randomly initialized.
+This adapter projects the output representations extracted by
+the audio encoder into the input dimension of the backbone
+large language model. In detail, we employ a Qformer [26]
+architecture to extract audio features from the intermediate
+layers of the Whisper encoder. These features are aggregated
+through a weighted sum with learnable weights, followed by
+a simple linear projection layer that aligns the aggregated fea-
+tures with the input dimensions of the backbone large lan-
+guage model.
+During training, the continuous audio features produced by
+the audio modality adapter replace the seed prompt (Pseed) in
+the template (see Eq.(1)). The entire architecture is then opti-
+mized end-to-end using a next-token prediction loss, with the
+generated responses (RLLM) as the learning target. This ap-
+proach enables the large language model to achieve audio-text
+alignment while only fine-tuning the parameters of the audio
+modality adapter.
+4. Experiment
+4.1. Training Datasets
+The training datasets we used include AudioSet-20K [27], Au-
+dioCaps [28], FSD50K [29], MACS [30], ESC50 [31], Ur-
+banSound8K [32], Clotho [33], and VocalSound [34]. Among
+these original datasets, AudioCaps, Clotho, and MACS contain
+ground truth labels in the form of human-annotated audio cap-
+3huggingface.co/meta-llama/Llama-3.1-8B-Instruct
+tions, while the remaining datasets have ground truth labels in
+the form of sound events tags. In Table 2, we present the sta-
+tistical data of our training datasets and compare them with the
+amount of data used in previous work. The duration is calcu-
+lated based on each unique audio, excluding any duplicate seg-
+ments. The number of samples represents the number of data
+instances used during training.
+Table 2: Summary of training datasets.
+Dataset
+Duration (Hours)
+# Samples
+AudioSet-20K [27]
+60.4
+42K
+AudioCaps [28]
+138.0
+96K
+Clotho [33]
+18.0
+27K
+MACS [30]
+10.9
+33K
+FSD50K [29]
+56.4
+56K
+ESC50 [31]
+2.8
+4K
+UrbanSound8K [32]
+9.7
+17K
+VocalSound [34]
+20.2
+34K
+Total (Ours)
+316.4
+308K
+Qwen-Audio [10,11]
+10000
+-
+SALMONN [12]
+1044
+370K
+LTU-AS [13]
+1784
+5682K
+4.2. Evaluation Benchmarks
+4.2.1. Audio Hallucination
+Previous studies [1, 2] have introduced benchmarks to evalu-
+ate object hallucination in audio.
+In this task, the model is
+asked whether a specific sound event is present in the audio.
+For example, Is there a car horn sound in the audio? Since
+the question format is binary, standard classification metrics can
+be used to assess the model’s performance. To further analyze
+the model’s behavior, we also calculate precision, recall, and
+F1 scores separately for questions where the correct answer is
+“yes” and “no”.
+4.2.2. Audio Question Answering
+Clotho-AQA [33] is a widely used dataset for audio question
+answering (AQA), where systems generate natural language an-
+swers from audio signals and related questions. Questions are
+crowd-sourced, and answers come from multiple annotators.
+To ensure accuracy, only questions with unanimous annotator
+agreement are included.
+4.2.3. Synonym and Hypernym Test
+A previous study [36] introduced a synonym and hypernym test
+to assess whether models understand audio and its semantic
+connections to text. Synonyms denote similar meanings, while
+hypernyms represent broader categories encompassing specific
+terms. These relationships help formulate text prompts for eval-
+uation. For example, given an audio of a songbird chirping, a
+possible question could be: Is the sound from an object that is
+a type of chordate? The expected answer is yes. This bench-
+mark evaluates whether audio-aware LLMs genuinely compre-
+hend audio and reason about semantic relationships or merely
+rely on keyword associations. Note that during evaluation, all
+models use greedy decoding.
+4.3. Ablation Study
+To ensure a fair evaluation of contrastive-like methods, we de-
+signed the following experiments:
+1. Positive-only Training Data: The training set contains only
+positive samples, with a total of 2N data points.
+2075
+
+Table 3: Evaluation results of our proposed models and other baseline models. Acc denotes accuracy, F1 (Y) and F1 (N) are F1 scores
+for yes and no answers, respectively, and F1 (W) is the weighted F1 score. Yes shows the percentage of yes responses. Syn-Hyn Test
+refers to the Synonym and Hypernym Test. All values in the table are percentages.
+Audio Hallcination
+ClothoAQA
+Syn-Hyn Test
+Models
+Acc
+F1 (Y)
+F1 (N)
+F1 (W)
+Yes
+Acc
+Acc
+F1 (Y)
+F1 (N)
+F1 (W)
+Qwen-Audio-Chat [10]
+66.0
+72.9
+54.4
+63.7
+75.4
+74.9
+80.0
+79.8
+80.3
+80.1
+Qwen2-Audio-Instruct [11]
+67.6
+75.3
+53.0
+64.1
+81.0
+75.3
+68.7
+71.7
+65.0
+67.7
+SALMONN-7B [12]
+57.5
+70.1
+26.5
+48.3
+92.1
+76.7
+54.7
+57.1
+52.0
+54.0
+SALMONN-13B [12]
+70.8
+77.0
+60.1
+68.5
+76.8
+84.0
+61.1
+66.9
+52.8
+58.6
+LTU-AS [13]
+48.8
+51.7
+45.5
+48.6
+56.0
+57.0
+50.6
+27.7
+62.5
+48.7
+Gemini-1.5-Pro [35]
+68.6
+65.9
+71.0
+68.4
+42.0
+68.4
+78.8
+72.5
+82.8
+78.6
+Ours (Gemini, Positive + Positive)
+50.4
+66.6
+3.4
+35.0
+98.7
+53.6
+48.3
+56.3
+36.9
+44.3
+Ours (Gemini, Positive + Negative)
+52.6
+63.6
+32.3
+47.9
+80.0
+61.0
+69.6
+29.1
+80.7
+62.8
+Ours (Gemini, Combined)
+62.1
+57.3
+66.0
+61.6
+38.7
+77.3
+66.5
+48.7
+75.1
+65.6
+Ours (Rule-based Template)
+54.4
+70.2
+2.5
+36.3
+99.1
+56.8
+37.4
+49.2
+18.5
+28.3
+Ours (Positive + Positive)
+66.3
+73.1
+55.2
+64.1
+74.8
+81.5
+82.8
+81.7
+83.8
+83.0
+Ours (Positive + Negative)
+77.5
+80.2
+74.0
+77.1
+63.4
+84.3
+82.2
+79.8
+84.1
+82.2
+Ours (Combined)
+74.5
+77.2
+71.1
+74.1
+61.7
+83.3
+79.7
+71.0
+84.4
+78.9
+2. Positive and Negative Training Data: The training set in-
+cludes both positive and negative samples, each with N data
+points, resulting in a total of 2N data points.
+3. Combined Training Data: The training set consists of com-
+bined samples, as described in Section 3.1. A combined sam-
+ple includes both sound events that are present and those that
+are absent within a single sample. In contrast, positive sam-
+ples only contain present sound events, while negative sam-
+ples only contain absent sound events. Under the combined
+setup, there are N data points. Since each data point carries
+information about both present and absent sound events, it is
+equivalent to having a total of 2N data points.
+5. Results
+5.1. Performance on Audio Hallucination
+In Table 3, compared to previous baselines, our proposed mod-
+els achieve the best performance on the audio hallucination
+benchmark, both in terms of accuracy and F1 score. For ques-
+tions where the ground truth is “no”, which are designed to test
+whether the model can accurately identify sound events that do
+not exist in the given audio, we observed a significant improve-
+ment when negative samples were included in our data gener-
+ation pipeline. This suggests that the contrastive-like approach
+helps mitigate audio hallucination. In contrast, improvements
+from using only positive samples were less noticeable. Based
+on our experimental results, separating positive samples and
+negative samples performs better compared to combining them
+into a single set of samples.
+5.2. Performance on Audio Question Answering
+While our proposed model performs well on the audio halluci-
+nation benchmark, it also delivers competitive results on tradi-
+tional audio question answering benchmarks, even outperform-
+ing other baselines. This demonstrates that our approach is not
+only effective in mitigating hallucinations but also achieves a
+solid level of performance in basic audio understanding.
+5.3. Performance on Synonym and Hypernym Test
+One of the key objectives of audio-text alignment is to align au-
+dio information, which belongs to a different modality than text,
+with the text space of large language models. Few studies have
+systematically and specifically explored this issue. As an initial
+exploration, we based our analysis on [36] to evaluate whether
+our model and other baseline models truly understand audio
+content and use it to reason about semantic relationships. In
+Table 3, our proposed models achieve impressive performance,
+demonstrating stronger and more robust audio-text alignment
+compared to other baselines. While Qwen-Audio-Chat achieves
+comparable performance, we use only 3% of their dataset’s total
+hours and do not modify any parameters of the audio foundation
+model or the backbone LLM.
+5.4. Comparison of Data Generation Approaches
+We also examine the scenario of using a stronger LLM to gen-
+erate synthetic data via our proposed pipeline.
+Specifically,
+we select Gemini-1.5-Pro to synthesize the data described in
+Section 3.1. We apply the same method but use a more ad-
+vanced model to generate the data. Experimental results show
+that using a more capable LLM does not provide additional
+benefits, indicating that self-generated data from the backbone
+LLM is already sufficient in this case. On the other hand, we
+design several rule-based prompt templates as a comparison
+method for generating data. Using pre-designed description-
+based prompts, such as Describe the audio, the training target
+corresponds to the ground truth captions of the audio. How-
+ever, experimental results show that this rule-based method per-
+forms poorly, conveying the necessity of using self-generated
+data from the LLM.
+6. Conclusion, Future work, and Limitation
+This paper proposes a contrastive-like training method that en-
+ables audio-aware large language models to recognize both
+present and absent sounds in audio by self-generated data, effec-
+tively reducing hallucination issues and improving model relia-
+bility. Additionally, we achieve impressive results on audio un-
+derstanding and reasoning benchmarks, demonstrating the ro-
+bustness and versatility of this approach.
+There are still some limitations to this work. First, this pa-
+per focuses on mitigating audio-related hallucinations, while
+speech-related hallucinations remain relatively underexplored.
+Second, incorporating visual modalities could help reduce hal-
+lucinations and enhance audio reasoning tasks in audio-visual
+scenarios. We leave these aspects for future work.
+2076
+
+7. References
+[1] C.-Y. Kuan and H.-y. Lee, “Can large audio-language models
+truly hear?
+tackling hallucinations with multi-task assessment
+and stepwise audio reasoning,” in ICASSP 2025-2025 IEEE Inter-
+national Conference on Acoustics, Speech and Signal Processing
+(ICASSP).
+IEEE, 2025.
+[2] C.-Y. Kuan, W.-P. Huang, and H.-y. Lee, “Understanding sounds,
+missing the questions: The challenge of object hallucination in
+large audio-language models,” Interspeech 2024, 2024.
+[3] V. Rawte, A. Sheth, and A. Das, “A survey of hallucination in
+large foundation models,” arXiv:2309.05922, 2023.
+[4] Y. Zhang et al., “Siren’s song in the ai ocean: a survey on halluci-
+nation in large language models,” arXiv:2309.01219, 2023.
+[5] L. Huang et al., “A survey on hallucination in large language
+models: Principles, taxonomy, challenges, and open questions,”
+arXiv:2311.05232, 2023.
+[6] R. Friel and A. Sanyal, “Chainpoll: A high efficacy method for
+llm hallucination detection,” arXiv preprint arXiv:2310.18344,
+2023.
+[7] H. Liu, W. Xue, Y. Chen, D. Chen, X. Zhao, K. Wang, L. Hou,
+R. Li, and W. Peng, “A survey on hallucination in large vision-
+language models,” arXiv preprint arXiv:2402.00253, 2024.
+[8] Y. Fathullah et al., “Towards general-purpose speech abilities
+for large language models using unpaired data,” arXiv preprint
+arXiv:2311.06753, 2023.
+[9] K.-H. Lu et al., “Developing instruction-following speech lan-
+guage model without speech instruction-tuning data,” arXiv
+preprint arXiv:2409.20007, 2024.
+[10] Y. Chu, J. Xu, X. Zhou, Q. Yang, S. Zhang, Z. Yan, C. Zhou, and
+J. Zhou, “Qwen-audio: Advancing universal audio understand-
+ing via unified large-scale audio-language models,” arXiv preprint
+arXiv:2311.07919, 2023.
+[11] Y. Chu, J. Xu, Q. Yang, H. Wei, X. Wei, Z. Guo, Y. Leng, Y. Lv,
+J. He, J. Lin et al., “Qwen2-audio technical report,” arXiv preprint
+arXiv:2407.10759, 2024.
+[12] C. Tang, W. Yu, G. Sun, X. Chen, T. Tan, W. Li, L. Lu, Z. Ma, and
+C. Zhang, “Salmonn: Towards generic hearing abilities for large
+language models,” arXiv preprint arXiv:2310.13289, 2023.
+[13] Y. Gong, A. H. Liu, H. Luo, L. Karlinsky, and J. Glass, “Joint
+audio and speech understanding,” in 2023 IEEE Automatic Speech
+Recognition and Understanding Workshop (ASRU).
+IEEE, 2023,
+pp. 1–8.
+[14] E. J. Hu, P. Wallis, Z. Allen-Zhu, Y. Li, S. Wang, L. Wang,
+W. Chen et al., “Lora: Low-rank adaptation of large language
+models,” in International Conference on Learning Representa-
+tions, 2021.
+[15] D. Zhu, J. Chen, X. Shen, X. Li, and M. Elhoseiny, “Minigpt-
+4: Enhancing vision-language understanding with advanced large
+language models,” in The Twelfth International Conference on
+Learning Representations, 2023.
+[16] K.-H. Lu et al., “Desta:
+Enhancing speech language mod-
+els through descriptive speech-text alignment,” arXiv preprint
+arXiv:2406.18871, 2024.
+[17] C. Wang, M. Liao, Z. Huang, J. Lu, J. Wu, Y. Liu, C. Zong,
+and J. Zhang, “Blsp: Bootstrapping language-speech pre-training
+via behavior alignment of continuation writing,” arXiv preprint
+arXiv:2309.00916, 2023.
+[18] C.-Y. Kuan, C.-K. Yang, W.-P. Huang, K.-H. Lu, and H.-y. Lee,
+“Speech-copilot: Leveraging large language models for speech
+processing via task decomposition, modularization, and program
+generation,” arXiv preprint arXiv:2407.09886, 2024.
+[19] C.-y. Huang et al., “Dynamic-superb: Towards a dynamic, col-
+laborative, and comprehensive instruction-tuning benchmark for
+speech,” in ICASSP 2024-2024 IEEE International Conference on
+Acoustics, Speech and Signal Processing (ICASSP). IEEE, 2024,
+pp. 12 136–12 140.
+[20] C.-y. Huang, W.-C. Chen et al., “Dynamic-superb phase-2: A
+collaboratively expanding benchmark for measuring the capabil-
+ities of spoken language models with 180 tasks,” arXiv preprint
+arXiv:2411.05361, 2024.
+[21] J. Achiam, S. Adler, S. Agarwal, L. Ahmad, I. Akkaya, F. L. Ale-
+man, D. Almeida, J. Altenschmidt, S. Altman, S. Anadkat et al.,
+“Gpt-4 technical report,” arXiv preprint arXiv:2303.08774, 2023.
+[22] A. Radford et al., “Robust speech recognition via large-scale weak
+supervision,” in International conference on machine learning.
+PMLR, 2023, pp. 28 492–28 518.
+[23] Y. Gong, S. Khurana, L. Karlinsky, and J. Glass, “Whisper-at:
+Noise-robust automatic speech recognizers are also strong audio
+event taggers,” in Proc. Interspeech 2023, 2023.
+[24] R. Ma, A. Liusie, M. J. Gales, and K. M. Knill, “Investigating the
+emergent audio classification ability of asr foundation models,”
+arXiv preprint arXiv:2311.09363, 2023.
+[25] A. Dubey et al., “The llama 3 herd of models,” arXiv preprint
+arXiv:2407.21783, 2024.
+[26] J. Li, D. Li, S. Savarese, and S. Hoi, “Blip-2: Bootstrapping
+language-image pre-training with frozen image encoders and
+large language models,” in International conference on machine
+learning.
+PMLR, 2023, pp. 19 730–19 742.
+[27] J. F. Gemmeke, D. P. W. Ellis, D. Freedman, A. Jansen,
+W. Lawrence, R. C. Moore, M. Plakal, and M. Ritter, “Audio set:
+An ontology and human-labeled dataset for audio events,” in 2017
+IEEE International Conference on Acoustics, Speech and Signal
+Processing (ICASSP), 2017, pp. 776–780.
+[28] C. D. Kim, B. Kim, H. Lee, and G. Kim, “Audiocaps: Generat-
+ing captions for audios in the wild,” in Proceedings of the 2019
+Conference of the North American Chapter of the Association for
+Computational Linguistics: Human Language Technologies, Vol-
+ume 1 (Long and Short Papers), 2019, pp. 119–132.
+[29] E. Fonseca, X. Favory, J. Pons, F. Font, and X. Serra, “Fsd50k: an
+open dataset of human-labeled sound events,” IEEE/ACM Trans-
+actions on Audio, Speech, and Language Processing, vol. 30, pp.
+829–852, 2021.
+[30] I. Mart´ın-Morat´o, A. Mesaros, T. Heittola, T. Virtanen, M. Cobos,
+and F. J. Ferri, “Sound event envelope estimation in polyphonic
+mixtures,” in ICASSP 2019 - 2019 IEEE International Conference
+on Acoustics, Speech and Signal Processing (ICASSP), 2019, pp.
+935–939.
+[31] K. J. Piczak, “ESC: Dataset for Environmental Sound Classi-
+fication,” in Proceedings of the 23rd Annual ACM Conference
+on Multimedia.
+ACM Press, 2015, pp. 1015–1018. [Online].
+Available: http://dl.acm.org/citation.cfm?doid=2733373.2806390
+[32] J. Salamon, C. Jacoby, and J. P. Bello, “A dataset and taxonomy
+for urban sound research,” in 22nd ACM International Conference
+on Multimedia (ACM-MM’14), Orlando, FL, USA, Nov. 2014, pp.
+1041–1044.
+[33] S. Lipping, P. Sudarsanam, K. Drossos, and T. Virtanen, “Clotho-
+aqa: A crowdsourced dataset for audio question answering,” in
+2022 30th European Signal Processing Conference (EUSIPCO).
+IEEE, 2022, pp. 1140–1144.
+[34] Y. Gong, J. Yu, and J. Glass, “Vocalsound: A dataset for improv-
+ing human vocal sounds recognition,” in ICASSP 2022 - 2022
+IEEE International Conference on Acoustics, Speech and Signal
+Processing (ICASSP), 2022, pp. 151–155.
+[35] G. Team, P. Georgiev, V. I. Lei, R. Burnell, L. Bai, A. Gulati,
+G. Tanzer, D. Vincent, Z. Pan, S. Wang et al., “Gemini 1.5: Un-
+locking multimodal understanding across millions of tokens of
+context,” arXiv preprint arXiv:2403.05530, 2024.
+[36] E. B. C¸ oban, M. I. Mandel, and J. Devaney, “What do mllms hear?
+examining the interaction between llm and audio encoder com-
+ponents in multimodal large language models,” in Audio Imagi-
+nation: NeurIPS 2024 Workshop AI-Driven Speech, Music, and
+Sound Generation, 2024.
+2077
+

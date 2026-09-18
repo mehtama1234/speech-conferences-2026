@@ -1,0 +1,737 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+EME-TTS: Unlocking the Emphasis and Emotion Link in Speech Synthesis
+Haoxun Li1, Leyuan Qu1,∗, Jiaxi Hu1, Taihao Li1,∗
+1Hangzhou Institute for Advanced Study, University of Chinese Academy of Sciences, China
+lihaoxun23@mails.ucas.ac.cn, leyuan.qu@ucas.ac.cn,
+hujiaxi23@mails.ucas.ac.cn,lith@ucas.ac.cn
+Abstract
+In recent years, emotional Text-to-Speech (TTS) synthesis and
+emphasis-controllable speech synthesis have advanced signifi-
+cantly. However, their interaction remains underexplored. We
+propose Emphasis Meets Emotion TTS (EME-TTS), a novel
+framework designed to address two key research questions: (1)
+how to effectively utilize emphasis to enhance the expressive-
+ness of emotional speech, and (2) how to maintain the per-
+ceptual clarity and stability of target emphasis across different
+emotions. EME-TTS employs weakly supervised learning with
+emphasis pseudo-labels and variance-based emphasis features.
+Additionally, the proposed Emphasis Perception Enhancement
+(EPE) block enhances the interaction between emotional signals
+and emphasis positions. Experimental results show that EME-
+TTS, when combined with large language models for emphasis
+position prediction, enables more natural emotional speech syn-
+thesis while preserving stable and distinguishable target empha-
+sis across emotions. Synthesized samples are available on-line1.
+Index Terms: Emotional Speech Synthesis, Emphasis Control,
+Emotion Expressiveness
+1. Introduction
+With the advancement of deep learning, Text-to-Speech (TTS)
+systems have significantly improved in terms of quality, clarity,
+and naturalness, leveraging architectures such as Transformers
+[1, 2], normalizing flows [3, 4], and diffusion models [5, 6].
+However, conventional TTS systems often struggle with ex-
+pressiveness, producing monotonal and mechanical speech. To
+address this issue, researchers have explored emotionally ex-
+pressive speech synthesis [7], employing explicit emotion la-
+bels [8, 9, 10] and reference-based approaches [11, 12, 13] to
+enhance speech expressiveness.
+A key aspect of expressive speech is emphasis, which high-
+lights prominent prosodic regions through variations in pitch,
+phoneme duration, and spectral energy [14, 15, 16]. Several
+studies have introduced emphasis control in TTS [17, 18, 19],
+ranging from handcrafted feature integration in systems based
+on Hidden Markov Models (HMM) [17] to leveraging interme-
+diate acoustic cues like pitch range [18] and variance-based fea-
+tures [19].
+Despite
+significant
+progress
+in
+emotional
+TTS
+and
+emphasis-controllable synthesis, the interplay between emotion
+and emphasis in speech remains largely unexplored. Emphasis
+and emotion are intrinsically linked—emphasis modulates emo-
+tional perception by influencing prosodic patterns, while emo-
+tional states naturally determine which words are accentuated
+*Corresponding author
+1https://wd-233.github.io/EME-TTS_DEMO/
+in speech. This study develops a speech synthesis model capa-
+ble of simultaneously controlling both emotion and emphasis.
+Specifically, we seek to answer two key questions: How can
+emphasis be effectively leveraged to enhance the expressive-
+ness of emotional speech? And how can emphasis clarity and
+stability be preserved across different emotional conditions?
+To answer the first question, we examine how predefined
+emphasis positions influence emotional speech synthesis. Emo-
+tional speech is shaped by both prosody and semantics, where
+shifts in emphasis position and intensity can alter an utter-
+ance’s emotional interpretation.
+While prior works such as
+EE-TTS [20] predicts emphasis using textual and grammati-
+cal cues, we argue that Large Language Models (LLMs) [21]
+can infer emphasis more effectively. Instead of focusing on
+semantic-based emphasis prediction, we investigate how prede-
+fined emphasis positions influence emotional speech synthesis.
+To this end, we annotate emphasis pseudo-labels on an emo-
+tional speech dataset and integrate an improved variance-based
+emphasis modeling approach. During inference, an LLM pre-
+dicts emphasis positions based on emotion labels and text in-
+put. Evaluations show that our model generates more emotion-
+ally expressive speech, especially when contextual information
+is present.
+To answer the second question, we introduce the Empha-
+sis Perception Enhancement (EPE) block to improve emphasis
+clarity and stability across emotions. This block refines the in-
+teraction between emotion control signals and emphasis loca-
+tions, reducing unintended interference from global emotional
+effects. Additionally, this design mitigates artifacts that often
+arise at emphasized positions, enhancing both perceptual em-
+phasis clarity and synthesis quality.
+To summarize, the main contributions of this work are as
+follows:
+• Emotionally Controllable Emphasis Modeling: We incorpo-
+rate variance-based emphasis features into an emotional TTS
+framework, and use weakly supervised learning with Empha-
+Class [22] pseudo-labeling on the ESD dataset [23].
+• Refined Emotion-Emphasis Interaction: We propose EPE
+block to modulate emphasis prominence effectively, which
+ensures stable and clear emphasis across emotions.
+• To the best of our knowledge, this study is the first to sys-
+tematically investigate the relationship between emotion and
+emphasis in speech synthesis. EME-TTS enhances emotional
+expressiveness and preserves emphasis clarity with prede-
+fined emphasis positions and emotion labels.
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+4368
+10.21437/Interspeech.2025-754
+
+Phoneme Encoder
+Phoneme Sequence
+Variance Adapter
+Frame Decoder
+Mel-Spec
+Emphasis 
+Pseudo 
+Label
+Text
+Emotion 
+Label
+(a) Overall Architecture
+Upsampling
+Energy 
+Predictor
+Frame-level 
+Hidden Sequence
+Encoded phonemes
+Duration 
+Predictor
+Pitch 
+Predictor
+Variance 
+Pitch 
+Predictor
+Variance 
+Duration 
+Predictor
+푝푟푒
+푝푟푒
+푝푟푒
+￿￿￿
+￿
+￿￿￿
+￿
+푡푎푟
+￿￿￿
+￿
+￿￿￿
+￿
+푡푎푟
+푡푎푟
+Emphasis 
+Pseudo 
+Label
+(b) Variance Adapter
+Add & Conditional 
+Layer Norm
+Conv1D & ReLU
+& Conv1D
+Hidden Sequence
+Multi-Head 
+Attention
+Conditional 
+Cross Attention
+Add & Conditional 
+Layer Norm
+Emphasis 
+Adapter
+Emphasis 
+Pseudo 
+Label
+Emotion 
+Label
+Hidden Sequence
+(c) EPE Block
+Figure 1: The entire framework of our proposed model. (a) is the overall architecture diagram. (b) and (c) show the detailed structure
+of variance adapter and Emphasis Perception Enhancement (EPE) block, respectively.
+2. Proposed Method
+2.1. Overview
+The overall architecture of EME-TTS is shown in Figure 1a.
+We use EmoSpeech [9] as the base architecture of the acoustic
+model, using the embedding of emotions and the position of the
+emphasis as conditions. These conditions are obtained through
+the emotion label and the emphasis pseudo label respectively.
+EME-TTS consists of a phoneme encoder, a variance adapter,
+and a frame decoder, working in conjunction to generate emo-
+tionally expressive speech with controllable emphasis.
+The
+phoneme encoder processes the input phoneme sequence ex-
+tracted from text, encoding phonetic features that serve as the
+foundation for speech synthesis. The variance adapter models
+prosodic variations through duration, pitch, and energy while
+integrating variance-based emphasis features for explicit em-
+phasis control. The resulting frame-level hidden representations
+are then converted into a mel-spectrogram by the frame decoder.
+2.2. Weakly Supervised Emphasis Pseudo-Labeling
+Determining whether a word is emphasized within a sentence
+involves significant subjectivity, as multiple valid emphasis
+positions may exist. Consequently, collecting large-scale la-
+beled emphasis data is both challenging and costly.
+Unlike
+EE-TTS [20], which employs a wavelet-based prosody toolset
+[24] to compute prominence scores via Continuous Wavelet
+Transform (CWT) using pitch, energy, and duration signals, we
+leverage the EmphAssess dataset and the EmphaClass empha-
+sis recognizer [22]. EmphaClass fine-tunes a pre-trained Self-
+Supervised Learning (SSL) speech model for frame-level clas-
+sification, and aggregates these scores to determine word-level
+emphasis with high accuracy. By utilizing EmphaClass to anno-
+tate emphasis in the ESD dataset [23], which underpins our TTS
+experiments, we obtain highly reliable emphasis pseudo-labels
+without the need for extensive manual annotation.
+2.3. Variance Adapter
+In order to integrate both fundamental prosodic predictors and
+variance-based emphasis modeling, the variance adapter is de-
+signed to model and regulate prosodic variations. As shown
+in Figure 1b, it consists of predictors for pitch, duration, and
+energy, which predict their respective prosodic features from
+encoded phonemes.
+Additionally, it includes variance-based
+pitch and duration predictors, which refine these predictions by
+capturing local deviations in emphasized regions. The upsam-
+pling mechanism ensures that phoneme-level prosodic features
+are aligned with the frame-level hidden sequence before being
+passed to the decoder.
+To explicitly control emphasis, we incorporate variance-
+based prosodic features as local modulation signals. Following
+the assumption in [19] that pitch and duration are the primary
+indicators of emphasis, with energy having a lesser impact, we
+focus on modeling only pitch and duration variance features,
+omitting energy. The computation of these variance features is
+formulated as follows:
+Pitch Variance = WF0 −SF0
+(1)
+Duration Variance = Wdur −Sdur
+(2)
+where WF0 and Wdur represent the average pitch and duration
+of phonemes in emphasized regions, while SF0 and Sdur denote
+the sentence-level averages. These values are derived within
+the Variance Pitch Predictor and Variance Duration Predictor
+using the emphasis pseudo-labels, which provide the start, end
+positions of emphasized words.
+During training, the predicted pitch feature Ppre is used to
+compute the pitch variance feature P V
+pre via Equation (1), and its
+loss is calculated against the target pitch feature Ptar:
+LP = MSE(Ppre + P V
+pre, Ptar)
+(3)
+where Mean Squared Error (MSE) measures the average
+squared difference between predicted and target values. Sim-
+ilarly, the pitch variance loss is:
+LV
+P = MSE(P V
+pre, P V
+tar )
+(4)
+For duration modeling, we adopt the same approach:
+LD = MSE(Dpre + DV
+pre, Dtar)
+(5)
+LV
+D = MSE(DV
+pre, DV
+tar)
+(6)
+where the variance features P V
+pre and DV
+pre are only applied to
+emphasized regions, with non-emphasized regions set to zero.
+Since direct variance calculations may introduce extreme val-
+ues or negative emphasis scores, we normalize the features to
+the range of [0,2] based on data distribution and apply regular-
+ization for stability. The aforementioned losses, along with the
+energy loss, are included in the final total loss calculation.
+4369
+
+2.4. Emphasis Perception Enhancement Block
+The phoneme encoder and frame decoder in EME-TTS are
+composed of multiple stacked Emphasis Perception Enhance-
+ment (EPE) blocks, replacing the original feed-forward trans-
+former blocks, as illustrated in Figure 1c. Each EPE block re-
+fines the modeling of emphasis perception by integrating Multi-
+Head Attention (MHA), Conditional Cross Attention (CCA),
+and Emphasis Adapter (EA), ensuring that the synthesized
+speech maintains clear and stable emphasis across emotions.
+The input hidden sequence is processed through self-attention
+and conditional normalization layers before being further re-
+fined by convolutional layers. Simultaneously, the emotion em-
+bedding and emphasis position can serve as external conditions.
+Among these components, MHA captures global dependen-
+cies within the hidden sequence by computing multiple atten-
+tion heads, allowing the model to extract contextual relation-
+ships between phonemes. CCA re-weights self-attention by in-
+corporating emotional cues, allowing attention distributions to
+be adjusted based on the given emotion embedding c. CCA re-
+weights self-attention using:
+Q = Wq · h,
+K = Wk · c,
+V = Wv · c
+(7)
+w = softmax
+Q · KT
+√
+d
+
+(8)
+CCA = w · V
+(9)
+where h represents the input feature, and w denotes computed
+attention weights.
+In expressive speech, the prominence of
+certain words naturally varies with emotion, causing inconsis-
+tencies in emphasis perception. This can lead to unintended
+shifts in emphasis positions or even the suppression of intended
+emphasis under strong emotional conditions. Additionally, in-
+creasing the prominence of emphasized words may introduce
+artifacts and degrade synthesis quality.
+To mitigate these issues, we introduce EA that refines atten-
+tion distributions in predefined emphasis regions. EA explicitly
+enhances emphasis perceptibility while minimizing interference
+from emotional variations. Given an initial attention weight w,
+the adjusted weight is computed as:
+wadjusted = w + ∆w,
+∆w = strength · mask(start, end)
+(10)
+where mask(start, end) identifies the designated emphasis
+positions, and strength scales the emphasis intensity. This en-
+hancement serves two key purposes: first, it ensures that empha-
+sized words remain perceptually distinct, even in highly expres-
+sive speech; second, it refines emphasis representation through
+attention modulation rather than direct energy or pitch manipu-
+lation, thereby reducing synthesis artifacts.
+For Conditional Layer Normalization (CLN), we adopt a
+design similar to AdaSpeech4 [25] to integrate emotional con-
+text into the normalization process, ensuring adaptive prosodic
+control across different emotional conditions.
+3. Experiments
+3.1. Experimental Setup
+For our experiments, EME-TTS utilizes the English portion
+of the Emotional Speech Database (ESD) [23], which com-
+prises recordings from 10 speakers across five emotions: an-
+gry, happy, sad, surprise, and neutral. Each speaker contributes
+350 utterances per emotion, resulting in approximately 1,750
+utterances and 1.2 hours of speech per speaker. We follow the
+train/validation/test splits established in EmoSpeech [9], where
+the validation and test sets consist of 19 and 31 utterances per
+emotion per speaker, leading to a total of 950 and 1,550 utter-
+ances, respectively. Emphasis positions in the training data are
+labeled using EmphaClass [22].
+The model utilizes iSTFTNet [26] as the vocoder, which
+is trained on the English subset of the ESD dataset [23]. The
+strength in EA is set to 0.2. Training is conducted on 2 Nvidia
+A100 GPUs and 8 RTX 4090 GPUs, with a batch size of 64 for
+100,000 steps. The Adam optimizer [27] is used with a learning
+rate of 0.0001 and (β1, β2) = (0.5, 0.9).
+3.2. Evaluation Metrics
+The evaluation framework comprises both objective and sub-
+jective assessments. The objective evaluation includes audio
+quality assessment and emotional accuracy measurement. The
+subjective evaluation consists of four tasks:
+• Emphasis Accuracy Test (EAT): Measures how well pre-
+dicted emphasis positions match listener perception.
+• Emotion Accuracy Test (EAT-EMO): Assesses emotion
+recognition accuracy by comparing perceived and intended
+emotions.
+• Emotional Expressiveness Preference Test (EEPT): Listeners
+select the most emotionally expressive sample from multi-
+ple outputs, with preference scores indicating expressiveness
+strength.
+• Mean Opinion Score (MOS) Rating: Evaluates naturalness
+and quality on a five-point scale.
+A total of 11 listeners participated in all evaluations, with
+each participant completing all four tasks. For all tasks, higher
+scores indicate better performance.
+3.2.1. Emphasis Accuracy
+To demonstrate EME-TTS’s ability to preserve the perceptual
+clarity and stability of target emphasis across different emo-
+tions, we designed a more challenging subjective test as task 1
+(EAT), distinct from previous studies on emphasis control [19].
+Instead of rating the degree of emphasis at a predefined posi-
+tion, participants were asked to identify the emphasized words
+in 80 randomly shuffled speech samples. These samples were
+generated from texts in the test set using EME-TTS w/o EPE
+and EME-TTS. The results presented in Table 1 indicate that
+the emphasis produced by our proposed model was clearly per-
+ceivable across different emotions.
+Notably, compared to other emotions, the surprise emotion
+posed a greater challenge for listeners in accurately identifying
+the emphasis position. This is attributed to the frequent pitch
+rise at the end of surprise speech, which often led participants
+to mistakenly perceive the emphasized word as being at the sen-
+tence’s end. The integration of the EPE effectively mitigated
+this issue by enhancing the prominence of the intended empha-
+sis position. At the same time, it improved the distinctiveness
+of emphasis recognition across all emotions.
+Table 1: Emphasis Recognition Accuracy of Different Models.
+Model
+Mean Neutral Angry Happy Sad Surprise
+EME-TTS w/o EPE
+0.73
+0.77
+0.75
+0.82
+0.75
+0.55
+EME-TTS
+0.78
+0.80
+0.82
+0.82
+0.75
+0.64
+4370
+
+3.2.2. Emotion Accuracy
+To demonstrate that controlling emphasis in EME-TTS en-
+hances the accuracy of perceived emotions in synthesized
+speech, we conducted both objective and subjective evalu-
+ations.
+For comparison, we included EmoSpeech [9] and
+CosyVoice2-0.5B-Instruct (CosyVoice2) [28] as baseline mod-
+els. CosyVoice2 provides multiple inference modes; To ensure
+fairness, all CosyVoice2-generated samples were conditioned
+on a neutral reference speaker’s audio and a textual emotion
+prompt, ensuring that only the speaker’s identity and emotion
+labels were provided as input. During inference, our proposed
+model consistently utilized a large language model [29] to pre-
+dict suitable emphasis positions, which were then used as input
+for testing.
+Table 2: Objective Evaluation of Different Models on Emotion
+Accuracy.
+Model
+Mean Neutral Angry Happy Sad Surprise
+CosyVoice2 [28]
+0.68
+0.99
+0.51
+0.73
+0.52
+0.36
+EmoSpeech [9]
+0.72
+0.99
+0.91
+0.69
+0.54
+0.48
+EME-TTS w/o EPE
+0.74
+0.99
+0.90
+0.71
+0.60
+0.47
+EME-TTS
+0.73
+0.99
+0.87
+0.70
+0.61
+0.47
+From
+an
+objective
+perspective,
+we
+utilized
+the
+Emotion2vec-plus-large model [30] to evaluate the emo-
+tional accuracy of 1,550 synthesized audio samples from each
+model in the test set. The recognition outcome was assigned a
+score of 1 for correct classifications and 0 for incorrect ones,
+from which the overall accuracy was computed. The results
+shown in Table 2 indicate that while local emphasis control
+did not introduce substantial changes in global prosody, it
+notably improved the recognition of sad emotions in objective
+evaluation.
+This improvement is attributed to the increased
+duration of emphasized regions, which effectively enhanced
+emotion perception.
+On the subjective side, in task 2 (EAT-EMO), participants
+were asked to identify the emotions of 80 randomly shuffled
+audio samples.
+Similarly, scores of 1 and 0 were assigned
+for correct and incorrect classifications respectively, to assess
+the emotional accuracy of the synthesized speech. However,
+as shown in Table 3, the subjective evaluation revealed unex-
+pected shifts in emotion perception due to the introduction of
+emphasis. First, emphasis increased the likelihood of neutral
+speech being perceived as emotional, leading to a slight de-
+crease in the accuracy of neutral emotion expression. Second,
+unlike CosyVoice2 [28], which struggled to synthesize angry
+and sad emotions in this inference mode, EME-TTS produced
+speech that made these emotions more perceptible, outperform-
+ing both CosyVoice2 [28] and EmoSpeech [9]. For happy and
+surprise emotions, EME-TTS achieved accuracy levels compa-
+rable to other models. These results demonstrate that EME-TTS
+achieves higher emotion accuracy in synthesized speech com-
+pared to baseline models, highlighting its overall effectiveness
+in generating emotionally expressive speech.
+Table 3: Subjective Evaluation of Different Models on Emotion
+Accuracy.
+Model
+Mean Neutral Angry Happy Sad Surprise
+CosyVoice2 [28]
+0.48
+0.93
+0.07
+0.34
+0.36
+0.70
+EmoSpeech [9]
+0.58
+0.86
+0.48
+0.36
+0.50
+0.70
+EME-TTS w/o EPE
+0.58
+0.68
+0.57
+0.27
+0.80
+0.59
+EME-TTS
+0.67
+0.80
+0.75
+0.32
+0.82
+0.68
+3.2.3. Improvement of Emotional Expressiveness Through Em-
+phasis
+To assess how emphasis enhances emotional expressiveness
+in EME-TTS, we conducted a ranking experiment as task 3
+(EEPT). Participants evaluated 30 sets of speech samples, each
+containing outputs from four models, based on perceived emo-
+tional expressiveness. Among them, 10 sets were derived from
+a short passage with contextual information. Within each set,
+samples were ranked from 1 (least expressive) to 4 (most ex-
+pressive). Figure 2 illustrates the ranking distribution of emo-
+tional expressiveness across different TTS models. Participants
+evaluated speech samples based on perceived emotional expres-
+siveness, with (a) assessing individual sentences and (b) ranking
+sentences within a contextualized passage. The results indicate
+that EME-TTS consistently received the highest rankings, es-
+pecially in the contextualized setting. This suggests that sur-
+rounding linguistic context strengthens the semantic foundation
+for emphasis, further enhancing emotional expressiveness.
+(a) Isolated Sentences
+(b) Contextualized Sentences
+Figure 2: Effect of Emphasis on Emotional Expressiveness in
+TTS Models.
+3.2.4. Speech Quality and Naturalness
+We assess the quality and naturalness of the synthesized speech
+through both objective and subjective evaluations. Objectively,
+we utilize the NISQA library [31] to predict naturalness scores
+ratings on a 5-point scale. Subjectively, participants completed
+task 4 (MOS Rating), in which they rated 100 randomly shuf-
+fled speech samples for overall audio quality and naturalness,
+ranging from 1 (bad) to 5 (excellent). These 100 utterances
+were selected from the test set, ensuring an equal distribution of
+emotions. Table 4 indicates that EME-TTS mitigates artifacts
+introduced by emphasis control, enhancing synthesis quality.
+Table 4: Comparison of Models for MOS and NISQA Scores.
+Model
+MOS (↑)
+NISQA (↑)
+Original
+4.94 ± 0.03
+4.17 ± 0.57
+Reconstructed
+4.86 ± 0.08
+4.11 ± 0.58
+EmoSpeech [9]
+4.14 ± 0.20
+3.71 ± 0.74
+EME-TTS w/o EPE
+3.98 ± 0.32
+3.66 ± 0.68
+EME-TTS
+4.22 ± 0.28
+3.76 ± 0.60
+4. Conclusion
+This paper presents EME-TTS, a framework that explores how
+emphasis enhances emotional expressiveness and how to main-
+tain its perceptual clarity and stability across emotions.
+By
+leveraging variance-based emphasis features, weakly super-
+vised learning, and EPE, EME-TTS demonstrate its effective-
+ness in generating emotionally expressive speech with clear and
+controllable emphasis. For future work, we aim to further in-
+vestigate the role of different emphasis strategies in enhancing
+emotional expressiveness, particularly in achieving improve-
+ments for specific emotions where the current model’s enhance-
+ments remain limited.
+4371
+
+5. Acknowledgements
+This work was supported in part by the Scientific Research
+Staring Foundation of Hangzhou Institute for Advanced Study
+(2024HIASC2001), in part by Zhejiang Provincial Natural Sci-
+ence Foundation of China (No. LQN25F020001), and in part
+by the Key R&D Program of Zhejiang (2025C01104).
+6. References
+[1] A. Waswani, N. Shazeer, N. Parmar, J. Uszkoreit, L. Jones,
+A. Gomez, L. Kaiser, and I. Polosukhin, “Attention is all you
+need,” in NIPS, 2017.
+[2] Y. Ren, C. Hu, X. Tan, T. Qin, S. Zhao, Z. Zhao, and T. Liu,
+“Fastspeech 2: Fast and high-quality end-to-end text to speech,” in
+9th International Conference on Learning Representations, ICLR
+2021, Virtual Event, Austria, May 3-7, 2021.
+OpenReview.net,
+2021.
+[3] J. Kim, S. Kim, J. Kong, and S. Yoon, “Glow-tts: A genera-
+tive flow for text-to-speech via monotonic alignment search,” Ad-
+vances in Neural Information Processing Systems, vol. 33, pp.
+8067–8077, 2020.
+[4] J. Kim, J. Kong, and J. Son, “Conditional variational autoencoder
+with adversarial learning for end-to-end text-to-speech,” in Inter-
+national Conference on Machine Learning.
+PMLR, 2021, pp.
+5530–5540.
+[5] V. Popov, I. Vovk, V. Gogoryan, T. Sadekova, and M. Kudinov,
+“Grad-tts: A diffusion probabilistic model for text-to-speech,” in
+International Conference on Machine Learning.
+PMLR, 2021,
+pp. 8599–8608.
+[6] X. Tan, J. Chen, H. Liu, J. Cong, C. Zhang, Y. Liu, X. Wang,
+Y. Leng, Y. Yi, L. He et al., “Naturalspeech: End-to-end text-to-
+speech synthesis with human-level quality,” IEEE Transactions on
+Pattern Analysis and Machine Intelligence, 2024.
+[7] K. Lee. ”Expressive-FastSpeech2”. [Online]. Available: https:
+//github.com/keonlee9420/Expressive-FastSpeech2
+[8] N. Tits, K. El Haddad, and T. Dutoit, “Exploring transfer learning
+for low resource emotional tts,” in Intelligent Systems and Appli-
+cations: Proceedings of the 2019 Intelligent Systems Conference
+(IntelliSys) Volume 1.
+Springer, 2020, pp. 52–60.
+[9] D. Diatlova and V. Shutov, “Emospeech: guiding fastspeech2 to-
+wards emotional text to speech,” in 12th ISCA Speech Synthesis
+Workshop (SSW2023), 2023, pp. 106–112.
+[10] Y. Guo, C. Du, X. Chen, and K. Yu, “Emodiff: Intensity con-
+trollable emotional text-to-speech with soft-label guidance,” in
+ICASSP 2023-2023 IEEE International Conference on Acoustics,
+Speech and Signal Processing (ICASSP).
+IEEE, 2023, pp. 1–5.
+[11] T. Li, S. Yang, L. Xue, and L. Xie, “Controllable emotion trans-
+fer for end-to-end speech synthesis,” in 2021 12th International
+Symposium on Chinese Spoken Language Processing (ISCSLP).
+IEEE, 2021, pp. 1–5.
+[12] Y. Lei, S. Yang, X. Wang, and L. Xie, “Msemotts: Multi-scale
+emotion transfer, prediction, and control for emotional speech
+synthesis,” IEEE/ACM Transactions on Audio, Speech, and Lan-
+guage Processing, vol. 30, pp. 853–864, 2022.
+[13] J. Za¨ıdi, H. Seut´e, B. van Niekerk, and M.-A. Carbonneau, “Daft-
+exprt: Cross-speaker prosody transfer on any text for expressive
+speech synthesis,” in Interspeech 2022, 2022, pp. 4591–4595.
+[14] A. Eriksson and M. Heldner, “The acoustics of word stress in en-
+glish as a function of stress level and speaking style,” in 16th An-
+nual Conference of the International Speech Communication As-
+sociation (INTERSPEECH 2015), Dresden, Germany, September
+6-10, 2015, 2015, pp. 41–45.
+[15] A. Eriksson, P. M. Bertinetto, M. Heldner, R. Nodari, and
+G. Lenoci, “The acoustics of lexical stress in italian as a func-
+tion of stress level and speaking style,” in Interspeech 2016.
+The
+International Speech Communication Association (ISCA), 2016,
+pp. 1059–1063.
+[16] A. Eriksson, R. Nodari, J. ˇSimko, A. Suni, and M. Vainio, “Lex-
+ical stress perception as a function of acoustic properties and
+the native language of the listener,” in The 10th International
+Conference on Speech Prosody: Communicative and Interactive
+Prosody.
+ISCA, 2020, pp. 449–453.
+[17] R. Li, Z. Wu, Y. Huang, J. Jia, H. Meng, and L. Cai, “Emphatic
+speech generation with conditioned input layer and bidirectional
+lstms for expressive speech synthesis,” in 2018 IEEE Interna-
+tional Conference on Acoustics, Speech and Signal Processing
+(ICASSP).
+IEEE, 2018, pp. 5129–5133.
+[18] S. Shechtman, R. Fernandez, and D. Haws, “Supervised and
+unsupervised approaches for controlling narrow lexical focus in
+sequence-to-sequence speech synthesis,” in 2021 IEEE Spoken
+Language Technology Workshop (SLT).
+IEEE, 2021, pp. 431–
+437.
+[19] S. Seshadri, T. Raitio, D. Castellani, and J. Li, “Emphasis control
+for parallel neural tts,” in Interspeech 2022, 2022, pp. 3378–3382.
+[20] Y. Zhong, C. Zhang, X. Liu, C. Sun, W. Deng, H. Hu, and Z. Sun,
+“Ee-tts: Emphatic expressive tts with linguistic information,” in
+Interspeech 2023, 2023, pp. 4873–4877.
+[21] W. X. Zhao, K. Zhou, J. Li, T. Tang, X. Wang, Y. Hou, Y. Min,
+B. Zhang, J. Zhang, Z. Dong et al., “A survey of large language
+models,” arXiv preprint arXiv:2303.18223, 2023.
+[22] M. de Seyssel, A. D’Avirro, A. Williams, and E. Dupoux, “Em-
+phAssess : a prosodic benchmark on assessing emphasis transfer
+in speech-to-speech models,” in Proceedings of the 2024 Con-
+ference on Empirical Methods in Natural Language Processing,
+2024, pp. 495–507.
+[23] K. Zhou, B. Sisman, R. Liu, and H. Li, “Emotional voice con-
+version: Theory, databases and esd,” Speech Communication, vol.
+137, pp. 1–18, 2022.
+[24] A. Suni, J. ˇSimko, D. Aalto, and M. Vainio, “Hierarchical rep-
+resentation and estimation of prosody using continuous wavelet
+transform,” Computer Speech & Language, vol. 45, pp. 123–136,
+2017.
+[25] Y. Wu, X. Tan, B. Li, L. He, S. Zhao, R. Song, T. Qin, and T.-Y.
+Liu, “Adaspeech 4: Adaptive text to speech in zero-shot scenar-
+ios,” in Interspeech 2022, 2022, pp. 2568–2572.
+[26] T. Kaneko, K. Tanaka, H. Kameoka, and S. Seki, “istftnet: Fast
+and lightweight mel-spectrogram vocoder incorporating inverse
+short-time fourier transform,” in ICASSP 2022-2022 IEEE Inter-
+national Conference on Acoustics, Speech and Signal Processing
+(ICASSP).
+IEEE, 2022, pp. 6207–6211.
+[27] P. K. Diederik, “Adam: A method for stochastic optimization,”
+ICLR, 2015.
+[28] Z. Du, Y. Wang, Q. Chen, X. Shi, X. Lv, T. Zhao, Z. Gao,
+Y. Yang, C. Gao, H. Wang et al., “Cosyvoice 2: Scalable stream-
+ing speech synthesis with large language models,” arXiv preprint
+arXiv:2412.10117, 2024.
+[29] J. Achiam, S. Adler, S. Agarwal, L. Ahmad, I. Akkaya, F. L. Ale-
+man, D. Almeida, J. Altenschmidt, S. Altman, S. Anadkat et al.,
+“GPT-4 technical report,” arXiv preprint arXiv:2303.08774, 2023.
+[30] Z. Ma, Z. Zheng, J. Ye, J. Li, Z. Gao, S. Zhang, and X. Chen,
+“emotion2vec: Self-supervised pre-training for speech emotion
+representation,” in Findings of the Association for Computational
+Linguistics: ACL 2024, 2024, pp. 15 747–15 760.
+[31] G. Mittag and S. M¨oller, “Deep learning based assessment of syn-
+thetic speech naturalness,” in Interspeech 2020, 2020, pp. 1748–
+1752.
+4372
+

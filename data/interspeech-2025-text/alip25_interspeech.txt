@@ -1,0 +1,623 @@
+A Three-Stage Beamforming with Harmonic Guidance for Multi-Channel
+Speech Enhancement
+Nurali Alip1, Tianrui Wang1, Rui Cao1, Meng Ge1, Jingru Lin2, Longbiao Wang1,∗, Jianwu Dang3
+1Tianjin Key Laboratory of Cognitive Computing and Application, College of Intelligence and
+Computing, Tianjin University, China
+2Department of Electrical and Computer Engineering, National University of Singapore, Singapore
+3Shenzhen Institute of Advanced Technology, Chinese Academy of Sciences, Guangdong, China
+{nueraili,wangtianrui,caorui 2022,gemeng,longbiao wang}@tju.edu.cn,jingrulin@u.nus.edu
+Abstract
+With the rapid advancement of multi-channel speech enhance-
+ment (MCSE) research, nonlinear spatial filtering methods in-
+tegrating spatial and spectral processing are prevalent. How-
+ever, many existing approaches overlook the explicit extraction
+of speech spectral structure information, leading to insufficient
+learning of joint spatial-spectral information, limiting perfor-
+mance under low signal-to-noise ratio (SNR) conditions. To
+address this, we propose a three-stage multi-channel speech en-
+hancement framework. The first stage has an acoustic struc-
+ture extraction module capturing speech spectral patterns from
+noisy inputs, enabling spatial-spectral cue exploration and in-
+teraction. In the next two stages, the process combines full-
+band noise reduction with speech structure refinement by de-
+coupling enhancement into coarse enhancement and spectral re-
+finement. Experiments on LibriSpeech-based datasets demon-
+strate that the proposed method significantly outperforms the
+reference method.
+Index Terms: Multi-Channel Speech Enhancement, Joint In-
+formation, Spatial Filtering
+1. Introduction
+Multi-channel speech enhancement aims to denoise speech sig-
+nals more efficiently by effectively using spatial cues across
+channels, enabling better separation of speech from noise [1].
+This spatial information, which is not present in single-channel
+methods, significantly improves the clarity and effectiveness
+of speech enhancement across various acoustic environments
+[2, 3].
+Neural beamforming, which leverages deep learning to im-
+prove traditional beamforming weight prediction, has become
+popular for its efficiency and generalizability [4, 5]. Typically,
+these methods follow a two-stage process: predicting time-
+frequency masks to estimate statistical parameters, followed by
+deriving beamforming weights from these statistics [6]. While
+these approaches leverage the spatial selectivity of beamform-
+ing, separating spatial processing from temporal-spectral in-
+formation overlooks their inherent interdependencies. End-to-
+end frame-wise neural beamforming, which processes spatial
+and temporal-spectral information simultaneously, has demon-
+strated superior performance [7–10]. To understand the reason
+for its effectiveness, in [11], frame-by-frame beamforming is
+performed using learned embeddings that encapsulate both spa-
+tial and spectral discriminative information. This study sug-
+gests that a comprehensive spatial-spectral representation is cru-
+cial for the network to effectively distinguish between speech
+and noise patterns. In [12], the authors control the informa-
+* denotes the corresponding author.
+tion sources available to the network, enabling it to learn com-
+bined spatial and temporal-spectral information, showing that
+the key to improved performance is exploiting the interdepen-
+dencies between these domains, rather than the non-linear op-
+erations of the filtering process. Building on this, [13] further
+improves performance by introducing additional LSTM layers
+to extract full-band and sub-band spectral information, enhanc-
+ing the modeling of spectral structure patterns, though this in-
+creases model complexity. However, unlike the above methods
+for modeling spectral patterns, recent single-channel speech en-
+hancement methods use a priori knowledge to model the speech
+acoustic structure [14–16].
+Given the critical role of spatial-spectral interaction in
+MCSE performance, researchers have focused on effectively
+extracting spatial information across channels [17–19]. How-
+ever, in low-SNR environments, both the inherent acoustic
+structure and frequency information of speech can be heav-
+ily distorted by noise, limiting the network’s ability to explore
+spectral information and hindering its interaction with spatial
+information. Inspired by the success of modeling speech acous-
+tic structures in single-channel speech enhancement [15, 16],
+we propose a three-stage beamforming method with harmonic
+guidance. Specifically, in the first Feature Extraction stage, we
+design a Structural-Spectral Embedding (SSE) module to ex-
+tract blurred harmonic structures from noisy spectrograms as
+an auxiliary feature. In the subsequent Coarse Enhancement
+stage, we use harmonic structures as cues to achieve prelimi-
+nary noise suppression while preserving the acoustic structure.
+Finally, by utilizing a residual iterative strategy, the joint infor-
+mation is learned in a step-by-step and in-depth manner during
+each iteration, leading to the continuous optimization of spec-
+tral details. Experimental results demonstrate that our model
+significantly outperforms the baseline.
+2. Signal Model
+Consider the time-domain noisy and reverberant speech sig-
+nal captured by the p-th microphone as x(p)(t), where p =
+0,··· , P− 1. In the short-time Fourier transform (STFT) do-
+main, the physical model of speech is given by,
+Xt,f = cf St,f + Vt,f + Nt,f = St,f + Vt,f + Nt,f , (1)
+where Xt,f , St,f , Vt,f , Nt,f ∈ CP ×1, denote the observed
+signal, anechoic clean speech, reverberant speech, and noise,
+respectively, at the time index t∈{ 1,··· , T} and frequency
+index f∈{ 1,··· , F}. The first microphone is chosen as the
+reference channel by convention. The sound sources are as-
+sumed to remain static within each speech segment. The goal
+is to simultaneously denoise and dereverberate the signal to re-
+store anechoic speech.
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+1193 10.21437/Interspeech.2025-369
+
+Structural-Spectral
+Embedding
+STFT
+Joint Spatial-Spectral
+Embedding
+Masking and
+Refining C
+Q
+Feature Extraction Coarse Enhancement Dual-Path Residual Spec-Refiner 
+...
+DPRNN
+Conv
+Batch Norm
+PReLU
+Harmonic
+Integration
+REL
+RDL
+Concatenate
+Conv
+Batch Norm
+PReLU
+Self-Interction
+Harmonic
+Integration
+GRU-based mask
+estimator
+S-TCN
+REL
+REL
+RDL
+RDL
+X
+X
+Time
+Channel
+Freq
+Time
+Channel
+Freq
+(a) Structural-Spectral Embedding (c) Joint Spatial-Spectral Embedding (b) Masking and Refining 
+Subtraction
+Add Operation
+Concatenation
+Complex multiplication Conv
+Batch Norm
+PReLU
+Harmonic
+Integration
+Self-Interaction
+DPRNN
+Conv
+A-path
+S-path
+A-path
+C
+*
+C C
+*
+7-channel
+Spectrograms
+...
+Figure 1: The proposed pipeline consists of three main components: Feature Extraction, Coarse Enhancement, and the Dual-Path
+Residual Spec-Refiner modules. The Feature Extraction module actively captures spatial and spectral information, generating two
+feature embeddings. The Masking and Refining module performs coarse enhancement, while the Dual-Path residual Spec-Refiner
+focuses on fine-grained spectral restoration. Detailed descriptions of each block are provided below the overall framework.
+3. Proposed Method
+3.1. Overview
+The overall diagram of the proposed framework is shown in
+Fig. 1. The framework consists of Feature Extraction, Coarse
+Enhancement, and Dual-Path Residual Spec-Refiner (DPRSR).
+The Joint Spatial-Spectral Embedding (JSSE) in the Feature Ex-
+traction module is based on the Embedding network from [11]
+and, together with the SSE, produces two feature representa-
+tions that capture joint spatial-spectral information and specific
+acoustic structures. The following two-stage enhancement net-
+work first uses these embeddings, along with the original noisy
+speech, to perform coarse enhancement through a specially
+designed multi-input and multi-output Masking and Refining
+module. Finally, the Dual-Path Residual Spec-Refiner module,
+composed of multiple cascaded refiners, takes the multi-channel
+coarse enhancement results along with residuals from the previ-
+ous refiners. Each refiner progressively refines spectral details
+that were missed in earlier enhancement steps.
+3.2. Structural-Spectral Embedding
+Most MCSE models rely on the mixed speech log power spec-
+trum or arrange data differently in Recurrent Neural Networks
+(RNNs) to capture spectral patterns [13,20]. However, learning
+these patterns directly from noisy speech via non-linear map-
+ping may be insufficient, as the acoustic structures of speech
+(e.g., formants and harmonic cues) are heavily masked by noise
+in low-SNR environments. This degradation severely limits
+the network’s capacity to discern and recover critical speech-
+specific patterns, even with non-linear transformations. There-
+fore, inadequately learned spectral information has difficulty
+in interacting effectively with spatial information. Spatial fea-
+tures such as inter-channel phase difference (IPD) and direc-
+tional feature [21], with structural traits in the time-frequency
+(T-F) domain, help separate speech from noise. Similarly, we
+introduce the SSE module to explicitly model spectral patterns
+by extracting intrinsic acoustic features, particularly the comb -
+like harmonic structure.
+The SSE module consists of a Conv block, Harmonic Inte-
+gration [15], and DPRNN [22]. The reference channel’s noisy
+complex spectrum Xref∈ RT ×2·F is fed into the Conv block,
+which consists of a causal 2D convolution (Conv) followed by
+Batch Normalization and PReLU. The Harmonic Integration
+(HI) module computes the harmonic distribution via a comb-
+pitch conversion matrix Q∈ RL×F [15] with L pitch candi-
+dates:
+H = softmax
+
+Conv
+
+X ref
+2
+· QT
+
+· Q, (2)
+where H ∈ RT ×C×F indicates the theoretical harmonic dis-
+tribution at each frequency band. Next, P highlights the low-
+energy harmonic structure, which is computed as:
+P = Conv
+
+Conv(X ref )⊙ Conv(H)
+
+, (3)
+where⊙ is element-wise multiplication. While P integrates
+sub-band and full-band spectral information, it lacks temporal
+modeling, which is addressed by using DPRNN to capture long-
+term dependencies,
+A = DPRNN(P ), (4)
+3.3. Masking and Refining
+Speech signals exhibit inherent sparsity in the frequency do-
+main [23], often manifesting as periodic harmonic structures.
+As mentioned in 3.2, these harmonics can serve as additional
+cues to interact with spatial information. However at the same
+time, they can also act as specific enhancement targets that align
+with human auditory perception. Therefore, we designed a
+Masking and Refining module, which performs full-band noise
+reduction through masking operations while simultaneously re-
+fining the acoustic structure. This allows harmonic information
+and spatial information to jointly reconstruct the spectral pat-
+tern of speech, ensuring the result aligns with human auditory
+perception through information interaction between these two
+types of information.
+This module takes the embedding A and the output embed-
+ding E of the JSSE, concatenates them with the noisy speech
+along the channel dimension, and then reduces the channel di-
+mension using a convolutional block, batch normalization, and
+1194
+
+PReLU. The output is fed into a Self-Interaction module, which
+contains two stacked multi-head Self-attention: one along the
+channel dimension and the other along the frequency dimen-
+sion. Self-attention is employed to model dependencies across
+different dimensions. When working with 3D embeddings that
+contain spatial-spectral information, Self-attention enables in-
+teractions between elements in different dimensions (e.g., fre-
+quency and channel), enhancing the model’s ability to capture
+interdependency between spatial and spectral information. This
+process is expressed as:
+I = SI (BN( Conv(Concat(A, E, X)))), (5)
+where SI(·), BN (·), Concat () represent self-Interaction, batch
+normalization, and concatenation, respectively. The resulting
+joint information I is then passed through a GRU-based mask
+estimator to predict the complex ratio mask (CRM). The es-
+timator is composed of a GRU module that receives narrow-
+band data arrangements, with GRU shared across frequency
+subbands, and fully connected layers (FC). This allows the GRU
+to capture fine-grained spatial and temporal information while
+focusing on global spectral statistics. The process is described
+by:
+M = FC(GRU(I)), (6)
+Additionally, I passes through a Harmonic Integration module
+that leverages the joint spatial-spectral information in I to dis-
+tinguish and enhance the original acoustic structure. This mod-
+ule captures fine-grained spectral information. The overall en-
+hancement process is given by:
+ˆSc = M∗ X + HI (I) , (7)
+where HI(·) represents Harmonic Integration, ∗ denotes com-
+plex multiplication, ˆSc is the result of coarse enhancement. Af-
+ter the Masking and Refining process, we believe the model not
+only restores specific acoustic structures but also effectively re-
+moves noise from non-harmonic frequencies, even in the steer-
+ing direction.
+3.4. Dual-Path Residual Spec-Refiner
+Decomposing the speech enhancement task into coarse en-
+hancement and subsequent iterative restoration has proven to
+be effective in both single-channel and multi-channel tasks
+[24, 25]. However, multi-channel tasks often reduce the coarse
+enhancement result to a single channel, which sacrifices the in-
+tegrity of both spatial and spectral processing. To this end, we
+propose a Dual-Path Residual Spec-Refiner that refines spectral
+details using multi-channel results and joint spatial-spectral in-
+formation.
+As shown in Fig. 1(b), multiple refiners are connected in
+series to form a sequential structure. For example, with i re-
+finers, the module receives joint information I and the resid-
+ual spectrum results from the previous i− 1 refiners, given
+by ˆSc−Pi−1
+j=0
+ˆSfj , where ˆSfj represents the output of the
+j-th refiner. Unlike single-channel systems, which rely mainly
+on spectral harmonic features, our module uses joint spatial-
+spectral information to correct unnatural speech structures. The
+spatial features within this joint information help guide the
+model to identify time-frequency bins dominated by speech, in-
+cluding harmonic structures. This process is expressed as:
+Ri = HI{BN(Conv(Concat(A, ˆSc−
+i−1X
+j=0
+ˆSfj ))), Q}, (8)
+ˆSfi = Conv(DPRNN(SI(Ri))), (9)
+In addition, we introduce the A-path and S-path in a resid-
+ual iterative manner to facilitate collaborative interaction be-
+tween different modules and progressively further explore spa-
+tial and spectral information in the feature embeddings. The S-
+path, functioning as a residual connection, involves subtracting
+the output of the j-th refiner, ˆSfj , from the coarse enhancement
+result ˆS(p)
+c . This subtraction operation enables each refiner to
+focus on exploring the spectral and spatial information that was
+not fully captured during the earlier coarse enhancement and
+refiner stages. Conversely, the A-path performs an additive op-
+eration, gradually restoring and enhancing the spectral details
+of the coarse enhancement result step-by-step.
+4. Experiment Result
+4.1. Dataset
+We generate multi-channel noisy-clean speech pairs using the
+LibriSpeech corpus [26] (train-clean-100, dev-clean, and test-
+clean subsets). Noise data is sourced from the DNS-Challenge
+[27], with approximately 20,000 samples selected for train-
+ing. Multi-channel room impulse responses (RIRs) are sim-
+ulated with a 7-microphone uniform linear array, spaced 5cm
+apart. Room dimensions range from 5m-5m-3m to 10m-10m-
+4m (length, width, height), with reverberation times (T60) be-
+tween 0.1s and 1.0s. To generalize the model, the distance
+from the target and noise sources to the microphones ranges
+from 0.5m to 5.0m in 0.5m increments. The direction of ar-
+rival (DOA) difference between target and noise is at least 5◦.
+Training data has a SNR randomly chosen from [-6dB, 6dB].
+We generate 40,000 training pairs and 4,000 validation pairs,
+and the duration of each segment is 4 seconds. The test dataset
+includes about 50 types of environmental noises from MU-
+SAN [28], with four challenging SNR conditions (-10dB, -5dB,
+-2dB, 0dB), each containing 200 test pairs, specifically chosen
+to emphasize our focus on enhancement tasks in low-SNR en-
+vironments.
+4.2. Training Setup
+All utterances are sampled at 16 kHz. A 20ms Hanning win-
+dow is used with a 50% overlap between frames, and 320-point
+FFT is applied. The parameters in the JSSE module are con-
+sistent with those in [11], except that the number of channels
+in the encoder and decoder is set to 32. The channel numbers
+for the SSE and each refiner are 6, 12 and 32, 14, respectively.
+The kernel sizes for the convolution in the Conv block and HI
+are (5,2) and (1,3), respectively, with all convolutions having a
+stride of (1,1). The HI and Self-Interaction modules employ 4,
+8, and 1 heads, respectively. The GRU module is a 2-layer uni-
+directional GRU with 64 hidden units. JSSE is retrained from
+scratch rather than fine - tuned. Anechoic speech is used as the
+reference signal to measure the SI-SDR [29], PESQ [30], and
+STOI [31] of the enhanced speech.
+We introduce a combination of the time-domain scale-
+invariant signal-to-noise ratio (SI-SNR) and PMSQE [32]based
+on psychoacoustic perception, as the overall loss function,
+where the two losses are weighted equally (in a 1:1 ratio).
+4.3. Comparison with Baseline
+A total of six baselines are selected, including traditional adap-
+tive beamformers with Oracle settings (i.e., Oracle MVDR)
+1195
+
+Table 1: Quantitative comparisons with advanced baselines. The values are specified with PESQ/STOI/SI-SDR formats. Bold face
+indicates the best performance.
+Method param.(M) Signal-to-Noise Ratio Average
+-10db -5db -2db 0db
+Noisy - 1.41/0.35/-10.59 1.51/0.40/-5.65 1.60/0.43/-2.11 1.60/0.51/-0.42 1.53/0.42/-4.69
+Oracle MVDR - 2.12/0.69/7.55 2.32/0.73/8.10 2.47/0.77/9.00 2.51/0.83/9.99 2.36/0.75/8.66
+FaSNet-TAC [7] 2.76 2.37/0.85/5.32 2.67/0.89/7.53 2.81/0.90/8.40 2.90/0.91/8.91 2.69/0.89/7.54
+NSF [20] 12.96 2.66/0.87/5.57 2.85/0.89/7.10 2.93/0.90/7.51 2.97/0.91/8.29 2.85/0.89/7.11
+FT-JNF [12] 3.35 2.70/0.88/6.11 2.82/0.90/7.19 2.88/0.91/7.73 2.92/0.90/8.81 2.83/0.90/7.46
+EaBNet [11] 2.83 3.13/0.93/9.30 3.30/0.94/10.48 3.37/0.95/10.98 3.40/0.95/11.26 3.30/0.94/10.50
+TaEr [10] 6.03 2.79/0.89/7.86 2.99/0.90/9.53 3.05/0.90/10.01 3.10/0.91/10.57 2.98/0.90/9.49
+Ours 3.21 3.57/0.95/12.30 3.69/0.97/13.49 3.73/0.97/13.93 3.76/0.97/14.21 3.69/0.97/13.48
+Table 2: Ablation study on our Librispeech-based dataset.
+Method N Para. (M) PESQ SI-SDR (dB) STOI (%)
+Ours
+w/ N refiners
+0 2.39 3.41 10.55 94.31
+1 2.66 3.46 11.19 94.97
+2 2.93 3.49 11.91 95.34
+3 3.21 3.57 12.30 95.98
+4 3.48 3.50 12.11 95.41
+EaBNet - 2.83 3.13 9.30 93.01
++SSE - 2.95 3.22 10.02 93.86
+EaBNet[Large] - 3.38 3.12 9.27 92.84
+Ours 3 3.21 3.57 12.30 95.98
+- SSE 3 3.13 3.21 11.57 95.01
+- JSSE 3 1.36 3.44 10.95 95.89
+JSSE→ cosIPD 3 1.37 3.47 11.12 94.98
+[33], and five outstanding DNN-based approaches. We eval-
+uate these six baseline models on our dataset. As shown in
+Table 1, under different SNR conditions, our model outper-
+forms the baseline model in all evaluation indicators. From
+the table, It can be observed that even under low-SNR condi-
+tions, the proposed model still maintains its advantage in objec-
+tive indicators. This is because we introduced acoustic infor-
+mation into the model design and fully integrated it with spa-
+tial information. It can also be observed that, similar to our
+multi-stage model, TaEr, which uses the amplitude-phase de-
+coupling strategy, shows moderate performance in various indi-
+cators. This confirms the superiority of our multi-stage model in
+low-SNR scenarios. Compared to the State-of-the-art (SOTA)
+model EaBNet, our model achieves 12% and 28% improve-
+ments in PESQ and SI-SDR with only 13% more parameters.
+This demonstrates that explicitly extracted spectral information
+enhances the model’s ability to learn joint spatial-spectral fea-
+tures in low-SNR conditions. Our system notably improves
+PESQ due to the incorporation of spectral acoustic structure,
+particularly harmonics, which aligns better with human audi-
+tory perception.
+4.4. Ablation Study
+Table 2 shows that increasing the number of refiners (N ) im-
+proves all metrics. With N = 3 , SI-SDR increases by 1.75 dB
+compared to no refiners, indicating effective repair of missed
+spectral details. However, with N = 4, performance decreases,
+suggesting that additional refiners become redundant. There-
+fore, N = 3 is used for baseline comparisons. To verify
+whether simply increasing the number of parameters improves
+performance in low-SNR acoustic environments, we increased
+the number of channels in EaBNet’s convolution and TCN mod-
+ules, resulting in a parameter count similar to our model with
+three refiners (EaBNet[Large]). This, however, degraded per-
+formance, highlighting that more parameters do not always lead
+to better results. In contrast, the advantage of our model in
+low-SNR acoustic conditions stems from explicitly modeling
+the acoustic information of the speech itself and integrating
+multi-channel spatial information. This promotes information
+interaction and fusion during end-to-end training and leverages
+harmonics to guide the model to fully learn the joint spatial -
+spectral information. Integrating the SSE module into EaBNet
+(+SSE), which uses the extracted spectral information as addi-
+tional guidance, improves PESQ and SI-SDR by 0.09 and 0.72
+dB, respectively. This shows that combining prior knowledge
+with implicit learning through the nonlinear mapping capabil-
+ities of neural networks enhances performance with fewer pa-
+rameters. Removing the SSE or JSSE modules (−SSE,−JSSE)
+reduces the metrics, emphasizing the importance of spatial and
+spectral information. Without the SSE, PESQ shows a signif-
+icant drop, confirming the critical role of harmonic structures
+in speech intelligibility. This also validates our hypothesis that
+the SSE module can effectively enrich spectral information in
+the joint spatial-spectral representation learned by the enhance-
+ment system, especially under low-SNR conditions. PESQ, an
+objective speech quality metric, evaluates spectral and temporal
+features based on human auditory perception. When a neural
+network learns sufficient spectral information, it can accurately
+reconstruct speech signals, making enhanced speech closer to
+the clean signal in frequency and harmonics. This improves nat-
+uralness and intelligibility, leading to higher PESQ scores. Re-
+placing JSSE with cosIPD (JSSE → cosIPD) slightly reduces
+performance but outperforms EaBNet. This demonstrates the
+network’s ability to integrate spatial and spectral information,
+though relying solely on phase information causes some loss.
+5. Conclusion
+In this paper, we propose a three-stage multi-channel speech
+enhancement framework addressing the challenges of spatial-
+spectral information learning in low-SNR environments. The
+core innovation lies in the acoustic structure extraction mod-
+ule, which captures spectral patterns from noisy signals, effec-
+tively integrating spatial-spectral features. Experimental results
+show that modeling the acoustic structure and interacting it with
+spatial information can address the information learning bottle-
+neck in multi-channel speech enhancement. This improvement
+is particularly significant in low-SNR scenarios, where existing
+methods often struggle to maintain performance.
+1196
+
+6. References
+[1] R. Gu, L. Chen, S.-X. Zhang, J. Zheng, Y . Xu, M. Yu, D. Su,
+Y . Zou, and D. Yu, “Neural spatial filter: Target speaker speech
+separation assisted with directional information.” in Interspeech,
+2019, pp. 4290–4294.
+[2] J. Yu, B. Wu, R. Gu, S.-X. Zhang, L. Chen, Y . X. M. Yu, D. Su,
+D. Yu, X. Liu, and H. Meng, “Audio-visual multi-channel recog-
+nition of overlapped speech,” arXiv preprint arXiv:2005.08571 ,
+2020.
+[3] B. Wu, M. Yu, L. Chen, Y . Xu, C. Weng, D. Su, and D. Yu, “Dis-
+tortionless multi-channel target speech enhancement for over-
+lapped speech recognition,” arXiv preprint arXiv:2007.01566 ,
+2020.
+[4] G. Li, S. Liang, S. Nie, W. Liu, and Z. Yang, “Deep neural
+network-based generalized sidelobe canceller for dual-channel
+far-field speech recognition,”Neural Networks, vol. 141, pp. 225–
+237, 2021.
+[5] Z. Zhang, Y . Xu, M. Yu, S.-X. Zhang, L. Chen, D. S. Williamson,
+and D. Yu, “Multi-channel multi-frame ADL-MVDR for target
+speech separation,” IEEE/ACM Transactions on Audio, Speech,
+and Language Processing, vol. 29, pp. 3526–3540, 2021.
+[6] “BLSTM supported GEV beamformer front-end for the 3rd
+CHiME challenge, author=Heymann, Jahn and Drude, Lukas and
+Chinaev, Aleksej and Haeb-Umbach, Reinhold,” in 2015 IEEE
+Workshop on Automatic Speech Recognition and Understanding
+(ASRU). IEEE, 2015, pp. 444–451.
+[7] Y . Luo, Z. Chen, N. Mesgarani, and T. Yoshioka, “End-to-end mi-
+crophone permutation and number invariant multi-channel speech
+separation,” in ICASSP 2020-2020 IEEE International Confer-
+ence on Acoustics, Speech and Signal Processing (ICASSP) .
+IEEE, 2020, pp. 6394–6398.
+[8] Y . Xu, Z. Zhang, M. Yu, S.-X. Zhang, and D. Yu, “Generalized
+spatio-temporal RNN beamformer for target speech separation,”
+arXiv preprint arXiv:2101.01280, 2021.
+[9] A. Li, G. Yu, Z. Xu, C. Fan, X. Li, and C. Zheng, “TaBE: De-
+coupling spatial and spectral processing with taylor’s unfolding
+method in the beamspace domain for multi-channel speech en-
+hancement,” Information Fusion, vol. 101, p. 101976, 2024.
+[10] A. Li, G. Yu, C. Zheng, W. Liu, and X. Li, “A General Unfolding
+Speech Enhancement Method Motivated by Taylor’s Theorem,”
+IEEE/ACM Transactions on Audio, Speech, and Language Pro-
+cessing, 2023.
+[11] A. Li, W. Liu, C. Zheng, and X. Li, “Embedding and beam-
+forming: All-neural causal beamformer for multichannel speech
+enhancement,” in ICASSP 2022-2022 IEEE International Con-
+ference on Acoustics, Speech and Signal Processing (ICASSP) .
+IEEE, 2022, pp. 6487–6491.
+[12] K. Tesch and T. Gerkmann, “Insights into deep non-linear filters
+for improved multi-channel speech enhancement,” IEEE/ACM
+Transactions on Audio, Speech, and Language Processing ,
+vol. 31, pp. 563–575, 2022.
+[13] “McNet: Fuse multiple cues for multichannel speech enhance-
+ment, author=Yang, Yujie and Quan, Changsheng and Li, Xi-
+aofei,” in ICASSP 2023-2023 IEEE International Conference on
+Acoustics, Speech and Signal Processing (ICASSP). IEEE, 2023,
+pp. 1–5.
+[14] T. Wang, W. Zhu, Y . Gao, J. Feng, and S. Zhang, “HGCN: Har-
+monic gated compensation network for speech enhancement,” in
+ICASSP 2022-2022 IEEE International Conference on Acoustics,
+Speech and Signal Processing (ICASSP). IEEE, 2022, pp. 371–
+375.
+[15] T. Wang, W. Zhu, Y . Gao, S. Zhang, and J. Feng, “Harmonic atten-
+tion for monaural speech enhancement,”IEEE/ACM Transactions
+on Audio, Speech, and Language Processing , vol. 31, pp. 2424–
+2436, 2023.
+[16] R. Cao, T. Wang, M. Ge, A. Li, L. Wang, J. Dang, and Y . Jia,
+“V oicor: A residual iterative voice correction framework for
+monaural speech enhancement,” in Interspeech 2024, 2024, pp.
+4858–4862.
+[17] R. Gu, S.-X. Zhang, M. Yu, and D. Yu, “3d spatial features
+for multi-channel target speech separation,” in 2021 IEEE Auto-
+matic Speech Recognition and Understanding Workshop (ASRU).
+IEEE, 2021, pp. 996–1002.
+[18] R. Gu and Y . Luo, “Rezero: Region-customizable sound extrac-
+tion,” IEEE/ACM Transactions on Audio, Speech, and Language
+Processing, 2024.
+[19] Y . Fu, M. Ge, H. Wang, N. Li, H. Yin, L. Wang, G. Zhang,
+J. Dang, C. Deng, and F. Wang, “Locate and Beamform: Two-
+dimensional locating all-neural beamformer for multi-channel
+speech separation,” arXiv preprint arXiv:2305.10821, 2023.
+[20] K. Tan, Z.-Q. Wang, and D. Wang, “Neural spectrospatial filter-
+ing,” IEEE/ACM Transactions on Audio, Speech, and Language
+Processing, vol. 30, pp. 605–621, 2022.
+[21] Z. Chen, X. Xiao, T. Yoshioka, H. Erdogan, J. Li, and
+Y . Gong, “Multi-channel overlapped speech recognition with lo-
+cation guided speech extraction network,” in 2018 IEEE Spoken
+Language Technology Workshop (SLT). IEEE, 2018, pp. 558–
+565.
+[22] Y . Luo, Z. Chen, and T. Yoshioka, “Dual-path rnn: efficient long
+sequence modeling for time-domain single-channel speech sepa-
+ration,” in ICASSP 2020-2020 IEEE International Conference on
+Acoustics, Speech and Signal Processing (ICASSP). IEEE, 2020,
+pp. 46–50.
+[23] J. R. Jensen, S. Karimian-Azari, M. G. Christensen, and J. Ben-
+esty, “Harmonic beamformers for speech enhancement and dere-
+verberation in the time domain,” Speech Communication , vol.
+116, pp. 1–11, 2020.
+[24] A. Li, C. Zheng, L. Zhang, and X. Li, “Glance and gaze: A col-
+laborative learning framework for single-channel speech enhance-
+ment,” Applied Acoustics, vol. 187, p. 108499, 2022.
+[25] A. Li, G. Yu, C. Zheng, and X. Li, “TaylorBeamformer: Learn-
+ing all-neural beamformer for multi-channel speech enhancement
+from taylor’s approximation theory,” in Interspeech 2022, 2022,
+pp. 5413–5417.
+[26] V . Panayotov, G. Chen, D. Povey, and S. Khudanpur, “Lib-
+rispeech: an asr corpus based on public domain audio books,”
+in 2015 IEEE international conference on acoustics, speech and
+signal processing (ICASSP). IEEE, 2015, pp. 5206–5210.
+[27] C. K. Reddy, V . Gopal, R. Cutler, E. Beyrami, R. Cheng,
+H. Dubey, S. Matusevych, R. Aichner, A. Aazami, S. Braun
+et al., “The interspeech 2020 deep noise suppression challenge:
+Datasets, subjective testing framework, and challenge results,”
+arXiv preprint arXiv:2005.13981, 2020.
+[28] D. Snyder, G. Chen, and D. Povey, “Musan: A music, speech, and
+noise corpus,” arXiv preprint arXiv:1510.08484, 2015.
+[29] J. Le Roux, S. Wisdom, H. Erdogan, and J. R. Hershey, “SDR–
+half-baked or well done?” in ICASSP 2019-2019 IEEE Interna-
+tional Conference on Acoustics, Speech and Signal Processing
+(ICASSP). IEEE, 2019, pp. 626–630.
+[30] A. W. Rix, J. G. Beerends, M. P. Hollier, and A. P. Hekstra, “Per-
+ceptual evaluation of speech quality (PESQ)-a new method for
+speech quality assessment of telephone networks and codecs,” in
+2001 IEEE international conference on acoustics, speech, and
+signal processing. Proceedings (Cat. No. 01CH37221) , vol. 2.
+IEEE, 2001, pp. 749–752.
+[31] J. Jensen and C. H. Taal, “An algorithm for predicting the
+intelligibility of speech masked by modulated noise maskers,”
+IEEE/ACM Transactions on Audio, Speech, and Language Pro-
+cessing, vol. 24, no. 11, pp. 2009–2022, 2016.
+[32] J. M. Martin-Donas, A. M. Gomez, J. A. Gonzalez, and A. M.
+Peinado, “A deep learning loss function based on the perceptual
+evaluation of the speech quality,” IEEE Signal processing letters,
+vol. 25, no. 11, pp. 1680–1684, 2018.
+[33] C. Boeddeker, T. Nakatani, K. Kinoshita, and R. Haeb-Umbach,
+“Jointly optimal dereverberation and beamforming,” in ICASSP
+2020-2020 IEEE International Conference on Acoustics, Speech
+and Signal Processing (ICASSP). IEEE, 2020, pp. 216–220.
+1197

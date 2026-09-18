@@ -1,0 +1,488 @@
+Frequency-Domain Enhanced Extreme Bandwidth Extension Network with
+ICCRN for Superior Speech Quality
+Hongtao Bao, Xueliang Zhang∗
+College of Computer Science, Inner Mongolia University, China
+32309095@mail.imu.edu.cn, cszxl@imu.edu.cn
+Abstract
+Bandwidth extension is a critical task in speech processing
+that enhances narrowband audio quality by reconstructing es-
+sential high-frequency components, which are vital for natural
+and intelligible speech. Recent advancements like EBEN (Ex-
+treme Bandwidth Extension Network) achieve notable results
+with lightweight generators and real-time operations. However,
+down-sampling limitations degrade frequency-space informa-
+tion, causing speech distortion as up-sampling struggles to re-
+cover lost details. To address this, we propose replacing the
+generator with an ICCRN in the frequency domain. Leverag-
+ing cepstral-domain features and inplace convolutions, our ap-
+proach mitigates information loss during down-sampling and
+preserves global spectral structure. Evaluations on the French
+LibriSpeech dataset show significant improvements, including
+clearer spectrograms, fewer generator parameters, and lower
+computational costs, advancing the state of the art in bandwidth
+extension.
+Index Terms: bandwidth extension, frequency-space informa-
+tion, ICCRN, cepstral-domain features, inplace convolutions
+1. Introduction
+In recent years, deep learning techniques have been incorpo-
+rated into bandwidth extension methods, significantly enhanc-
+ing the audio quality and naturalness of bandwidth extension
+systems. Time-domain bandwidth extension methods[1, 2, 3,
+4, 5] utilize neural networks to map narrowband speech wave-
+forms and directly generate or predict wideband speech wave-
+forms. Frequency-domain bandwidth extension techniques[6,
+7, 8, 9, 10] typically employ spectral features from the lower
+bands (such as complex spectra, magnitude spectra, etc.) as
+inputs for neural models, with the learning target generally be-
+ing the clean speech spectrum in the high-frequency bands or
+masks used to estimate the high-frequency parts (for example,
+ideal ratio masks, complex ideal ratio masks, etc.).
+The goal of bandwidth extension technology is to synthe-
+size or estimate missing high-frequency components by using
+low-frequency information, thereby improving the quality and
+perceptual effect of speech or audio signals. This approach
+is particularly suitable for telephone communications or other
+scenarios where high-frequency loss occurs due to bandwidth
+limitations. Through deep learning models, patterns related
+to high-frequency content can be learned from low-frequency
+data, and reasonable high-frequency reconstruction can be per-
+formed based on this, making the restored audio sound more
+complete and natural.
+∗Corresponding author.
+EBEN[3] leverages a multiband decomposition of the raw
+captured speech to decrease the data time-domain dimensions,
+and gives better control over the full-band signal. This multi-
+band representation is fed to a U-Net-like model, which adopts
+a combination of feature and adversarial losses to recover an
+corrupted audio signal. This method achieves excellent perfor-
+mance on the French LibriSpeech dataset[11] with a lightweight
+generator and real-time compatible operation.
+Despite its excellent performance, EBEN still has certain
+limitations. Firstly, compared to frequency-domain process-
+ing, time-domain methods may be limited by the constraints
+of time series analysis, making it challenging to directly cap-
+ture changes in the spectrum. In contrast, frequency-domain
+approaches provide a clear representation of a signal’s spec-
+tral structure, enabling more precise control over the bandwidth
+extension process. By manipulating frequency components,
+frequency-domain methods can achieve more flexible and ac-
+curate bandwidth extension. Moreover, the downsampling op-
+eration in EBEN might disrupt the spatial information of fre-
+quencies, and the upsampling process cannot fully restore this
+information, which could lead to a deeper level of speech dis-
+tortion.
+This study further improves EBEN to enhance bandwidth
+extension performance. Firstly, the method is modified to per-
+form bandwidth extension in the frequency domain, allowing
+for more precise control over the extension process. The multi-
+band decomposition of the raw captured speech is retained,
+but with a difference: the decomposed bands are transformed
+into the frequency domain via Short-Time Fourier Transform
+(STFT) for frequency-domain operations. Secondly, consid-
+ering that the original generator’s downsampling might cause
+a deeper level of speech distortion, the generator is replaced
+with ICCRN[12] (Inplace Cepstral Convolutional Recurrent
+Network), which effectively utilizes cepstral domain features
+and inplace convolution to address the issues of downsam-
+pling while preserving global information. Experimental results
+demonstrate that the improved EBEN model not only has fewer
+parameters and lower computational requirements compared to
+the original EBEN but also exhibits superior performance.
+2. Method
+2.1. Pseudo Quadrature Mirror Filter formalisml
+In this work, we also employ the Pseudo Quadrature Mirror Fil-
+ter(PQMF) banks implemented and provided in EBEN for audio
+processing. This technique was initially proposed in[13]. The
+QMF banks utilize a set of analysis filters {Hi}i∈[1,M ] to de-
+compose a signal into multiple non-overlapping subband chan-
+nels with equal bandwidth, and synthesis filters{Gi}i∈[1,M ] for
+subsequent signal reconstruction. These filters are derived from
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+4093 10.21437/Interspeech.2025-806
+
+the same lowpass prototype filter. A typical frequency response
+for an M-band PQMF bank is shown in Fig. 1, and the entire
+processing pipeline is illustrated in Fig. 2.
+Theoretically, exact reconstruction can be achieved if the
+analysis filters{Hi}i∈[1,M ] and synthesis filters {Gi}i∈[1,M ]
+have infinite support.
+Figure 1: Frequency response of a PQMF filter bank
+Figure 2: PQMF Analysis and Synthesis : block-diagram
+In subband coding, PQMF analysis filter outputs are down-
+sampled by a factor of M. This accelerates inference and allows
+different frequency bands to be modeled as conditionally in-
+dependent. PQMF analysis thus reduces channel redundancy
+and computational complexity. In our experiments, we used
+EBEN’s efficient PQMF implementation with native PyTorch
+functions, relying on strided convolutions for high performance
+and compatibility.
+2.2. ICCRN Model
+Figure 3 depicts ICCRN’s architecture. As an inplace model,
+it eliminates frequency downsampling or upsampling, reduc-
+ing information loss and avoiding the introduction of irrele-
+vant data. The frequency dimension stays fixed at f=161, with
+all convolutional layers having c=20 output channels. ICCRN
+uses cepstrum analysis to examine time-frequency (T-F) domain
+features. A real-valued FFT is applied to each channel’s T-
+F feature map per frame. In the resulting cepstral space, the
+spectral envelope energy, containing most semantic informa-
+tion and timbre cues, concentrates in the low cepstral region,
+while harmonics appear as sparse peaks distributed periodically
+across higher cepstral bands[14]. By analyzing harmonic struc-
+tures, ICCRN predicts and synthesizes high-frequency compo-
+nents beyond the original bandwidth, achieving high-quality
+extension that maintains natural audio characteristics. This
+harmonic-based method improves audio quality and preserves
+timbral fidelity, ensuring accurate signal representation.
+We utilize a bidirectional LSTM operating channel-wise
+(F-chBLSTM) to transform the input channel dimension into
+a higher-dimensional representation. Once this transformation
+is complete, the resulting features are processed by n sequential
+CFBs. Next, a two-layer channel-wise LSTM (T-chLSTMx2)
+creates a mask for the encoder’s output, with its hidden layer
+size adjusted to 2c. During decoding, the masked feature map,
+enriched by skip connections, is processed through n stacked
+CFBs and further refined by a time dimension channel-wise
+LSTM. The channel dimension is then expanded to 2×m chan-
+nels using a 1×1 convolutional layer, where m corresponds to
+the number of bands produced by the PQMF banks decompo-
+sition. This channel arrangement models the concatenation of
+complex spectra across different frequency bands, obtaining the
+predicted high-frequency components, with the factor of 2 rep-
+resenting the real and imaginary parts of the estimated STFT
+spectrum. Ultimately, by combining the low-frequency signal
+from the input and the predicted high-frequency components in
+the time-frequency domain, we synthesize an extended band-
+width audio signal. This process effectively enhances the fre-
+quency range of the original narrowband signal by generating
+accurate high-frequency components that complement the ex-
+isting lower frequencies, thereby significantly improving audio
+quality.
+2.3. Details of the method
+First, the 16kHz sampled speech signal is decomposed into
+M equal-bandwidth, non-overlapping sub-bands in the time
+domain using PQMF banks. Among these, the lowest-
+frequency first sub-band undergoes a Short-Time Fourier Trans-
+form (STFT), converting it into a dual-channel complex spec-
+trum, which is then fed into the generator ICCRN. During the
+encoder-decoder process, ICCRN progressively generates mid-
+to-high frequency information, ultimately outputting an eight-
+channel complex spectrum. Each pair of these eight chan-
+nels represents the real and imaginary parts of the complex
+spectra for one of the four sub-bands. By processing only
+the low-frequency information contained in the first sub-band,
+this method significantly reduces information redundancy and
+greatly decreases computational complexity. After network pro-
+cessing, the complex spectra of the four sub-bands are subse-
+quently transformed back to the time domain via inverse Short-
+Time Fourier Transform (iSTFT), thereby recovering the four
+time-domain sub-bands. Finally, PQMF banks is used once
+again to reconstruct the original audio signal from these four
+sub-bands, restoring its full spectral range. The discriminator
+design draws inspiration from the architecture of the discrimi-
+nators in EBEN. It employs multiple discriminators to directly
+process the sub-band signals decomposed by PQMF banks,
+without the need to recombine or upsample these sub-band sig-
+nals. Unlike EBEN, we input not only the generated high-
+frequency bands but also the original low-frequency band. This
+approach allows the discriminator to obtain more contextual in-
+formation, aiding it in more accurately evaluating whether the
+generated high-frequency bands are reasonable and natural. To
+accommodate this multi-band input, we have adjusted the pa-
+rameters of each layer in the discriminator accordingly. Addi-
+tionally, to ensure consistency across different frequency bands,
+we use a full scale MelGAN discriminator identical to the one
+in EBEN. This further validates the quality and overall consis-
+tency of the generated audio.
+2.4. Loss functions
+The discriminators are trained using a classical hinge loss.
+Within this framework, G denotes the generator, and D(l)
+k,t
+represents layer l (among Lk layers) of the discriminator at
+scale k (among K scales) and time t. The notations Fk,l and
+Tk,l refer to the number of features and the temporal length,
+respectively, for given indices. Here, x signifies the in-ear
+signal, whereasy stands for the reference signal.
+4094
+
+Figure 3: The implemented ICCRN architecture.
+LD =Ey
+"
+1
+K
+X
+k∈[0,3]
+1
+Tk,Lk
+X
+t
+max(0, 1−Dk,t(y))
+#
++Ex
+"
+1
+K
+X
+k∈[0,3]
+1
+Tk,Lk
+X
+t
+max(0, 1 +Dk,t(G(x)))
+#
+(1)
+Similarly, for the generator, we utilized a loss function that
+consists of a generative component Ladv
+G and a reconstructive
+componentLrec
+G , balanced by a weighting factor λ. The re-
+construction loss corresponds to the ”feature” loss introduced
+in[15], which is essentially the mean absolute error between
+the internal layer activations of the discriminator for the syn-
+thesized audio and those for the matching reference audio. The
+overall generator loss is given by:
+LG =Ladv
+G +λLrec
+G . (2)
+Ladv
+G =Ex
+"
+1
+K
+X
+k∈[0,3]
+1
+Tk,Lk
+X
+t
+max(0, 1−Dk,t(G(x)))
+#
+(3)
+Lrec
+G =Ex
+"
+1
+K
+X
+k∈[0,3]
+l∈[1,Lk]
+1
+Tk,lFk,l
+X
+t
+||D(l)
+k,t(y)−D(l)
+k,t(G(x))||L1
+#
+(4)
+Through this combination, the generator ensures high fi-
+delity to the reference signal while exhibiting creativity in
+the high-frequency regions, particularly where information is
+scarce in the degraded signal (such as for fricatives). Specifi-
+cally, the reconstruction lossLrec
+G guarantees that the generated
+audio samples closely match the original reference, whereas the
+adversarial lossLadv
+G introduces flexibility and innovation in the
+higher frequencies. Importantly, the reconstruction loss oper-
+ates not directly in the time domain but within the discriminator
+domain, focusing on semantic feature matching of the signal.
+3. Experimental Setup
+3.1. Datasets
+We evaluated our model on the French LibriSpeech dataset[11],
+using the same processing and degradation settings as EBEN.
+Specifically, the degradation uses a 2nd order low-pass filter
+(600 Hz cutoff, unitary Q-factor) applied viafiltfilt to ensure
+zero phase shift, and adds Gaussian white noise 23 dB below
+the signal power.
+3.2. Configuration
+for STFT, we adopt 320/80 for window-length/hop-length, and
+the analysis uses a Hamming window. We use 320-point Fast
+Fourier transform (FFT) to extract 161-dimensional complex
+spectra for 16 kHz sampling rate. The model is optimized by
+Adam. The learning rate is 0.0003. The batch size is 16. The
+parameter M for the PQMF banks is set to 4. The genera-
+tor’s network architecture aligns with that of ICCRN, utiliz-
+ing 20 channels and employing a discriminator similar to the
+one used in EBEN. To verify the effectiveness of the proposed
+method, we selected EBEN as a baseline model and conducted
+comparisons using the same evaluation protocol as EBEN. Ad-
+ditionally, we compared our approach with other methods, in-
+cluding Audio U-net[16], Hifi-GAN v3[17], Seanet[18], Strm-
+Seanet[5].
+4. Experiment Results and Analysis
+In this section, We compare our method with other baseline sys-
+tems across various metrics, including SI-SDR[19], STOI[20],
+PESQ[21] and Parameters(M), and show the results on the
+French Librispeech test dataset. SI-SDR is Scale-invariant
+Signal-to-Distortion Ratio. STOI is Short-Term Objective In-
+telligibility. PESQ is Perceptual Evaluation of Speech Quality.
+These three metrics are all better when higher. ”#Para” indi-
+cates the number of parameters for both the discriminator and
+generator, with the unit being millions (M).
+In Table 1, Ours v1 refers to the method after replacing the
+generator, and Ours v2 further modifies the discriminator. Com-
+4095
+
+Table 1: Comparing models with: PESQ/SI-SDR/STOI on test set — MUSHRA-U (88 participants) and MUSHRA-Q (82 participants)
+scores — number of parameters. Format is median (IQR). MUSHRA-U is about ease of understanding while the MUSHRA-Q is about
+audio quality.
+Model Speech Metrics #Para(M)
+PESQ SI-SDR STOI MUSHRA-U MUSHRA-Q Gen Dis
+Simulated In-ear 2.42 (0.34) 8.4 (3.7) 0.83 (0.05) 51 (29) 24 (18) – –
+Audio U-net[16] 2.24 (0.49) 11.9 (3.7) 0.87 (0.04) 60 (26) 33 (18) 71.0 –
+Hifi-GAN v3[17] 1.32 (0.16) -25.1 (11.4) 0.78 (0.04) 40 (23) 36 (18) 1.5 70.7
+Seanet[18] 1.92 (0.48) 11.1 (3.0) 0.89 (0.04) 73 (13) 78 (12) 8.3 56.6
+Strm-Seanet[5] 2.01 (0.46) 11.2 (3.6) 0.89 (0.04) 66 (20) 61 (14) 0.7 56.6
+EBEN[3] 2.08 (0.45) 10.9 (3.3) 0.89 (0.04) 73 (14) 76 (14) 1.9 27.8
+Ours V1 2.16 (0.53) 11.3 (3.3) 0.89 (0.03) – – 0.46 27.8
+Ours V2 2.34 (0.59) 11.8 (3.6) 0.90 (0.03) – – 0.46 28.3
+(a)Simulated In-ear
+ (b)EBEN
+ (c)Ours
+ (d)Reference
+Figure 4: Spectrogram Comparison between EBEN and Ours
+Table 2: MUSHRA Comparison between EBEN and Ours (40
+Participants). Format is median (IQR).
+Method MUSHRA
+EBEN 74.2 (4)
+Ours 75.4 (5.4)
+paring Ours v1 with EBEN shows the effectiveness of our gen-
+erator design. Further comparison between Ours v1 and Ours
+v2 validates the effectiveness of the modifications to the dis-
+criminator’s input and layer parameters. Our method outper-
+forms EBEN in all objective metrics while using only about
+one-quarter of the generator parameters. This makes ours more
+suitable for resource-constrained environments like mobile de-
+vices and embedded systems. As a causal system, our method
+ensures efficient inference, enhancing practical flexibility.
+In Figure 4, we show the input speech, reference speech,
+and the speech enhanced by EBEN and our method. Our
+method produces richer high-frequency details and, due to
+frequency-domain processing, has a clearer harmonic structure,
+improving spectral complexity and clarity. This method also
+enhances the generation of harmonic components, leading to
+better overall audio quality.
+In Table 2, we conducted a MUSHRA test specifically for
+EBEN and our proposed method. The experiments in EBEN
+compared it with other methods listed in Table 1. For conve-
+nience, we directly compared the subjective listening perfor-
+mance between EBEN and our method. The results indicate
+that our method performs comparably to or slightly better than
+EBEN in terms of subjective listening quality. Audio demo
+available at: https://github.com/bb1885566/audio-demo.
+We think that using ICCRN as the generator is crucial. It ef-
+fectively preserves frequency-space information during down-
+sampling, significantly reducing speech distortion and improv-
+ing objective audio metrics. Additionally, by introducing
+PQMF banks, we utilize multi-band information for GAN train-
+ing while maintaining a low parameter count. This frequency-
+domain approach achieves flexible and precise bandwidth ex-
+tension, further enhancing model performance.
+5. Conclusions
+This paper presents an improved bandwidth extension network
+to address the potential loss of frequency-space information and
+increased speech distortion during the downsampling process
+in the original EBEN model. To this end, we replaced the
+original generator with a new one called ICCRN (Inplace Cep-
+stral Convolutional Recurrent Network) and adjusted the pa-
+rameters of each layer in the discriminator. The ICCRN effec-
+tively mitigates downsampling issues by utilizing cepstral do-
+main features and inplace convolution techniques, preserving
+global information integrity. Additionally, our method retains
+the PQMF method for efficient conversion of subband speech
+signals into the frequency domain. Experimental results show
+that our method outperforms the original EBEN model in objec-
+tive metrics and either surpasses or performs comparably in sub-
+jective evaluations. Notably, our method generates finer mid-to-
+high frequency details, resulting in superior audio quality.
+4096
+
+6. References
+[1] J. Lee and S. Han, “Nu-wave: A diffusion probabilistic model for
+neural audio upsampling,” in Interspeech 2021, 2021, pp. 1634–
+1638.
+[2] S. Han and J. Lee, “Nu-wave 2: A general neural audio up-
+sampling model for various sampling rates,” in Interspeech 2022,
+2022, pp. 4401–4405.
+[3] J. Hauret, T. Joubaud, V . Zimpfer, and Bavu, “Eben: Extreme
+bandwidth extension network applied to speech signals captured
+with noise-resilient body-conduction microphones,” in ICASSP
+2023 - 2023 IEEE International Conference on Acoustics, Speech
+and Signal Processing (ICASSP), 2023, pp. 1–5.
+[4] V .-A. Nguyen, A. H. T. Nguyen, and A. W. H. Khong, “Tunet:
+A block-online bandwidth extension model based on transform-
+ers and self-supervised pretraining,” inICASSP 2022 - 2022 IEEE
+International Conference on Acoustics, Speech and Signal Pro-
+cessing (ICASSP), 2022, pp. 161–165.
+[5] Y . Li, M. Tagliasacchi, O. Rybakov, V . Ungureanu, and D. Roblek,
+“Real-time speech frequency bandwidth extension,” in ICASSP
+2021 - 2021 IEEE International Conference on Acoustics, Speech
+and Signal Processing (ICASSP), 2021, pp. 691–695.
+[6] M. Mandel, O. Tal, and Y . Adi, “Aero: Audio super resolution
+in the spectral domain,” in ICASSP 2023 - 2023 IEEE Interna-
+tional Conference on Acoustics, Speech and Signal Processing
+(ICASSP), 2023, pp. 1–5.
+[7] C. Shuai, C. Shi, L. Gan, and H. Liu, “mdctgan: Taming
+transformer-based gan for speech super-resolution with modified
+dct spectra,” in Interspeech 2023, 2023, pp. 5112–5116.
+[8] S. E. Eskimez and K. Koishida, “Speech super resolution gener-
+ative adversarial network,” in ICASSP 2019 - 2019 IEEE Inter-
+national Conference on Acoustics, Speech and Signal Processing
+(ICASSP), 2019, pp. 3717–3721.
+[9] S. Hu, B. Zhang, B. Liang, E. Zhao, and S. Lui, “Phase-aware
+music super-resolution using generative adversarial networks,” in
+Interspeech 2020, 2020, pp. 4074–4078.
+[10] Y .-X. Lu, Y . Ai, Z.-Y . Sheng, and Z.-H. Ling, “Multistage speech
+bandwidth extension with flexible sampling rate control,” inInter-
+speech 2024, 2024, pp. 2270–2274.
+[11] V . Pratap, Q. Xu, A. Sriram, G. Synnaeve, and R. Collobert, “Mls:
+A large-scale multilingual dataset for speech research,” in Inter-
+speech 2020, 2020, pp. 2757–2761.
+[12] J. Liu and X. Zhang, “Iccrn: Inplace cepstral convolutional re-
+current neural network for monaural speech enhancement,” in
+ICASSP 2023 - 2023 IEEE International Conference on Acous-
+tics, Speech and Signal Processing (ICASSP), 2023, pp. 1–5.
+[13] J. Rothweiler, “Polyphase quadrature filters–a new subband cod-
+ing technique,” inICASSP ’83. IEEE International Conference on
+Acoustics, Speech, and Signal Processing, vol. 8, 1983, pp. 1280–
+1283.
+[14] M. D. Skowronski, R. Shrivastav, and E. J. Hunter, “Cepstral
+peak sensitivity: A theoretic analysis and comparison of several
+implementations,” Journal of Voice , vol. 29, no. 6, pp. 670–
+681, 2015. [Online]. Available: https://www.sciencedirect.com/
+science/article/pii/S0892199714002604
+[15] K. Kumar, R. Kumar, T. de Boissiere, L. Gestin, W. Z.
+Teoh, J. Sotelo, A. de Br ´ebisson, Y . Bengio, and A. C.
+Courville, “Melgan: Generative adversarial networks for
+conditional waveform synthesis,” in Advances in Neural
+Information Processing Systems , H. Wallach, H. Larochelle,
+A. Beygelzimer, F. d'Alch ´e-Buc, E. Fox, and R. Garnett,
+Eds., vol. 32. Curran Associates, Inc., 2019. [Online].
+Available: https://proceedings.neurips.cc/paper files/paper/2019/
+file/6804c9bca0a615bdb9374d00a9fcba59-Paper.pdf
+[16] V . Kuleshov, S. Z. Enam, and S. Ermon, “Audio super-resolution
+using neural nets,” in ICLR (Workshop Track), 2017.
+[17] J. Kong, J. Kim, and J. Bae, “Hifi-gan: Generative adversarial
+networks for efficient and high fidelity speech synthesis,” in Ad-
+vances in Neural Information Processing Systems, vol. 33, 2020,
+pp. 17 022–17 033.
+[18] M. Tagliasacchi, Y . Li, K. Misiunas, and D. Roblek, “Seanet: A
+multi-modal speech enhancement network,” in Interspeech 2020,
+2020, pp. 1126–1130.
+[19] J. L. Roux, S. Wisdom, H. Erdogan, and J. R. Hershey, “Sdr –
+half-baked or well done?” in ICASSP 2019 - 2019 IEEE Inter-
+national Conference on Acoustics, Speech and Signal Processing
+(ICASSP), 2019, pp. 626–630.
+[20] C. H. Taal, R. C. Hendriks, R. Heusdens, and J. Jensen, “A short-
+time objective intelligibility measure for time-frequency weighted
+noisy speech,” in 2010 IEEE International Conference on Acous-
+tics, Speech and Signal Processing. IEEE, 2010, pp. 4214–4217.
+[21] A. Rix, J. Beerends, M. Hollier, and A. Hekstra, “Perceptual eval-
+uation of speech quality (pesq)-a new method for speech quality
+assessment of telephone networks and codecs,” in 2001 IEEE In-
+ternational Conference on Acoustics, Speech, and Signal Process-
+ing. Proceedings (Cat. No.01CH37221) , vol. 2, 2001, pp. 749–
+752 vol.2.
+4097

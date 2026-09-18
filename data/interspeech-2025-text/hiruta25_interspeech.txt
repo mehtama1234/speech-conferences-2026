@@ -1,0 +1,635 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+Hybrid Data Sampling for ASR: Integrating Acoustic Diversity
+and Transcription Uncertainty
+Komei Hiruta1, Yosuke Yamano2, Hideaki Tamori2
+1Solvance LLC, Japan
+2The Asahi Shimbun Company, Japan
+komei.hiruta@solvance.jp, yamano-y@asahi.com, tamori-h@asahi.com
+Abstract
+Efficiently selecting training data is crucial for improving auto-
+matic speech recognition (ASR) models while minimizing an-
+notation costs. This research extends TypiClust, a data sampling
+method originally validated for images, to ASR by jointly con-
+sidering acoustic diversity and transcription uncertainty. Our
+method clusters speech embeddings from Wav2Vec2 and prior-
+itizes typical and low transcription-confidence samples within
+each cluster, ensuring selection of representative and hard-to-
+train samples.
+We evaluate our method on Japanese speech
+datasets, CSJ and ReazonSpeech, demonstrating that it achieves
+lower recognition error rates than random or single-criterion-
+based data selection. These results indicate that selecting data
+based on both diversity and uncertainty enhances speech recog-
+nition model performance while reducing annotation costs.
+Index Terms: automatic speech recognition, active learning,
+data sampling
+1. Introduction
+Automatic speech recognition (ASR) is essential in systems that
+utilize various speech technologies, such as voice dialogue sys-
+tems, subtitle generation, and call center analysis [1, 2]. How-
+ever, when the data distribution during training differs from that
+in deployment—a scenario known as domain shift—existing
+models often fail to perform effectively [3, 4, 5]. For exam-
+ple, academic conferences or television broadcasts often present
+unique recording conditions and specialized terminology. As
+a result, general-purpose speech recognition models frequently
+misrecognize the audio, making domain-specific models indis-
+pensable [6, 7]. Self-supervised learning models like Wav2Vec2
+[8] and HuBERT [9] can improve ASR accuracy even with
+minimal labeled data. However, adapting these models to new
+speaking styles or domain-specific vocabulary still requires ad-
+ditional labeled data, resulting in high annotation costs.
+In response to these challenges, the concept of data-centric
+AI has gained traction, shifting the focus from merely refining
+model architectures to systematically improving and selecting
+high-quality data [10]. In this paradigm, ensuring diverse and
+representative training samples is considered crucial for robust
+performance, especially under domain shift conditions [11].
+Active learning naturally aligns with data-centric AI, as it seeks
+to achieve high-accuracy models within a limited annotation
+budget [12]. In ASR tasks, the sampling strategy must consider
+both acoustic diversity—across various speakers and environ-
+ments—and the reliability of transcription results [13, 14, 15].
+While many existing methods address either acoustic diversity
+or transcription uncertainty, only a limited number incorporate
+both in a single framework [16, 17]. Consequently, there is a
+need for an active learning strategy that jointly considers these
+acoustic and linguistic factors.
+To address the challenge of combining acoustic diver-
+sity and transcription uncertainty in ASR, our research adapts
+TypiClust [18], originally validated on image data, to ASR.
+TypiClust selects representative samples by clustering self-
+supervised embeddings, but its direct application to speech is
+non-trivial due to its temporal nature.
+Our method clusters
+acoustically similar samples using Wav2Vec2-based embed-
+dings. It then integrates transcription confidence scores to gauge
+recognition reliability, allowing uncertain yet diverse data to be
+prioritized. This adaptation enhances ASR accuracy while re-
+ducing annotation costs.
+In summary, our contributions are threefold:
+First, we
+adapts TypiClust, originally a diversity-based sampling ap-
+proach for images, to speech recognition tasks. Second, the
+proposed method combines TypiClust’s diversity sampling with
+confidence-score-based uncertainty sampling, addressing both
+acoustic variation and transcription reliability. Third, our exper-
+iments on the CSJ and ReazonSpeech corpora—each featuring
+distinct acoustic properties—demonstrate our method’s effec-
+tiveness, with improvements of around 5.0 points in error rate
+under certain conditions compared to random sampling.
+2. Related Work
+2.1. Active Learning
+Active learning selects samples that maximize model improve-
+ment, using either diversity-based or uncertainty-based crite-
+ria [19]. Uncertainty-based methods use entropy or confidence
+scores, while diversity-based methods cluster data to select rep-
+resentative points [20, 21]. A hybrid approach, TypiClust and
+Margin (TCM), has been proposed for image recognition [22],
+but its application to ASR remains largely unexplored.
+2.2. Self-supervised learning and audio features
+In recent years, self-supervised learning models such as
+Wav2Vec2 and HuBERT have enabled highly accurate speech
+feature extraction and have been widely applied to ASR tasks.
+High-dimensional embedding vectors from these models report-
+edly capture both acoustic features and some context-based lin-
+guistic information [8]. The previous reports indicate that this
+feature benefits clustering-based diversity sampling. In practi-
+cal ASR, the confidence score has traditionally been used for
+active learning and for filtering transcription results [14], mak-
+ing it a strong indicator of the model’s uncertainty.
+2.3. Active learning in speech recognition
+In speech recognition, the input audio signal is a high-
+dimensional time series containing tens to hundreds of spectral
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+4283
+10.21437/Interspeech.2025-462
+
+features per frame. Meanwhile, the output (transcribed text) is
+discrete and varies in length, making it challenging to align with
+the input [23]. As a result, active learning in speech recognition
+involves more complexity than in other modalities, such as im-
+ages or text.
+Previous studies frequently use confidence scores or pre-
+diction loss functions to concentrate annotation efforts on error-
+prone segments [15, 24, 25, 26]. Mainstream approaches select
+samples based on the acoustic model’s output probabilities and
+their consistency with a language model [25, 27].
+Meanwhile, other research focuses on acoustic-space di-
+versity by leveraging compact feature representations that cap-
+ture speakers’ characteristics and spectral properties. For in-
+stance, certain approaches cluster Mel-Frequency Cepstral Co-
+efficients (MFCCs)—which represent speech frequency charac-
+teristics on the Mel scale [28]—or i-vectors, which encapsulate
+speaker-specific details in low-dimensional vectors [16]. These
+clustered representations then guide active learning to select
+representative samples [29]. Recent work has also introduced
+diversity sampling methods that use high-dimensional embed-
+dings from self-supervised learning models such as Wav2Vec2
+and HuBERT [30, 31]. However, few studies simultaneously
+address acoustic features and transcription uncertainty, indicat-
+ing a key challenge in existing research [17, 32].
+Several key issues therefore arise in active learning for
+ASR: ensuring acoustic diversity (e.g., variations in speak-
+ers, environments, noise), managing linguistic errors (unknown
+words, accents, dialects), and estimating or correcting tran-
+scription uncertainty. In view of these challenges, this study
+integrates a clustering method (TypiClust), which uses self-
+supervised embeddings, with an uncertainty measure (confi-
+dence score). This integration aims to enable more effective
+active learning in speech recognition.
+3. Proposed Method
+3.1. System overview
+Figure 1 shows the overall flow of the proposed method.
+First, Wav2Vec2 extracts utterance-level embeddings from au-
+dio samples, which are then clustered into acoustically simi-
+lar groups. For each cluster, we combine a typicality measure
+from TypiClust with an uncertainty measure derived from the
+transcription confidence score to select representative samples.
+Originally validated on image data, TypiClust selects typical
+samples using density-aware scoring. We adapt this method
+to speech by clustering utterance-level Wav2Vec2 embeddings,
+increasing the likelihood of selecting acoustically diverse sam-
+ples. Additionally, we integrate transcription confidence scores
+to assess recognition reliability and prioritize uncertain sam-
+ples, improving ASR robustness under data constraints.
+3.2. Ensuring diversity with TypiClust
+TypiClust [18] selects the most typical sample in each cluster
+as the representative point. This approach has been reported to
+better capture local density than centroid-based sampling. It se-
+lects representative samples beyond just those near the cluster
+centroid, helping maintain acoustic diversity. The method then
+selects representative points as typical examples from these re-
+gions, prioritizing samples that best represent the acoustic and
+statistical properties of each cluster. Specifically, the method
+computes a typicality score for each sample in every cluster us-
+ing the following equation.
+Typicality(zi) =
+1
+1
+N
+PN
+j=1 d(zi, zj) + ϵ
+(1)
+Here,
+d(zi, zj) denotes the Euclidean distance between
+utterance-level embeddings vectors, and N is the number of
+neighboring points. The term ϵ is a small constant used to main-
+tain numerical stability. The Typicality formula sums the dis-
+tances between a sample and its neighbors, where smaller dis-
+tances indicate higher typicality within the cluster. Taking the
+reciprocal of this sum gives higher scores to more representative
+samples.
+3.3. Uncertainty Score Estimation via Confidence Score
+Our method computes a confidence score based on the ASR
+model’s transcription results. It then prioritizes annotation for
+utterances with high uncertainty that is likely to misrecognize.
+The proposed method uses the confidence score of transcribed
+text derived from an existing ASR model. The confidence score
+is defined as the maximum softmax probability of the predicted
+word in the ASR model’s output. ASR model’s softmax proba-
+bilities were adopted as confidence scores for their reliability in
+estimating transcription accuracy. The following equation com-
+putes the uncertainty score.
+Uncertainty Score(xi) = 1 −max
+y∈Y P(y | xi)
+(2)
+Here, P(y | xi) represents the probability that the ASR model
+predicts text y given the acoustic feature xi. This approach em-
+ploys the score to identify samples with high uncertainty. It then
+prioritizes these samples for selection within each cluster.
+3.4. Integrating Diversity and Uncertainty
+Before combining TypiClust with the confidence score, we nor-
+malize TypiClust’s typicality values to the range [0, 1]. The
+method then quantifies clustering-based diversity using this nor-
+malized typicality score and measues uncertainty using the con-
+fidence score.
+• Clustering: Wav2Vec2 utterance-level embeddings are clus-
+tered into k groups.
+• In-Cluster Sampling: The method calculates an integrated
+score for each sample (as described below) and selects the
+top m samples per cluster.
+• Adjusting the Sampling Ratio: Users can adjust the balance
+between uncertainty and diversity to fit the task.
+The final integrated score is computed as follows:
+S(xi, zi) = λ·Typicality(zi)+(1−λ)·Uncertainty Score(xi)
+(3)
+Here, λ is a hyperparameter that balances diversity and uncer-
+tainty. We test λ = 0.3 (uncertainty-focused), 0.5 (balanced),
+and 0.7 (diversity-focused) to analyze how varying λ affects
+performance across various data types and volumes. Algorithm
+1 shows the details of the flow of the previous method.
+4. Experimental Setup
+4.1. Dataset
+This study used two Japanese speech corpora for evaluation:
+CSJ1 and ReazonSpeech2. We provide an overview of each cor-
+1https://clrd.ninjal.ac.jp/csj/
+2https://research.reazon.jp/projects/ReazonSpeech/index.html
+4284
+
+Figure 1: Overview of proposed method
+Algorithm 1 Extending TypiClust for Speech Recognition
+Data Sampling Based on Confidence Score
+Require: Speech dataset: D = {xi},
+Pretrained embedding extractor: E(·),
+Number of clusters: K,
+Minimum cluster size: minSize,
+Samples per cluster: m,
+Weight parameter: λ
+Ensure: Sampled training dataset: S
+1: Step 1: Embedding Extraction
+2: for xi ∈D do
+3:
+zi ←E(xi)
+4: end for
+5: Z ←{ zi | xi ∈D}
+6: Step 2: Clustering
+7: clusters ←kmeans(Z, K)
+8: Step 3: Score Calculation and Sample Selection
+9: for c = 1 to K do
+10:
+Ic ←{ i | clusters[i] = c}
+11:
+if |Ic| < minSize then
+12:
+skip
+// (Excluding small clusters.)
+13:
+else
+14:
+for i ∈Ic do
+15:
+ti ←CalcTypicality(zi, ZIc)
+16:
+ui ←CalcUncertaintyScore(xi)
+17:
+si ←λ ti+(1 −λ) ui
+18:
+end for
+19:
+sort(Ic, by descending si)
+20:
+Sc ←top(Ic, m)
+21:
+end if
+22: end for
+23: Step 4: Integration of Selected Results
+24: S ←SK
+c=1 Sc
+25: return S
+pus below.
+• CSJ: Japanese speech dataset covering presentations and con-
+versations with diverse speakers and environments.
+• ReazonSpeech: Japanese speech corpus recorded exclusively
+from television broadcasts, encompassing diverse speakers
+and recording conditions.
+In the experimental procedure, 10 hours of data from each
+dataset were set aside for testing and excluded it from the train-
+ing set.
+Then, the proposed algorithm sampled 10, 50, 100
+hours of training data.
+Proposed Method (TypiClust + Confidence Score)
+• The method applies K-means clustering to the 1024-
+Figure 2: Cluster visualization of Wav2Vec2-based
+acoustic features for both the CSJ and ReazonSpeech corpora.
+dimensional embedding vectors extracted by Wav2Vec2-
+Large3.
+• In each cluster, the approach calculates a typicality score
+via TypiClust. It also accounts for the uncertainty derived
+from the confidence score of the initial, non-fine-tuned Ope-
+nAI/Whisper Medium4 [19].
+• The approach selects the top m samples with the highest
+diversity-uncertainty scores, setting m to match the prede-
+fined training set duration.
+• The number of clusters is set to K = 5 in accordance with the
+elbow method. The typicality score uses N = 10 neighbors
+for each data sample.
+Figure 2 shows the two-dimensional UMAP projection of
+the CSJ and the ReazonSpeech audio embedding vectors ob-
+tained through Wav2Vec2.
+Comparison method
+For comparison, the study also assessed Random Sampling.
+In addition, ablation studies were conducted using only Typi-
+Clust or only the confidence score.
+4.2. Speech Recognition Model and Training Conditions
+This study uses OpenAI/Whisper Medium as the base speech
+recognition model. This model contains approximately 769 mil-
+lion parameters, making it relatively large, and has gained atten-
+tion as a multilingual baseline model. In our experiments, we
+used PyTorch and Hugging Face Transformers for implementa-
+tion. The training employed a batch size of 8, a learning rate of
+1.0 × 10−6, and a total of 5 epochs. All training was conducted
+on a single NVIDIA A100 GPU with 80 GB of memory.
+3https://huggingface.co/Ivydata/wav2vec2-large-xlsr-53-japanese
+4https://github.com/openai/whisper.git
+4285
+
+Table 1: Experimental Results
+CSJ
+ReazonSpeech
+Dataset(h)
+Method
+CER (%)
+WER (%)
+CER (%)
+WER (%)
+10h
+Random Sampling
+30.21 ± 0.62
+35.41 ± 0.69
+29.89 ± 0.64
+23.86 ± 0.80
+TypiClust only
+28.49 ± 0.64
+34.82 ± 0.71
+26.39 ± 0.72
+22.94 ± 0.72
+confidence score only
+27.32 ± 0.60
+33.81 ± 0.70
+28.46 ± 0.72
+24.68 ± 0.73
+TypiClust+confidence score (λ = 0.3)
+25.64 ± 0.62
+31.64 ± 0.70
+25.98 ± 1.04
+23.50 ± 1.11
+TypiClust+confidence score (λ = 0.5)
+26.44 ± 0.69
+32.33 ± 0.75
+26.13 ± 1.04
+23.35 ± 1.11
+TypiClust+confidence score (λ = 0.7)
+26.52 ± 0.66
+32.90 ± 0.74
+26.52 ± 0.74
+21.90 ± 0.73
+50h
+Random Sampling
+26.47 ± 0.67
+32.23 ± 0.73
+25.21 ± 0.66
+21.59 ± 0.74
+TypiClust only
+29.63 ± 0.71
+35.82 ± 0.75
+21.12 ± 0.71
+17.27 ± 0.70
+confidence score only
+22.08 ± 0.60
+27.47 ± 0.68
+23.86 ± 1.31
+18.22 ± 1.24
+TypiClust+confidence score (λ = 0.3)
+25.72 ± 0.55
+31.61 ± 0.64
+21.27 ± 0.72
+17.89 ± 0.73
+TypiClust+confidence score (λ = 0.5)
+23.35 ± 0.49
+29.07 ± 0.59
+21.02 ± 0.71
+17.46 ± 0.72
+TypiClust+confidence score (λ = 0.7)
+21.50 ± 0.56
+26.54 ± 0.64
+23.18 ± 0.72
+18.04 ± 0.72
+100h
+Random Sampling
+25.60 ± 0.77
+31.23 ± 0.82
+20.30 ± 0.70
+17.29 ± 0.72
+TypiClust only
+29.45 ± 0.63
+35.42 ± 0.70
+19.14 ± 0.69
+16.94 ± 0.70
+confidence score only
+21.01 ± 0.57
+25.96 ± 0.65
+20.80 ± 0.70
+17.45 ± 0.72
+TypiClust+confidence score (λ = 0.3)
+20.90 ± 0.57
+26.05 ± 0.66
+20.22 ± 0.68
+16.98 ± 0.69
+TypiClust+confidence score (λ = 0.5)
+20.77 ± 0.48
+26.08 ± 0.60
+20.43 ± 0.68
+17.01 ± 0.69
+TypiClust+confidence score (λ = 0.7)
+20.78 ± 0.51
+25.80 ± 0.61
+19.41 ± 0.69
+17.13 ± 0.70
+OpenAI/Whisper Medium was chosen as the fine-tuning
+model because it is an end-to-end ASR system and natively pro-
+vides transcription confidence scores, making it well-suited for
+uncertainty-based sampling.
+4.3. Evaluation Metrics
+This study evaluates ASR performance using Character Error
+Rate (CER) and Word Error Rate (WER). These two metrics
+measure character-level and word-level recognition errors, re-
+spectively.
+5. Experimental results and discussion
+5.1. Results
+Tables 1 show the experimental results on the CSJ and Reazon-
+Speech corpora, respectively. Each numerical value indicates an
+error rate alongside its 95% confidence interval. In most cases,
+the proposed method (TypiClust + confidence score) achieved
+lower CER and WER. On the CSJ corpus, it improved CER by
+approximately 4.79 points and WER by about 5.29 points com-
+pared to Random Sampling. On ReazonSpeech, it improved
+CER by around 3.37 points and WER by 2.76 points over Ran-
+dom Sampling. Although using TypiClust or the confidence
+score alone still yielded some improvements, jointly consider-
+ing both diversity and uncertainty generally led to greater per-
+formance gains.
+5.2. Discussion
+The proposed method generally outperforms random sampling
+and single-criterion approaches with less data, making it well-
+suited for resource-constrained scenarios.
+Performance im-
+proves with more training data, as observed in the results for
+10, 50, and 100 hours. While TypiClust + confidence score per-
+forms best for CSJ, using only TypiClust yields better results on
+ReazonSpeech when the training audio exceeds 50 hours. This
+advantage is likely due to ReazonSpeech’s extensive acoustic
+diversity.
+Lower λ values improved performance with 10 hours of
+data, while higher values were more effective with 50 or 100
+hours. This pattern suggests that when the sampling duration is
+short, uncertainty contributes more to performance, but as sam-
+pling time increases, acoustic diversity becomes a stronger de-
+terminant. Interestingly, this trend differs from findings in prior
+image-based research [22], indicating a need for future work
+to examine the distinct data characteristics of image and audio
+domains.
+In practical deployments, a straightforward way to choose
+λ is to evaluate multiple λ settings on a validation set drawn
+from the target domain and then select the value that yields the
+lowest error rate. This strategy ensures that the chosen sampling
+balance aligns best with the dataset’s characteristics.
+6. Conclusion
+This study proposes a hybrid sampling method for active learn-
+ing in ASR. It combines clustering-based typical sample se-
+lection (TypiClust) with a confidence score.
+By clustering
+Wav2Vec2 utterance-level embeddings and prioritizing high-
+uncertainty samples while preserving diversity, the method con-
+tributes to ASR performance improvement while reducing an-
+notation costs.
+Experiments on the CSJ and ReazonSpeech corpora
+demonstrate that the proposed approach generally outperforms
+random sampling and single-criterion strategies in CER and
+WER, though TypiClust alone performs better in some cases.
+In future work, we plan to explore uncertainty estimation
+directly from self-supervised models and develop dynamic clus-
+tering strategies that automatically adjust cluster counts and
+sample selection. Additionally, we will compare our method
+with state-of-the-art sampling approaches and evaluate its ef-
+fectiveness on languages beyond Japanese. We will also address
+practical considerations such as inference time, memory over-
+head, and computational cost associated with embedding ex-
+traction and clustering, aiming to enhance efficiency for large-
+scale ASR applications. Addressing these challenges will en-
+able more efficient and scalable active learning strategies for
+ASR, further enhancing real-world applicability.
+4286
+
+7. Acknowledgements
+The first author, Komei Hiruta, contributed to this research
+while working as an external researcher under a commissioned
+contract with The Asahi Shimbun Company.
+8. References
+[1] M. Malik, M. K. Malik, K. Mehmood, and I. Makhdoom, “Auto-
+matic speech recognition: a survey,” Multimedia Tools and Appli-
+cations, vol. 80, pp. 9411–9457, 2021.
+[2] R. Prabhavalkar, T. Hori, T. N. Sainath, R. Schl¨uter, and S. Watan-
+abe, “End-to-end speech recognition:
+A survey,” IEEE/ACM
+Transactions on Audio, Speech, and Language Processing,
+vol. 32, pp. 325–351, 2024.
+[3] T. Higuchi, N. Ito, S. Araki, T. Yoshioka, M. Delcroix, and
+T. Nakatani, “Online mvdr beamformer based on complex gaus-
+sian mixture model with spatial prior for noise robust asr,”
+IEEE/ACM Transactions on Audio, Speech, and Language Pro-
+cessing, vol. 25, no. 4, pp. 780–793, 2017.
+[4] Y. Zheng, G. Chen, and M. Huang, “Out-of-domain detec-
+tion for natural language understanding in dialog systems,”
+IEEE/ACM Transactions on Audio, Speech, and Language Pro-
+cessing, vol. 28, pp. 1198–1209, 2020.
+[5] Z. Bukhsh and A. Saeed, “On out-of-distribution detection for au-
+dio with deep nearest neighbors,” in ICASSP 2023-2023 IEEE In-
+ternational Conference on Acoustics, Speech and Signal Process-
+ing (ICASSP).
+IEEE, 2023, pp. 1–5.
+[6] W.-C. Hsu, P.-X. Lin, C.-J. Li, H.-Y. Tien, Y.-H. Kang, and P.-J.
+Lee, “An enhanced model for asr in the medical field,” in 2024
+IEEE International Conference on Information Reuse and Inte-
+gration for Data Science (IRI), 2024, pp. 43–48.
+[7] Z. Elloumi, L. Besacier, O. Galibert, J. Kahn, and B. Lecouteux,
+“Asr performance prediction on unseen broadcast programs using
+convolutional neural networks,” 2018 IEEE International Confer-
+ence on Acoustics, Speech and Signal Processing (ICASSP), pp.
+5894–5898, 2018.
+[8] A. Baevski, Y. Zhou, A. Mohamed, and M. Auli, “wav2vec
+2.0: A framework for self-supervised learning of speech repre-
+sentations,” Advances in neural information processing systems,
+vol. 33, pp. 12 449–12 460, 2020.
+[9] W.-N. Hsu, B. Bolte, Y.-H. H. Tsai, K. Lakhotia, R. Salakhutdi-
+nov, and A. Mohamed, “Hubert: Self-supervised speech represen-
+tation learning by masked prediction of hidden units,” IEEE/ACM
+transactions on audio, speech, and language processing, vol. 29,
+pp. 3451–3460, 2021.
+[10] N. Sambasivan, S. Kapania, H. Highfill, D. Akrong, P. K. Paritosh,
+and L. M. Aroyo, “”everyone wants to do the model work, not the
+data work”: Data cascades in high-stakes ai,” 2021.
+[11] D. Zha, Z. P. Bhat, K.-H. Lai, F. Yang, Z. Jiang, S. Zhong, and
+X. Hu, “Data-centric artificial intelligence: A survey,” ACM Com-
+puting Surveys, vol. 57, no. 5, pp. 1–42, 2025.
+[12] D. Cohn, L. Atlas, and R. Ladner, “Improving generalization with
+active learning,” Machine learning, vol. 15, pp. 201–221, 1994.
+[13] Z. Lu, Y. Wang, Y. Zhang, W. Han, Z. Chen, and P. Haghani,
+“Unsupervised data selection via discrete speech representation
+for asr,” in Interspeech, 2022.
+[14] T. Drugman, J. Pylkkonen, and R. Kneser, “Active and semi-
+supervised learning in asr: Benefits on the acoustic and language
+models,” arXiv preprint arXiv:1903.02852, 2019.
+[15] G. Riccardi and D. Hakkani-Tur, “Active learning: theory and ap-
+plications to automatic speech recognition,” IEEE Transactions
+on Speech and Audio Processing, vol. 13, no. 4, pp. 504–511,
+2005.
+[16] K. Malhotra, S. Bansal, and S. Ganapathy, “Active learning meth-
+ods for low resource end-to-end speech recognition,” in Inter-
+speech, 2019.
+[17] O. Kundacina, V. Vincan, and D. Miskovic, “Combining x-
+vectors and bayesian batch active learning:
+Two-stage ac-
+tive learning pipeline for speech recognition,” arXiv preprint
+arXiv:2406.02566, 2024.
+[18] G. Hacohen, A. Dekel, and D. Weinshall, “Active learning on a
+budget: Opposite strategies suit high and low budgets,” ArXiv,
+vol. abs/2202.02794, 2022.
+[19] A. Radford, J. W. Kim, T. Xu, G. Brockman, C. McLeavey, and
+I. Sutskever, “Robust speech recognition via large-scale weak
+supervision,” in International conference on machine learning.
+PMLR, 2023, pp. 28 492–28 518.
+[20] D. D. Lewis, “A sequential algorithm for training text classifiers:
+Corrigendum and additional data,” in Acm Sigir Forum, vol. 29,
+no. 2.
+ACM New York, NY, USA, 1995, pp. 13–19.
+[21] X. Yan, S. Nazmi, B. Gebru, M. Anwar, A. Homaifar, M. Sarkar,
+and K. D. Gupta, “Mitigating shortage of labeled data us-
+ing clustering-based active learning with diversity exploration,”
+ArXiv, vol. abs/2207.02964, 2022.
+[22] P. Doucet, B. Estermann, T. Aczel, and R. Wattenhofer, “Bridging
+diversity and uncertainty in active learning with self-supervised
+pre-training,” arXiv preprint arXiv:2403.03728, 2024.
+[23] N. Gaur, R. Agrawal, G. Wang, P. Haghani, A. Rosenberg, and
+B. Ramabhadran, “Astra: Aligning speech and text representa-
+tions for asr without sampling,” in Proceedings of Interspeech
+2024, 2024.
+[24] J. Luo, J. Wang, N. Cheng, and J. Xiao, “Loss prediction: End-to-
+end active learning approach for speech recognition,” 2021 Inter-
+national Joint Conference on Neural Networks (IJCNN), pp. 1–7,
+2021.
+[25] R. R. Ghimire, B. K. Bal, and P. Poudyal, “Active learning ap-
+proach for fine-tuning pre-trained ASR model for a low-resourced
+language: A case study of Nepali,” in Proceedings of the 20th In-
+ternational Conference on Natural Language Processing (ICON),
+J. D. Pawar and S. Lalitha Devi, Eds. Goa University, Goa, India:
+NLP Association of India (NLPAI), Dec. 2023, pp. 82–89.
+[26] N. Ravi, T. R. T, and V. Arora, “Teles: Temporal lexeme similarity
+score to estimate confidence in end-to-end asr,” IEEE/ACM Trans-
+actions on Audio, Speech, and Language Processing, vol. 32, pp.
+4399–4408, 2024.
+[27] H. Lee, A. Saeed, and A. Bertozzi, “Active learning of non-
+semantic speech tasks with pretrained models,” ICASSP 2023 -
+2023 IEEE International Conference on Acoustics, Speech and
+Signal Processing (ICASSP), pp. 1–5, 2022.
+[28] L. Muda, “Voice recognition algorithms using mel frequency cep-
+stral coefficient (mfcc) and dynamic time warping (dtw) tech-
+niques,” arXiv preprint arXiv:1003.4083, 2010.
+[29] D. Hakkani-Tur, G. Tur, M. Rahim, and G. Riccardi, “Unsuper-
+vised and active learning in automatic speech recognition for call
+classification,” in 2004 IEEE International Conference on Acous-
+tics, Speech, and Signal Processing, vol. 1.
+IEEE, 2004, pp.
+I–429.
+[30] T. V. Ho, K. Dohi, and Y. Kawaguchi, “Stream-based active learn-
+ing for anomalous sound detection in machine condition monitor-
+ing,” ArXiv, vol. abs/2408.05493, 2024.
+[31] Z. Yang, J. Shi, M. H. Asyrofi, B. Xu, X. Zhou, D. Han, and D. Lo,
+“Prioritizing speech test cases,” ArXiv, vol. abs/2302.00330,
+2023.
+[32] J. Bang, H. Kim, Y. J. Yoo, and J.-W. Ha, “Boosting active learn-
+ing for speech recognition with noisy pseudo-labeled samples,”
+arXiv: Audio and Speech Processing, 2020.
+4287
+

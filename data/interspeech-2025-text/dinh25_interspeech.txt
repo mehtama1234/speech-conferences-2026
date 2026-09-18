@@ -1,0 +1,719 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+Extended Loss: Incorporating Long Context into Training Models when using
+Short Audio Frames
+Quang Minh Dinh∗1, Hoda Rezaee Kaviani2, Mehrdad Hosseinzadeh2, Yuanhao Yu2
+1Simon Fraser University, Canada
+2Noah’s Ark Lab, Huawei Technologies Canada Co., Ltd., Canada
+qmd@sfu.ca, hoda.rezaee.kaviani@huawei.com, mehrdad.hosseinzadeh@huawei.com,
+yuanhao.yu@huawei.com
+Abstract
+Recently deep learning solutions have been successfully ap-
+plied to many signal processing tasks including acoustic echo
+cancellation (AEC). Most existing works focus on architecture
+design and ignore practical issues such as the effect of frame
+length on the performance of end-to-end AEC models. In real-
+time applications, frame length can be as small as 10ms. Since
+the observed context is very limited during training, it results in
+boundary discontinuities (glitches) in the final output. While us-
+ing long frames or post-processing can help, it adds extra delay
+which may not be desirable depending on the application. In
+this paper, we investigate the practical issue of handling short
+frames for AEC, and propose an efficient remedy. By keeping
+the long context information in each batch and using it during
+loss calculation, we compensate for the short frames. Our solu-
+tion is model-agnostic and does not affect the inference time.
+Index Terms: Echo cancellation, signal processing, neural net-
+works, speech enhancement, real-time processing
+1. Introduction
+In recent years, the popularity and demand for teleconferencing
+systems have increased significantly. The existence of acous-
+tic echos is one of the major sources of poor speech qual-
+ity ratings in voice and video calls.
+Acoustic Echo Cancel-
+lation (AEC) aims to recover clean near-end audio, given the
+noisy and far-end signals. Early methods for this task employ
+different digital signal processing (DSP) techniques; however,
+these methods do not perform well when model assumptions
+are violated, e.g., non-linearities in the processing chain, or fast
+time-varying acoustic conditions [1]. With the advent of deep
+learning techniques, many supervised acoustic echo cancella-
+tion (AEC) techniques have been proposed and outperformed
+their traditional counterparts. These models either directly op-
+erate on time [2, 3, 4] or frequency domain [5, 6, 7].
+Amongst the most recent methods, CRUSE [5], Align-
+CRUSE [6] and DeepVQE [7] belong to a family of residual
+CNN auto-encoder with a Gated Recurrent Unit (GRU) bottle-
+neck models that perform especially well on different speech
+enhancement tasks, including echo cancellation. Another ar-
+chitecture successfully applied to AEC tasks is Conformer [8],
+which combines the power of CNNs and Transformers. [9] and
+[10] are conformer-based models trained with an ASR loss and
+an auxiliary loss, and are highly effective on the AEC task.
+In the design of AEC solutions, it is common to divide
+the input signal into multiple fixed-length frames and process
+them independently by the network. During training, regard-
+less of their domain or architecture, all of these methods cal-
+*Work done during internship at Noah’s Ark Lab, Huawei Canada
+culate loss function on a single frame. Processed frames are
+later concatenated to form the final output. One major problem
+with this approach is that the lack of contextual information be-
+tween adjacent frames during training results in boundary dis-
+continuity (glitches) in the output. In the context of speech en-
+hancement, [11] discusses the same issue and proposes a way of
+handling short frames for a specific waveform-based speech en-
+hancement model by adding a recurrent neural network (RNN)
+module to explicitly model the relationship between adjacent
+frames. Other solutions like applying the overlap-add method
+[12] or predicting the current frame given the surrounding con-
+text [13] have been proposed which result in additional delay.
+In this paper, we study the influence of frame length on the
+performance of end-to-end deep learning-based AEC systems
+and propose a solution to handle the problem of lack of context
+when training models on short audio frames. Instead of rely-
+ing on post-processing, or the existence of neighboring frames
+during inference, we keep the long context information in each
+batch during training and use it during loss calculation. The
+existence of this information allows us to compensate for short
+audio frames during training. For the experiments we chose two
+of the most recent AEC architectures, CRUSE [5] and Deep-
+VQE [7] , which is the state-of-the-art on AEC task, and imple-
+mented our Conformer based AEC model. To the best of our
+knowledge, this practical issue has not been addressed in de-
+signing AEC systems. We show that our proposed solution is
+architecture-independent and can work with various loss func-
+tions. The contributions of our work can be summarized as fol-
+lows:
+• We study the practical issue of handling short frames in AEC
+tasks and propose an efficient solution to address this prob-
+lem.
+• Our method is model-agnostic. To support this claim, we ex-
+plore a few of the most recent architectures (including SOTA)
+and loss functions and compare the results.
+• Proposed method achieves better results without adding extra
+complexity to the model, or affecting the inference time.
+2. Proposed Method
+In an acoustic echo cancellation system, a far-end signal is digi-
+tally transmitted to the other side, played through a loudspeaker
+at near-end (depending on the scenario, a near-end signal can
+also add to the mix simultaneously. The mixed signal can con-
+tain the background noise as well). The mixed signal at the
+near-end is then transmitted back to the far-end side leading to
+the far-end hearing the ”echo” of their own signal.
+There are three different possible scenarios for the mixed
+signal to happen: 1) far-end single talk (FEST): only the far-end
+speaker is talking and the near-end is quiet. 2) near-end single
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+778
+10.21437/Interspeech.2025-2177
+
+iSTFT
+t second
+k x l frames
+l consecutive reconstructed frames (concat’d)
+AEC 
+Model
+t second
+k x l frames
+l consecutive frames
+𝐸𝑥𝑀𝑆𝐸𝑐= 𝑀𝑆𝐸𝑐෨𝒪𝑙𝑜𝑛𝑔, 𝒯𝑙𝑜𝑛𝑔
+STFT
+l consecutive frames features
+𝑆1
+𝑆2
+𝑆𝑘
+෨𝒪𝑙𝑜𝑛𝑔
+1
+෨𝒪𝑙𝑜𝑛𝑔
+2
+෨𝒪𝑙𝑜𝑛𝑔
+𝑘
+⋅⋅⋅
+⋅⋅⋅
+(a)
+(b)
+(c)
+(d)
+(e)
+(f)
+Figure 1: Overview of the training pipeline. (a) First k audio files are randomly selected from the training set, and STFT features for
+l consecutive short frames are extracted S1 . . . Sk. (b) Each batch is formed in a way that consecutive frames appear sequentially,
+and b = k × l. (c) The output of the AEC model is the enhanced audio per short frame. (d) Inverse STFT is applied on each short
+frame separately to obtain their reconstructed waveforms. (e) l consecutive waveforms that belong to the same audio are concatenated
+together to form a long waveform. (f) STFT is applied on the long sample which is used for loss calculation. In the regular non-extened
+setup, loss calculation is performed at stage (c) on predicted short audio frames.
+talk (NEST): the far-end signal is quiet and only the near-end
+microphone is talking. Ideally in this scenario, no suppression
+should happen. 3) double-talk scenario (DT): when far-end and
+near-end are talking over each other. This is arguably the hard-
+est scenario as the far-end signal should be suppressed as much
+as possible while the near-end signal must be kept intact.
+2.1. Input Features
+We first sample a batch of size b from of the far-end and micro-
+phone signals at a pre-defined sample rate. Let F ∈Rb×1×n
+and N ∈Rb×1×n where n is the number of samples to be the
+far-end and microphone signals, respectively. We sample all
+audio signals in a mono fashion, hence F and N both have 1
+channel. Next, the raw sampled audios are converted to a spec-
+trum feature space. Following other works in the literature [7, 6]
+we also use Short-time Fourier Transform (STFT) to project the
+sample audio waveforms to the feature space:
+F = [Fr, Fc] = STFT(F) ∈Rb×t×f×2
+(1)
+N = [Nr, Nc] = STFT(N) ∈Rb×t×f×2
+(2)
+where t and f are the time and frequency axes for the Short-time
+Fourier Transform, respectively. Note that although the STFT
+operation generates complex output, we only keep the real part
+of the transformation as model input.
+2.2. Model Architecture
+Since our solution is model-agnostic, we use a variety of mod-
+els with different numbers of parameters (from 0.6M to 12M)
+to showcase the effectiveness of our proposed loss function.
+The de facto standard model design choice for the AEC task
+is mask-based architecture. In this approach, the network takes
+the near-end and far-end signals as input, either through sep-
+arate branches or stacked together, and predicts a mask. The
+predicted mask is then applied to the real and complex part of
+N via simple multiplication to get the echo-free output, O:
+M = θ(Fr, Nr) ∈[0, 1]b×t×f
+(3)
+O = M.N ∈Rb×t×f×2
+(4)
+where θ(., .) denotes the AEC model parameters. The intuition
+for the mask-based approaches is that (ideally) the mask modi-
+fies the component of the near-end features that are responsible
+for the existing echo in the signal. After applying the mask on
+the microphone features, a corresponding inverse transforma-
+tion (e.g. inverse STFT) generates the waveform for the clean
+signal.
+Specifically, we use CRUSE [14], DeepVQE [7], and Con-
+former [8] models as our backbone AEC model.
+For each
+model, we aim to modify as little as possible to make them suit-
+able for the task of acoustic echo cancellation. Since DeepVQE
+was originally designed for the AEC task, we didn’t modify the
+architecture. As for CRUSE and Conformer models, since they
+were originally proposed for the task of speech enhancement
+and noise cancellation, modification is needed to adapt them for
+the task of AEC. Therefore, we stack the near- and far-end sig-
+nals together and feed them as a single input to the model.
+2.3. Loss Function
+The main contribution of this work is our proposed Extended-
+Loss function. We argue that assembling a batch informed by a
+long context and using this information during loss calculation,
+plays a crucial role in the overall performance of the model. We
+start by defining the standard loss function and elaborate on how
+we extend it.
+Let O ∈Rb×t×f×2 and T
+∈Rb×t×f×2 be the output
+and target (i.e. enhanced mic. and clean ground-truth mic.),
+spectrum complex features, respectively. The standard Com-
+plexMSE [15] loss is a spectral-based loss function that is calcu-
+lated on the real and imaginary parts of output and target spec-
+trum features for each sample, and then averaged over all the
+samples existing in the batch:
+MSEc = 1
+b
+b
+X
+i=1
+λ ∗
+ ˜Oi
+c −T i
+c
+
+2
++ (1 −λ) ∗
+ ˜Oi
+r −T i
+r
+
+2
+(5)
+In this setup, MSE operates on each sample individually,
+and the final average over the MSE of the samples in a batch will
+be the same, regardless of the order of them. In this scenario, the
+maximum context available to the network is as long as the sam-
+ple itself, and each batch is usually completely shuffled during
+training. This setup can be very challenging for training models
+with short frame length due to lack of long context.
+Prior work [6, 16] show that applying inverse STFT on the
+output followed by a STFT again, before applying MSE loss
+function can generally improve the audio quality. It is also a
+common practice to use a combination of different loss func-
+tions to improve the overall quality of the audio. However, in all
+779
+
+Figure 2: From top to bottom: 1) Far-end 2) Double-talk micro-
+phone signal 3) Enhanced by a model trained on 368ms samples
+without extended loss 4) Enhanced by the same model, trained
+on 368ms samples with extended loss 5) Enhanced by the same
+model trained on 10s audio, and used for inference on 368ms
+audios.
+of these solutions, the maximum context available to the model
+is still as long as the frame processed by the network.
+To overcome this issue, we propose a novel batch forma-
+tion and loss computation technique, that allows the model to
+use long context information without changing the sample size.
+In non-extened setups, each batch of size b, is formed by sam-
+pling short random frames from different audio files. In our
+setup, when sampling a frame from a random audio, we make
+sure to include its next l consecutive non-overlapping frames as
+well, and preserve their order when forming the batch. Ran-
+dom sampling is performed k times until we reach batch size
+b = k × l. The batch is now processed by the network with-
+out the need for any extra modification to the architecture of
+the model.
+The output of the model is the predicted mask
+M ∈[0, 1]k.l×t×f and is multiplied by the near-end STFT fea-
+tures to obtain O ∈Rk.l×t×f×2.
+For loss calculation, instead of treating each sample indi-
+vidually, we first apply iSTFT to the predicted short frames
+to obtain k × l reconstructed waveforms. Then we concate-
+nate l consecutive frames that belong to the same audio, to
+get k long waveforms. Note that up to this point no MSE or
+ComplexMSE is calculated. Finally, STFT is applied on the
+long waveforms: ˜Oi
+long = STFT(Oi
+long) and Extended Com-
+plexMSE loss function is calculated:
+ExMSEc = MSEc
+  ˜Olong, Tlong
+
+(6)
+where ˜Olong, Tlong are the output and target complex spec-
+trum features for k long samples. This procedure is shown in
+Figure 1. In the non-extended setup, loss is calculated at stage
+(c) of Figure 1, on the predicted short audio frames. Regardless
+of the choice of loss function, the common non-extented steup
+treats each short frame individually, while our method takes ad-
+vantage of longer context that we preserved in the batch during
+loss calculation.
+3. Experiments
+3.1. Datasets
+Our training dataset is synthesized on-the-fly using DNS Chal-
+lenge [17] dataset with random parameters for each sample
+(e.g., signal-to-noise ratio, distortion, signal-to-echo ratio). To
+generate training samples, we randomly select clean speech au-
+dios, level normalize them, and concatenate them to the desired
+duration. For both near and far-end, the clean speeches are sep-
+arated by 500ms to 2s silence segments. Noise segments are
+either sliced or repeated to the target duration. Echo is syn-
+thesized by convolving the far-end speech signal with a ran-
+dom small room RIR, before being mixed with the near-end
+speech signal with a signal-to-echo ratio (SER) between 5 and
+25. Noise is then added to the echo mixture with a signal-to-
+noise ratio (SNR) uniformly selected between 5 and 10. We
+re-scale the final mixture to a random target level between -35
+and -15 dBFS.
+We use the globally aligned version of the real recordings
+from the blind test set in the AEC Challenge 2023 [1] to evaluate
+our models, as delay is not the main concern of this work.
+3.2. Evaluation Metrics
+For both DT and FEST scenarios, we report the AECMOS score
+[18] which is a neural network-based perceptual speech quality
+metric that is highly correlated with the human mean-opinion-
+score (MOS). For FEST, we also report ERLE, which is only
+appropriate if measured in a quiet room without background
+noises. For NEST, we report the AECMOS degradation score
+[18], (which is correlated to the call echo degradation quality),
+DNSMOS P.835 signal (SIG), background (BAK), and over-
+all (OVRL) scores. We also employ the AECMOS degradation
+score for DT in addition to the AECMOS echo.
+3.3. Implementation Details
+All audios are sampled at 16kHz. For feature generation, we
+use a squared root Hann window of length 32ms, a hop length
+of 16ms, and a discrete Fourier transform length of 512. Fol-
+lowing [5], for all CRUSE experiments we use a squared root
+Hann window of length 20ms, a hop length of 10ms and a dis-
+crete Fourier transform length of 320. We use the AdamW op-
+timizer with LR = 1.5 · 10−4 and a weight decay of 5 · 10−6.
+Experiments for extended setup are with 5 frames unless stated
+otherwise.
+3.4. Ablation Study
+To study the effect of our extended setup, we conducted exper-
+iments with different numbers of frames. Results are presented
+in Table 1, along with an example of enhanced DT spectro-
+gram shown in Figure 2. The model used for all experiments
+in this table is a conformer with fixed architecture, and the data
+pipelines for all experiments have the same configuration *.
+We chose a long (10s) and short (368ms) duration for both
+training and inference.
+It can be seen that the single-frame
+model trained and tested on longer duration (row 4), generally
+performs well on all scenarios. To demonstrate the importance
+of context, we trained and tested the same model on short au-
+dios (row 1). As expected, performance dropped significantly
+across all metrics. Row 5 shows the inference results on shorter
+audios using the model trained on long frames. We observe that
+changing the duration of the inference contributes to notable
+degradation, especially in FEST and NEST. The major drop in
+ERLE shows this model does not perform well on removing
+echo. Although the AECMOS echo for DT stayed close to row
+4, the audio quality was significantly degraded.
+*Sample of audio results for subjective comparison available at
+https://quangminhdinh.github.io/ExtendedLoss/
+780
+
+Num
+Train duration
+Inference
+DT
+FEST
+NEST
+frames
+per frame
+duration
+AECMOSe
+AECMOSd
+AECMOSe
+ERLE
+AECMOSd
+SIG
+BAK
+OVRL
+1
+368ms
+368ms
+4.09
+2.77
+4.08
+15.43
+3.14
+3.02
+3.82
+2.63
+3
+368ms
+368ms
+4.34
+2.97
+4.19
+30.19
+3.59
+3.14
+3.95
+2.8
+5
+368ms
+368ms
+4.44
+2.99
+4.35
+38.31
+3.5
+3.13
+3.97
+2.79
+1
+10s
+10s
+4.6
+3.71
+4.21
+25.89
+3.93
+3.27
+3.98
+2.93
+1
+10s
+368ms
+4.57
+2.41
+4.19
+14.64
+2.56
+2.73
+3.88
+2.43
+Table 1: Ablation study results for our Conformer models on the AEC Challenge 2023 blind test set.
+Method
+Frame
+No.
+DT
+FEST
+NEST
+duration
+params
+AECMOSe
+AECMOSd
+AECMOSe
+ERLE
+AECMOSd
+SIG
+BAK
+OVRL
+CRUSE
+370ms
+0.65M
+3.43
+3.1
+4.02
+20.64
+3.29
+3.01
+3.64
+2.5
+x5 frames
+370ms
+0.65M
+4
+3.11
+3.96
+20.72
+3.61
+3.03
+3.76
+2.59
+DeepVQE-S
+368ms
+0.67M
+3.62
+2.13
+2.97
+22.98
+2.44
+2.6
+3.82
+2.26
+x5 frames
+368ms
+0.67M
+3.97
+2.32
+3.17
+28.67
+2.57
+2.6
+3.87
+2.28
+DeepVQE-S
+10s
+0.67M
+4.12
+3.06
+3.83
+32.29
+3.6
+3.04
+3.94
+2.71
+x5 frames
+10s
+0.67M
+4.22
+3.17
+3.65
+40.35
+3.52
+3.06
+3.97
+2.72
+DeepVQE
+368ms
+8M
+4.11
+2.51
+3.56
+21.6
+2.7
+2.65
+3.89
+2.34
+x5 frames
+368ms
+8M
+4.4
+2.84
+3.68
+30.62
+2.91
+2.74
+3.93
+2.42
+Conformer
+368ms
+12M
+4.37
+2.05
+4.3
+32.8
+2.6
+2.75
+3.91
+2.37
+x5 frames
+368ms
+12M
+4.45
+2.61
+4.51
+56.98
+3.23
+2.99
+3.97
+2.64
+Conformer
+x5 frames
+10s
+12M
+4.61
+3.45
+4.76
+137.79
+3.68
+3.19
+3.96
+2.84
+Table 2: Ablation study results on the AEC Challenge 2023 blind test set.
+To show the effectiveness of our method, we trained the
+same model on short audios with two extended setups: 3-frames
+(row 2), and 5-frames (row 3). Both of these extended setups
+outperform the single-frame model (row 1) across all metrics.
+One interesting observation is that our 5-frame extended model
+outperforms row 4 in FEST. It is worth noting that the difference
+in the context used for training is more than 5 times for the
+model in row 4 compared with row 3 (10s vs 5x368ms), and the
+difference in context at inference is more than 27 times (10s vs
+368ms).
+In Figure 2 we show samples of enhanced spectrograms
+on the same DT signal, with 3 different models. All models
+have the same architecture, and the inference duration is short
+(368ms) for all models. The first and second rows (from top
+to bottom) correspond to the far-end and microphone signals,
+respectively. The 3rd row is enhanced by a model trained on
+short audios without extended loss, and row 4 is the same ar-
+chitecture, trained on short audios with our proposed extended
+loss. Between the two, our method performs significantly better
+in removing echo and noise. This is specifically more visible
+in the first half of the signal. The last row, is the same archi-
+tecture trained on long 10s audios, while inference is 368ms.
+This model performs better than row 3, but still has some left-
+over echos and noise (more visible in the first half of the signal),
+compared with our results in row 4. This is consistent with our
+observation that changing the inference time, affects the quality
+of final audio.
+To show our solution is architecture-independent, we
+trained other models (CRUSE, DeepVQE, and DeepVQE-S),
+with and without our extended setup. The results are shown
+in Table 2. We observe that all of the extended setups outper-
+form their corresponding single-frame version. For DeepVQE-
+S, we experimented on both long and short frames. Using the
+extended setup improves the results for both scenarios.
+For
+all experiments, we used complex compressed MSE loss, ex-
+cept for Conformers, where we used a weighted combination
+of complex compressed MSE, asymmetric loss, and SNR loss
+on the active areas of the speech. It can be seen that the com-
+bination of Conformer with the new loss already outperforms
+many of the other experiments. What is more interesting is that
+our extended setup on this model boosts the results even further.
+The last row of this table shows our best model, performing ex-
+ceedingly well on all metrics, especially ERLE for FEST, and
+significantly outperforming other SOTA architectures.
+4. Discussion and Conclusions
+In this paper, we investigated the practical issue of handling
+short frames and its effect on the performance of deep learning-
+based AEC systems. While using longer frames or adding a
+post-processing step can be an option in some cases, this may
+not be a solution for real-time applications due to latency and
+complexity. However, the lack of context associated with a short
+frame hurts the training of the model. We proposed a solution to
+handle the lack of context during training without adding extra
+complexity or delay to inference by utilizing intra-batch context
+information in the loss function during training. This allows us
+to compensate for the short length of each frame during training.
+Our solution is model-agnostic and does not affect on inference
+time.
+5. References
+[1] R. Cutler, A. Saabas, T. Parnamaa, M. Purin, E. Indenbom, N.-C.
+Ristea, J. Guˇzvin, H. Gamper, S. Braun, and R. Aichner, “Icassp
+2023 acoustic echo cancellation challenge,” 2023.
+[2] S.-W. Fu, T.-W. Wang, Y. Tsao, X. Lu, and H. Kawai, “End-
+to-end waveform utterance enhancement for direct evaluation
+metrics optimization by fully convolutional neural networks,”
+IEEE/ACM Transactions on Audio, Speech, and Language Pro-
+cessing, vol. 26, no. 9, pp. 1570–1584, 2018.
+781
+
+[3] D. Rethage, J. Pons, and X. Serra, “A wavenet for speech
+denoising,” 2018 IEEE International Conference on Acoustics,
+Speech and Signal Processing (ICASSP), pp. 5069–5073, 2017.
+[Online]. Available:
+https://api.semanticscholar.org/CorpusID:
+24512955
+[4] A. Pandey and D. Wang, “A new framework for cnn-based speech
+enhancement in the time domain,” IEEE/ACM Transactions on
+Audio, Speech, and Language Processing, vol. 27, no. 7, pp.
+1179–1188, 2019.
+[5] S. Braun, H. Gamper, C. K. A. Reddy, and I. J. Tashev, “Towards
+efficient models for real-time deep noise suppression,” ICASSP
+2021 - 2021 IEEE International Conference on Acoustics, Speech
+and Signal Processing (ICASSP), pp. 656–660, 2021.
+[6] E. Indenbom, N.-C. Ristea, A. Saabas, T. P¨arnamaa, and
+J. Guzvin, “Deep model with built-in self-attention alignment for
+acoustic echo cancellation,” ArXiv, vol. abs/2208.11308, 2022.
+[Online]. Available:
+https://api.semanticscholar.org/CorpusID:
+251765344
+[7] E. Indenbom, N.-C. Ristea, A. Saabas, T. P¨arnamaa, J. Guzvin,
+and R. Cutler, “Deepvqe: Real time deep voice quality enhance-
+ment for joint acoustic echo cancellation, noise suppression and
+dereverberation,” in INTERSPEECH, 2023, pp. 3819–3823.
+[8] A. Gulati, J. Qin, C.-C. Chiu, N. Parmar, Y. Zhang, J. Yu,
+W. Han, S. Wang, Z. Zhang, Y. Wu, and R. Pang, “Con-
+former: Convolution-augmented transformer for speech recogni-
+tion,” 2020.
+[9] S. Panchapagesan, A. Narayanan, T. Z. Shabestary, S. Shao,
+N. Howard, A. Park, J. Walker, and A. Gruenstein, “A conformer-
+based waveform-domain neural acoustic echo canceller optimized
+for asr accuracy,” 2022.
+[10] T. O’Malley, A. Narayanan, Q. Wang, A. Park, J. Walker, and
+N. Howard, “A conformer-based asr frontend for joint acoustic
+echo cancellation, speech enhancement and speech separation,”
+2021 IEEE Automatic Speech Recognition and Understanding
+Workshop (ASRU), pp. 304–311, 2021. [Online]. Available:
+https://api.semanticscholar.org/CorpusID:244463264
+[11] N. Abuhajar, T. Sun, Z. Wang, S. Gong, C. D. Smith, X. Wang,
+L. Xu, and J. Liu, “Network compression and frame stitching for
+efficient and robust speech enhancement,” in NAECON 2021 -
+IEEE National Aerospace and Electronics Conference, 2021, pp.
+269–276.
+[12] W. Zhong-Qiu and W. Shinji, “Improving frame-online neural
+speech enhancement with overlapped-frame prediction,” IEEE
+Signal Processing Letters, vol. 29, pp. 1422–1426, 2022.
+[13] P. Chuan, T. Lan, M. Li, S. Li, and Q. Liu, “Frame-level speech
+enhancement based on Wasserstein GAN,” in Eleventh Interna-
+tional Conference on Signal Processing Systems, ser. Society of
+Photo-Optical Instrumentation Engineers (SPIE) Conference Se-
+ries, K. Mao, Ed., vol. 11384, Dec. 2019, p. 113840G.
+[14] R. Cutler, A. Saabas, T. P¨arnamaa, M. Loide, S. Sootla,
+M. Purin, H. Gamper, S. Braun, K. V. Sørensen, R. Aichner,
+and S. Srinivasan, “Interspeech 2021 acoustic echo cancellation
+challenge,” in Interspeech, 2021. [Online]. Available:
+https:
+//api.semanticscholar.org/CorpusID:239694056
+[15] A. Ephrat, I. Mosseri, O. Lang, T. Dekel, K. Wilson, A. Hassidim,
+W. T. Freeman, and M. Rubinstein, “Looking to listen at the cock-
+tail party: a speaker-independent audio-visual model for speech
+separation,” ACM Transactions on Graphics (TOG), vol. 37, no. 4,
+pp. 1–11, 2018.
+[16] S. Wisdom, J. R. Hershey, K. Wilson, J. Thorpe, M. Chinen,
+B. Patton, and R. A. Saurous, “Differentiable consistency con-
+straints for improved deep speech enhancement,” in ICASSP
+2019-2019 IEEE International Conference on Acoustics, Speech
+and Signal Processing (ICASSP).
+IEEE, 2019, pp. 900–904.
+[17] H. Dubey, A. Aazami, V. Gopal, B. Naderi, S. Braun, R. Cutler,
+H. Gamper, M. Golestaneh, and R. Aichner, “Icassp 2023 deep
+noise suppression challenge,” in ICASSP, 2023.
+[18] R. Cutler, B. Naderi, M. Loide, S. Sootla, and A. Saabas, “Crowd-
+sourcing approach for subjective evaluation of echo impairment,”
+in ICASSP 2021-2021 IEEE International Conference on Acous-
+tics, Speech and Signal Processing (ICASSP).
+IEEE, 2021, pp.
+406–410.
+782
+

@@ -1,0 +1,796 @@
+warning: The `fitz` API is deprecated and will be removed in future. Use `import pymupdf` instead.
+Counterfactual Activation Editing for
+Post-hoc Prosody and Mispronunciation Correction in TTS Models
+Kyowoon Lee1, Artyom Stitsyuk1, Gunu Jho2, Inchul Hwang2, Jaesik Choi1,3
+1KAIST, South Korea
+2Samsung Electronics, South Korea
+3INEEJI, South Korea
+{leekwoon, stitsyuk, jaesik.choi}@kaist.ac.kr, {gunu.jho, inc.hwang}@samsung.com
+Abstract
+Recent advances in Text-to-Speech (TTS) have significantly im-
+proved speech naturalness, increasing the demand for precise
+prosody control and mispronunciation correction. Existing ap-
+proaches for prosody manipulation often depend on specialized
+modules or additional training, limiting their capacity for post-
+hoc adjustments. Similarly, traditional mispronunciation cor-
+rection relies on grapheme-to-phoneme dictionaries, making it
+less practical in low-resource settings. We introduce Counter-
+factual Activation Editing, a model-agnostic method that ma-
+nipulates internal representations in a pre-trained TTS model to
+achieve post-hoc control of prosody and pronunciation. Experi-
+mental results show that our method effectively adjusts prosodic
+features and corrects mispronunciations while preserving syn-
+thesis quality. This opens the door to inference-time refinement
+of TTS outputs without retraining, bridging the gap between
+pre-trained TTS models and editable speech synthesis.
+Index Terms: speech synthesis, prosody control, pronunciation
+control
+1. Introduction
+Advancements in Text-to-Speech (TTS) models [1, 2, 3, 4, 5]
+and neural vocoders [6, 7, 8, 9] have made synthetic voices
+nearly indistinguishable from human speech.
+Consequently,
+more attention has been attracted by refining the expressiveness
+of synthetic voices, particularly through the accurate manipula-
+tion of prosodic features and pronunciation.
+Traditionally, controlling prosody and correcting mispro-
+nunciations in TTS models have involved distinct approaches.
+For prosody control, one popular strategy has been learning a
+latent space, from which embeddings are sampled during infer-
+ence to supplement the text with necessary prosodic information
+[10, 11, 12, 13]. However, due to its unsupervised nature, se-
+lecting the right embedding can be challenging. An alternative
+strategy involves adding specific layers to the TTS model that
+are trained to extract and manipulate this prosodic information
+directly from the input sequence [4, 5, 14, 15], but this requires
+extensive preprocessing. Both of these methods, however, lack
+straightforward applicability to already trained models, such as
+Tacotron 2 [2] or Transformer TTS [3], without undergoing a
+retraining process.
+Similarly, the field of pronunciation correction has heav-
+ily relied on pronouncing dictionaries to convert grapheme to
+phoneme. While effective, this method struggles with scalabil-
+ity, precluding TTS models from being useful in low-resource
+languages. Diversifying pronunciations during training helps,
+but the skewed word distribution in natural language (Zipfian
+Audio samples can be found at https://leekwoon.github.io/cae-tts
+distribution) [16] limits its utility.
+In general, TTS training
+datasets cannot match the comprehensive coverage of pronunci-
+ation dictionaries, highlighting the need for a more flexible and
+encompassing strategy.
+In this paper, we introduce an orthogonal framework lever-
+aging Counterfactual Activation Editing (CAE) to directly ma-
+nipulate the prosody and pronunciation in pretrained TTS mod-
+els. Rather than adding specialized layers or relying on exten-
+sive external resources, our method exploits post-hoc decom-
+posability by examining and editing intermediate representa-
+tions after the model is trained. By posing counterfactual ques-
+tions (e.g., “What would the internal representation look like if
+the model aimed for a higher pitch rather than the current, lower
+one?”), we perform fine-grained modifications to hidden activa-
+tions, thereby refining prosodic features and correcting mispro-
+nunciations at inference time.
+The main contributions of this paper are summarized as fol-
+lows: We introduce an approach that provides post-hoc adjusta-
+bility of speech output, allowing for the adaptation of TTS mod-
+els to new requirements without retraining. Additionally, we
+demonstrate the effectiveness of the proposed method through
+rigorous experimental validation.
+2. Related Work
+2.1. TTS Prosody Control
+Text can be spoken in various ways due to semantic nuances,
+speaking styles, or inherent variability. Traditional approaches,
+such as unit-selection, capture this variability through speech
+databases [17]. In contrast, recent studies model prosodic vari-
+ation by predicting key prosodic features such as pitch, dura-
+tion, and energy from their embedding spaces [4, 5, 14, 18],
+or by using implicit representations learned from a reference
+encoder to capture the nuanced variations not specified by text
+alone [10, 11, 12].
+Controlling intermediate representations has also been con-
+sidered in prior work through the use of embedding bias, calcu-
+lated by assessing the extent of translation required to achieve
+specific modifications in acoustic features within multidimen-
+sional scaling coordinates [19]. However, such modified repre-
+sentations risk deviating from the data manifold, and their ap-
+plication has been primarily confined to controlling duration.
+2.2. TTS Pronunciation Control
+A critical challenge for end-to-end TTS models, which operate
+without the aid of grapheme-to-phoneme dictionaries or predic-
+tive model, is polyphone disambiguation [20]. For TTS models
+to accurately convert graphemes into phonemes, their linguis-
+tic encoder must internalize the varied pronunciation rules, but
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+434
+10.21437/Interspeech.2025-723
+
+Duration
+Pitch
+Energy
+ST
+0.0
+0.2
+0.4
+0.6
+0.8
+1.0
+Loss
+layer 1
+layer 2
+layer 3
+layer 4
+(a) Layer-level Analysis
+0
+50
+100
+150
+200
+250
+300
+Number of trained neurons
+0.2
+0.3
+0.4
+0.5
+0.6
+0.7
+0.8
+0.9
+1.0
+Loss
+Duration Top
+Energy Top
+Pitch Top
+ST Top
+Duration Bottom
+Energy Bottom
+Pitch Bottom
+ST Bottom
+(b) Neuron-level Analysis
+Figure 1: Acoustic Correlation Analysis. (a) Classifier predic-
+tion losses across Tacotron 2 encoder layers, normalized with
+the highest value as one. (b) Effect of training only the most or
+least important neurons on classifier performance.
+fully internalizing them is difficult, leading to inevitable pro-
+nunciation errors in synthesized speech.
+To mitigate mispronunciations, unit selection concatenates
+recorded speech fragments from a database. However, this often
+leads to noticeable join artifacts and requires a single-speaker
+database, limiting the use of non-target speaker data.
+Recently, a model-centric approach called as the Speech
+Audio Corrector (SAC) [21] has been introduced. It leverages
+speech codes aligned with words, derived from self-supervised
+learning models to correct mispronunciations at the word level.
+In contrast, we introduce a model-agnostic approach that ma-
+nipulates intermediate representations in TTS models.
+3. Proposed Method
+We first analyze intermediate representations produced by
+the encoder of an end-to-end TTS model, applicable to any
+encoder-decoder architectures.
+Consider a sequence of input features t = {t1, . . . , tn},
+and let M be a neural network model that transforms t into a se-
+ries of internal representations t
+M
+−→x = {x1, . . . , xn}. In this
+context, M represents the encoder, with t as either grapheme or
+phoneme embeddings. Let xi denote the activation in the last
+layer of encoder for the i-th input feature.1
+3.1. Acoustic Correlation Analysis
+In the context of a classification task2, we aim to predict a spe-
+cific property, denoted as li, from a set of properties P pre-
+sumed to be inherently learned by the model M, for example,
+prosodic or pronunciation features in TTS model. Our objective
+is to examine intermediate representations within M to assess
+their significance in recognizing the property li ∈P.
+For analyzing prosody properties such as duration, pitch,
+and energy, we first extract durations using an automatic speech
+recognition (ASR) system with connectionist temporal clas-
+sification (CTC) alongside a backtranslation loss inspired by
+[22]. This system facilitates the extraction of precise alignments
+by sorting the posterior probabilities and applying monotonic
+alignment search (MAS). Subsequently, we calculate the aver-
+age pitch and energy values based on these alignments to pro-
+vide a comprehensive analysis.
+For pronunciation analysis, we capture discrete pronuncia-
+tion patterns at the semantic token (ST) level using the layer-
+6 representation of HuBERT [23], which operates at a 50Hz
+1While our analysis primarily concentrates on neurons in the top
+layer of the encoder, the approach can be applied to other layers.
+2Prosody typically suits regression due to its continuous nature;
+however, for clarity, we discuss it under classification contexts here.
+frame rate for 16kHz audio, to generate a sequence of seman-
+tic representations. These representations are aligned to input
+features using the same technique as for prosody, then aggre-
+gated and discretized into semantic tokens via k-means cluster-
+ing (100 clusters). This process helps identify unique pronun-
+ciation patterns, supported by previous studies [21, 23, 24] that
+show HuBERT encodes phonetic information.
+We train a logistic regression model on pairs of intermedi-
+ate representations and their labels xi, li, using cross-entropy
+loss. Previous studies have demonstrated that in the analysis of
+neural network representations, the performance characteristics
+of non-linear models closely resemble those of linear models
+[25, 26]. Our analysis reveals that TTS model representations
+are densely packed with information critical to both prosody
+and pronunciation, as shown in Figure 1.
+3.2. Counterfactual Activation Editing
+To manipulate the internal representations in a way that changes
+a predicted property, we consider a counterfactual question: for
+instance, “What would the internal representation look like if
+the synthesized speech had a higher pitch rather than a lower
+pitch?”. To address this, we introduce Counterfactual Activa-
+tion Editing (CAE), which manipulates internal representations
+to achieve the desired property.
+Let f : X →RC be a classifier that assigns to an acti-
+vation vector xi ∈X the probability of belonging to a class
+c ∈{1, . . . , C}. For a given step size η and a target class c,
+CAE updates the activation via gradient ascent:
+x(k+1)
+i
+= x(k)
+i
++ η ∂fc
+∂xi (x(k)
+i
+).
+(1)
+This process continues until the classifier output for the target
+class c exceeds a chosen threshold.3 The procedure can be for-
+mulated as:
+max
+x′i∈N(x(k)
+i
+)⊂Rd fc(x′
+i),
+(2)
+where N(x(k)
+i
+) = {x ∈Rd | d(x, x(k)
+i
+) < r} denotes a neigh-
+borhood of radius r around the current activation x(k)
+i
+, which
+depends on the optimization step size η.
+3.2.1. Manifold Preserving CAE
+In practice, the activation xi lies in a much lower-dimensional
+space, such as a k dimensional manifold M, where k ≪d. The
+naive gradient-ascent procedure in the ambient space Rd may
+move xi off the manifold, introducing unstructured noise rather
+than meaningful, semantically coherent changes. To mitigate
+this, we constrain updates to a local tangent space:
+NT (x(k)
+i
+) = {x ∈Tx(k)
+i
+M | d(x, x(k)
+i
+) < r},
+(3)
+where Tx(k)
+i
+M is the tangent space of M at x(k)
+i
+. We approxi-
+mate these tangent spaces using an autoencoder, leveraging the
+information bottleneck to learn the manifold geometry [27, 28].
+Concretely, we first map xi to the latent space zi of a β-
+VAE [29]. We then perform gradient ascent in zi, ensuring that
+the updates remain close to the data manifold. Formally,
+z(k+1)
+i
+= z(k)
+i
++ η ∂(f ◦g)c
+∂zi
+(z(k)
+i
+),
+(4)
+3In a regression setting, where no explicit class boundaries exist,
+one may directly increase or decrease the regressor output toward the
+desired value.
+435
+
+0.6 0.8 1.0 1.2 1.4 1.6 1.8 2.0
+Adjustment Factor
+0.50
+0.75
+1.00
+1.25
+1.50
+Change Ratio
+(a) control of duration
+Truncation Trick
+CAE
+Manifold Preserving CAE
+Manifold Preserving CAE w/ Lproto
+0.6 0.8 1.0 1.2 1.4 1.6 1.8 2.0
+Adjustment Factor
+0.50
+0.75
+1.00
+1.25
+1.50
+(b) control of pitch
+0.6 0.8 1.0 1.2 1.4 1.6 1.8 2.0
+Adjustment Factor
+0.8
+1.0
+1.2
+(c) control of energy
+Figure 2: Ratio of change in prosodic features. Values above 1
+indicate an increase, while values below 1 indicate a decrease.
+where g is the decoder mapping from the latent space Z back to
+the original activation space X. By constraining edits within Z,
+the resulting activations lie closer to the manifold M, yielding
+counterfactual changes that are semantically meaningful.
+3.2.2. Prototype Loss
+Even with manifold preserving updates, the latent space of a
+β-VAE may include multiple subregions corresponding to dif-
+ferent pronunciations or prosodic patterns. Consequently, large
+or unconstrained edits could inadvertently shift the activation
+into a subregion that alters the intended content. To address
+this, we incorporate a prototype loss that anchors the edited la-
+tent vectors to a representative code within a Vector Quantized
+VAE (VQ-VAE) [30].
+Let Enc(·) and Dec(·) be the encoder and decoder of the
+VQ-VAE, and let e ∈RK×D denote the learned codebook with
+K discrete embeddings of dimension D. Given a latent repre-
+sentation zi obtained via our Manifold Preserving CAE process,
+we find its nearest codebook vector ek:
+ek = Quantize(Enc(zi))
+= arg min
+ej
+||Enc(zi) −ej||2.
+(5)
+Decoding ek yields the prototype representation:
+proto(zi) = Dec(ek)
+(6)
+To ensure edits remain faithful to the intended pronunciation,
+we augment the existing objective with a prototype loss that
+encourages zi to remain close to its prototype:
+Lproto = α · ||zi −proto(zi)||2
+2.
+(7)
+where α is a weighting factor. By enforcing proximity to a pro-
+totype in the codebook, this loss discourages transitions to latent
+subregions that would alter the target speech content.
+4. Experimental Setup
+4.1. TTS Model
+We experimented with Tacotron 2 [2] encoder-decoder archi-
+tecture, a model with about 28 million parameters, including an
+encoder with three convolutional layers followed by an LSTM
+layer. Although Tacotron 2 generates highly natural speech, it
+lacks explicit mechanisms to capture diverse prosodic contours
+without additional modules or training data.
+This limitation
+makes Tacotron 2 an ideal testbed for our post-hoc modification
+approach, as any improvement in controllability can be primar-
+ily attributed to our method rather than inherent model capac-
+ity. Phoneme inputs are employed to control prosody, whereas
+grapheme inputs are used for pronunciation adjustments, to bet-
+ter represent resource-limited scenarios. We base our Tacotron
+0.6 0.8 1.0 1.2 1.4 1.6 1.8 2.0
+Adjustment Factor
+0.05
+0.10
+0.15
+0.20
+0.25
+PER (%)
+(a) control of duration
+Manifold Preserving CAE
+Manifold Preserving CAE w/ Lproto
+0.6 0.8 1.0 1.2 1.4 1.6 1.8 2.0
+Adjustment Factor
+0.1
+0.2
+0.3
+(b) control of pitch
+0.6 0.8 1.0 1.2 1.4 1.6 1.8 2.0
+Adjustment Factor
+0.04
+0.06
+0.08
+(c) control of energy
+Figure 3: Phone-Error-Rate (PER) comparison with and with-
+out prototype loss, measured using the Whisper ASR system.
+2 on NVIDIA’s implementation4 and use a pre-trained WaveG-
+low [7] as the vocoder.
+4.2. Dataset
+For training Tacotron 2, we use the LJSpeech dataset [31], con-
+taining 13,100 English audio clips (around 24 hours) from a
+single female speaker, along with text transcripts. The dataset
+was split into 12,500 samples for training, 500 for validation,
+and 100 for testing.
+4.3. Training
+In the training phase of the classifier, we extracted acoustic
+properties and semantic tokens as detailed in Section 3.1 from
+the LJSpeech training dataset. For prosody prediction, a linear
+regression model was employed, using mean squared error loss
+augmented with elastic net regularization, setting the l1 and l2
+regularization hyperparameters, λ1 and λ2, both to 0.001. For
+semantic token prediction, we used a logistic regression model
+trained using cross-entropy loss. Both models were trained us-
+ing a learning rate of 0.01. Additionally, for the training of the
+β-VAE, we set β to 0.04 and the dimension of the latent space
+to 16, with a learning rate of 0.0002.
+5. Results
+Our experiments study the following questions: (1) Are acous-
+tic features encoded by the Tacotron 2 encoder?
+(2) Can
+counterfactual activation editing (CAE) effectively manipulate
+prosody? (3) Can CAE further correct mispronunciations?
+5.1. Acoustic Correlation Analysis
+To assess the capacity of Tacotron 2 encoder layers to encap-
+sulate meaningful acoustic features, classifiers were trained us-
+ing activations from different layers of a pre-trained Tacotron
+2 model. Prediction losses across the encoder layers, shown in
+Figure 1a, demonstrate that acoustic information is captured at
+varying levels. Notably, the last LSTM layer is more accurate
+in capturing acoustic properties compared to the earlier convo-
+lutional layers.
+In addition, we conduct a detailed examination of individ-
+ual neurons to identify those that significantly influence certain
+properties. This involved training only the most or least signifi-
+cant neurons from the last layer of the encoder, ranked by their
+importance based on classifier weights [26], and observing the
+effect on classifier efficacy. Figure 1b shows that classifier per-
+formance improves more significantly when top-ranked neurons
+are trained (solid lines) compared to when the least important
+neurons are trained (dashed lines), indicating the crucial role of
+specific neurons in encoding acoustic properties.
+4https://github.com/NVIDIA/tacotron2
+436
+
+0
+0.5
+1
+1.5
+Time
+0
+64
+128
+256
+512
+1024
+2048
+4096
+8192
+Hz
+factor=0.6
+0
+0.5
+1
+1.5
+2
+Time
+factor=1.0
+0
+0.5
+1
+1.5
+2
+2.5
+3
+3.5
+Time
+factor=2.0
+(a) Control of Duration
+0
+0.5
+1
+1.5
+2
+Time
+0
+64
+128
+256
+512
+1024
+2048
+4096
+8192
+Hz
+factor=0.6
+pitch
+0
+0.5
+1
+1.5
+2
+Time
+factor=1.0
+pitch
+0
+0.5
+1
+1.5
+2
+Time
+factor=2.0
+pitch
+(b) Control of Pitch
+Figure 4: Spectrograms of the synthesized speech using Mani-
+fold Preserving CAE for prosody control. The input text used
+for synthesis is “In planning its data processing techniques.”
+5.2. Prosody Control
+We investigate Counterfactual Activation Editing (CAE) for
+controlling prosodic features in a pre-trained Tacotron 2 model.
+We compare three variations: CAE, which edits the encoder
+activations directly; Manifold Preserving CAE, which first en-
+codes activations into a VAE latent space and edits them there
+to prevent manifold deviation; and Manifold Preserving CAE
+with prototype loss, which further constrains edits around rep-
+resentative codebook vectors to preserve intelligibility. We also
+compare against a truncation trick [32], which shifts activations
+toward values observed in the training set.
+We specifically modify the final-layer encoder activations
+for each phoneme in order to scale its prosodic property
+(e.g., pitch, duration, or energy) by a predefined adjustment fac-
+tor. Let f(xi) be a regressor predicting a prosodic feature from
+the activation vector xi. Suppose f(xi) = pi is the current pre-
+dicted pitch. To increase or decrease pitch by a factor λ > 0, we
+adjust xi so that f(x′
+i) approaches λ pi, following the gradient-
+based procedure described in Section 3.2.
+Figure 2 shows the ratio between the modified prosodic
+feature and its original value, where values above 1 indicate
+an increase and values below 1 indicate a decrease. Manifold
+Preserving CAE consistently achieves more precise prosodic
+changes compared to both CAE and the truncation trick. In
+particular, the truncation trick often led to omissions or mispro-
+nunciations. Figure 4 illustrates how the spectrogram changes
+when pitch or duration is controlled. We used Whisper [33]
+to measure the Phone-Error-Rate (PER), finding that prototype
+loss plays a crucial role in maintaining speech intelligibility un-
+der large prosodic shifts (see Figure 3). Additionally, the ed-
+its can be localized to specific phonemes or words by selecting
+only the corresponding encoder activations for adjustment, as
+shown in the audio examples on our demo webpage.
+5.3. Correction of Mispronunciations
+To correct mispronunciations within synthesized speech, we as-
+sume supervision in the form of a speech-only correction query.
+The premise is that word-level pronunciation information, more
+easily obtainable than phonetic details, can serve as a practical
+foundation for corrective adjustments.
+Building on the prosody control method, we target mispro-
+nunciation correction by manipulating activations in the final
+Tacotron 2 encoder layer. Our goal is to adjust the predicted
+semantic tokens for each grapheme to match those of the cor-
+rection query, ensuring more accurate pronunciation.
+120
+140
+160
+180
+200
+220
+240
+260
+280
+300
+Hz
+Density
+duration control (factor=2.0)
+duration control (factor=1.0)
+duration control (factor=0.6)
+Figure 5: Phoneme pitch density over the LJSpeech dataset af-
+ter Manifold Preserving CAE duration control.
+To evaluate pronunciation correction, we synthesized 78
+speech samples, each with a target word in the carrier sentence
+“How is ... pronounced?”. These target words were selected
+from prior work [21] as being outside the LJSpeech training set
+or challenging for grapheme-input TTS models.
+Mispronunciation correction, using Manifold Preserving
+CAE, was evaluated using four metrics:
+Word-Error-Rate
+(WER), Phone-Error-Rate (PER), sentence embedding cosine
+similarity, and token-based similarity. For cosine similarity, we
+converted synthesized speech to text using Whisper ASR, then
+compared sentence embeddings from the text-ada-002 model to
+ground truth. Token-based similarity was measured using the
+GPT-2 [34] tokenizer on Whisper transcripts, assessing the ra-
+tio of correctly identified tokens to the ground truth.
+Table 1: The objective correction capability comparisons.
+Metric
+Before Correction
+After Correction
+WER (↓)
+0.151
+0.056
+PER (↓)
+0.069
+0.017
+Cosine Similarity (↑)
+0.954
+0.969
+Token Similarity (↑)
+0.892
+0.929
+As indicated in Table 1, our CAE approach is effective
+across all pronunciation correction metrics, substantially reduc-
+ing both WER and PER, while increasing the semantic similar-
+ity of the corrected outputs.
+For evaluating the perceptual quality, we conducted a Com-
+parison Mean Opinion Score (CMOS) [35] test comparing ini-
+tial synthesized speech with corrected speech. Twenty listeners
+rated the quality, with results presented in Table 2.
+Table 2: CMOS comparison.
+Setting
+CMOS
+After Correction
+0.000
+Before Correction
+-0.764
+The results show that correcting prosody and mispronuncia-
+tions with our CAE approach led to a 0.764-point improvement
+in CMOS, demonstrating its effectiveness.
+6. Conclusions and Discussion
+In this work, we introduced a novel method for prosody con-
+trol and pronunciation correction in TTS models using Counter-
+factual Activation Editing, enabling post-hoc adjustments with-
+out retraining. Our experiments demonstrated that intermedi-
+ate representations within TTS models, specifically Tacotron 2,
+contain rich information that can be effectively manipulated to
+modify prosody and correct mispronunciations.
+Despite its effectiveness, our approach manipulates entire
+vectors of intermediate representations, which can overlook in-
+dividual dimension contributions. For instance, as shown in
+Figure 5, controlling duration slightly affects pitch, suggest-
+ing feature entanglement. Future investigations will aim to re-
+fine our approach by targeting specific dimensions (neurons)
+within these representations. This direction holds the promise
+of achieving a more granular, interpretable, and disentangled
+control over speech characteristics.
+437
+
+7. Acknowledgements
+This work was supported by Samsung Electronics MX Divi-
+sion and by Institute of Information & communications Tech-
+nology Planning & Evaluation (IITP) grant funded by the Korea
+government (MSIT) (No.2019-0-00075, Artificial Intelligence
+Graduate School Program (KAIST); No. 2022-0-00984, Devel-
+opment of Artificial Intelligence Technology for Personalized
+Plug-and-Play Explanation and Verification of Explanation; No.
+RS-2024-00457882, AI Research Hub Project).
+8. References
+[1] Y. Wang, R. Skerry-Ryan, D. Stanton, Y. Wu, R. J. Weiss,
+N. Jaitly, Z. Yang, Y. Xiao, Z. Chen, S. Bengio et al.,
+“Tacotron: Towards end-to-end speech synthesis,” arXiv preprint
+arXiv:1703.10135, 2017.
+[2] J. Shen, R. Pang, R. J. Weiss, M. Schuster, N. Jaitly, Z. Yang,
+Z. Chen, Y. Zhang, Y. Wang, R. Skerrv-Ryan et al., “Natural tts
+synthesis by conditioning wavenet on mel spectrogram predic-
+tions,” in ICASSP.
+IEEE, 2018, pp. 4779–4783.
+[3] N. Li, S. Liu, Y. Liu, S. Zhao, and M. Liu, “Neural speech synthe-
+sis with transformer network,” in Proceedings of the AAAI con-
+ference on artificial intelligence, vol. 33, no. 01, 2019, pp. 6706–
+6713.
+[4] Y. Ren, Y. Ruan, X. Tan, T. Qin, S. Zhao, Z. Zhao, and T.-Y.
+Liu, “Fastspeech: Fast, robust and controllable text to speech,”
+Advances in neural information processing systems, vol. 32, 2019.
+[5] Y. Ren, C. Hu, X. Tan, T. Qin, S. Zhao, Z. Zhao, and T.-Y. Liu,
+“Fastspeech 2: Fast and high-quality end-to-end text to speech,”
+arXiv preprint arXiv:2006.04558, 2020.
+[6] A. v. d. Oord, S. Dieleman, H. Zen, K. Simonyan, O. Vinyals,
+A. Graves, N. Kalchbrenner, A. Senior, and K. Kavukcuoglu,
+“Wavenet: A generative model for raw audio,” arXiv preprint
+arXiv:1609.03499, 2016.
+[7] R. Prenger, R. Valle, and B. Catanzaro, “Waveglow: A flow-based
+generative network for speech synthesis,” in ICASSP.
+IEEE,
+2019, pp. 3617–3621.
+[8] K. Kumar, R. Kumar, T. De Boissiere, L. Gestin, W. Z. Teoh,
+J. Sotelo, A. De Brebisson, Y. Bengio, and A. C. Courville, “Mel-
+gan: Generative adversarial networks for conditional waveform
+synthesis,” Advances in neural information processing systems,
+vol. 32, 2019.
+[9] J. Kong, J. Kim, and J. Bae, “Hifi-gan: Generative adversarial net-
+works for efficient and high fidelity speech synthesis,” Advances
+in Neural Information Processing Systems, vol. 33, pp. 17 022–
+17 033, 2020.
+[10] Y. Wang, D. Stanton, Y. Zhang, R.-S. Ryan, E. Battenberg, J. Shor,
+Y. Xiao, Y. Jia, F. Ren, and R. A. Saurous, “Style tokens: Un-
+supervised style modeling, control and transfer in end-to-end
+speech synthesis,” in International conference on machine learn-
+ing.
+PMLR, 2018, pp. 5180–5189.
+[11] R. Skerry-Ryan, E. Battenberg, Y. Xiao, Y. Wang, D. Stan-
+ton, J. Shor, R. Weiss, R. Clark, and R. A. Saurous, “To-
+wards end-to-end prosody transfer for expressive speech synthesis
+with tacotron,” in international conference on machine learning.
+PMLR, 2018, pp. 4693–4702.
+[12] W.-N. Hsu, Y. Zhang, R. J. Weiss, H. Zen, Y. Wu, Y. Wang,
+Y. Cao, Y. Jia, Z. Chen, J. Shen et al., “Hierarchical genera-
+tive modeling for controllable speech synthesis,” arXiv preprint
+arXiv:1810.07217, 2018.
+[13] J. ˇSimko, T. T¨or¨o, M. Vainio, and A. Suni, “Prosody under con-
+trol: Controlling prosody in text-to-speech synthesis by adjust-
+ments in latent reference space,” in Proceedings of the 20th Inter-
+national Congress of Phonetic Sciences, 2023, pp. 3086–3090.
+[14] D. S. R. Mohan, V. Hu, T. H. Teh, A. Torresquintero, C. G. Wallis,
+M. Staib, L. Foglianti, J. Gao, and S. King, “Ctrl-p: Temporal
+control of prosodic variation for speech synthesis,” arXiv preprint
+arXiv:2106.08352, 2021.
+[15] T. Raitio, J. Li, and S. Seshadri, “Hierarchical prosody modeling
+and control in non-autoregressive parallel neural tts,” in ICASSP.
+IEEE, 2022, pp. 7587–7591.
+[16] J. Taylor and K. Richmond, “Analysis of pronunciation learning
+in end-to-end speech synthesis.” in Interspeech, 2019.
+[17] V. Strom, R. A. Clark, and S. King, “Expressive prosody for unit-
+selection speech synthesis.” in Interspeech, 2006.
+[18] J. Bandekar, S. Udupa, A. Singh, A. Jayakumar, S. Badiger,
+S. Kumar, P. VH, P. K. Ghosh et al., “Speaking rate attention-
+based duration prediction for speed control tts,” arXiv preprint
+arXiv:2310.08846, 2023.
+[19] M. Lenglet, O. Perrotin, and G. Bailly, “Speaking rate control of
+end-to-end tts models by direct manipulation of the encoder’s out-
+put embeddings,” in Interspeech, 2022.
+[20] Y. Zhang, L. Deng, and Y. Wang, “Unified mandarin tts front-end
+based on distilled bert model,” arXiv preprint arXiv:2012.15404,
+2020.
+[21] J. Fong, D. Lyth, G. E. Henter, H. Tang, and S. King, “Speech
+audio corrector: using speech from non-target speakers for one-
+off correction of mispronunciations in grapheme-input text-to-
+speech,” in Interspeech, 2022.
+[22] F. Lux, J. Koch, and N. T. Vu, “Exact prosody cloning in zero-
+shot multispeaker text-to-speech,” in 2022 IEEE Spoken Lan-
+guage Technology Workshop (SLT).
+IEEE, 2023, pp. 962–969.
+[23] W.-N. Hsu, B. Bolte, Y.-H. H. Tsai, K. Lakhotia, R. Salakhut-
+dinov, and A. Mohamed, “Hubert: Self-supervised speech rep-
+resentation learning by masked prediction of hidden units,”
+IEEE/ACM Transactions on Audio, Speech, and Language Pro-
+cessing, vol. 29, pp. 3451–3460, 2021.
+[24] H. Ji, T. Patel, and O. Scharenborg, “Predicting within and
+across language phoneme recognition performance of self-
+supervised learning speech pre-trained models,” arXiv preprint
+arXiv:2206.12489, 2022.
+[25] Y. Belinkov, N. Durrani, F. Dalvi, H. Sajjad, and J. Glass, “What
+do neural machine translation models learn about morphology?”
+arXiv preprint arXiv:1704.03471, 2017.
+[26] F. Dalvi, N. Durrani, H. Sajjad, Y. Belinkov, A. Bau, and J. Glass,
+“What is one grain of sand in the desert? analyzing individual neu-
+rons in deep nlp models,” in Proceedings of the AAAI Conference
+on Artificial Intelligence, vol. 33, no. 01, 2019, pp. 6309–6317.
+[27] S. Joshi, O. Koyejo, W. Vijitbenjaronk, B. Kim, and J. Ghosh,
+“Towards realistic individual recourse and actionable explana-
+tions in black-box decision making systems,” arXiv preprint
+arXiv:1907.09615, 2019.
+[28] A.-K. Dombrowski, J. E. Gerken, K.-R. M¨uller, and P. Kessel,
+“Diffeomorphic counterfactuals with generative models,” IEEE
+Transactions on Pattern Analysis and Machine Intelligence, 2023.
+[29] I. Higgins,
+L. Matthey,
+A. Pal,
+C. Burgess,
+X. Glorot,
+M. Botvinick, S. Mohamed, and A. Lerchner, “beta-vae: Learning
+basic visual concepts with a constrained variational framework,”
+in International conference on learning representations, 2016.
+[30] A. Van Den Oord, O. Vinyals et al., “Neural discrete represen-
+tation learning,” Advances in neural information processing sys-
+tems, vol. 30, 2017.
+[31] K. Ito and L. Johnson, “The lj speech dataset,” https://keithito.
+com/LJ-Speech-Dataset/, 2017.
+[32] A. Brock, J. Donahue, and K. Simonyan, “Large scale gan train-
+ing for high fidelity natural image synthesis,” arXiv preprint
+arXiv:1809.11096, 2018.
+[33] A. Radford, J. W. Kim, T. Xu, G. Brockman, C. McLeavey, and
+I. Sutskever, “Robust speech recognition via large-scale weak su-
+pervision,” in International Conference on Machine Learning.
+PMLR, 2023, pp. 28 492–28 518.
+[34] A. Radford, J. Wu, R. Child, D. Luan, D. Amodei, I. Sutskever
+et al., “Language models are unsupervised multitask learners,”
+OpenAI blog, vol. 1, no. 8, p. 9, 2019.
+[35] P. C. Loizou, “Speech quality assessment,” in Multimedia analy-
+sis, processing and communications.
+Springer, 2011, pp. 623–
+654.
+438
+

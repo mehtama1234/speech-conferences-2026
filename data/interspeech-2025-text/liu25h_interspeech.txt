@@ -1,0 +1,745 @@
+Bridging Speech and Singing: Multi-stage Speech-Prompted Singing Voice
+Conversion with Speaker Embedding Adaptation
+Mingda Liu1, Jiatong Shi2
+1School of Physical Science and Engineering, Tongji University, People’s Republic of China
+2Language Technologies Institute, Carnegie Mellon University, The United States
+liumingda@tongji.edu.cn, jiatongs@andrew.cmu.edu
+Abstract
+Singing voice conversion (SVC) technology holds immense
+potential to transform the entertainment industry and advance
+human-computer interaction. Unlike previous SVC studies that
+primarily focus on the conversion between different singing
+voices, this work specifically investigates the conversion of
+speech timbre into singing. In this paper, we introduce a novel
+Singing Speech Alignment Network (SSAN) designed to align
+speaker and singer embeddings derived from input data. To ef-
+fectively train the SVC model, we also propose a cycle train-
+ing strategy that ensures the performance of SVC with speech
+prompts. Experimental results demonstrate that the proposed
+method (SSANSVC) achieves superior performance in both the
+naturalness of the synthesized singing and its similarity to the
+target speech.
+Index Terms:
+Singing Voice Conversion, Speaker-singer
+Adaptation, Cycle Training
+1. Introduction
+Singing Voice Conversion (SVC) aims to transform the timbre
+of a song’s singer into that of another singer while preserving
+the content and melody of the singing. It not only holds tremen-
+dous potential in the entertainment industry and content cre-
+ation but also shows broad application prospects in fields such
+as education and personalized voice generation [1].
+SVC models are trained using either parallel or non-parallel
+datasets.
+The parallel dataset requires multiple singers per-
+forming the same song, while the non-parallel dataset is more
+flexible to involve multiple singers performing different songs.
+Early efforts in SVC focus more on using parallel data. These
+methods build the mapping of the parallel samples using statis-
+tical techniques [2,3].
+However, the scale of parallel datasets is limited due to
+strict requirements, which has led to increasing attention on
+methods that use non-parallel data for SVC. An unsupervised
+deep learning SVC method based on WaveNet [4] is proposed,
+incorporating a singer-agnostic latent representation embedding
+to enhance the flexibility of the conversion [5]. To address the
+issue of converted singing voices often going out of tune, a pitch
+adversarial mechanism is proposed, which forces the encoder to
+learn pitch-invariant phoneme representations from the source
+audio.
+Then, the extracted pitch information is further fed
+into the decoder network, significantly improving the quality of
+the converted singing voice [6]. In addition, Variational Auto-
+Encoders (VAEs) [7] and Variational Autoencoding Wasserstein
+Generative Adversarial Networks (VAW-GANs) [8] have also
+been explored for non-parallel SVC.
+Recently, diffusion models have emerged as a powerful
+generative technique in the fields of image and audio synthe-
+sis [9–13]. These models learn the data distribution by gradu-
+ally introducing and removing noise to capture subtle features
+in audio signals. Due to its remarkable ability to model com-
+plex data distributions, it has become a promising alternative
+for SVC tasks [14, 15]. A method based on a denoising dif-
+fusion probabilistic model, DiffSVC, is proposed for singing
+voice conversion. By using PPGs, fundamental frequency fea-
+tures, and loudness features as auxiliary inputs, it significantly
+improves the naturalness and timbre similarity of the converted
+singing voice [14]. The performance of diffusion model-based
+SVC methods is outstanding. However, the iterative sampling
+process leads to slow inference speed. To mitigate the chal-
+lenge, a consistency model-based SVC method, CoMoSVC, is
+proposed to achieve high-speed sampling [15].
+However, previous SVC research has generally focused on
+the conversion between different singers’ voices, with little at-
+tention given to the conversion of the speech of a target speaker
+to singing.1 Speech signals emphasize clarity and intelligibility,
+while singing is usually more diverse, often incorporating richer
+emotional expression. Therefore, converting speech prompts to
+singing requires careful modeling of the intricate details of tim-
+bre. Additionally, datasets containing both speech and singing
+from the same speaker are relatively scarce, which presents an
+even greater challenge for research on speech-prompted SVC.
+According to the above challenges in speech-prompted
+SVC, we design a speaker-singer adaptation network (SSAN)
+to bridge the gap between speaker embeddings (extracted
+from speech) and singer embeddings (extracted from singing),
+thereby enhancing the quality of timbre conversion from speech
+to singing. Furthermore, we adapted a multi-stage cycle train-
+ing strategy to further refine the performance of the proposed
+method, namely SSANSVC. Experimental results demonstrate
+that our approach outperforms baseline models in both objec-
+tive evaluations and subjective metrics. The main contributions
+of this work can be summarized as follows:
+1. We design an SSAN to align speaker and singer em-
+beddings from input audio clips. This network is specifically
+tailored to bridge the inherent differences between speech and
+singing data by capturing and adapting the unique characteris-
+tics of each domain.
+2. To address the issue of the scarcity of paired speech data
+and singing data from the same speaker/singer, we propose a
+multi-stage cycle training strategy to mitigate this challenge.
+By adopting the strategy, we successfully achieve cross-domain
+singing voice conversion, effectively utilizing the available un-
+paired data.
+1Different from previous speech-to-singing conversion work [16–
+18], which focuses on transferring speech to singing voice, this paper
+emphasizes timbre conversion between speech and singing.
+Interspeech 2025
+17-21 August 2025, Rotterdam, The Netherlands
+1248
+10.21437/Interspeech.2025-816
+
+Speech timbre 
+embedding
+Embedding align
+network
+Singing timbre 
+embedding
+Embedding align
+network
+Weight-shared
+Aligned singing 
+embedding
+Aligned speech 
+embedding
+Speech reconstruction 
+network
+Singing reconstruction 
+network
+Speech reconstruction 
+embedding
+Singing reconstruction 
+embedding
+CosineEmbeddingLoss
+Speech Rec Loss
+MSELoss
+Singing Rec Loss
+(a)
+Transformer
+EncoderLayer
+FC (192, 256)
+FC (256, 512)
+FC (512, 256)
+FC (256, 192)
+(b)
+6×
+Figure 1: The framework of the SSAN.
+2. Method
+In this section, we first describe the SSAN to improve the
+speaker embedding network for better transferability in the SVC
+modeling. Next, we present the overall architecture of the SVC
+model. Finally, we outline the proposed cycle training strategy
+to enhance the SVC performance and improve timbre disentan-
+glement.
+2.1. Speaker-Singer Adaptation Network
+As illustrated in Figure 1(a), the framework of the proposed
+SSAN is composed of three modules, namely Embedding align
+network, Speech reconstruction network, and Singing recon-
+struction network. The architecture of the above three layers
+is the same, as shown in Figure 1(b).
+The Embedding align network network aligns the timbre
+embeddings of speech and singing signals.
+It captures sim-
+ilarities within the same speaker or singer while distinguish-
+ing differences between different ones. This helps preserve the
+speaker’s unique characteristics while handling stylistic vari-
+ations in singing.
+The Speech reconstruction network and
+Singing reconstruction network are responsible for restoring
+timbre embeddings of the speech and singing signals processed
+by the Embedding align network to their original feature repre-
+sentations. This design helps prevent overfitting of the network,
+ensuring that it does not deviate from the original characteris-
+tics during training, thereby maintaining the key information of
+the original data.
+During training, speech trimbre embedding tspeech and
+singing timbre embedding tsinging are first passed through the
+Embedding align network, where tspeech and tsinging are extracted
+by ESPnet-SPK [19].2 One sample embedding is selected from
+each of the two datasets to form a speaker-singer timbre em-
+bedding pair{tspeech, tsinging}. We assign -1 as target for mis-
+matched speaker-singer timbre embedding pairs and 1 as tar-
+get for matched timbre embedding pairs. Then, the timbre em-
+bedding differences between the two training samples are com-
+puted, and the predicted similarity value is obtained through
+the similarity adaptation layer. Afterward, the aligned tspeech
+2https://huggingface.co/espnet/voxcelebs12_
+rawnet3
+and tsinging processed by the Embedding align network are fed
+into the Speech reconstruction network and the Singing recon-
+struction network, where the aligned tspeech and tsinging are re-
+constructed to ensure that the timbre embeddings are restored
+to match the original embeddings. The specific training pro-
+cess of a batch is described in Algorithm 1. The loss of training
+SSAN can be expressed as:
+L = LcosineEmbeddingLoss + Lspeech Rec + Lsinging Rec
+(1)
+LcosineEmbeddingLoss =
+
+
+
+1 −
+tspeech·tsinging
+||tspeech||·||tsinging||,
+if y = 1
+max
+
+0,
+tspeech·tsinging
+||tspeech||·||tsinging|| + 1
+
+,
+if y = −1
+(2)
+where Lspeech Rec
+=
+||tspeech −ˆtspeech||2 and Lsinging Rec
+=
+||tsinging −ˆtsinging||2 are the reconstruction loss, || · ||2 is the L2
+norm distance, y is the target label, as 1 for matching, and as -1
+for mismatching.
+Algorithm 1 The pseudocode for the SSAN.
+Input: Training set Vspeech and Vsinging
+Output: Predicted similarity distance ˆy
+1: Randomly select {t(1)
+speech, ..., t(M)
+speech} from Vspeech;
+2: Randomly generate labels {y1, ..., yM} ∈{−1, 1};
+3: for k = 1 to M do
+4:
+if yk = −1 then
+5:
+Choose t(k)
+singing from Vsinging with same speaker as
+t(k)
+speech;
+6:
+else
+7:
+Choose t(k)
+singing from Vsinging with different speaker
+from t(k)
+speech;
+8:
+end if
+9:
+Construct support data sk = {t(k)
+speech, t(k)
+singing; yk};
+10: end for
+11: Compute loss L and update network parameters;
+12: return Trained model SSAN;
+2.2. SVC Model Architecture
+Our method is based on the CoMoSVC teacher architec-
+ture [15], where the main difference is to replace the tradi-
+tional singer-id with the speaker timbre feature extracted from
+the SSAN model proposed in Sec. 2.1. The proposed method is
+named SSANSVC. Different from CoMoSVC, which requires
+training on each specific target domain, SSANSVC enables
+zero-shot capability, allowing the model to generalize to unseen
+target timbres without requiring additional training. Similar to
+CoMoSVC, the SSANSVC model consists of two parts, encod-
+ing and decoding modules. For the encoding process, the model
+encodes the timbre-related information and timbre-independent
+features extracted from the signal (shown as S{Speech, Sing} in
+Figure 2) into embedded feature representations, which are sub-
+sequently concatenated and used as conditional inputs that are
+passed to the decoding module to generate the mel-spectrogram.
+Next, the generated mel-spectrogram is converted into an audio
+signal using a pre-trained vocoder.
+specifically, singing signals contain many components
+mixed together such as content, pitch, loudness, and singer tim-
+bre. During the encoding process, timbre-related and timbre-
+independent features are extracted.
+Timbre features are ob-
+tained by the SSAN described in Sec. 2.1, shown as t{Speech, Sing}
+1249
+
+in Figure 2.
+Content features are extracted by using a pre-
+trained acoustic model ContentVec [20]. Pitch information is
+estimated using the widely used classical F0 estimator DIO
+[21]. Loudness information is derived from the squared ampli-
+tude of the signal. The content features, pitch information and
+loudness information are shown as c{Speech, Sing} in Figure 2. Af-
+ter feature extraction, a linear layer is applied to all embeddings
+to standardize their dimensions, and they are concatenated to
+form the conditional inputs for the decoding module. The de-
+coding process remains the same as in [15].
+2.3. Cycle Training
+As discussed in Sec. 1, obtaining speech and singing data from
+the same speaker is both expensive and challenging. A common
+approach to this challenge is to combine speech and singing
+data from different speakers/singers to create a mixed dataset
+with speech and singing data. Content and timbre information
+are then extracted from each dataset and used to reconstruct au-
+dio data. However, since the content and timbre feature during
+training are from the same speaker’s data, existing models strug-
+gle to generate data where the content is derived from singing
+data and the timbre from speech data. Inspired from [22], we
+propose a cycle training strategy to address this limitation and
+fully exploit the potential of a dataset that has both speech and
+singing voices.
+3As depicted in Figure 2, the proposed cycle training strat-
+egy consists of two stages. Stage 1 is similar to the previous
+works in SVC [14, 15], where the model takes the data of the
+same person as both content input and timbre input to recon-
+struct the data. For stage 2, the source audio for content in-
+put and the source audio for timbre input are essentially differ-
+ent types of data (i.e., speech or singing), simulating a singing
+voice conversion with the speech-prompted scenario. We ran-
+domly select two speakers for this illustration: speaker 1, who
+speaks, and speaker 2, who sings. We represent a speech seg-
+ment from speaker 1 as S(1)−(a)
+Speech
+, and another speech segment
+from speaker 1 as S(1)−(c)
+Speech
+, where (1) refers to speaker identity,
+and (a), (c) refers to two distinct utterances. Similarly, singing
+data spoken by speaker 2 is present as S(2)−(b)
+Singing .
+Specifically, we employ S(2)−(b)
+Singing
+of speaker 2 from singing
+data as content input and take S(1)−(a)
+Speech
+of speaker 1 from speech
+data as timbre input in stage 2, and use the model to generate
+a singing segment ˆS(1)−(b)
+Singing
+which assume the content informa-
+tion is the same as S(2)−(b)
+Singing
+but with the timbre of speaker 1.
+To formulize a cycle training pipeline, we then utilize the out-
+put ˆS(1)−(b)
+Singing
+as the timbre input. As for the content input, we
+use another speech sample from speaker 1, denoted as S(1)−(c)
+Speech
+in Figure 2. Since both speech segments possess the timbre of
+speaker 1, we simulated the speech segment and singing seg-
+ment belonging to the same speaker. Consequently, another
+SVC pipeline with speech as a prompt can be performed. By
+incorporating stage 1 and the cross-type SVC cycle of stage 2,
+we extend the model’s ability in cross-type SVC with speech as
+the prompt.
+3. Experiment
+In this section, we first introduce the corpus used for the exper-
+iment and the data preprocessing methods. Then, we describe
+the implementation details of the baseline methods and the pro-
+posed method. Finally, we present the evaluation results.
+S{Speech, Singing}
+t{Speech, Singing}
+c{Speech, Singing}
+Ŝ{Speech, Singing}
+S{Speech, Singing}
+SSinging
+(2)-(b)
+SSpeech
+(1)-(a)
+tSpeech
+(1)
+cSinging
+(b)
+Stage 1
+SVC model
+SSpeech
+(1)-(c)
+ŜSinging
+(1)-(b)
+ŜSpeech
+(1)-(c)
+cSinging
+(c)
+tSpeech
+(1)
+SSpeech
+(1)-(c)
+Stage 2
+SVC model
+SVC model
+Loss
+Loss
+Figure 2: The flow chart of the cycle training strategy. In stage
+1, the features t{Speech, Sing} and c{Speech, Sing} are extracted from
+data of the same type, meaning that speech features are de-
+rived from speech data, and singing features are derived from
+singing data. In stage 2, S(1)−(a)
+Speech
+, S(1)−(c)
+Speech
+and ˆS(1)−(c)
+Speech
+repre-
+sent speech data, S(1)−(b)
+Singing
+and ˆS(1)−(b)
+Singing
+represent singing data,
+where (1)(2) denote different speaker identities, and (a)(b)(c)
+denote different contents. Please refer to Sec. 2.3 for more dis-
+cussion.
+3.1. Experimental Setup
+Dataset: Several datasets are adopted to train our model in dif-
+ferent stages. We start by using NUS-48E Corpus [23] to train
+the SSAN model, since NUS-48E provides the paired speech
+and singing voice data.
+For SVC model training, we use a
+combination of singing voice and speech datasets, including
+OpenSinger [24], ACE-KiSing [25] and Aishell-3 [26], to train
+SSANSVC model. For evaluation, we utilize M4Singer [1] and
+ST-CMDS [27] datasets to evaluate the zero-shot SVC capac-
+ity with our proposed model. All audio samples are resampled
+to 24 kHz and normalized. Then we calculate the volume fea-
+ture, extract the F0 curve along with the voiced flag for each
+frame by using DIO, the content feature from the 12th layer
+by utilizing ContentVec (i.e., c{Speech, Sing} in Figure 2), and the
+192-dimensional timbre feature (i.e., t{Speech, Sing} in Figure 2)
+from Section 2.1. These features are respectively projected to
+256 dimensions with a linear neural layer and then concate-
+nated as the conditional input for the decoding stage. We use
+the pre-trained singing voice vocoder released in the M4singer
+work, and the mel-spectrograms are computed with 512-point
+fast Fourier transform, 512-point window size, and 128-point
+hop size with 80 frequency bins. Mel spectrograms are min-
+max normalized to the range [-1, 1].
+For the SSAN model, we use a Transformer-based en-
+coder with six layers, each containing 8 attention heads, a 512-
+dimensional feed-forward network, and a dimension of 192 for
+attention calculation. Dropout is set to 0.1 to prevent overfit-
+ting. The batch size is set to 16 and the learning rate is 3e-
+6. We collected a validation set comprising both speech and
+singing data from multiple singers as a validation set for the
+SSAN model. Specifically, the dataset includes recordings from
+4 singers, each contributing about 4 minutes of speech and 2
+minutes of singing data. The detailed training process is pro-
+vided in Algorithm 1. The training process is stopped when the
+1250
+
+Table 1:
+Objective Evaluations for SVC, where speech →
+singing refers to converting the singing voice M4Singer to tar-
+get timbres in the ST-CMDS.
+Method
+SIM
+SingMOS
+SHEET-SSQA
+CER
+Speech →Singing
+CoMoSVC
+0.448
+3.820
+3.413
+40.43
+SSANSVC-stage1
+0.508
+3.821
+3.428
+29.2
+SSANSVC-stage2
+0.506
+3.871
+3.425
+36.56
+Table 2: Objective Evaluations for SVC, where singing →
+singing refers to converting the singing voice from M4Singer
+to target timbres within the M4Singer dataset, and speech →
+speech refers to converting the speech voice from ST-CMDS to
+target timbres within the ST-CMDS dataset.
+Method
+SIM
+SingMOS
+SHEET-SSQA
+CER
+Singing →Singing
+CoMoSVC
+0.551
+3.910
+3.781
+16.19
+SSANSVC-stage1
+0.582
+3.868
+3.742
+16.95
+SSANSVC-stage2
+0.583
+3.918
+3.841
+16.48
+Speech →Speech
+CoMoSVC
+0.596
+3.763
+3.802
+36.10
+SSANSVC-stage1
+0.568
+3.777
+3.740
+34.55
+SSANSVC-stage2
+0.598
+3.728
+3.726
+36.52
+validation similarity errors do not decrease in five successive
+epochs with a maximum of 20 epochs.
+In this paper, the CoMoSVC method is used as the base-
+line method for comparison. We compare the performance of
+the proposed SSANSVC with stage 1 in Figure 2, as well as
+with stage 2 in Figure 2, respectively. The CoMoSVC is trained
+with 400k using the timbre feature exacted by ESPnet. The
+SSANSVC with stage 1 (named SSANSVC-stage1) is trained
+with 400k iterations using the timbre feature exacted by SSAN
+and 200k iterations using the timbre feature exacted by ESP-
+net. The SSANSVC with stage 2 (named SSANSVC-stage2)
+is trained with 200k iterations using data generated in stage 2,
+100k iterations using the timbre feature exacted by SSAN and
+200k iterations using the timbre feature exacted by ESPnet. All
+the models are trained on a single NVIDIA A800 GPU with a
+batch size of 24, with learning rates of 1e-4 and 5e-5 respec-
+tively and the optimizer is AdamW [28].
+3.2. Evaluation
+We evaluate the performance of different methods by subjec-
+tive and objective metrics. For the subjective test, we invited
+10 volunteers to give Mean Opinion Scores (MOS) on natural-
+ness (MOS-n) and timbre similarity (MOS-ts) on the converted
+audio. We use the 5-point Likert scale for testing with MOS-
+n (1-bad, 2-poor, 3-fair, 4-good, 5-excellent). And we use the
+3-point Liker scale for testing with MOS-ts (1-not match, 2-
+normal, 3-match). We use VERSA to conduct objective evalua-
+tions [29]. Specifically, we include Character Error Rate (CER)
+obtained by Whisper [30] and speaker SIMilarity (SIM) calcu-
+lated by the cosine distance between the speaker embeddings
+of the generated audio and the target timbre audio are used as
+the objective metrics for SVC evaluation. SingMOS [31] and
+SHEET-SSQA MOS score [32] are used additionally for natu-
+ralness evaluation.
+3.3. Zero-shot SVC Performance
+We conduct three sets of experiments to evaluate performance
+using objective metrics: (a) using the ST-CMDS dataset for the
+target singer and the M4Singer dataset as the source for conver-
+Table 3:
+Subjective evaluations for SVC of converting the
+singing voice from M4Singer to target timbres in the ST-CMDS
+dataset.
+Method
+MOS-ts
+MOS-n
+CoMoSVC
+1.597 ± 0.055
+3.511 ± 0.065
+SSANSVC-stage1
+1.618 ± 0.054
+3.557 ± 0.062
+SSANSVC-stage2
+1.627 ± 0.057
+3.568 ± 0.066
+sion; (b) using the M4Singer dataset for both the target singer
+and the source for conversion; (c) using the ST-CMDS dataset
+for both the target singer and the source for conversion. The
+source audios are all unseen during training.
+The objective evaluations for Experiment a are shown in Ta-
+ble 1, while the objective evaluations for Experiments (b) and
+(c) are presented in Table 2. As illustrated in Table 1, the two
+SSANSVC models show significant improvements over Co-
+MoSVC in all metrics, especially in terms of SIM. SSANSVC-
+stage1 and SSANSVC-stage2 perform similar performance in
+SIM. However, SSANSVC-stage1 and SSANSVC-stage2 have
+their own strengths and weaknesses in different dimensions:
+SSANSVC-stage1 performs better in conversion intelligibility,
+while SSANSVC-stage2 excels in singing quality.
+As illustrated in Table 2, in the singing →singing task,
+SSANSVC-stage2 performs best in terms of SIM and audio
+quality score, despite having a slightly higher CRR than Co-
+MoSVC. In the speech →speech task, SSANSVC-stage2 still
+excels in similarity, while SSANSVC-stage1 outperforms the
+other two methods in CER. Overall, SSANSVC-stage2 shows
+the most balanced performance and stands out in terms of CER.
+The subjective evaluations of 10 volunteers in Table 3
+for the speech →singing task reveal that SSANSVC-stage2
+performs the best in both timbre similarity and naturalness,
+demonstrating higher audio quality and naturalness scores.
+SSANSVC-stage1 follows closely behind, slightly lagging in
+both metrics, while CoMoSVC shows relatively weaker perfor-
+mance.
+4. Conclusion
+In this paper, we propose a novel network (SSAN) designed to
+adapt speaker and singer embeddings. In addition, we design
+a cycle training strategy for model optimization. This strategy
+ensures that the network not only learns to convert the voice
+from one domain (e.g., speech) to another (e.g., singing) but
+also guarantees that the converted voice maintains consistency
+with the original speaker’s identity and singing style. Through
+comprehensive subjective and objective evaluations, we demon-
+strate the effectiveness of the proposed method.
+Though our proposed method achieves better performance,
+it still requires further improvements. The primary area of en-
+hancement lies in the loss function, where it is important to
+not only consider mel-loss but also incorporate timbre loss and
+lyrics recognition loss. By doing so, we can more effectively
+capture the nuances of both the singer’s timbre and the correct
+lyrical content during the conversion. Additionally, we plan to
+explore a more efficient training approach by eliminating the
+two-stage training method, and opting for a direct one-stage so-
+lution. This could simplify the training process and potentially
+improve the overall performance of the model.
+5. References
+[1] X. Zhang, Z. Fang, Y. Gu, H. Chen, L. Zou, J. Zhang, L. Xue,
+and Z. Wu, “Leveraging diverse semantic-based audio pre-
+1251
+
+trained models for singing voice conversion,” arXiv preprint
+arXiv:2310.11160, 2023.
+[2] F. Villavicencio and J. Bonada, “Applying voice conversion
+to concatenative singing-voice synthesis.” in Interspeech 2010,
+2010, pp. 2162–2165.
+[3] K. Kobayashi, T. Toda, G. Neubig, S. Sakti, and S. Nakamura,
+“Statistical singing voice conversion with direct waveform mod-
+ification based on the spectrum differential,” in Fifteenth Annual
+Conference of the International Speech Communication Associa-
+tion, 2014.
+[4] D. Rethage, J. Pons, and X. Serra, “A wavenet for speech denois-
+ing,” in 2018 IEEE International Conference on Acoustics, Speech
+and Signal Processing (ICASSP).
+IEEE, 2018, pp. 5069–5073.
+[5] E. Nachmani and L. Wolf, “Unsupervised singing voice conver-
+sion,” arXiv preprint arXiv:1904.06590, 2019.
+[6] C. Deng, C. Yu, H. Lu, C. Weng, and D. Yu, “Pitchnet: Unsuper-
+vised singing voice conversion with pitch adversarial network,”
+in ICASSP 2020-2020 IEEE International Conference on Acous-
+tics, Speech and Signal Processing (ICASSP).
+IEEE, 2020, pp.
+7749–7753.
+[7] Y.-J. Luo, C.-C. Hsu, K. Agres, and D. Herremans, “Singing voice
+conversion with disentangled representations of singer and vocal
+technique using variational autoencoders,” in ICASSP 2020-2020
+IEEE International Conference on Acoustics, Speech and Signal
+Processing (ICASSP).
+IEEE, 2020, pp. 3277–3281.
+[8] J. Lu, K. Zhou, B. Sisman, and H. Li, “Vaw-gan for singing voice
+conversion with non-parallel training data,” in 2020 Asia-Pacific
+Signal and Information Processing Association Annual Summit
+and Conference (APSIPA ASC).
+IEEE, 2020, pp. 514–519.
+[9] J. Ho, A. Jain, and P. Abbeel, “Denoising diffusion probabilis-
+tic models,” Advances in neural information processing systems,
+vol. 33, pp. 6840–6851, 2020.
+[10] Z. Kong, W. Ping, J. Huang, K. Zhao, and B. Catanzaro, “Dif-
+fwave: A versatile diffusion model for audio synthesis,” arXiv
+preprint arXiv:2009.09761, 2020.
+[11] N. Chen, Y. Zhang, H. Zen, R. J. Weiss, M. Norouzi, and
+W. Chan, “Wavegrad: Estimating gradients for waveform genera-
+tion,” arXiv preprint arXiv:2009.00713, 2020.
+[12] Y. Song, J. Sohl-Dickstein, D. P. Kingma, A. Kumar, S. Ermon,
+and B. Poole, “Score-based generative modeling through stochas-
+tic differential equations,” arXiv preprint arXiv:2011.13456,
+2020.
+[13] T. Karras, M. Aittala, T. Aila, and S. Laine, “Elucidating the
+design space of diffusion-based generative models,” Advances
+in neural information processing systems, vol. 35, pp. 26 565–
+26 577, 2022.
+[14] S. Liu, Y. Cao, D. Su, and H. Meng, “Diffsvc: A diffusion proba-
+bilistic model for singing voice conversion,” in 2021 IEEE Auto-
+matic Speech Recognition and Understanding Workshop (ASRU).
+IEEE, 2021, pp. 741–748.
+[15] Y. Lu, Z. Ye, W. Xue, X. Tan, Q. Liu, and Y. Guo, “Co-
+mosvc:
+Consistency model-based singing voice conversion,”
+arXiv preprint arXiv:2401.01792, 2024.
+[16] T. Saitou, M. Goto, M. Unoki, and M. Akagi, “Speech-to-singing
+synthesis: Converting speaking voices to singing voices by con-
+trolling acoustic features unique to singing voices,” in 2007 IEEE
+Workshop on Applications of Signal Processing to Audio and
+Acoustics.
+IEEE, 2007, pp. 215–218.
+[17] K. Vijayan, H. Li, and T. Toda, “Speech-to-singing voice conver-
+sion: The challenges and strategies for improving vocal conver-
+sion processes,” IEEE Signal Processing Magazine, vol. 36, no. 1,
+pp. 95–102, 2018.
+[18] R. Li, R. Huang, Y. Wang, Z. Hong, and Z. Zhao, “Self-supervised
+singing voice pre-training towards speech-to-singing conversion,”
+arXiv preprint arXiv:2406.02429, 2024.
+[19] J. weon Jung, W. Zhang, J. Shi, Z. Aldeneh, T. Higuchi,
+A. Gichamba,
+B.-J. Theobald,
+A. Hussen Abdelaziz,
+and
+S. Watanabe, “ESPnet-SPK: full pipeline speaker embedding
+toolkit with reproducible recipes, self-supervised front-ends, and
+off-the-shelf models,” in Interspeech 2024, 2024, pp. 4278–4282.
+[20] K. Qian, Y. Zhang, H. Gao, J. Ni, C.-I. Lai, D. Cox, M. Hasegawa-
+Johnson, and S. Chang, “Contentvec:
+An improved self-
+supervised speech representation by disentangling speakers,” in
+International Conference on Machine Learning.
+PMLR, 2022,
+pp. 18 003–18 017.
+[21] M. Morise, H. Kawahara, and H. Katayose, “Fast and reliable f0
+estimation method based on the period extraction of vocal fold vi-
+bration of singing voice and speech,” in Audio Engineering Soci-
+ety Conference: 35th International Conference: Audio for Games.
+Audio Engineering Society, 2009.
+[22] J. Huang, C. Zhang, Y. Ren, Z. Jiang, Z. Ye, J. Liu, J. He, X. Yin,
+and Z. Zhao, “Mullivc: Multi-lingual voice conversion with cycle
+consistency,” arXiv preprint arXiv:2408.04708, 2024.
+[23] Z. Duan, H. Fang, B. Li, K. C. Sim, and Y. Wang, “The nus sung
+and spoken lyrics corpus: A quantitative comparison of singing
+and speech,” in 2013 Asia-Pacific Signal and Information Pro-
+cessing Association Annual Summit and Conference.
+IEEE,
+2013, pp. 1–9.
+[24] R. Huang, F. Chen, Y. Ren, J. Liu, C. Cui, and Z. Zhao, “Multi-
+singer: Fast multi-singer singing voice vocoder with a large-scale
+corpus,” in Proceedings of the 29th ACM International Confer-
+ence on Multimedia, 2021, pp. 3945–3954.
+[25] J. Shi, Y. Lin, X. Bai, K. Zhang, Y. Wu, Y. Tang, Y. Yu, Q. Jin,
+and S. Watanabe, “Singing voice data scaling-up: An introduction
+to ACE-Opencpop and ACE-KiSing,” in Interspeech 2024, 2024,
+pp. 1880–1884.
+[26] Y. Shi, H. Bu, X. Xu, S. Zhang, and M. Li, “Aishell-3: A multi-
+speaker mandarin tts corpus and the baselines,” arXiv preprint
+arXiv:2010.11567, 2020.
+[27] Free ST Chinese Mandarin Corpus, “St-cmds-20170001 1, free st
+chinese mandarin corpus,” 2017, accessed: 2025-02-15. [Online].
+Available: https://www.openslr.org/
+[28] D. P. Kingma, “Adam: A method for stochastic optimization,”
+arXiv preprint arXiv:1412.6980, 2014.
+[29] J. Shi, H.-j. Shim, J. Tian, S. Arora, H. Wu, D. Petermann, J. Q.
+Yip, Y. Zhang, Y. Tang, W. Zhang et al., “VERSA: A versatile
+evaluation toolkit for speech, audio, and music,” arXiv preprint
+arXiv:2412.17667, 2024.
+[30] A. Radford, J. W. Kim, T. Xu, G. Brockman, C. McLeavey, and
+I. Sutskever, “Robust speech recognition via large-scale weak
+supervision,” in International conference on machine learning.
+PMLR, 2023, pp. 28 492–28 518.
+[31] Y. Tang, J. Shi, Y. Wu, and Q. Jin, “SingMOS: An extensive open-
+source singing voice dataset for mos prediction,” arXiv preprint
+arXiv:2406.10911, 2024.
+[32] W.-C. Huang, E. Cooper, and T. Toda, “MOS-bench: Benchmark-
+ing generalization abilities of subjective speech quality assess-
+ment models,” arXiv preprint arXiv:2411.03715, 2024.
+1252
