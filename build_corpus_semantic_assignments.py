@@ -66,14 +66,21 @@ def materialize(queue_path: Path, venue: str) -> list[dict]:
             basis = f"machine-proposed-{row.get('evidence_depth', 'unknown')}"
         adjudication = adjudications.get((venue, row.get("paper_id")))
         if adjudication:
-            assignment = {
-                "theme_id": adjudication["final_theme_id"],
-                "subtheme_id": adjudication["final_subtheme_id"],
-                "concept_id": adjudication["final_concept_id"],
-            }
+            if not adjudication.get("final_theme_id"):
+                status = "analyst-rejected"
+                assignment = {}
+                reason = adjudication["reviewer_note"]
+                boundary = "Final review found no speech or spoken-language object for the current speech taxonomy."
+            else:
+                status = "analyst-confirmed"
+                assignment = {
+                    "theme_id": adjudication["final_theme_id"],
+                    "subtheme_id": adjudication["final_subtheme_id"],
+                    "concept_id": adjudication["final_concept_id"],
+                }
+                boundary = "Final membership was reviewed against the current first-principles taxonomy; paper results remain author-reported unless independently reproduced."
             reason = adjudication["reviewer_note"]
             basis = f"taxonomy-adjudicated-{row.get('evidence_depth', 'unknown')}"
-            boundary = "Final membership was reviewed against the current first-principles taxonomy; paper results remain author-reported unless independently reproduced."
         out.append({
             "venue": venue,
             "paper_id": row.get("paper_id"),
