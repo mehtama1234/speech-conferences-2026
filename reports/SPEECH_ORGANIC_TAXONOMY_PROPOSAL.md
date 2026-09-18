@@ -64,7 +64,7 @@ The papers distinguish suppressing nuisance, recovering a chosen source, using s
 
 - Supported-paper evidence inherited from current concepts: **17**
 - Current concepts: `perceptual-enhancement`
-- Boundary: The target is intelligibility or acceptability rather than exact waveform recovery.
+- Boundary: This boundary is for methods whose target is what a listener can understand or tolerate; it is separate from noise removal, separation, and packet repair, which target a signal or source before the listener judges it.
 
 ## From sound to words and structured speech — 4 proposed subthemes
 
@@ -102,7 +102,7 @@ The corpus distinguishes information carried by voice, state carried across turn
 
 - Supported-paper evidence inherited from current concepts: **85**
 - Current concepts: `prosodic-meaning`, `paralinguistic-state`
-- Boundary: Pitch, timing, voice quality, and effort add information beyond words.
+- Boundary: This boundary covers information carried by pitch, timing, loudness, voice quality, or effort beyond the words; it is separate from dialogue action because the cue is in how an utterance sounds, not in the conversational state alone.
 
 ### Inferring what a speaker is trying to do
 
@@ -130,7 +130,7 @@ Generation papers separate planning content, producing fine waveform detail, cha
 
 - Supported-paper evidence inherited from current concepts: **15**
 - Current concepts: `text-to-speech-planning`
-- Boundary: Text must become pronunciation, duration, pitch targets, and an audible sequence.
+- Boundary: This boundary covers the step from intended text or meaning to pronunciation, duration, pitch targets, and sequence; it is separate from waveform generation, which realizes an already chosen plan as samples.
 
 ### Producing or compressing audible detail
 
@@ -142,7 +142,7 @@ Generation papers separate planning content, producing fine waveform detail, cha
 
 - Supported-paper evidence inherited from current concepts: **31**
 - Current concepts: `speaker-identity`, `voice-conversion`, `zero-shot-voice`
-- Boundary: Identity changes while linguistic content is meant to remain stable.
+- Boundary: This boundary covers changing or measuring who the voice sounds like while keeping the message stable; it is separate from expression control, which changes emotion or style, and from content planning, which changes the speech plan.
 
 ### Changing style, timing, and response behavior
 
@@ -204,7 +204,7 @@ The papers distinguish sharing structure across languages, learning with little 
 
 - Supported-paper evidence inherited from current concepts: **46**
 - Current concepts: `accent-robustness`, `dialect-and-variety`, `cultural-meaning`
-- Boundary: The boundary is social and linguistic interpretation, not only transfer accuracy.
+- Boundary: This boundary covers differences in pronunciation, variety, and local meaning that affect who is understood and how speech is interpreted; it is separate from generic low-resource learning because more data alone cannot decide whether a social or cultural distinction was represented correctly.
 
 ## Evidence, practical systems, and consequences — 5 proposed subthemes
 
@@ -232,7 +232,7 @@ The corpus separates what a score stands for, what changes outside the test set,
 
 - Supported-paper evidence inherited from current concepts: **60**
 - Current concepts: `voice-privacy`, `spoofing-and-deepfake`
-- Boundary: The risk concerns sensitive voice evidence, impersonation, replay, and generated speech.
+- Boundary: This boundary covers harm from exposing voice identity or accepting imitation, replay, or generated speech as genuine; it is separate from ordinary robustness because the failure is unauthorized inference or deception, not merely a lower score in a changed condition.
 
 ### Keeping claims inspectable and contestable
 

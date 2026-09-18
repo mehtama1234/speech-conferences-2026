@@ -23,7 +23,7 @@ P=[
   ("source-separation","Recovering several hidden sources",["blind-source-separation","target-conditioned-separation"],"The mixture contains multiple sources and the system must infer source identity or count."),
   ("spatial-listening","Using location to select sound",["spatial-filtering"],"Microphone geometry and direction are the evidence; a single-channel separator has a different limit."),
   ("echo-reconstruction","Canceling copies and filling gaps",["acoustic-echo-cancellation","packet-loss-concealment"],"The unwanted signal is a known delayed copy or missing frame, not an arbitrary background."),
-  ("perceptual-recovery","Optimizing what a listener can use",["perceptual-enhancement"],"The target is intelligibility or acceptability rather than exact waveform recovery."),
+  ("perceptual-recovery","Optimizing what a listener can use",["perceptual-enhancement"],"This boundary is for methods whose target is what a listener can understand or tolerate; it is separate from noise removal, separation, and packet repair, which target a signal or source before the listener judges it."),
  ]},
  {"theme_id":"recognition-and-alignment","theme":"From sound to words and structured speech","reason":"Recognition papers separate learning sound units, handling pronunciation variation, locating sequence boundaries, and using context to resolve open vocabulary.","subthemes":[
   ("acoustic-unit-learning","Learning reusable sound units",["acoustic-to-token","self-supervised-speech-units"],"The system first decides what reusable evidence can be extracted from continuous sound."),
@@ -32,15 +32,15 @@ P=[
   ("context-and-open-vocabulary","Using context without inventing words",["long-context-decoding","domain-and-context-biasing","speaker-adaptation","open-vocabulary-recognition"],"Context, speaker evidence, and new words resolve ambiguity but can override what was actually said."),
  ]},
  {"theme_id":"meaning-and-interaction","theme":"From spoken form to meaning and coordinated action","reason":"The corpus distinguishes information carried by voice, state carried across turns, timing of participation, and grounding language in people or actions.","subthemes":[
-  ("prosody-and-paralinguistics","Meaning carried by how speech sounds",["prosodic-meaning","paralinguistic-state"],"Pitch, timing, voice quality, and effort add information beyond words."),
+  ("prosody-and-paralinguistics","Meaning carried by how speech sounds",["prosodic-meaning","paralinguistic-state"],"This boundary covers information carried by pitch, timing, loudness, voice quality, or effort beyond the words; it is separate from dialogue action because the cue is in how an utterance sounds, not in the conversational state alone."),
   ("intent-and-dialogue-state","Inferring what a speaker is trying to do",["intent-in-context","dialogue-state"],"The system tracks goals, commitments, and situation rather than only classifying acoustic style."),
   ("turn-taking-and-repair","Coordinating participation under uncertainty",["turn-boundary","repair-and-clarification"],"The problem is when to speak, yield, interrupt, or ask for clarification."),
   ("grounding-and-action","Connecting language to a shared world",["referential-grounding","speech-act","interactional-feedback"],"A phrase must identify a referent or authorized action and remain corrigible through feedback."),
  ]},
  {"theme_id":"voice-generation-and-control","theme":"Creating speech while keeping the right things fixed","reason":"Generation papers separate planning content, producing fine waveform detail, changing identity, and controlling expression or interaction.","subthemes":[
-  ("content-planning","Turning language into a timed speech plan",["text-to-speech-planning"],"Text must become pronunciation, duration, pitch targets, and an audible sequence."),
+  ("content-planning","Turning language into a timed speech plan",["text-to-speech-planning"],"This boundary covers the step from intended text or meaning to pronunciation, duration, pitch targets, and sequence; it is separate from waveform generation, which realizes an already chosen plan as samples."),
   ("waveform-and-codec-generation","Producing or compressing audible detail",["neural-vocoder","intelligibility-naturalness"],"The issue is sample-level detail and the tradeoff between faithful content and natural sound."),
-  ("identity-and-conversion","Changing who sounds like the speaker",["speaker-identity","voice-conversion","zero-shot-voice"],"Identity changes while linguistic content is meant to remain stable."),
+  ("identity-and-conversion","Changing who sounds like the speaker",["speaker-identity","voice-conversion","zero-shot-voice"],"This boundary covers changing or measuring who the voice sounds like while keeping the message stable; it is separate from expression control, which changes emotion or style, and from content planning, which changes the speech plan."),
   ("expression-and-interactive-control","Changing style, timing, and response behavior",["prosody-control","style-and-emotion-control","interactive-latency"],"The system must obey expressive controls quickly without breaking continuity or meaning."),
  ]},
  {"theme_id":"people-variation-and-health","theme":"Speakers as changing people, not nuisance variables","reason":"The papers separate identity and within-person change, clinical measurement, atypical/assistive communication, and whether a system fits a person's real life.","subthemes":[
@@ -53,13 +53,13 @@ P=[
   ("crosslingual-structure","Sharing structure across languages",["crosslingual-transfer","language-identification","code-switching"],"The central question is what can be shared while retaining language-specific distinctions."),
   ("low-resource-learning","Learning from sparse labels",["self-training-and-pseudo-labels","few-shot-adaptation"],"The method changes how a model learns when labeled examples are scarce."),
   ("data-creation","Making missing speech evidence",["speech-data-collection"],"The work creates speakers, prompts, labels, or recordings needed by a community or task."),
-  ("accent-dialect-and-cultural-meaning","Respecting variation and local meaning",["accent-robustness","dialect-and-variety","cultural-meaning"],"The boundary is social and linguistic interpretation, not only transfer accuracy."),
+  ("accent-dialect-and-cultural-meaning","Respecting variation and local meaning",["accent-robustness","dialect-and-variety","cultural-meaning"],"This boundary covers differences in pronunciation, variety, and local meaning that affect who is understood and how speech is interpreted; it is separate from generic low-resource learning because more data alone cannot decide whether a social or cultural distinction was represented correctly."),
  ]},
  {"theme_id":"evaluation-deployment-and-consequence","theme":"Evidence, practical systems, and consequences","reason":"The corpus separates what a score stands for, what changes outside the test set, what a device can afford, and what voice technology can expose or harm.","subthemes":[
   ("metric-and-human-targets","Connecting scores to human goals",["word-error-versus-understanding","quality-and-naturalness","calibration-and-selective-use"],"A metric is a proxy and must be tied to the human or engineering property it represents."),
   ("robustness-and-shift","Changing speakers, rooms, and conditions",["distribution-shift","end-to-end-recovery"],"The question is whether failures are detected and recovered when conditions differ from training."),
   ("deployment-cost","Meeting time, memory, and hardware limits",["latency-and-resource"],"The system must operate within a device or interaction budget without hiding cost elsewhere."),
-  ("privacy-and-security","Protecting voice and resisting misuse",["voice-privacy","spoofing-and-deepfake"],"The risk concerns sensitive voice evidence, impersonation, replay, and generated speech."),
+  ("privacy-and-security","Protecting voice and resisting misuse",["voice-privacy","spoofing-and-deepfake"],"This boundary covers harm from exposing voice identity or accepting imitation, replay, or generated speech as genuine; it is separate from ordinary robustness because the failure is unauthorized inference or deception, not merely a lower score in a changed condition."),
   ("auditability-and-accountability","Keeping claims inspectable and contestable",["auditability-and-contestability"],"A person must be able to trace evidence, uncertainty, and correction when a speech system matters."),
  ]},
 ]

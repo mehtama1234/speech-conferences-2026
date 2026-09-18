@@ -279,7 +279,7 @@ When transmitted audio frames disappear, infer a short continuation from nearby 
 ### Optimizing what a listener can use
 
 **Question:** What ordinary speech pressure is handled by optimizing what a listener can use, and what evidence distinguishes it from neighboring pressures?
-**Why this boundary exists:** The target is intelligibility or acceptability rather than exact waveform recovery.
+**Why this boundary exists:** This boundary is for methods whose target is what a listener can understand or tolerate; it is separate from noise removal, separation, and packet repair, which target a signal or source before the listener judges it.
 **Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
 
 #### Perceptual enhancement
@@ -449,7 +449,7 @@ Handle names, code-switching, jargon, and newly encountered words without requir
 ### Meaning carried by how speech sounds
 
 **Question:** What ordinary speech pressure is handled by meaning carried by how speech sounds, and what evidence distinguishes it from neighboring pressures?
-**Why this boundary exists:** Pitch, timing, voice quality, and effort add information beyond words.
+**Why this boundary exists:** This boundary covers information carried by pitch, timing, loudness, voice quality, or effort beyond the words; it is separate from dialogue action because the cue is in how an utterance sounds, not in the conversational state alone.
 **Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
 
 #### Prosodic meaning
@@ -591,7 +591,7 @@ Let user corrections, confirmations, and response outcomes update the system's i
 ### Turning language into a timed speech plan
 
 **Question:** What ordinary speech pressure is handled by turning language into a timed speech plan, and what evidence distinguishes it from neighboring pressures?
-**Why this boundary exists:** Text must become pronunciation, duration, pitch targets, and an audible sequence.
+**Why this boundary exists:** This boundary covers the step from intended text or meaning to pronunciation, duration, pitch targets, and sequence; it is separate from waveform generation, which realizes an already chosen plan as samples.
 **Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
 
 #### Text-to-speech planning
@@ -639,7 +639,7 @@ Treat ease of understanding and human-likeness as related but distinct targets t
 ### Changing who sounds like the speaker
 
 **Question:** What ordinary speech pressure is handled by changing who sounds like the speaker, and what evidence distinguishes it from neighboring pressures?
-**Why this boundary exists:** Identity changes while linguistic content is meant to remain stable.
+**Why this boundary exists:** This boundary covers changing or measuring who the voice sounds like while keeping the message stable; it is separate from expression control, which changes emotion or style, and from content planning, which changes the speech plan.
 **Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
 
 #### Speaker identity representation
@@ -965,7 +965,7 @@ Design recording prompts, speakers, transcription, and consent so newly collecte
 ### Respecting variation and local meaning
 
 **Question:** What ordinary speech pressure is handled by respecting variation and local meaning, and what evidence distinguishes it from neighboring pressures?
-**Why this boundary exists:** The boundary is social and linguistic interpretation, not only transfer accuracy.
+**Why this boundary exists:** This boundary covers differences in pronunciation, variety, and local meaning that affect who is understood and how speech is interpreted; it is separate from generic low-resource learning because more data alone cannot decide whether a social or cultural distinction was represented correctly.
 **Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
 
 #### Accent robustness
@@ -1107,7 +1107,7 @@ A system must meet timing, memory, energy, bandwidth, and hardware limits while 
 ### Protecting voice and resisting misuse
 
 **Question:** What ordinary speech pressure is handled by protecting voice and resisting misuse, and what evidence distinguishes it from neighboring pressures?
-**Why this boundary exists:** The risk concerns sensitive voice evidence, impersonation, replay, and generated speech.
+**Why this boundary exists:** This boundary covers harm from exposing voice identity or accepting imitation, replay, or generated speech as genuine; it is separate from ordinary robustness because the failure is unauthorized inference or deception, not merely a lower score in a changed condition.
 **Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
 
 #### Voice privacy
