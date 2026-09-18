@@ -1,0 +1,1070 @@
+# First-principles speech themes and subthemes
+
+This is the teaching layer of the atlas. It starts with the baseline speech-chain account, then explains why each boundary exists in ordinary language and names the papers that make the boundary useful. Counts are not prevalence estimates, and author-reported results are not independent reproductions.
+
+Baseline: Fant, Gunnar. Sound, features, and perception. STL-QPSR 8(2-3), 1967, pp. 1-14..
+
+## How to read each section
+
+Each subtheme follows the same path: baseline stage or distinction → ordinary pressure → tempting shortcut → why it fails → recurring paper move → evidence and evaluation → boundary and limit.
+
+## Sound, bodies, rooms, and recording
+
+**Baseline connection:** Fant, Gunnar. Sound, features, and perception. STL-QPSR 8(2-3), 1967, pp. 1-14.
+**Ordinary problem:** Speech reaches a microphone as changing air pressure after vocal-fold vibration, mouth shape, room reflections, and electronics have already mixed together.
+**Why the first shortcut fails:** Treating the waveform as an unstructured list of samples hides which changes came from the talker, the room, or the recording device.
+**Recurring move across this theme:** Separate source, filter, geometry, and time scale so a measured signal can be related back to a physical cause.
+**Theme limit:** A useful physical description can be wrong when bodies, rooms, or microphones violate its assumptions.
+
+### Making a physical sound
+
+**Baseline link:** production-source-filter
+**Question:** What ordinary speech pressure is handled by making a physical sound, and what evidence distinguishes it from neighboring pressures?
+**Derivation:** Baseline link: Fant pp. 2-3: production moves from intended message through articulatory activity to acoustic production, where source and filter are separate descriptions. Ordinary pressure: Speech reaches a microphone as changing air pressure after vocal-fold vibration, mouth shape, room reflections, and electronics have already mixed together. Failed shortcut: Treating the waveform as an unstructured list of samples hides which changes came from the talker, the room, or the recording device. Recurring paper move: Separate source, filter, geometry, and time scale so a measured signal can be related back to a physical cause. Neighbor test: The source and tract shape the pressure wave before a device records it.
+
+**What the papers share:** Speech reaches a microphone as changing air pressure after vocal-fold vibration, mouth shape, room reflections, and electronics have already mixed together. The subtheme asks: What ordinary speech pressure is handled by making a physical sound, and what evidence distinguishes it from neighboring pressures?
+**The shortcut they outgrow:** A first attempt would answer the question only with periodic vocal-fold source, but that shortcut misses the boundary: Not every speech segment is periodic: frication, stops, breath, and irregular phonation cannot be reduced to one stable pitch.
+**The repeated mechanism:** Across this subtheme, papers make periodic vocal-fold source, vocal-tract filtering explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Build a finite-element model with dual sources and vary tract geometry to connect physical parameters to observed bandwidth and resonance.
+
+#### Concepts inside this boundary
+
+**Periodic vocal-fold source.** A speaker can repeatedly open and close the vocal folds; the repetition supplies pitch and harmonic energy while its exact timing varies.
+Boundary: Not every speech segment is periodic: frication, stops, breath, and irregular phonation cannot be reduced to one stable pitch.
+
+**Vocal-tract filtering.** The tongue, lips, jaw, and throat reshape source energy so some frequency regions are strengthened and others weakened; those regions carry much of vowel identity.
+Boundary: A filter-only explanation misses changes caused directly by source irregularity, radiation, or recording conditions.
+
+#### Named evidence
+
+- **Analysis of Avian Biphonic Vocalization Using Computational Modelling** (`a25_interspeech`; D3): Build a finite-element model with dual sources and vary tract geometry to connect physical parameters to observed bandwidth and resonance. Evaluation: COMSOL frequency-domain pressure-acoustics simulations vary tracheal length, glottis radius, and beak angle; simulated resonance peaks are compared with house-sparrow and domestic-canary vocalizations. The reported comparison is spectral/formant frequency and SPL behavior, not a human-listener… Limit: The model concerns avian vocalization rather than human speech; micro-CT reconstruction, source assumptions, and validation recordings constrain the result. No independent reproduction was performed.
+- **Vocal-tract model with two directions: Static design for a dummy head and dynamic design for a speaking machine** (`arai25_interspeech`; D3): Show the two ends of the design space: a fixed one-vowel dummy head and a cam-driven model whose blocks change shape in real time. Evaluation: Physical models of the human vocal tract have been developed for many purposes, including education in acoustics and phonetics, speech and language pathology, and speech science/technology. Limit: This is a two-page demonstration with no shared quantitative evaluation or claim of human-speech equivalence.
+- **Evaluation of a model for sound radiation from the vocal tract wall** (`birkholz25_interspeech`; D3): Represent each tract section as a damped spring-mass system and fit wall parameters to real speaker voicebars. Evaluation: This study evaluated a simulation model for sound radiation from the vocal tract wall in the context of articulatory speech synthesis. Limit: The six speakers, selected consonants/vowels, frequency range, and fitted parameters bound the claim; other speech sounds and independent physical validation remain open.
+- **Influence of wall coverings of 3D-printed vocal tract models on measured transfer functions** (`birkholz25b_interspeech`; D3): Dampen or mechanically constrain the replica and test whether the expected resonances become cleaner and more repeatable. Evaluation: In this empirical study, two methods to reduce these artifacts were compared, namely wrapping the models with sound-absorbing fabric and embedding the models in sand. Limit: Printed geometries, ten vowels, materials, reciprocity setup, and repeatability metric bound the claim; improved measurement does not prove the replica matches a human tract.
+
+**Boundary from neighboring subthemes:** Not every speech segment is periodic: frication, stops, breath, and irregular phonation cannot be reduced to one stable pitch.; A filter-only explanation misses changes caused directly by source irregularity, radiation, or recording conditions.
+**What this evidence does not establish:** The shared story is supported only by the reviewed papers listed here; D2 entries support the problem and stated method, while D3 entries support the reported mechanism and evaluation. It is not a venue-wide prevalence claim.
+**Open question:** What changes when this move is tested outside the speakers, languages, rooms, devices, or benchmark conditions represented by the 9 D3 paper(s)?
+
+### Coordinating moving speech parts
+
+**Baseline link:** production-source-filter
+**Question:** What ordinary speech pressure is handled by coordinating moving speech parts, and what evidence distinguishes it from neighboring pressures?
+**Derivation:** Baseline link: Fant pp. 2-3: production moves from intended message through articulatory activity to acoustic production, where source and filter are separate descriptions. Ordinary pressure: Speech reaches a microphone as changing air pressure after vocal-fold vibration, mouth shape, room reflections, and electronics have already mixed together. Failed shortcut: Treating the waveform as an unstructured list of samples hides which changes came from the talker, the room, or the recording device. Recurring paper move: Separate source, filter, geometry, and time scale so a measured signal can be related back to a physical cause. Neighbor test: Gesture overlap and timing are the object; a static source/filter description is not enough.
+
+**What the papers share:** Speech reaches a microphone as changing air pressure after vocal-fold vibration, mouth shape, room reflections, and electronics have already mixed together. The subtheme asks: What ordinary speech pressure is handled by coordinating moving speech parts, and what evidence distinguishes it from neighboring pressures?
+**The shortcut they outgrow:** A first attempt would answer the question only with articulatory coordination, but that shortcut misses the boundary: A label such as a phoneme is not itself a physical movement or a complete account of coarticulation.
+**The repeated mechanism:** Across this subtheme, papers make articulatory coordination explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Train acoustic-to-articulatory models against complete vocal-tract contours from real-time MRI and compare individual and joint articulator prediction.
+
+#### Concepts inside this boundary
+
+**Articulatory coordination.** Speech is a timed coordination of several moving constrictions, not a sequence of isolated sounds; overlap lets one gesture affect its neighbors.
+Boundary: A label such as a phoneme is not itself a physical movement or a complete account of coarticulation.
+
+#### Named evidence
+
+- **Reconstruction of the Complete Vocal Tract Contour Through Acoustic to Articulatory Inversion Using Real-Time MRI Data** (`azzouz25_interspeech`; D3): Train acoustic-to-articulatory models against complete vocal-tract contours from real-time MRI and compare individual and joint articulator prediction. Evaluation: The average RMSE precision on the test set is 1.65 mm to be compared with the pixel size which is 1.62 mm. Limit: Speakers, MRI protocol, segmentation, speech styles, and model assumptions limit generalization; contour accuracy is not a complete articulatory theory.
+- **Enhancing Acoustic-to-Articulatory Inversion with Multi-Target Pretraining for Low-Resource Settings** (`bandekar25_interspeech`; D3): Pretrain the inversion model against three related targets—phoneme labels, articulatory features, and critical articulator labels—so it receives useful structure without carrying the external extractor at deployment. Evaluation: We evaluate our approach against both baseline and SSL-based models across various data conditions. Limit: The articulatory targets, speakers, language, and feature choices define the tested boundary; predicted movement is not equivalent to direct imaging. Reported gains and speed claims are author-reported and were not independently reproduced.
+- **Articulatory modeling of the S-shaped F2 trajectories observed in Öhman's spectrographic analysis of VCV syllables** (`berthommier25_interspeech`; D3): Generate the same VCV sequences with an articulatory model, separate vowel transitions from consonant influence, and compare the resulting trajectories and locus equations. Evaluation: The computational articulatory model generates 75 VCV syllables over five vowels and four consonant configurations, computes F1–F3 trajectories with a transmission-line model, and compares synthetic F2/F3 transition clusters with aggregated Öhman observations. The evaluation is geometric/formant… Limit: Model geometry, trajectory planning, corpus, and synthetic-to-observed comparison limit claims; matching a trajectory does not identify a unique human motor plan.
+- **Speech Reduction in French: The Relationship Between Vowel Space and Articulation Dynamics** (`bodur25_interspeech`; D3): Model spatial vowel distinctiveness and temporal rate together and test whether their interaction predicts non-lexicalized reductions. Evaluation: The study extracts 113,296 French oral vowels from eight hours of Corpus of Interactional Data, retains 112,346 after duration filtering, and identifies 6,373 in reduced sequences. Lobanov-normalized formants support pVSA, vowel-distinctiveness, and reduction-rate analyses across speakers and… Limit: The French speakers, spontaneous tasks, reduction definition, and acoustic measures bound the result; other languages and conversational settings remain open.
+
+**Boundary from neighboring subthemes:** A label such as a phoneme is not itself a physical movement or a complete account of coarticulation.
+**What this evidence does not establish:** The shared story is supported only by the reviewed papers listed here; D2 entries support the problem and stated method, while D3 entries support the reported mechanism and evaluation. It is not a venue-wide prevalence claim.
+**Open question:** What changes when this move is tested outside the speakers, languages, rooms, devices, or benchmark conditions represented by the 11 D3 paper(s)?
+
+### Representing a changing signal
+
+**Baseline link:** production-source-filter
+**Question:** What ordinary speech pressure is handled by representing a changing signal, and what evidence distinguishes it from neighboring pressures?
+**Derivation:** Baseline link: Fant pp. 2-3: production moves from intended message through articulatory activity to acoustic production, where source and filter are separate descriptions. Ordinary pressure: Speech reaches a microphone as changing air pressure after vocal-fold vibration, mouth shape, room reflections, and electronics have already mixed together. Failed shortcut: Treating the waveform as an unstructured list of samples hides which changes came from the talker, the room, or the recording device. Recurring paper move: Separate source, filter, geometry, and time scale so a measured signal can be related back to a physical cause. Neighbor test: The question is what a digital representation keeps or loses across time, frequency, and precision.
+
+**What the papers share:** Speech reaches a microphone as changing air pressure after vocal-fold vibration, mouth shape, room reflections, and electronics have already mixed together. The subtheme asks: What ordinary speech pressure is handled by representing a changing signal, and what evidence distinguishes it from neighboring pressures?
+**The shortcut they outgrow:** A first attempt would answer the question only with local frequency content, but that shortcut misses the boundary: A window discards some exact timing and long-range phase; two signals with similar spectra may still sound different.
+**The repeated mechanism:** Across this subtheme, papers make local frequency content, multiple time scales, sampling and quantization explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Augment in-domain data, add glottal-activity information to spectral features, and normalize features with fMLLR.
+
+#### Concepts inside this boundary
+
+**Local frequency content.** Short windows expose which frequencies are present near each moment, making pitch, resonances, and noise easier to compare than raw samples alone.
+Boundary: A window discards some exact timing and long-range phase; two signals with similar spectra may still sound different.
+
+**Multiple time scales.** Fast events such as consonant closures and slow changes such as intonation require measurements at different temporal resolutions.
+Boundary: Adding resolutions is not automatically informative; it can increase computation or preserve nuisance variation.
+
+**Sampling and quantization.** A digital recording keeps a finite set of amplitude measurements, so the sampling rate and numeric precision set what can still be recovered.
+Boundary: A high sample rate cannot restore information lost through clipping, poor microphones, or an absent frequency range.
+
+#### Named evidence
+
+- **On Enhancing the Performance of Children's ASR Task in Limited Data Scenario** (`ankita25_interspeech`; D3): Augment in-domain data, add glottal-activity information to spectral features, and normalize features with fMLLR. Evaluation: As a consequence of applying fMLLR and then concatenating the normalized MFCC features with glottal activity parameters, a relative reduction in character error rate by 40% over the baseline is obtained. Limit: The evidence is limited to the child's speech data and tested feature pipeline; languages, age ranges, and transfer to new schools or microphones are not established.
+- **Influence of Proficiency and L2 Experience on Dynamic Spectral Cue Utilization in L2 Vowel Perception and Production** (`bakkouche25b_interspeech`; D3): Track vowel-inherent spectral change across the vowel and compare perception-production alignment with proficiency and immersion experience. Evaluation: The acquisition of English vowels as an L2 is complex, yet most studies focus on static measures, with little attention to dynamic spectral cues like Vowel-Inherent Spectral Change (VISC). Limit: The learner group, contrasts, language experience, and measurements bound the result; other L1s and natural interaction need separate evidence.
+- **Frequency-Domain Enhanced Extreme Bandwidth Extension Network with ICCRN for Superior Speech Quality** (`bao25_interspeech`; D3): Use frequency-domain enhancement with an ICCRN-style recurrent representation to preserve global spectral structure while reconstructing the absent band. Evaluation: Evaluations on the French LibriSpeech dataset show significant improvements, including clearer spectrograms, fewer generator parameters, and lower computational costs, advancing the state of the art in bandwidth extension. Limit: French LibriSpeech, sampling setup, listeners, and author-reported metrics bound the result; other languages remain open.
+- **Introducing EMOPARKNZ: the Emotional Speech Database from New Zealand English Speakers with Parkinson’s Disease** (`bendom25_interspeech`; D3): Create a dedicated New Zealand English database with multiple emotions, speakers, and acoustic analysis, then test human recognition. Evaluation: A preliminary perception test with 22 New Zealand English listeners achieved 63% classification accuracy across the five emotions, aligning with the performance reported for similar emotional speech databases. Limit: Thirteen speakers, New Zealand English, Parkinson's disease, and the selected emotions bound the resource; clinical severity and broader populations remain open.
+
+**Boundary from neighboring subthemes:** A window discards some exact timing and long-range phase; two signals with similar spectra may still sound different.; Adding resolutions is not automatically informative; it can increase computation or preserve nuisance variation.; A high sample rate cannot restore information lost through clipping, poor microphones, or an absent frequency range.
+**What this evidence does not establish:** The shared story is supported only by the reviewed papers listed here; D2 entries support the problem and stated method, while D3 entries support the reported mechanism and evaluation. It is not a venue-wide prevalence claim.
+**Open question:** What changes when this move is tested outside the speakers, languages, rooms, devices, or benchmark conditions represented by the 18 D3 paper(s)?
+
+### Changing the path from source to sensor
+
+**Baseline link:** production-source-filter
+**Question:** What ordinary speech pressure is handled by changing the path from source to sensor, and what evidence distinguishes it from neighboring pressures?
+**Derivation:** Baseline link: Fant pp. 2-3: production moves from intended message through articulatory activity to acoustic production, where source and filter are separate descriptions. Ordinary pressure: Speech reaches a microphone as changing air pressure after vocal-fold vibration, mouth shape, room reflections, and electronics have already mixed together. Failed shortcut: Treating the waveform as an unstructured list of samples hides which changes came from the talker, the room, or the recording device. Recurring paper move: Separate source, filter, geometry, and time scale so a measured signal can be related back to a physical cause. Neighbor test: Room reflections, device coloration, and alternate sensors change the evidence before recognition.
+
+**What the papers share:** Speech reaches a microphone as changing air pressure after vocal-fold vibration, mouth shape, room reflections, and electronics have already mixed together. The subtheme asks: What ordinary speech pressure is handled by changing the path from source to sensor, and what evidence distinguishes it from neighboring pressures?
+**The shortcut they outgrow:** A first attempt would answer the question only with reverberant room mixture, but that shortcut misses the boundary: Reverberation is not just additive stationary noise; its delay pattern depends on room geometry and position.
+**The repeated mechanism:** Across this subtheme, papers make reverberant room mixture, microphone and channel coloration, non-airborne speech sensing explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Transcode millions of multilingual files through PSTN, VoIP, and neural codecs, then compare quality by language and gender.
+
+#### Concepts inside this boundary
+
+**Reverberant room mixture.** The microphone hears direct sound plus delayed reflections, so a word can overlap its own earlier energy and blur boundaries.
+Boundary: Reverberation is not just additive stationary noise; its delay pattern depends on room geometry and position.
+
+**Microphone and channel coloration.** A device emphasizes some frequencies, clips loud peaks, or transmits only a narrow band, changing the evidence available to a recognizer.
+Boundary: Channel normalization can remove useful speaker or environment information along with nuisance coloration.
+
+**Non-airborne speech sensing.** Neck vibration, ultrasound, radar, or muscle signals can observe speech when airborne audio is missing, but they observe a different projection of the act.
+Boundary: A sensor that works in quiet laboratory placement is not automatically a replacement for ordinary audio in daily use.
+
+#### Named evidence
+
+- **On the Language and Gender Biases in PSTN, VoIP and Neural Audio Codecs** (`altwlkany25_interspeech`; D3): Transcode millions of multilingual files through PSTN, VoIP, and neural codecs, then compare quality by language and gender. Evaluation: The study transcodes 2,061,600 VoxForge files and 75,600 DARPA-TIMIT files through PSTN, VoIP, and neural codecs at specified bitrates, then computes ViSQOL speech-mode quality. Language effects are analyzed across 17 languages and gender effects on TIMIT metadata; codec/bitrate and subgroup are… Limit: Codec set, languages, gender labels, quality measure, and files define the boundary; causal mechanisms and mitigation in deployed networks remain open.
+- **AISHELL-5: The First Open-Source In-Car Multi-Channel Multi-Speaker Speech Dataset for Automatic Speech Diarization and Recognition** (`dai25c_interspeech`; D3): Release a multi-channel, multi-speaker in-car corpus with near-field references, far-field door microphones, real driving conditions, noise recordings, and a reproducible separation-plus-ASR baseline. Evaluation: This paper delineates AISHELL-5, the first open-source in-car multi-channel multi-speaker Mandarin automatic speech recognition (ASR) dataset. Limit: The corpus is Mandarin and vehicle-specific, with its seating, microphones, and scenario design defining the boundary. The baseline does not establish that one separation method is best in all cars, and dataset availability is not independent reproduction of the reported scores.
+- **Voxplorer: Voice data exploration and projection in an interactive dashboard** (`deluca25_interspeech`; D3): Put feature extraction, dimensionality reduction, filtering, and projection into an interactive dashboard. Evaluation: Voxplorer is evaluated as an interactive voice-data exploration dashboard: feature extraction, dimensionality reduction, filtering, and projection are tested on the paper's voice datasets through the supported visual-analysis workflow. The evidence concerns exploratory usability and inspectable… Limit: Usability, projection choices, and feature-tool assumptions determine what researchers see; the dashboard does not establish causal voice categories.
+- **Improving Low-Resource Dialect Classification Using Retrieval-based Voice Conversion** (`fischbach25_interspeech`; D3): Use retrieval-based voice conversion to put examples into a more uniform target-speaker space, then combine it with ordinary augmentations and test whether dialect classification improves. Evaluation: Dialect classification uses 10-second segments with speaker-disjoint train/validation/test partitions; each validation/test split samples speakers by dialect and the experiment repeats 250 random subsets. Retrieval-based voice conversion is compared with frequency masking and segment-removal… Limit: Dialect data, target speaker, conversion fidelity, train/test speaker split, and classifier architecture bound the claim; higher accuracy does not prove that all dialect cues survived conversion.
+
+**Boundary from neighboring subthemes:** Reverberation is not just additive stationary noise; its delay pattern depends on room geometry and position.; Channel normalization can remove useful speaker or environment information along with nuisance coloration.; A sensor that works in quiet laboratory placement is not automatically a replacement for ordinary audio in daily use.
+**What this evidence does not establish:** The shared story is supported only by the reviewed papers listed here; D2 entries support the problem and stated method, while D3 entries support the reported mechanism and evaluation. It is not a venue-wide prevalence claim.
+**Open question:** What changes when this move is tested outside the speakers, languages, rooms, devices, or benchmark conditions represented by the 18 D3 paper(s)?
+
+## Listening through noise, overlap, and missing sound
+
+**Baseline connection:** Fant, Gunnar. Sound, features, and perception. STL-QPSR 8(2-3), 1967, pp. 1-14.
+**Ordinary problem:** A listener often hears several talkers, music, echo, and device noise at once, yet needs one person's words or an intelligible mixture.
+**Why the first shortcut fails:** Amplifying everything or subtracting an average noise profile also removes quiet consonants and fails when the interferer changes with the speech.
+**Recurring move across this theme:** Use structure that differs between target and interference—time, frequency, space, source identity, or learned speech regularity—to estimate and reconstruct the target.
+**Theme limit:** A cleaner waveform may be less faithful, introduce artifacts, or favor the wrong speaker when the mixture is ambiguous.
+
+### Suppressing changing interference
+
+**Baseline link:** medium-and-signal-description
+**Question:** What ordinary speech pressure is handled by suppressing changing interference, and what evidence distinguishes it from neighboring pressures?
+**Derivation:** Baseline link: Fant pp. 2-4: the technical medium carries the speech wave, and a useful description should preserve task-relevant message information without treating every signal detail as equally necessary. Ordinary pressure: A listener often hears several talkers, music, echo, and device noise at once, yet needs one person's words or an intelligible mixture. Failed shortcut: Amplifying everything or subtracting an average noise profile also removes quiet consonants and fails when the interferer changes with the speech. Recurring paper move: Use structure that differs between target and interference—time, frequency, space, source identity, or learned speech regularity—to estimate and reconstruct the target. Neighbor test: The target is one speech stream and the failure is removing speech along with noise.
+
+**What the papers share:** A listener often hears several talkers, music, echo, and device noise at once, yet needs one person's words or an intelligible mixture. The subtheme asks: What ordinary speech pressure is handled by suppressing changing interference, and what evidence distinguishes it from neighboring pressures?
+**The shortcut they outgrow:** A first attempt would answer the question only with time-frequency masking, but that shortcut misses the boundary: A binary or soft mask can create musical noise and cannot reliably separate sources that occupy the same region.
+**The repeated mechanism:** Across this subtheme, papers make time-frequency masking, speech-prior denoising, changing and adverse noise explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Use a three-stage framework: acoustic structure extraction, coarse full-band noise reduction, and spectral refinement.
+
+#### Concepts inside this boundary
+
+**Time-frequency masking.** Estimate how much each local frequency region belongs to speech, then attenuate regions dominated by noise.
+Boundary: A binary or soft mask can create musical noise and cannot reliably separate sources that occupy the same region.
+
+**Speech-prior denoising.** A model learned from clean speech can fill in a plausible speech pattern where the recording is noisy, trading exact fidelity for intelligibility.
+Boundary: A plausible completion can hallucinate phonetic detail the microphone never captured.
+
+**Changing and adverse noise.** The useful distinction is whether noise changes faster than the system can track, as with competing speech, vehicles, or sudden events.
+Boundary: A result on fixed background noise does not establish performance under changing or speech-like interference.
+
+#### Named evidence
+
+- **A Three-Stage Beamforming with Harmonic Guidance for Multi-Channel Speech Enhancement** (`alip25_interspeech`; D3): Use a three-stage framework: acoustic structure extraction, coarse full-band noise reduction, and spectral refinement. Evaluation: Experiments on LibriSpeech-based datasets demonstrate that the proposed method significantly outperforms the reference method. Limit: The evidence is benchmark-bound and the summary does not establish performance in arbitrary rooms, languages, or devices.
+- **Structured Codebook Based Hierarchical Framework for DNN for Computationally Efficient Speech Enhancement** (`b25_interspeech`; D3): Replace one expensive DNN with simpler hierarchical predictors backed by structured speech-parameter codebooks. Evaluation: This is achieved by using structured codebooks of speech parameters, like log power spectra, that are generated by exploiting hierarchical relation between the speech training data. Limit: One corpus and parameterized spectral targets bound the evidence; downstream ASR and perceptual benefit are not fully established.
+- **Test-Time Training for Speech Enhancement** (`behera25_interspeech`; D3): Use a Y-shaped enhancement model with self-supervised reconstruction or masked-spectrogram tasks during test-time adaptation. Evaluation: This paper introduces a novel application of Test-Time Training (TTT) for Speech Enhancement, addressing the challenges posed by unpredictable noise conditions and domain shifts. Limit: The adaptation steps, compute budget, noise conditions, and author-reported metrics bound the result; listener benefit and long-term stability remain open.
+- **QUADS: Quantized Distillation Framework for Efficient Speech Language Understanding** (`biswas25b_interspeech`; D3): Train the student with distillation and quantization constraints together through multiple stages. Evaluation: We propose QUADS, a unified framework that optimizes both through multi-stage training with a pre-trained model, enhancing adaptability to low-bit regimes while maintaining accuracy. Limit: The result depends on tasks, bit settings, and hardware interpretation of the counts; latency and energy on deployed devices remain open.
+
+**Boundary from neighboring subthemes:** A binary or soft mask can create musical noise and cannot reliably separate sources that occupy the same region.; A plausible completion can hallucinate phonetic detail the microphone never captured.; A result on fixed background noise does not establish performance under changing or speech-like interference.
+**What this evidence does not establish:** The shared story is supported only by the reviewed papers listed here; D2 entries support the problem and stated method, while D3 entries support the reported mechanism and evaluation. It is not a venue-wide prevalence claim.
+**Open question:** What changes when this move is tested outside the speakers, languages, rooms, devices, or benchmark conditions represented by the 18 D3 paper(s)?
+
+### Recovering several hidden sources
+
+**Baseline link:** medium-and-signal-description
+**Question:** What ordinary speech pressure is handled by recovering several hidden sources, and what evidence distinguishes it from neighboring pressures?
+**Derivation:** Baseline link: Fant pp. 2-4: the technical medium carries the speech wave, and a useful description should preserve task-relevant message information without treating every signal detail as equally necessary. Ordinary pressure: A listener often hears several talkers, music, echo, and device noise at once, yet needs one person's words or an intelligible mixture. Failed shortcut: Amplifying everything or subtracting an average noise profile also removes quiet consonants and fails when the interferer changes with the speech. Recurring paper move: Use structure that differs between target and interference—time, frequency, space, source identity, or learned speech regularity—to estimate and reconstruct the target. Neighbor test: The mixture contains multiple sources and the system must infer source identity or count.
+
+**What the papers share:** A listener often hears several talkers, music, echo, and device noise at once, yet needs one person's words or an intelligible mixture. The subtheme asks: What ordinary speech pressure is handled by recovering several hidden sources, and what evidence distinguishes it from neighboring pressures?
+**The shortcut they outgrow:** A first attempt would answer the question only with blind source separation, but that shortcut misses the boundary: The mixture may not contain enough information to identify sources uniquely; permutation and source-count assumptions matter.
+**The repeated mechanism:** Across this subtheme, papers make blind source separation, target-conditioned separation explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Separate one stream at a time and let a lightweight authorization block decide when recursion should stop.
+
+#### Concepts inside this boundary
+
+**Blind source separation.** Infer several hidden signals from their mixture using differences in statistics, timing, or spectral structure without receiving isolated sources at test time.
+Boundary: The mixture may not contain enough information to identify sources uniquely; permutation and source-count assumptions matter.
+
+**Target-conditioned separation.** A voice example, enrollment identity, or visual cue tells the separator which source to preserve rather than asking it to output every source.
+Boundary: Conditioning can lock onto the wrong talker or encode identity without guaranteeing intelligible content.
+
+#### Named evidence
+
+- **ReSepNet: A Unified-Light Model for Recursive Speech Separation with Unknown Speaker Count** (`alizadeh25_interspeech`; D3): Separate one stream at a time and let a lightweight authorization block decide when recursion should stop. Evaluation: We demonstrate the effectiveness of ReSepNet on the WSJ0 datasets, achieving state-of-the-art separation performance and accurate speaker count estimation. Limit: The evidence is synthetic WSJ0 mixtures, 8-kHz four-second windows, and a bounded count range; real rooms and end-to-end recognition are not tested. Results are author-reported.
+- **Deep-Simplex Multichannel Speech Separation** (`avidan25_interspeech`; D3): Use a deep-simplex formulation that combines multichannel spatial evidence with a representation able to handle recursive or variable separation. Evaluation: While deep-learning-based models often outperform conventional methods, they require large training datasets and struggle to generalize to new settings. Limit: Performance depends on microphone geometry, room conditions, source count, and the reference metrics; synthetic mixtures may not represent real overlap. No independent reproduction was performed.
+- **Relative cue weighting in multilingual stop voicing production** (`chan25_interspeech`; D3): Measure nine acoustic correlates in Malay, English, and Mandarin speech from early multilingual Malaysians and use random forests to compare cue weighting. Evaluation: The analysis uses 7,504 annotated stop tokens from Malaysian speakers across Malay, English, and Mandarin, with four dominance/repertoire groups. Closure voicing, VOT, burst intensity, vowel duration, and onset f0/F1 slopes are normalized by language and speaker and modeled with random-forest… Limit: The Malaysian speakers, three languages, stop inventory, nine correlates, and random-forest analysis bound generalization to other multilingual populations or contrasts.
+- **NeuroSpex+: Dual-Task Training of Neuro-Guided Speaker Extraction with Speech Envelope and Waveform** (`dasilva25_interspeech`; D3): Train jointly to reconstruct both target waveform and target speech envelope, reinforcing the extraction mask. Evaluation: NeuroSpex+ uses 128 KULeuven speech-EEG trials from 16 subjects in subject-independent 16-fold cross-validation, with 4-second windows yielding 39,984 training and 2,856 validation/test segments per fold. Speaker extraction is evaluated with SDRi, SI-SDRi, PESQ, and STOI; envelope reconstruction… Limit: EEG alignment, subjects, mixtures, signal metric, and lab conditions bound transfer; signal quality is not a demonstrated BCI communication benefit.
+
+**Boundary from neighboring subthemes:** The mixture may not contain enough information to identify sources uniquely; permutation and source-count assumptions matter.; Conditioning can lock onto the wrong talker or encode identity without guaranteeing intelligible content.
+**What this evidence does not establish:** The shared story is supported only by the reviewed papers listed here; D2 entries support the problem and stated method, while D3 entries support the reported mechanism and evaluation. It is not a venue-wide prevalence claim.
+**Open question:** What changes when this move is tested outside the speakers, languages, rooms, devices, or benchmark conditions represented by the 12 D3 paper(s)?
+
+### Using location to select sound
+
+**Baseline link:** medium-and-signal-description
+**Question:** What ordinary speech pressure is handled by using location to select sound, and what evidence distinguishes it from neighboring pressures?
+**Derivation:** Baseline link: Fant pp. 2-4: the technical medium carries the speech wave, and a useful description should preserve task-relevant message information without treating every signal detail as equally necessary. Ordinary pressure: A listener often hears several talkers, music, echo, and device noise at once, yet needs one person's words or an intelligible mixture. Failed shortcut: Amplifying everything or subtracting an average noise profile also removes quiet consonants and fails when the interferer changes with the speech. Recurring paper move: Use structure that differs between target and interference—time, frequency, space, source identity, or learned speech regularity—to estimate and reconstruct the target. Neighbor test: Microphone geometry and direction are the evidence; a single-channel separator has a different limit.
+
+**What the papers share:** A listener often hears several talkers, music, echo, and device noise at once, yet needs one person's words or an intelligible mixture. The subtheme asks: What ordinary speech pressure is handled by using location to select sound, and what evidence distinguishes it from neighboring pressures?
+**The shortcut they outgrow:** A first attempt would answer the question only with spatial filtering, but that shortcut misses the boundary: A single microphone or moving speaker removes the spatial cue the method depends on.
+**The repeated mechanism:** Across this subtheme, papers make spatial filtering explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Make target location explicit in a location-aware target-speaker extraction model.
+
+#### Concepts inside this boundary
+
+**Spatial filtering.** Several microphones provide direction-dependent differences, allowing a filter to reinforce one location and reject others.
+Boundary: A single microphone or moving speaker removes the spatial cue the method depends on.
+
+#### Named evidence
+
+- **Location-Aware Target Speaker Extraction for Hearing Aids** (`alcalapadilla25_interspeech`; D3): Make target location explicit in a location-aware target-speaker extraction model. Evaluation: The evaluation using objective measures demonstrates that our extended model outperforms the baseline system with our novel encoding method achieving superior performance in 16 out of 21 cases. Limit: Array geometry, motion, layout, processing, and intelligibility metric bound transfer.
+- **A Study of Real-world Audio-Visual Corpus Design and Production: A Perspective from MISP Challenges** (`chen25k_interspeech`; D3): Design the corpus around deployment scenarios, synchronized equipment, annotation and alignment procedures, and explicit task requirements, then inspect how those choices shape downstream results. Evaluation: In this context, the MISP challenges were organized at ICASSP 2022, 2023, and 2024, respectively. Limit: Challenge construction, participant selection, language, room/device coverage, and annotation policy bound generalization; downloading or winning on a corpus does not prove deployment realism.
+- **SoundSculpt: Direction and Semantics Driven Ambisonic Target Sound Extraction** (`chen25l_interspeech`; D3): Condition an ambisonic-in/ambisonic-out extractor jointly on target direction and semantic embeddings, and test whether the cues complement one another. Evaluation: Trained and evaluated on synthetic and real ambisonic mixtures, SoundSculpt demonstrates superior performance compared to various signal processing baselines. Limit: Synthetic scene construction, ambisonic order, semantic detector quality, room conditions, and target definition bound transfer; benchmark improvement is not guaranteed perceptual source isolation in arbitrary rooms.
+- **Spatio-Spectral Diarization of Meetings by Combining TDOA-based Segmentation and Speaker Embedding-based Clustering** (`cordlandwehr25_interspeech`; D3): Segment with time-difference-of-arrival cues, cluster speaker embeddings, and combine spatial and spectral evidence. Evaluation: The spatio-spectral diarization pipeline is evaluated on 10-minute LibriCSS eight-speaker meetings with 0–40% overlap and LibriW ASN re-recordings in two rooms with T60 values of 200/800 ms. Four microphones are used for diarization and DER is reported without a forgiveness collar; downstream… Limit: Layouts, datasets, overlap, and spatial cues bound the result; evaluations are author-reported.
+
+**Boundary from neighboring subthemes:** A single microphone or moving speaker removes the spatial cue the method depends on.
+**What this evidence does not establish:** The shared story is supported only by the reviewed papers listed here; D2 entries support the problem and stated method, while D3 entries support the reported mechanism and evaluation. It is not a venue-wide prevalence claim.
+**Open question:** What changes when this move is tested outside the speakers, languages, rooms, devices, or benchmark conditions represented by the 6 D3 paper(s)?
+
+### Canceling copies and filling gaps
+
+**Baseline link:** medium-and-signal-description
+**Question:** What ordinary speech pressure is handled by canceling copies and filling gaps, and what evidence distinguishes it from neighboring pressures?
+**Derivation:** Baseline link: Fant pp. 2-4: the technical medium carries the speech wave, and a useful description should preserve task-relevant message information without treating every signal detail as equally necessary. Ordinary pressure: A listener often hears several talkers, music, echo, and device noise at once, yet needs one person's words or an intelligible mixture. Failed shortcut: Amplifying everything or subtracting an average noise profile also removes quiet consonants and fails when the interferer changes with the speech. Recurring paper move: Use structure that differs between target and interference—time, frequency, space, source identity, or learned speech regularity—to estimate and reconstruct the target. Neighbor test: The unwanted signal is a known delayed copy or missing frame, not an arbitrary background.
+
+**What the papers share:** A listener often hears several talkers, music, echo, and device noise at once, yet needs one person's words or an intelligible mixture. The subtheme asks: What ordinary speech pressure is handled by canceling copies and filling gaps, and what evidence distinguishes it from neighboring pressures?
+**The shortcut they outgrow:** A first attempt would answer the question only with acoustic echo cancellation, but that shortcut misses the boundary: The loudspeaker path changes with movement and delay; an imperfect estimate can cancel near-end speech.
+**The repeated mechanism:** Across this subtheme, papers make acoustic echo cancellation, packet-loss concealment explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Use Neural Principal Probability Components to represent the posterior over possible inpaintings and compare it with dropout sampling.
+
+#### Concepts inside this boundary
+
+**Acoustic echo cancellation.** Use the known far-end playback signal to predict the speaker signal that returns through the room, then subtract that predicted copy.
+Boundary: The loudspeaker path changes with movement and delay; an imperfect estimate can cancel near-end speech.
+
+**Packet-loss concealment.** When transmitted audio frames disappear, infer a short continuation from nearby waveform or speech structure so playback does not break.
+Boundary: Short plausible continuation is not recovery of the original utterance and becomes unsafe over long gaps.
+
+#### Named evidence
+
+- **Discovering Directions of Uncertainty in Speech Inpainting** (`cohen25_interspeech`; D3): Use Neural Principal Probability Components to represent the posterior over possible inpaintings and compare it with dropout sampling. Evaluation: Our empirical results demonstrate that these directions capture diverse and meaningful variations in both speech content and style, while more precisely capturing the predictive error compared to a more costly Bayesian deep learning approach. Limit: The data, posterior approximation, audio examples, and benchmark define the result; calibration and user decision rules remain unresolved.
+- **Extended Loss: Incorporating Long Context into Training Models when using Short Audio Frames** (`dinh25_interspeech`; D3): Keep long-context information in each training batch while producing short-frame outputs, so the model learns continuity without increasing application delay. Evaluation: Most existing works focus on architecture design and ignore practical issues such as the effect of frame length on the performance of end-to-end AEC models. Limit: Echo paths, frame size, batch context, hardware, and evaluation signals bound the claim; continuity on the benchmark is not proof of every room or device.
+- **Rollback Speech: Smart Feedback Prompts for Lost Utterances in Unstable Online Calls** (`quinterovillalobos25_interspeech`; D3): Compare local and remote ASR streams, identify unreceived content after reconnection, extract keywords from the missing segment, and prompt the speaker to repeat only the relevant information. Evaluation: When connection issues cause parts of a speaker’s audio to be lost, the system uses dual automatic speech recognition (ASR) outputs—one local and one remote—to detect which utterances were not received. Limit: Two-person demonstration conditions, simulated network failure, ASR errors, keyword quality, privacy/latency trade-offs, and absence of a listening study bound the result.
+- **TS-URGENet: A Three-stage Universal Robust and Generalizable Speech Enhancement Network** (`rong25_interspeech`; D3): Use a three-stage pipeline: filling, separation, and restoration. Evaluation: TS-URGENet is evaluated on an official validation set and an official blind test set using DNSMOS, NISQA, UTMOS, PESQ/POLQA, ESTOI, SDR, MCD, LSD, SpeechBERTScore, phonetic similarity, speaker similarity, content accuracy, and MOS. Ablations add metric-aware fine-tuning terms and joint-stage… Limit: Challenge conditions, author-reported ranking, and no independent run limit the claim.
+
+**Boundary from neighboring subthemes:** The loudspeaker path changes with movement and delay; an imperfect estimate can cancel near-end speech.; Short plausible continuation is not recovery of the original utterance and becomes unsafe over long gaps.
+**What this evidence does not establish:** The shared story is supported only by the reviewed papers listed here; D2 entries support the problem and stated method, while D3 entries support the reported mechanism and evaluation. It is not a venue-wide prevalence claim.
+**Open question:** What changes when this move is tested outside the speakers, languages, rooms, devices, or benchmark conditions represented by the 5 D3 paper(s)?
+
+### Optimizing what a listener can use
+
+**Baseline link:** medium-and-signal-description
+**Question:** What ordinary speech pressure is handled by optimizing what a listener can use, and what evidence distinguishes it from neighboring pressures?
+**Derivation:** Baseline link: Fant pp. 2-4: the technical medium carries the speech wave, and a useful description should preserve task-relevant message information without treating every signal detail as equally necessary. Ordinary pressure: A listener often hears several talkers, music, echo, and device noise at once, yet needs one person's words or an intelligible mixture. Failed shortcut: Amplifying everything or subtracting an average noise profile also removes quiet consonants and fails when the interferer changes with the speech. Recurring paper move: Use structure that differs between target and interference—time, frequency, space, source identity, or learned speech regularity—to estimate and reconstruct the target. Neighbor test: This boundary is for methods whose target is what a listener can understand or tolerate; it is separate from noise removal, separation, and packet repair, which target a signal or source before the listener judges it.
+
+**What the papers share:** A listener often hears several talkers, music, echo, and device noise at once, yet needs one person's words or an intelligible mixture. The subtheme asks: What ordinary speech pressure is handled by optimizing what a listener can use, and what evidence distinguishes it from neighboring pressures?
+**The shortcut they outgrow:** A first attempt would answer the question only with perceptual enhancement, but that shortcut misses the boundary: A perceptual score can hide distortions important for recognition, speaker identity, or forensic use.
+**The repeated mechanism:** Across this subtheme, papers make perceptual enhancement explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Separate linguistic/prosodic prediction from neural phase reconstruction, then use a neural vocoder and a learned MOSA evaluator.
+
+#### Concepts inside this boundary
+
+**Perceptual enhancement.** Optimize what a listener can understand or tolerate rather than preserving every sample, using intelligibility or quality as the target.
+Boundary: A perceptual score can hide distortions important for recognition, speaker identity, or forensic use.
+
+#### Named evidence
+
+- **MiSTR: Multi-Modal iEEG-to-Speech Synthesis with Transformer-Based Prosody Prediction and Neural Phase Reconstruction** (`alradhi25_interspeech`; D3): Separate linguistic/prosodic prediction from neural phase reconstruction, then use a neural vocoder and a learned MOSA evaluator. Evaluation: Evaluated on a public iEEG dataset, MiSTR achieves state-of-the-art speech intelligibility, with a mean Pearson correlation of 0.91 between reconstructed and original Mel spectrograms, improving over existing neural speech synthesis baselines. Limit: Dataset, subjects, protocol, learned evaluator, and paper-reported comparisons limit clinical claims.
+- **Voice-ENHANCE: Speech Restoration using a Diffusion-based Voice Conversion Framework** (`byun25_interspeech`; D3): Stage a speaker-agnostic generative restoration model first, then use a clean target-speaker embedding to refine the restored speech through a voice-conversion-style diffusion decoder. Evaluation: By employing this two-stage approach, we have achieved speech quality objective metric scores comparable to state-of-the-art (SOTA) methods across multiple datasets. Limit: Training uses a proprietary restoration corpus and evaluation uses small/simulated validation settings; non-intrusive quality proxies do not establish word correctness or speaker-faithful repair. No independent reproduction was performed.
+- **A Deformable Convolution GAN Approach for Speech Dereverberation in Cochlear Implant Users** (`chiang25_interspeech`; D3): Let deformable convolution move its receptive field to the distortion, and evaluate both signal measures and listeners with cochlear implants. Evaluation: We first evaluate the effectiveness of the proposed method on REVERB challenge dataset. Limit: The claim is bounded to REVERB conditions, the tested listeners, and the GAN configuration; broader hearing profiles, rooms, and independent replication remain open.
+- **Modality-Agnostic Multimodal Emotion Recognition using a Contrastive Masked Autoencoder** (`chochlakis25_interspeech`; D3): Align modalities contrastively and use masked reconstruction in one modality-agnostic model, then test unimodal, multimodal, and missing-modality cases. Evaluation: Experimental results on the MSP-Podcast corpus show that our unified model achieves state-of-the-art performance, and improves both unimodal and multimodal baselines by 1-5% relative in respective evaluation metrics with the capability to handle missing modalities for two emotion recognition tasks… Limit: Corpus, emotion labels, missingness pattern, modality quality, and reconstruction objective bound the claim; emotion inference is not guaranteed to be socially reliable.
+
+**Boundary from neighboring subthemes:** A perceptual score can hide distortions important for recognition, speaker identity, or forensic use.
+**What this evidence does not establish:** The shared story is supported only by the reviewed papers listed here; D2 entries support the problem and stated method, while D3 entries support the reported mechanism and evaluation. It is not a venue-wide prevalence claim.
+**Open question:** What changes when this move is tested outside the speakers, languages, rooms, devices, or benchmark conditions represented by the 15 D3 paper(s)?
+
+## From sound to words and structured speech
+
+**Baseline connection:** Fant, Gunnar. Sound, features, and perception. STL-QPSR 8(2-3), 1967, pp. 1-14.
+**Ordinary problem:** Speech has no visible spaces between words, and pronunciation, speed, accent, noise, and hesitation vary even when the intended sentence is the same.
+**Why the first shortcut fails:** Matching each sound to a fixed dictionary pronunciation or treating the utterance as already segmented fails on coarticulation, new words, and disfluency.
+**Recurring move across this theme:** Infer a sequence of linguistic units while allowing uncertainty about boundaries, pronunciation, context, and what should be preserved.
+**Theme limit:** A fluent transcript can be easier to read but less faithful to what was said, including omissions, hesitation, or uncertainty.
+
+### Learning reusable sound units
+
+**Baseline link:** perception-and-message-signal
+**Question:** What ordinary speech pressure is handled by learning reusable sound units, and what evidence distinguishes it from neighboring pressures?
+**Derivation:** Baseline link: Fant pp. 6-7, 11-12: message units and signal segments do not line up one-to-one, so perception uses context, memory, comparison, and prediction. Ordinary pressure: Speech has no visible spaces between words, and pronunciation, speed, accent, noise, and hesitation vary even when the intended sentence is the same. Failed shortcut: Matching each sound to a fixed dictionary pronunciation or treating the utterance as already segmented fails on coarticulation, new words, and disfluency. Recurring paper move: Infer a sequence of linguistic units while allowing uncertainty about boundaries, pronunciation, context, and what should be preserved. Neighbor test: The system first decides what reusable evidence can be extracted from continuous sound.
+
+**What the papers share:** Speech has no visible spaces between words, and pronunciation, speed, accent, noise, and hesitation vary even when the intended sentence is the same. The subtheme asks: What ordinary speech pressure is handled by learning reusable sound units, and what evidence distinguishes it from neighboring pressures?
+**The shortcut they outgrow:** A first attempt would answer the question only with acoustic-to-token mapping, but that shortcut misses the boundary: The highest-scoring sequence may exploit dataset regularities instead of matching the actual speech.
+**The repeated mechanism:** Across this subtheme, papers make acoustic-to-token mapping, learned speech units explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Benchmark CTC, Whisper, and LLM-enhanced decoders, including bridge networks and a Q-Former that connects Whisper acoustic features to Vicuna for context-aware decoding.
+
+#### Concepts inside this boundary
+
+**Acoustic-to-token mapping.** The system scores candidate symbol sequences against the observed sound and chooses or represents alternatives rather than reading words directly from samples.
+Boundary: The highest-scoring sequence may exploit dataset regularities instead of matching the actual speech.
+
+**Learned speech units.** Predicting or grouping parts of unlabeled audio can provide reusable units before a task-specific word recognizer is trained.
+Boundary: A useful pretraining prediction need not produce units aligned with words, phonemes, or human categories.
+
+#### Named evidence
+
+- **Bridging ASR and LLMs for Dysarthric Speech Recognition: Benchmarking Self-Supervised and Generative Approaches** (`aboeitta25_interspeech`; D3): Benchmark CTC, Whisper, and LLM-enhanced decoders, including bridge networks and a Q-Former that connects Whisper acoustic features to Vicuna for context-aware decoding. Evaluation: This study systematically benchmarks these models with different decoding strategies, including CTC, seq2seq, and LLM-enhanced decoding (BART, GPT-2, Vicuna). Limit: Dataset splits, severity labels, model scale, decoding prompts, and WER limit the claim; lower WER does not prove faithful preservation of disfluencies or speaker intent.
+- **HuBERT-VIC: Improving Noise-Robust Automatic Speech Recognition of Speech Foundation Model via Variance-Invariance-Covariance Regularization** (`ahn25_interspeech`; D3): Add variance, invariance, and covariance constraints during HuBERT pretraining. Evaluation: Noise robustness in speech foundation models (SFMs) has been a critical challenge, as most models are primarily trained on clean data and experience performance degradation when the models are exposed to noisy speech. Limit: MUSAN, SNR choices, HuBERT, and LibriSpeech bound the result; real conversational noise is not established.
+- **Analysis of Semantic and Acoustic Token Variability Across Speech, Music, and Audio Domains** (`ashihara25_interspeech`; D3): Compare acoustic codec tokens and semantic speech tokens across domains using rank-frequency distributions, perplexity, and token usage patterns. Evaluation: Using up to 1,000 held-out samples per speech, music, and sound domain, the study compares semantic and acoustic token distributions from HuBERT, EnCodec, and DAC. It evaluates rank-frequency/power-law behavior, N-gram language-model perplexity, normalized cross-entropy predictability, and… Limit: The analysis supports representation observations, not a universal optimal token design or downstream task improvement.
+- **From Weak Labels to Strong Results: Utilizing 5,000 Hours of Noisy Classroom Transcripts with Minimal Accurate Data** (`attia25_interspeech`; D3): Pretrain on weak transcripts, then fine-tune on accurate data so broad coverage supplies structure and gold data corrects its errors. Evaluation: Synthetic corruption experiments fine-tune Robust-wav2vec2 with deletion, misspelling, sound-alike, repetition, and timestamp corruption at 25/50/75/100% mixed with clean transcripts, then fine-tune with 10 minutes of precise data. A real-world NCTE classroom case uses 5,235 hours, 17 gold… Limit: Classroom domain, weak-label generation, gold-data size, transcript quality, and WER protocol bound the result; weak supervision can still reproduce systematic omissions or speaker bias.
+
+**Boundary from neighboring subthemes:** The highest-scoring sequence may exploit dataset regularities instead of matching the actual speech.; A useful pretraining prediction need not produce units aligned with words, phonemes, or human categories.
+**What this evidence does not establish:** The shared story is supported only by the reviewed papers listed here; D2 entries support the problem and stated method, while D3 entries support the reported mechanism and evaluation. It is not a venue-wide prevalence claim.
+**Open question:** What changes when this move is tested outside the speakers, languages, rooms, devices, or benchmark conditions represented by the 14 D3 paper(s)?
+
+### Allowing different realizations of words
+
+**Baseline link:** perception-and-message-signal
+**Question:** What ordinary speech pressure is handled by allowing different realizations of words, and what evidence distinguishes it from neighboring pressures?
+**Derivation:** Baseline link: Fant pp. 6-7, 11-12: message units and signal segments do not line up one-to-one, so perception uses context, memory, comparison, and prediction. Ordinary pressure: Speech has no visible spaces between words, and pronunciation, speed, accent, noise, and hesitation vary even when the intended sentence is the same. Failed shortcut: Matching each sound to a fixed dictionary pronunciation or treating the utterance as already segmented fails on coarticulation, new words, and disfluency. Recurring paper move: Infer a sequence of linguistic units while allowing uncertainty about boundaries, pronunciation, context, and what should be preserved. Neighbor test: The same intended unit has multiple acoustic paths; this is distinct from learning a unit representation.
+
+**What the papers share:** Speech has no visible spaces between words, and pronunciation, speed, accent, noise, and hesitation vary even when the intended sentence is the same. The subtheme asks: What ordinary speech pressure is handled by allowing different realizations of words, and what evidence distinguishes it from neighboring pressures?
+**The shortcut they outgrow:** A first attempt would answer the question only with pronunciation variation, but that shortcut misses the boundary: Adding variants without evidence can increase confusions and may encode an accent as an error.
+**The repeated mechanism:** Across this subtheme, papers make pronunciation variation explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Keep several small accent-specific adapters and let the system combine them, with or without knowing the accent.
+
+#### Concepts inside this boundary
+
+**Pronunciation variation.** The same word can have reductions, substitutions, or accent-specific realizations, so recognition must allow more than one acoustic path.
+Boundary: Adding variants without evidence can increase confusions and may encode an accent as an error.
+
+#### Named evidence
+
+- **Mixture of LoRA Experts for Low-Resourced Multi-Accent Automatic Speech Recognition** (`bagat25_interspeech`; D3): Keep several small accent-specific adapters and let the system combine them, with or without knowing the accent. Evaluation: Our experiments, conducted using Whisper on the L2-ARCTIC corpus, demonstrate significant improvements in Word Error Rate compared to regular LoRA and full fine-tuning when the accent is unknown. Limit: The result is tied to L2-ARCTIC, its accent set, Whisper, and routing assumptions; spontaneous speech and accents outside the corpus remain open.
+- **CHSER: A Dataset and Case Study on Generative Speech Error Correction for Child ASR** (`balajishankar25_interspeech`; D3): Create a large hypothesis-to-reference dataset for children and learn a generative correction model whose errors can be inspected by type. Evaluation: Automatic Speech Recognition (ASR) systems struggle with child speech due to its distinct acoustic and linguistic variability and limited availability of child speech datasets, leading to high transcription error rates. Limit: The corpus, languages, ASR hypotheses, and correction model bound the result; preserving clinically meaningful disfluencies outside these settings remains open.
+- **SardinianVoxes: A Speech Recognition Dataset for the Sardinian Languages** (`carta25_interspeech`; D3): Build a reproducible audio-text corpus with explicit variety annotation and evaluate both pretrained and fine-tuned recognizers across varieties. Evaluation: First, we present the design and implementation of a reproducible pipeline that led to the preparation of SardinianVoxes, an audio-text dataset comprising approximately 170 hours of transcribed speech, carefully annotated to reflect the internal linguistic diversity of Sardinian. Limit: The reported resource, varieties, transcription quality, and benchmark models bound the claim; future collection and independent use are still needed.
+- **Using Neurogram Similarity Index Measure (NSIM) to Model Hearing Loss and Cochlear Neural Degeneration** (`cheema25_interspeech`; D3): Compare modeled auditory-nerve neurograms with a Neurogram Similarity Index and relate the measure to phoneme recognition and simulated cochlear neural degeneration. Evaluation: Specifically study 1, shows that NSIM can be used to map performance of individuals with hearing loss on phoneme recognition task with reasonable accuracy. Limit: Auditory-periphery model, task, simulations, participant data, and mapping assumptions bound clinical interpretation; a candidate biomarker is not a validated diagnosis.
+
+**Boundary from neighboring subthemes:** Adding variants without evidence can increase confusions and may encode an accent as an error.
+**What this evidence does not establish:** The shared story is supported only by the reviewed papers listed here; D2 entries support the problem and stated method, while D3 entries support the reported mechanism and evaluation. It is not a venue-wide prevalence claim.
+**Open question:** What changes when this move is tested outside the speakers, languages, rooms, devices, or benchmark conditions represented by the 5 D3 paper(s)?
+
+### Locating units in time
+
+**Baseline link:** perception-and-message-signal
+**Question:** What ordinary speech pressure is handled by locating units in time, and what evidence distinguishes it from neighboring pressures?
+**Derivation:** Baseline link: Fant pp. 6-7, 11-12: message units and signal segments do not line up one-to-one, so perception uses context, memory, comparison, and prediction. Ordinary pressure: Speech has no visible spaces between words, and pronunciation, speed, accent, noise, and hesitation vary even when the intended sentence is the same. Failed shortcut: Matching each sound to a fixed dictionary pronunciation or treating the utterance as already segmented fails on coarticulation, new words, and disfluency. Recurring paper move: Infer a sequence of linguistic units while allowing uncertainty about boundaries, pronunciation, context, and what should be preserved. Neighbor test: The output must preserve or locate timing, hesitation, repair, or sequence boundaries.
+
+**What the papers share:** Speech has no visible spaces between words, and pronunciation, speed, accent, noise, and hesitation vary even when the intended sentence is the same. The subtheme asks: What ordinary speech pressure is handled by locating units in time, and what evidence distinguishes it from neighboring pressures?
+**The shortcut they outgrow:** A first attempt would answer the question only with temporal alignment, but that shortcut misses the boundary: Forced alignment assumes the transcript is correct and can conceal recognition errors.
+**The repeated mechanism:** Across this subtheme, papers make temporal alignment, disfluency and event preservation explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Fine-tune Whisper on DementiaBank and an in-house dataset, explicitly evaluating filler inclusion and F1 as well as WER.
+
+#### Concepts inside this boundary
+
+**Temporal alignment.** Align an audio timeline with words, phones, or labels so duration and position can be measured rather than treating the utterance as an unordered bag.
+Boundary: Forced alignment assumes the transcript is correct and can conceal recognition errors.
+
+**Disfluency and event preservation.** Represent pauses, repetitions, repairs, laughter, and overlap when those events are part of the communication or the clinical signal.
+Boundary: Removing them may improve readability while destroying evidence needed for conversation analysis or diagnosis.
+
+#### Named evidence
+
+- **WhisperD: Dementia Speech Recognition and Filler Word Detection with Whisper** (`akinrintoyo25_interspeech`; D3): Fine-tune Whisper on DementiaBank and an in-house dataset, explicitly evaluating filler inclusion and F1 as well as WER. Evaluation: In this work, we fine-tune Whisper with the open-source dementia speech dataset (DementiaBank) and our in-house dataset to improve its word error rate (WER). Limit: The dataset is 11.39 hours, some audio is mumbled or unintelligible, and diagnostic or clinical benefit is not established by ASR scores alone.
+- **ASR-based segmentation for the analysis of larger child-speech datasets: Performance evaluation on vowels from Australian-English speaking children aged 4 to 11 years** (`cai25_interspeech`; D3): Compare human-human reliability with manual-versus-Montreal-Forced-Aligner boundaries across child ages and inspect systematic discrepancies. Evaluation: Annotation of segment boundaries in child speech presents a persistent challenge, particularly with large-scale datasets. Limit: The evidence is tied to the tested vowels, ages, language variety, and annotators; it supports semi-automatic caution rather than universal aligner failure.
+- **Song Form-aware Full-Song Text-to-Lyrics Generation with Multi-Level Granularity Syllable Count Control** (`chae25_interspeech`; D3): Generate complete lyrics conditioned on text and song form while controlling syllable counts at word, phrase, line, and paragraph levels. Evaluation: Song-form-aware lyric generation is evaluated on approximately 340K training, 18K validation, and 10K evaluation samples from Genius Song Lyrics after toxicity filtering. Perplexity, syllable-count deviation, syllable-count error rate, and BERT-S similarity are compared across full, paragraph,… Limit: Text prompts, song forms, syllable-count rules, dataset construction, and evaluation criteria bound the claim; syllable fit is not the same as singability, musicality, or authorship.
+- **A semi-automatic pipeline for transcribing and segmenting child speech** (`christodoulidou25_interspeech`; D3): Correct the transcript before forced alignment and adapt the acoustic model toward child speech, then compare automatic measurements with manual annotations. Evaluation: This study evaluates both automated transcription (WhisperX) and forced alignment (MFA) in developing a semi-automated pipeline for obtaining acoustic vowel measures from field recordings from 275 children speaking a non-standard, English dialect, Scottish English. Limit: The 275-child Scottish-English field corpus, manual reference quality, recording conditions, and selected vowel measures bound transfer; alignment quality is not a complete child-speech recognizer evaluation.
+
+**Boundary from neighboring subthemes:** Forced alignment assumes the transcript is correct and can conceal recognition errors.; Removing them may improve readability while destroying evidence needed for conversation analysis or diagnosis.
+**What this evidence does not establish:** The shared story is supported only by the reviewed papers listed here; D2 entries support the problem and stated method, while D3 entries support the reported mechanism and evaluation. It is not a venue-wide prevalence claim.
+**Open question:** What changes when this move is tested outside the speakers, languages, rooms, devices, or benchmark conditions represented by the 13 D3 paper(s)?
+
+### Using context without inventing words
+
+**Baseline link:** perception-and-message-signal
+**Question:** What ordinary speech pressure is handled by using context without inventing words, and what evidence distinguishes it from neighboring pressures?
+**Derivation:** Baseline link: Fant pp. 6-7, 11-12: message units and signal segments do not line up one-to-one, so perception uses context, memory, comparison, and prediction. Ordinary pressure: Speech has no visible spaces between words, and pronunciation, speed, accent, noise, and hesitation vary even when the intended sentence is the same. Failed shortcut: Matching each sound to a fixed dictionary pronunciation or treating the utterance as already segmented fails on coarticulation, new words, and disfluency. Recurring paper move: Infer a sequence of linguistic units while allowing uncertainty about boundaries, pronunciation, context, and what should be preserved. Neighbor test: Context, speaker evidence, and new words resolve ambiguity but can override what was actually said.
+
+**What the papers share:** Speech has no visible spaces between words, and pronunciation, speed, accent, noise, and hesitation vary even when the intended sentence is the same. The subtheme asks: What ordinary speech pressure is handled by using context without inventing words, and what evidence distinguishes it from neighboring pressures?
+**The shortcut they outgrow:** A first attempt would answer the question only with long-context decoding, but that shortcut misses the boundary: Context can override a rare but correct word, especially when the language model has a strong prior.
+**The repeated mechanism:** Across this subtheme, papers make long-context decoding, domain and context biasing, speaker adaptation, open-vocabulary recognition explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Adapt the audio side using representative target-domain sound examples and test transfer across environments.
+
+#### Concepts inside this boundary
+
+**Long-context decoding.** Use words and turns before and after a sound to resolve locally ambiguous acoustics, such as homophones or clipped endings.
+Boundary: Context can override a rare but correct word, especially when the language model has a strong prior.
+
+**Domain and context biasing.** Use the meeting topic, contact list, or application vocabulary to raise plausible rare words without changing the audio itself.
+Boundary: A biased vocabulary can turn uncertainty into confident but context-shaped substitutions.
+
+**Speaker adaptation.** Adjust the acoustic or decoding assumptions to a talker's voice, speaking rate, or pronunciation using a small amount of evidence.
+Boundary: Adaptation can overfit a short sample and degrade when the talker changes state or the enrollment is wrong.
+
+**Open-vocabulary recognition.** Handle names, code-switching, jargon, and newly encountered words without requiring a fixed closed list.
+Boundary: Open vocabulary expands recall but makes spelling, segmentation, and evaluation less settled.
+
+#### Named evidence
+
+- **Domain Adaptation Method and Modality Gap Impact in Audio-Text Models for Prototypical Sound Classification** (`acevedo25_interspeech`; D3): Adapt the audio side using representative target-domain sound examples and test transfer across environments. Evaluation: Our domain adaptation technique enhances accuracy across various backgrounds and SNR conditions. Limit: Sound set, target examples, class construction, and reported accuracy limit open-world claims.
+- **Spot and Merge: A Hybrid Context Biasing Approach for Rare Word and Out of Vocabulary Recognition** (`agrawal25b_interspeech`; D3): Use LoRA adaptation and a spot-and-merge method that detects bias phrases in cross-attention and merges them with ASR output. Evaluation: Unlike existing methods, our approach maintains strong performance even with larger biasing lists, achieving a 1.0% absolute word error rate (WER) reduction on LibriSpeech. Limit: The in-house data are not independently available in this atlas, and future multilingual/low-resource extension remains open.
+- **Continuous Learning for Children's ASR: Overcoming Catastrophic Forgetting with Elastic Weight Consolidation and Synaptic Intelligence** (`ahadzi25_interspeech`; D3): Protect parameters important for earlier batches with EWC or SI, and compare online checkpoint-selection policies. Evaluation: Using a custom protocol on the MyST corpus, tailored to the online learning setting, we achieve relative word error rate (WER) reductions of 5.21 % with EWC and 4.36 % with SI, compared to the fine-tuning baseline. Limit: The protocol is simulated from MyST, uses English child speech and Whisper-small, and treats parameter importance as a proxy rather than a privacy guarantee.
+- **NGPU-LM: GPU-Accelerated N-Gram Language Model for Context-Biasing in Greedy ASR Decoding** (`bataev25_interspeech`; D3): Represent n-gram transitions for parallel GPU lookup and inject their scores into greedy decoding for CTC, transducer, and attention models. Evaluation: The proposed approach can eliminate more than 50% of the accuracy gap between greedy and beam search for out-of-domain scenarios while avoiding significant slowdown caused by beam search. Limit: The results depend on tested ASR architectures, domains, GPU implementation, and author-reported measurements; deployment energy and other hardware remain open.
+
+**Boundary from neighboring subthemes:** Context can override a rare but correct word, especially when the language model has a strong prior.; A biased vocabulary can turn uncertainty into confident but context-shaped substitutions.; Adaptation can overfit a short sample and degrade when the talker changes state or the enrollment is wrong.; Open vocabulary expands recall but makes spelling, segmentation, and evaluation less settled.
+**What this evidence does not establish:** The shared story is supported only by the reviewed papers listed here; D2 entries support the problem and stated method, while D3 entries support the reported mechanism and evaluation. It is not a venue-wide prevalence claim.
+**Open question:** What changes when this move is tested outside the speakers, languages, rooms, devices, or benchmark conditions represented by the 23 D3 paper(s)?
+
+## From spoken form to meaning and coordinated action
+
+**Baseline connection:** Fant, Gunnar. Sound, features, and perception. STL-QPSR 8(2-3), 1967, pp. 1-14.
+**Ordinary problem:** The same words can request, question, joke, refuse, or warn depending on prosody, shared history, timing, and the surrounding situation.
+**Why the first shortcut fails:** A transcript-only system treats words as the whole message and misses intent, reference, turn structure, and what is appropriate to do next.
+**Recurring move across this theme:** Combine linguistic content with speaker, discourse history, prosody, visual or environmental context, and an explicit action or response target.
+**Theme limit:** More context can resolve ambiguity but can also leak private information, over-interpret the speaker, or make a system confidently act on a wrong inference.
+
+### Meaning carried by how speech sounds
+
+**Baseline link:** intended-message-and-received-message
+**Question:** What ordinary speech pressure is handled by meaning carried by how speech sounds, and what evidence distinguishes it from neighboring pressures?
+**Derivation:** Baseline link: Fant pp. 2, 11-12: the chain begins with intended meaning and ends with a received message; intermediate acoustic cues are evidence, not the message itself. Ordinary pressure: The same words can request, question, joke, refuse, or warn depending on prosody, shared history, timing, and the surrounding situation. Failed shortcut: A transcript-only system treats words as the whole message and misses intent, reference, turn structure, and what is appropriate to do next. Recurring paper move: Combine linguistic content with speaker, discourse history, prosody, visual or environmental context, and an explicit action or response target. Neighbor test: This boundary covers information carried by pitch, timing, loudness, voice quality, or effort beyond the words; it is separate from dialogue action because the cue is in how an utterance sounds, not in the conversational state alone.
+
+**What the papers share:** The same words can request, question, joke, refuse, or warn depending on prosody, shared history, timing, and the surrounding situation. The subtheme asks: What ordinary speech pressure is handled by meaning carried by how speech sounds, and what evidence distinguishes it from neighboring pressures?
+**The shortcut they outgrow:** A first attempt would answer the question only with prosodic meaning, but that shortcut misses the boundary: Prosody is language- and speaker-dependent; a pitch pattern is not a universal emotion label.
+**The repeated mechanism:** Across this subtheme, papers make prosodic meaning, paralinguistic state explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Compare a robot and computer interface on the same emotion task, including sensitivity, duration, and participant preference.
+
+#### Concepts inside this boundary
+
+**Prosodic meaning.** Pitch movement, timing, stress, and pauses can mark questions, contrast, turn completion, urgency, or attitude.
+Boundary: Prosody is language- and speaker-dependent; a pitch pattern is not a universal emotion label.
+
+**Paralinguistic state.** Voice properties can provide clues about emotion, fatigue, engagement, or health that are not the literal linguistic content.
+Boundary: A correlational acoustic cue is not proof of an internal state or a reliable diagnosis.
+
+#### Named evidence
+
+- **Robot-assisted Recognition of Vocal Emotions in Pseudospeech for Cochlear Implanted Adolescents** (`araizaillan25_interspeech`; D3): Compare a robot and computer interface on the same emotion task, including sensitivity, duration, and participant preference. Evaluation: As regular monitoring could be burdensome, we propose a NAO robot as a test interface. Limit: The participants, robot, pseudospeech task, and small sample bound the result; long-term adherence and general hearing-device populations remain open.
+- **Coping with segmental–prosodic incongruity in spoken word recognition in Japanese** (`ariga25_interspeech`; D3): Create controlled incongruent words and use repetition priming and response timing to test each cue. Evaluation: Thirty-two Tokyo Japanese listeners perform a 96-trial cross-modal lexical-decision experiment with congruent, prosodically mispronounced, segmentally mispronounced, and baseline primes. Reaction times are modeled with linear mixed effects over participants and items after accuracy/outlier… Limit: Japanese materials, pitch-accent system, participants, and laboratory task limit cross-language generalization.
+- **Stress in Spoken and Whistled Greek** (`batchelderschwab25_interspeech`; D3): Compare matched minimal pairs in spoken and whistled Greek and identify which vowel and stress contrasts are carried by F0, intensity, or neither. Evaluation: This paper presents experimental results testing vowels of a register of whistled Greek called Sfyria. Limit: The Sfyria community, participants, register, minimal pairs, and acoustic cues bound the result; a ceiling interpretation and cross-language generalization remain open.
+- **Heart Rate as a Proxy Measure to Assess Human Confidence in Spoken Speech** (`battula25_interspeech`; D3): Infer heart rate from speech-derived breathing patterns, then examine whether the inferred heart rate separates confident and non-confident speakers. Evaluation: Human confidence reflects a positive self-perception and balanced autonomic nervous system response. Limit: The datasets, Indian demographic, 41-speaker collection, clinical and wearable references, confidence labels, and unreported general accuracy bound the claim; correlation is not a validated psychological diagnosis.
+
+**Boundary from neighboring subthemes:** Prosody is language- and speaker-dependent; a pitch pattern is not a universal emotion label.; A correlational acoustic cue is not proof of an internal state or a reliable diagnosis.
+**What this evidence does not establish:** The shared story is supported only by the reviewed papers listed here; D2 entries support the problem and stated method, while D3 entries support the reported mechanism and evaluation. It is not a venue-wide prevalence claim.
+**Open question:** What changes when this move is tested outside the speakers, languages, rooms, devices, or benchmark conditions represented by the 15 D3 paper(s)?
+
+### Inferring what a speaker is trying to do
+
+**Baseline link:** intended-message-and-received-message
+**Question:** What ordinary speech pressure is handled by inferring what a speaker is trying to do, and what evidence distinguishes it from neighboring pressures?
+**Derivation:** Baseline link: Fant pp. 2, 11-12: the chain begins with intended meaning and ends with a received message; intermediate acoustic cues are evidence, not the message itself. Ordinary pressure: The same words can request, question, joke, refuse, or warn depending on prosody, shared history, timing, and the surrounding situation. Failed shortcut: A transcript-only system treats words as the whole message and misses intent, reference, turn structure, and what is appropriate to do next. Recurring paper move: Combine linguistic content with speaker, discourse history, prosody, visual or environmental context, and an explicit action or response target. Neighbor test: The system tracks goals, commitments, and situation rather than only classifying acoustic style.
+
+**What the papers share:** The same words can request, question, joke, refuse, or warn depending on prosody, shared history, timing, and the surrounding situation. The subtheme asks: What ordinary speech pressure is handled by inferring what a speaker is trying to do, and what evidence distinguishes it from neighboring pressures?
+**The shortcut they outgrow:** A first attempt would answer the question only with intent in context, but that shortcut misses the boundary: Intent labels often reflect annotator interpretation and may erase ambiguity or culturally different readings.
+**The repeated mechanism:** Across this subtheme, papers make intent in context, dialogue state explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Evaluate large language models on spoken-interaction reasoning with explicit contextual knowledge and prompt structure.
+
+#### Concepts inside this boundary
+
+**Intent in context.** Infer what the speaker is trying to accomplish from words plus the situation and prior turns, then keep uncertainty when several intents fit.
+Boundary: Intent labels often reflect annotator interpretation and may erase ambiguity or culturally different readings.
+
+**Dialogue state.** Track unresolved questions, commitments, entities, and prior actions so a response is connected to the conversation rather than only the last sentence.
+Boundary: A stored state can be stale, incorrectly inferred, or sensitive, and the system may not know when to discard it.
+
+#### Named evidence
+
+- **Investigating the Reasoning Abilities of Large Language Models for Understanding Spoken Language in Interpersonal Interactions** (`aggarwal25_interspeech`; D3): Evaluate large language models on spoken-interaction reasoning with explicit contextual knowledge and prompt structure. Evaluation: VetTrain interview data are evaluated with quantitative and qualitative spoken-interaction reasoning tests across language-model families and scales. Prompt ablations add domain knowledge and interaction context, and answer-quality comparisons separate the contribution of each information source;… Limit: Interview distribution, transcript quality, subjective scoring, prompt sensitivity, and model-family coverage limit claims about general conversational understanding.
+- **Spoken Language Understanding on Unseen Tasks With In-Context Learning** (`agrawal25_interspeech`; D3): Use symbol-based and randomized-label fine-tuning with a SALMONN speech-text model to reduce dependence on task-specific label semantics. Evaluation: However, out-of-the-box, our evaluations indicate that the zero/few-shot performance of prominent open-source speech-text LLMs on SLU tasks are not up to the mark. Limit: Fine-tuning used batch size one and the task/model/data setup is narrower than general spoken reasoning.
+- **Chain-of-Thought Training for Open E2E Spoken Dialogue Systems** (`arora25_interspeech`; D3): Train an end-to-end spoken dialogue model with intermediate reasoning or planning traces so acoustic and conversational evidence can influence the response. Evaluation: Our results demonstrate that our approach is highly compute-efficient, enabling the successful training of E2E spoken dialogue systems on publicly available human-human conversation datasets—even with as little as 300 hours of data, such as Switchboard. Limit: Reasoning traces are supervision artifacts and do not prove faithful internal reasoning; task distribution, annotation quality, and evaluation subjectivity constrain the claim. No independent reproduction was performed.
+- **Analysis of ABC Frontend Audio Systems for the NIST-SRE24** (`barahona25_interspeech`; D3): Analyze several frontend families and pooling choices under the NIST SRE24 fixed and open conditions, including multilingual training data. Evaluation: In open condition, we train on VoxBlink2 dataset, containing 110 thousand speakers across multiple languages. Limit: NIST protocol, telephone channel, language mix, training-data access, and calibration limit claims beyond the benchmark.
+
+**Boundary from neighboring subthemes:** Intent labels often reflect annotator interpretation and may erase ambiguity or culturally different readings.; A stored state can be stale, incorrectly inferred, or sensitive, and the system may not know when to discard it.
+**What this evidence does not establish:** The shared story is supported only by the reviewed papers listed here; D2 entries support the problem and stated method, while D3 entries support the reported mechanism and evaluation. It is not a venue-wide prevalence claim.
+**Open question:** What changes when this move is tested outside the speakers, languages, rooms, devices, or benchmark conditions represented by the 13 D3 paper(s)?
+
+### Coordinating participation under uncertainty
+
+**Baseline link:** intended-message-and-received-message
+**Question:** What ordinary speech pressure is handled by coordinating participation under uncertainty, and what evidence distinguishes it from neighboring pressures?
+**Derivation:** Baseline link: Fant pp. 2, 11-12: the chain begins with intended meaning and ends with a received message; intermediate acoustic cues are evidence, not the message itself. Ordinary pressure: The same words can request, question, joke, refuse, or warn depending on prosody, shared history, timing, and the surrounding situation. Failed shortcut: A transcript-only system treats words as the whole message and misses intent, reference, turn structure, and what is appropriate to do next. Recurring paper move: Combine linguistic content with speaker, discourse history, prosody, visual or environmental context, and an explicit action or response target. Neighbor test: The problem is when to speak, yield, interrupt, or ask for clarification.
+
+**What the papers share:** The same words can request, question, joke, refuse, or warn depending on prosody, shared history, timing, and the surrounding situation. The subtheme asks: What ordinary speech pressure is handled by coordinating participation under uncertainty, and what evidence distinguishes it from neighboring pressures?
+**The shortcut they outgrow:** A first attempt would answer the question only with turn-boundary prediction, but that shortcut misses the boundary: A pause is not always a turn end; cultures, speakers, and task types change timing conventions.
+**The repeated mechanism:** Across this subtheme, papers make turn-boundary prediction, repair and clarification explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Prompt an LLM with a coordinated strategy for proactive behavior, personalization, and aizuchi backchannels, then measure both conversation and participant outcomes.
+
+#### Concepts inside this boundary
+
+**Turn-boundary prediction.** Predict whether a speaker is continuing, yielding, or likely to stop so a system can respond without cutting them off.
+Boundary: A pause is not always a turn end; cultures, speakers, and task types change timing conventions.
+
+**Repair and clarification.** When recognition or understanding is uncertain, ask a targeted question or offer alternatives instead of silently continuing.
+Boundary: A clarification costs time and can burden users if uncertainty estimates are poorly calibrated.
+
+#### Named evidence
+
+- **Rapport-Building Dialogue Strategies for Deeper Connection: Integrating Proactive Behavior, Personalization, and Aizuchi Backchannels** (`baihaqi25_interspeech`; D3): Prompt an LLM with a coordinated strategy for proactive behavior, personalization, and aizuchi backchannels, then measure both conversation and participant outcomes. Evaluation: This study integrates these behaviors into a rapport-building dialogue strategy using the CO-STAR and few-shot frameworks to prompt large language models (LLMs) within a human-robot interaction. Limit: The study is bounded to the robot, prompts, participants, and short interaction protocol; long-term trust, cultural variation, and causal attribution remain open.
+- **``Dyadosyncrasy'', Idiosyncrasy and Demographic Factors in Turn-Taking** (`cavalcanti25_interspeech`; D3): Measure transition-floor offset across dyads and model individual, demographic, topic, and pair-specific effects hierarchically. Evaluation: This study examines how demographic (sex, age, education) and individual factors shape turn-taking using a large dataset of US English conversations (Fisher). Limit: English strangers, sparse older data, topic mix, and TFO limit familiar-relationship and full-dialogue claims.
+- **Multimodal Dynamics of Hand Gestures and Pauses in Multiparty Interactions** (`charuau25_interspeech`; D3): Measure gesture category, pause type, duration, and onset/offset timing together in annotated audiovisual dialogues. Evaluation: Using the MULTISIMO corpus, which includes annotated audio-visual recordings of collaborative dialogues, we analysed, for each category of gesture, their distribution, pause duration, and the timing of gesture onset and offset relative to the pause. Limit: Corpus annotation, participant population, gesture categories, and observational design bound the result; causal cognitive interpretations remain hypotheses.
+- **Triadic Multi-party Voice Activity Projection for Turn-taking in Spoken Dialogue Systems** (`elmers25_interspeech`; D3): Project future voice activity jointly for all three speakers using short time bins, then compare models trained on spontaneous and attentive triadic Japanese conversation. Evaluation: Turn-taking is a fundamental component of spoken dialogue, however conventional studies mostly involve dyadic settings. Limit: The data are Japanese triadic discussions with controlled recording and a limited number of participants; the reduced two-bin horizon does not cover the full dyadic two-second state space. Acoustic-only prediction does not establish successful spoken-agent behavior, and no independent reproduction…
+
+**Boundary from neighboring subthemes:** A pause is not always a turn end; cultures, speakers, and task types change timing conventions.; A clarification costs time and can burden users if uncertainty estimates are poorly calibrated.
+**What this evidence does not establish:** The shared story is supported only by the reviewed papers listed here; D2 entries support the problem and stated method, while D3 entries support the reported mechanism and evaluation. It is not a venue-wide prevalence claim.
+**Open question:** What changes when this move is tested outside the speakers, languages, rooms, devices, or benchmark conditions represented by the 10 D3 paper(s)?
+
+### Connecting language to a shared world
+
+**Baseline link:** intended-message-and-received-message
+**Question:** What ordinary speech pressure is handled by connecting language to a shared world, and what evidence distinguishes it from neighboring pressures?
+**Derivation:** Baseline link: Fant pp. 2, 11-12: the chain begins with intended meaning and ends with a received message; intermediate acoustic cues are evidence, not the message itself. Ordinary pressure: The same words can request, question, joke, refuse, or warn depending on prosody, shared history, timing, and the surrounding situation. Failed shortcut: A transcript-only system treats words as the whole message and misses intent, reference, turn structure, and what is appropriate to do next. Recurring paper move: Combine linguistic content with speaker, discourse history, prosody, visual or environmental context, and an explicit action or response target. Neighbor test: A phrase must identify a referent or authorized action and remain corrigible through feedback.
+
+**What the papers share:** The same words can request, question, joke, refuse, or warn depending on prosody, shared history, timing, and the surrounding situation. The subtheme asks: What ordinary speech pressure is handled by connecting language to a shared world, and what evidence distinguishes it from neighboring pressures?
+**The shortcut they outgrow:** A first attempt would answer the question only with referential grounding, but that shortcut misses the boundary: Words alone may underdetermine the referent; a model can infer a plausible object without actually observing it.
+**The repeated mechanism:** Across this subtheme, papers make referential grounding, speech act, interactional feedback explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Use an LLM to plan context and select reusable primitive actions that can be adapted across agents.
+
+#### Concepts inside this boundary
+
+**Referential grounding.** Use the scene, shared task, or prior mention to determine which object, person, or event a phrase denotes.
+Boundary: Words alone may underdetermine the referent; a model can infer a plausible object without actually observing it.
+
+**Speech act.** Distinguish information from a request, command, permission, or commitment because the same proposition can require different responses.
+Boundary: Classifying an act does not grant authority to execute it.
+
+**Interactional feedback.** Let user corrections, confirmations, and response outcomes update the system's interpretation during the interaction.
+Boundary: Feedback can be sparse, ambiguous, or shaped by users adapting to the system's mistakes.
+
+#### Named evidence
+
+- **Co-Speech Motion for Virtual Agents in Dialogue Using LLM-Driven Primitive Action Selection** (`baihaqi25b_interspeech`; D3): Use an LLM to plan context and select reusable primitive actions that can be adapted across agents. Evaluation: Leveraging the power of Large Language Models (LLMs) for contextual planning and understanding, we propose an LLM-based motion control model that uses a primitive action selection strategy. Limit: Full mechanism, baselines, human judgments, and cross-embodiment transfer require the paper's detailed evaluation; the result is not a claim of human-like motion.
+- **Fact-Controlled Diagnosis of Hallucinations in Medical Text Summarization** (`bn25_interspeech`; D3): Construct a fact-controlled leave-one-out dataset and a natural hallucination dataset, then compare detection methods in the clinical setting. Evaluation: In this paper, we conduct an evaluation of hallucination detection methods in the medical domain, and construct two datasets for the purpose: A fact-controlled Leave-N-out dataset - generated by systematically removing facts from source dialogues to induce hallucinated content in summaries; and a… Limit: Synthetic deletion, clinical language, annotation, summarizer, and detector thresholds limit generalization; detection is not prevention or clinical validation.
+- **From Words to Waves: Analyzing Concept Formation in Speech and Text-Based Foundation Models** (`ersoy25_interspeech`; D3): Use latent concept analysis to compare speech-only, text-only, and joint foundation models and ask which conceptual structures are shared or modality-specific. Evaluation: To support reproducibility, we have released our code along with a curated audio version of the SST-2 dataset for public access. Limit: Model choice, layer, analysis method, prompts, and human interpretation bound the claim; a latent cluster is not automatically a human concept.
+- **AC/DC: LLM-based Audio Comprehension via Dialogue Continuation** (`fujita25b_interspeech`; D3): Train the model to continue a dialogue after an audio-triggered caption, making the target a conversational response. Evaluation: As a result, our model enables zero-shot instruction-following capability without multitask instruction tuning, even trained solely on audio captioning datasets. Limit: Generated captions, benchmarks, and an LLM judge define the evidence; human usefulness for deaf or hard-of-hearing users is not established.
+
+**Boundary from neighboring subthemes:** Words alone may underdetermine the referent; a model can infer a plausible object without actually observing it.; Classifying an act does not grant authority to execute it.; Feedback can be sparse, ambiguous, or shaped by users adapting to the system's mistakes.
+**What this evidence does not establish:** The shared story is supported only by the reviewed papers listed here; D2 entries support the problem and stated method, while D3 entries support the reported mechanism and evaluation. It is not a venue-wide prevalence claim.
+**Open question:** What changes when this move is tested outside the speakers, languages, rooms, devices, or benchmark conditions represented by the 22 D3 paper(s)?
+
+## Creating speech while keeping the right things fixed
+
+**Baseline connection:** Fant, Gunnar. Sound, features, and perception. STL-QPSR 8(2-3), 1967, pp. 1-14.
+**Ordinary problem:** A useful synthetic voice must say the requested content, sound like the intended speaker or style, and remain understandable as it changes over time.
+**Why the first shortcut fails:** Copying a recording or predicting samples directly entangles words with identity, pitch, rhythm, and recording conditions, making controlled change difficult.
+**Recurring move across this theme:** Represent or condition distinct factors, generate a time-consistent waveform or acoustic sequence, and evaluate each requested property separately.
+**Theme limit:** Factor separation is rarely perfect: changing identity can change content, style controls can sound artificial, and a plausible voice can be misused.
+
+### Turning language into a timed speech plan
+
+**Baseline link:** production-stages
+**Question:** What ordinary speech pressure is handled by turning language into a timed speech plan, and what evidence distinguishes it from neighboring pressures?
+**Derivation:** Baseline link: Fant pp. 2-3: production passes through message, sentence form, motor activity, and acoustic processes; a generator must keep these layers aligned. Ordinary pressure: A useful synthetic voice must say the requested content, sound like the intended speaker or style, and remain understandable as it changes over time. Failed shortcut: Copying a recording or predicting samples directly entangles words with identity, pitch, rhythm, and recording conditions, making controlled change difficult. Recurring paper move: Represent or condition distinct factors, generate a time-consistent waveform or acoustic sequence, and evaluate each requested property separately. Neighbor test: This boundary covers the step from intended text or meaning to pronunciation, duration, pitch targets, and sequence; it is separate from waveform generation, which realizes an already chosen plan as samples.
+
+**What the papers share:** A useful synthetic voice must say the requested content, sound like the intended speaker or style, and remain understandable as it changes over time. The subtheme asks: What ordinary speech pressure is handled by turning language into a timed speech plan, and what evidence distinguishes it from neighboring pressures?
+**The shortcut they outgrow:** A first attempt would answer the question only with text-to-speech planning, but that shortcut misses the boundary: Text does not specify one correct prosody, and a fluent output can still mispronounce names or sound unnatural.
+**The repeated mechanism:** Across this subtheme, papers make text-to-speech planning explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Transfer pronunciation knowledge from a large multi-accent frontend and measure how much target-accent data is needed as source accents vary in similarity.
+
+#### Concepts inside this boundary
+
+**Text-to-speech planning.** Choose pronunciation, durations, pitch targets, and acoustic details before or while producing the waveform so written content becomes speakable.
+Boundary: Text does not specify one correct prosody, and a fluent output can still mispronounce names or sound unnatural.
+
+#### Named evidence
+
+- **Non-Standard Accent TTS Support via Large Multi-Accent Frontend Pronunciation Knowledge Transfer** (`berger25_interspeech`; D3): Transfer pronunciation knowledge from a large multi-accent frontend and measure how much target-accent data is needed as source accents vary in similarity. Evaluation: The multi-accent pronunciation frontend is tested on EDI and LDS1 accents against uni-accent baselines using word-boundary, prosodic-boundary, and word accuracy for seen and unseen tokens. The paper reports multi-accent accuracy near the uni-accent baseline, with seen-word scores above 99% and… Limit: Accuracy is reported for the studied accents, frontend labels, and datasets; transfer to other languages, voices, and synthesis backends remains unestablished.
+- **Accelerating Diffusion-based Text-to-Speech Model Trainingwith Dual Modality Alignment** (`choi25c_interspeech`; D3): Align hidden states using both text-guided and speech-guided objectives so the diffusion process starts with more useful semantic structure. Evaluation: The diffusion TTS model is trained on approximately 585 hours of multi-speaker LibriTTS and evaluated on the 2.2-hour LibriSpeech-PC test-clean set. WER measures intelligibility and speaker similarity is measured against the F5-TTS Small baseline; the paper reports comparisons for the… Limit: The text/speech encoders, datasets, diffusion schedule, and quality measures bound the claim; hardware cost and new languages remain open.
+- **Scheduled Interleaved Speech-Text Training for Speech-to-Speech Translation with LLMs** (`futami25_interspeech`; D3): Interleave aligned text and speech units during training, then gradually reduce the text proportion so the model moves toward speech output. Evaluation: We conduct experimental evaluations by fine-tuning LLaMA3.2-1B for S2ST on the CVSS dataset. Limit: CVSS, unitizer, schedule, model size, and languages bound the result; naturalness, speaker identity, and unseen domains need separate tests.
+- **Code Mix TTS: An Approach to Infer Human Like Speech for Multi-Lingual Input Texts** (`gourav25_interspeech`; D3): Infer code-mixed speech from multilingual text without requiring additional training data or fine-tuning. Evaluation: We have come a far way in terms of producing high quality, human like audios for given input texts using TTS or Text to Speech Systems. Limit: The paper's method and evaluation details are bounded by the selected TTS system, languages, and automated metric; human listening, pronunciation accuracy, and unseen language pairs remain open.
+
+**Boundary from neighboring subthemes:** Text does not specify one correct prosody, and a fluent output can still mispronounce names or sound unnatural.
+**What this evidence does not establish:** The shared story is supported only by the reviewed papers listed here; D2 entries support the problem and stated method, while D3 entries support the reported mechanism and evaluation. It is not a venue-wide prevalence claim.
+**Open question:** What changes when this move is tested outside the speakers, languages, rooms, devices, or benchmark conditions represented by the 10 D3 paper(s)?
+
+### Producing or compressing audible detail
+
+**Baseline link:** production-stages
+**Question:** What ordinary speech pressure is handled by producing or compressing audible detail, and what evidence distinguishes it from neighboring pressures?
+**Derivation:** Baseline link: Fant pp. 2-3: production passes through message, sentence form, motor activity, and acoustic processes; a generator must keep these layers aligned. Ordinary pressure: A useful synthetic voice must say the requested content, sound like the intended speaker or style, and remain understandable as it changes over time. Failed shortcut: Copying a recording or predicting samples directly entangles words with identity, pitch, rhythm, and recording conditions, making controlled change difficult. Recurring paper move: Represent or condition distinct factors, generate a time-consistent waveform or acoustic sequence, and evaluate each requested property separately. Neighbor test: The issue is sample-level detail and the tradeoff between faithful content and natural sound.
+
+**What the papers share:** A useful synthetic voice must say the requested content, sound like the intended speaker or style, and remain understandable as it changes over time. The subtheme asks: What ordinary speech pressure is handled by producing or compressing audible detail, and what evidence distinguishes it from neighboring pressures?
+**The shortcut they outgrow:** A first attempt would answer the question only with waveform synthesis, but that shortcut misses the boundary: Sample-level realism does not guarantee correct words, stable identity, or natural long-range timing.
+**The repeated mechanism:** Across this subtheme, papers make waveform synthesis, intelligibility versus naturalness explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Train in two stages: first use a mirror architecture to stabilize the codebook, then switch to a stronger non-mirror decoder while preserving the learned quantizer.
+
+#### Concepts inside this boundary
+
+**Waveform synthesis.** Generate fine-grained samples conditioned on a coarser acoustic plan, reconstructing the periodic and noisy detail listeners hear as voice.
+Boundary: Sample-level realism does not guarantee correct words, stable identity, or natural long-range timing.
+
+**Intelligibility versus naturalness.** Treat ease of understanding and human-likeness as related but distinct targets that need separate tests.
+Boundary: A single listener score can conflate content accuracy, recording quality, and preference.
+
+#### Named evidence
+
+- **DS-Codec: Dual-Stage Training with Mirror-to-NonMirror Architecture Switching for Speech Codec** (`chen25p_interspeech`; D3): Train in two stages: first use a mirror architecture to stabilize the codebook, then switch to a stronger non-mirror decoder while preserving the learned quantizer. Evaluation: We conduct extensive experiments and ablation studies to evaluate the effectiveness of our training strategy and compare the performance of the two architectures. Limit: The speech data, bitrate/downsampling setting, discriminators, metrics, and baselines bound the result; reconstruction quality does not by itself prove usefulness for every TTS or speech-language-model task.
+- **AF-Vocoder: Artifact-Free Neural Vocoder with Global Artifact Filter** (`chen25q_interspeech`; D3): Add a learnable frequency-domain artifact filter that imposes explicit control over which spectral components pass. Evaluation: In this paper, we propose AF-Vocoder, a novel GAN-based vocoder that can synthesize high-fidelity speech with fewer artifacts. Limit: Datasets, speaker coverage, artifacts, and listening protocol define the claim; real-time hardware cost and unseen languages remain open.
+- **Vocoder-Projected Feature Discriminator** (`kaneko25b_interspeech`; D3): Project generated acoustic features through a vocoder and discriminate in a vocoder-feature space, retaining waveform-relevant feedback with lower time-domain overhead. Evaluation: Vocoder-Projected Feature Discriminator is evaluated on VCTK and LibriTTS using UTMOS, DNSMOS, Whisper-large-v3 CER, Resemblyzer SECS, training time, and peak memory. Ablations vary discriminator upsampling depth, pretraining/freezing, and alternative acceleration strategies; the main subjective… Limit: Vocoder choice, feature projection, training compute, VC data, and perceptual evaluation determine the result; a reported quality gain does not establish universal TTS or VC superiority.
+- **BitTTS: Highly Compact Text-to-Speech Using 1.58-bit Quantization and Weight Indexing** (`kawamura25_interspeech`; D3): Train with quantization present and pack groups of ternary-like weights into compact integer indices so the model learns to tolerate the reduced precision and storage format. Evaluation: In this case, most of 32-bit model parameters are quantized to ternary values {-1, 0, 1}. Limit: Hardware, model architecture, bitrate/precision, speech data, and quality metrics bound the result; smaller storage does not automatically mean lower latency or energy on every device.
+
+**Boundary from neighboring subthemes:** Sample-level realism does not guarantee correct words, stable identity, or natural long-range timing.; A single listener score can conflate content accuracy, recording quality, and preference.
+**What this evidence does not establish:** The shared story is supported only by the reviewed papers listed here; D2 entries support the problem and stated method, while D3 entries support the reported mechanism and evaluation. It is not a venue-wide prevalence claim.
+**Open question:** What changes when this move is tested outside the speakers, languages, rooms, devices, or benchmark conditions represented by the 8 D3 paper(s)?
+
+### Changing who sounds like the speaker
+
+**Baseline link:** production-stages
+**Question:** What ordinary speech pressure is handled by changing who sounds like the speaker, and what evidence distinguishes it from neighboring pressures?
+**Derivation:** Baseline link: Fant pp. 2-3: production passes through message, sentence form, motor activity, and acoustic processes; a generator must keep these layers aligned. Ordinary pressure: A useful synthetic voice must say the requested content, sound like the intended speaker or style, and remain understandable as it changes over time. Failed shortcut: Copying a recording or predicting samples directly entangles words with identity, pitch, rhythm, and recording conditions, making controlled change difficult. Recurring paper move: Represent or condition distinct factors, generate a time-consistent waveform or acoustic sequence, and evaluate each requested property separately. Neighbor test: This boundary covers changing or measuring who the voice sounds like while keeping the message stable; it is separate from expression control, which changes emotion or style, and from content planning, which changes the speech plan.
+
+**What the papers share:** A useful synthetic voice must say the requested content, sound like the intended speaker or style, and remain understandable as it changes over time. The subtheme asks: What ordinary speech pressure is handled by changing who sounds like the speaker, and what evidence distinguishes it from neighboring pressures?
+**The shortcut they outgrow:** A first attempt would answer the question only with speaker identity representation, but that shortcut misses the boundary: A short recording can encode noise, emotion, or demographic stereotypes rather than stable identity.
+**The repeated mechanism:** Across this subtheme, papers make speaker identity representation, voice conversion, unseen-speaker synthesis explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Use voice conversion as augmentation to reduce speaker bias, then evaluate on a newly collected real-world cross-domain set.
+
+#### Concepts inside this boundary
+
+**Speaker identity representation.** Capture stable voice traits that let a system preserve or imitate who is speaking across different words and sessions.
+Boundary: A short recording can encode noise, emotion, or demographic stereotypes rather than stable identity.
+
+**Voice conversion.** Transform the acoustic realization toward a target voice while trying to preserve linguistic timing and content.
+Boundary: Conversion may leak source identity, distort pronunciation, or require target-speaker data unavailable in practice.
+
+**Unseen-speaker synthesis.** Use a voice description or brief enrollment to synthesize a speaker not represented by a dedicated model.
+Boundary: Similarity on a benchmark does not establish consent, identity security, or robustness to unusual voices.
+
+#### Named evidence
+
+- **Voice Conversion Improves Cross-Domain Robustness  for Spoken Arabic Dialect Identification** (`abdullah25_interspeech`; D3): Use voice conversion as augmentation to reduce speaker bias, then evaluate on a newly collected real-world cross-domain set. Evaluation: Evaluated on a newly collected real-world test set spanning four different domains, our approach yields consistent improvements of up to +34.1% in accuracy across domains. Limit: The result is specific to Arabic dialect identification and the released artifacts require separate access and execution checks.
+- **VoxAging: Continuously Tracking Speaker Aging with a Large-Scale Longitudinal Dataset in English and Mandarin** (`ai25_interspeech`; D3): Build a longitudinal English/Mandarin resource and measure how aging changes verification evidence. Evaluation: VoxAging contains 293 speakers with longitudinal English/Mandarin recordings spanning up to about 17 years. Speaker-aging experiments compare ECAPA and ERes2Net verification systems using EER on held-out speaker-recognition conditions and embedding cosine similarity across recordings, with… Limit: Speaker coverage, language balance, recording channels, gated data, and longitudinal confounding limit causal claims about biological aging.
+- **Towards Better Disentanglement in Non-Autoregressive Zero-Shot Expressive Voice Conversion** (`akti25_interspeech`; D3): Improve disentanglement in non-autoregressive zero-shot expressive voice conversion. Evaluation: Evaluation uses ESD, Expresso, and LibriTTS test sets. Objective measures are Whisper-Large-3 WER, Resemblyzer speaker-embedding cosine similarity, Emotion2Vec+ emotion similarity and classification accuracy, and speaker-verification EER; subjective measures are 1–5 naturalness,… Limit: Enrollment, labels, languages, metrics, and unseen-speaker protocol bound transfer.
+- **REWIND: Speech Time Reversal for Enhancing Speaker Representations in Diffusion-based Voice Conversion** (`biyani25_interspeech`; D3): Use time-reversed speech as an augmentation: it removes much of the linguistic structure while retaining speaker-related cues, then use the resulting representations in diffusion-based voice conversion. Evaluation: The effectiveness of the proposed approach is evaluated in the context of state-of-the-art diffusion-based VC models. Limit: Time reversal may remove more or less information depending on language and model; the experiments do not establish universal speaker/language disentanglement or human identity judgments across populations. No independent reproduction was performed.
+
+**Boundary from neighboring subthemes:** A short recording can encode noise, emotion, or demographic stereotypes rather than stable identity.; Conversion may leak source identity, distort pronunciation, or require target-speaker data unavailable in practice.; Similarity on a benchmark does not establish consent, identity security, or robustness to unusual voices.
+**What this evidence does not establish:** The shared story is supported only by the reviewed papers listed here; D2 entries support the problem and stated method, while D3 entries support the reported mechanism and evaluation. It is not a venue-wide prevalence claim.
+**Open question:** What changes when this move is tested outside the speakers, languages, rooms, devices, or benchmark conditions represented by the 18 D3 paper(s)?
+
+### Changing style, timing, and response behavior
+
+**Baseline link:** production-stages
+**Question:** What ordinary speech pressure is handled by changing style, timing, and response behavior, and what evidence distinguishes it from neighboring pressures?
+**Derivation:** Baseline link: Fant pp. 2-3: production passes through message, sentence form, motor activity, and acoustic processes; a generator must keep these layers aligned. Ordinary pressure: A useful synthetic voice must say the requested content, sound like the intended speaker or style, and remain understandable as it changes over time. Failed shortcut: Copying a recording or predicting samples directly entangles words with identity, pitch, rhythm, and recording conditions, making controlled change difficult. Recurring paper move: Represent or condition distinct factors, generate a time-consistent waveform or acoustic sequence, and evaluate each requested property separately. Neighbor test: The system must obey expressive controls quickly without breaking continuity or meaning.
+
+**What the papers share:** A useful synthetic voice must say the requested content, sound like the intended speaker or style, and remain understandable as it changes over time. The subtheme asks: What ordinary speech pressure is handled by changing style, timing, and response behavior, and what evidence distinguishes it from neighboring pressures?
+**The shortcut they outgrow:** A first attempt would answer the question only with prosody control, but that shortcut misses the boundary: Independent controls can conflict; expressive variation may change perceived meaning or naturalness.
+**The repeated mechanism:** Across this subtheme, papers make prosody control, style and emotion control, interactive generation latency explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Collect separate listener judgments of naturalness and similarity and examine which prosodic properties, including dynamic pitch variation, explain the gap.
+
+#### Concepts inside this boundary
+
+**Prosody control.** Set or predict pitch, duration, energy, and pauses so the same words can sound questioning, emphatic, calm, or urgent.
+Boundary: Independent controls can conflict; expressive variation may change perceived meaning or naturalness.
+
+**Style and emotion control.** Condition generation on a speaking style or affective target while preserving the requested content.
+Boundary: Emotion categories are culturally and contextually unstable, and a label may not describe what listeners perceive.
+
+**Interactive generation latency.** Produce speech quickly enough for a conversation while preserving continuity and allowing interruption or correction.
+Boundary: Low latency can require shorter context, lower quality, or speculative output that must later be repaired.
+
+#### Named evidence
+
+- **Finding the Human Voice in AI: Insights on the Perception of AI-Voice Clones from Naturalness and Similarity Ratings** (`bakkouche25_interspeech`; D3): Collect separate listener judgments of naturalness and similarity and examine which prosodic properties, including dynamic pitch variation, explain the gap. Evaluation: To address this, we conducted two behavioural tasks, evaluating listeners’ ratings of naturalness and similarity for human speech, three AI voice clones (ElevenLabs, StyleTTS-2, XTTS-v2), and a 30% F0 variation condition. Limit: Listener population, prompts, voices, and rating protocol limit generalization; perceptual association does not establish that changing F0 alone fixes naturalness. No independent reproduction was performed.
+- **Fine-Tuning Text-to-Speech Diffusion Models Using Reinforcement Learning with Human Feedback** (`chen25b_interspeech`; D3): Use the diffusion loss as a regularizer inside policy optimization so naturalness improvement remains tied to learned speech structure. Evaluation: We evaluate DLPO on WaveGrad 2, a non-autoregressive diffusion-based TTS model. Limit: The evidence uses WaveGrad 2 and selected reward predictors; predicted metrics and pairwise preference do not establish broad real-time deployment.
+- **DiEmo-TTS: Disentangled Emotion Representations via Self-Supervised Distillation for Cross-Speaker Emotion Transfer in Text-to-Speech** (`cho25b_interspeech`; D3): Distill speaker-independent emotion representations with cluster sampling, perturbation, and separate style/identity conditioning. Evaluation: Cross-speaker emotion transfer is evaluated with five-point naturalness, speaker-similarity, and emotion-similarity MOS, Whisper-Large WER/CER, WavLM speaker cosine similarity, and Emotion2Vec emotion similarity. Twenty participants rate two random samples per emotion for each evaluation speaker;… Limit: Pretrained encoders, datasets, subjective measures, and cross-speaker coverage bound the conclusion.
+- **VibE-SVC: Vibrato Extraction with High-frequency F0 Contour for Singing Voice Conversion** (`choi25e_interspeech`; D3): Separate high-frequency F0 variation with a wavelet transform, then explicitly transfer and control the vibrato component during conversion. Evaluation: Both subjective and objective evaluations confirm high-quality conversion. Limit: Singers, songs, vibrato ranges, extraction errors, and evaluation conditions limit generalization; explicit control does not guarantee a preferred artistic result.
+
+**Boundary from neighboring subthemes:** Independent controls can conflict; expressive variation may change perceived meaning or naturalness.; Emotion categories are culturally and contextually unstable, and a label may not describe what listeners perceive.; Low latency can require shorter context, lower quality, or speculative output that must later be repaired.
+**What this evidence does not establish:** The shared story is supported only by the reviewed papers listed here; D2 entries support the problem and stated method, while D3 entries support the reported mechanism and evaluation. It is not a venue-wide prevalence claim.
+**Open question:** What changes when this move is tested outside the speakers, languages, rooms, devices, or benchmark conditions represented by the 20 D3 paper(s)?
+
+## Speakers as changing people, not nuisance variables
+
+**Baseline connection:** Fant, Gunnar. Sound, features, and perception. STL-QPSR 8(2-3), 1967, pp. 1-14.
+**Ordinary problem:** Voice depends on anatomy, age, health, emotion, language history, social setting, and equipment; these differences affect both communication and measurement.
+**Why the first shortcut fails:** Treating variation as noise makes systems work best for a narrow population and can turn a health or identity signal into an unwanted demographic shortcut.
+**Recurring move across this theme:** Measure which variation is task-relevant, model it explicitly when appropriate, and test performance and meaning across people and conditions.
+**Theme limit:** A factor that helps prediction may be sensitive, confounded, or harmful to expose; personalization can improve access while increasing privacy risk.
+
+### Identity, age, and changing voice
+
+**Baseline link:** signal-message-separation
+**Question:** What ordinary speech pressure is handled by identity, age, and changing voice, and what evidence distinguishes it from neighboring pressures?
+**Derivation:** Baseline link: Fant pp. 6-7: physical signal parameters and message-level distinctions are related but not identical; this is the baseline for testing when speaker variation is useful evidence or nuisance. Ordinary pressure: Voice depends on anatomy, age, health, emotion, language history, social setting, and equipment; these differences affect both communication and measurement. Failed shortcut: Treating variation as noise makes systems work best for a narrow population and can turn a health or identity signal into an unwanted demographic shortcut. Recurring paper move: Measure which variation is task-relevant, model it explicitly when appropriate, and test performance and meaning across people and conditions. Neighbor test: The evidence concerns who is speaking and how that person's voice changes across time and state.
+
+**What the papers share:** Voice depends on anatomy, age, health, emotion, language history, social setting, and equipment; these differences affect both communication and measurement. The subtheme asks: What ordinary speech pressure is handled by identity, age, and changing voice, and what evidence distinguishes it from neighboring pressures?
+**The shortcut they outgrow:** A first attempt would answer the question only with speaker verification, but that shortcut misses the boundary: Similarity scores are not identity proof and depend on enrollment quality, population, and decision threshold.
+**The repeated mechanism:** Across this subtheme, papers make speaker verification, age and developmental speech, within-speaker state variation explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Initialize an interactive phonetic agent model with real speech from two Southern Italian varieties and simulate metaphony, then compare diphthongization and categorical contrasts.
+
+#### Concepts inside this boundary
+
+**Speaker verification.** Decide whether two recordings plausibly came from the same person under channel, time, and content variation.
+Boundary: Similarity scores are not identity proof and depend on enrollment quality, population, and decision threshold.
+
+**Age and developmental speech.** Children and older adults differ in anatomy, articulation, vocabulary, and interaction needs, so adult data is not a neutral reference.
+Boundary: Age prediction or age normalization can encode stereotypes and may not address the actual recognition failure.
+
+**Within-speaker state variation.** The same person's voice shifts with fatigue, emotion, health, audience, and speaking effort; robust systems must not confuse state with identity.
+Boundary: There is no universal stable identity vector independent of context.
+
+#### Named evidence
+
+- **Agent-based modelling, sound change, and metaphony in Southern Italian varieties of Italo-Romance.** (`bressensdorf25_interspeech`; D3): Initialize an interactive phonetic agent model with real speech from two Southern Italian varieties and simulate metaphony, then compare diphthongization and categorical contrasts. Evaluation: The study uses an agent-based computational model to test the hypothesis that contact between two dialects that are conservative and innovative as far as a sound change is concerned produces an asymmetric shift of the conservative speakers towards the innovative ones. Limit: The two dialects, 54 speakers collapsed to 13 agents, selected words, F1 trajectory representation, and model assumptions limit generalization to other communities or changes.
+- **Pitch Target Realization in Putonghua Tone Production of Children from Dialect-Speaking Regions** (`cao25_interspeech`; D3): Analyze on-target and off-target realization as interacting targets shaped by physiology and dialect experience. Evaluation: This study examines the production of Putonghua tones from both on- and off-target perspectives, using data from 139 children (aged 35–71 months) with Changli dialect exposure, drawn from the CL-CHILD corpus. Limit: The age range, dialect exposure, corpus, and tone inventory bound the developmental claim; longitudinal and other language environments remain open.
+- **Towards Robust Speaker Recognition against Intrinsic Variation with Foundation Model Few-shot Tuning and Effective Speech Synthesis** (`chen25_interspeech`; D3): Use few-shot foundation-model tuning at enrollment and generate style-rich synthetic speech to expose time-varying and emotional conditions, with losses focused on unknown outliers. Evaluation: Experiments demonstrate strong generalization across multiple time-varying and emotionally rich benchmarks. Limit: The claim is bounded to the synthetic-data choices, foundation model, enrollment protocol, and benchmarks; real aging trajectories, spoofing attacks, and fairness across groups remain open.
+- **Pushing the Frontiers of Self-Distillation Prototypes Network with Dimension Regularization and Score Normalization** (`chen25f_interspeech`; D3): Add dimension regularization to a self-distillation prototype network and use score normalization to close the gap toward supervised verification. Evaluation: SDPN with dimension regularization and score normalization sets a new state-of-the-art on the VoxCeleb1 speaker verification evaluation benchmark, achieving Equal Error Rate 1.29%, 1.60%, and 2.80% for trial VoxCeleb1-{O,E,H} respectively. Limit: VoxCeleb1, trial conditions, unlabeled-training setup, score normalization, and EER bound the claim; benchmark gains do not establish fairness or robustness in deployment.
+
+**Boundary from neighboring subthemes:** Similarity scores are not identity proof and depend on enrollment quality, population, and decision threshold.; Age prediction or age normalization can encode stereotypes and may not address the actual recognition failure.; There is no universal stable identity vector independent of context.
+**What this evidence does not establish:** The shared story is supported only by the reviewed papers listed here; D2 entries support the problem and stated method, while D3 entries support the reported mechanism and evaluation. It is not a venue-wide prevalence claim.
+**Open question:** What changes when this move is tested outside the speakers, languages, rooms, devices, or benchmark conditions represented by the 18 D3 paper(s)?
+
+### Speech measurements associated with health
+
+**Baseline link:** signal-message-separation
+**Question:** What ordinary speech pressure is handled by speech measurements associated with health, and what evidence distinguishes it from neighboring pressures?
+**Derivation:** Baseline link: Fant pp. 6-7: physical signal parameters and message-level distinctions are related but not identical; this is the baseline for testing when speaker variation is useful evidence or nuisance. Ordinary pressure: Voice depends on anatomy, age, health, emotion, language history, social setting, and equipment; these differences affect both communication and measurement. Failed shortcut: Treating variation as noise makes systems work best for a narrow population and can turn a health or identity signal into an unwanted demographic shortcut. Recurring paper move: Measure which variation is task-relevant, model it explicitly when appropriate, and test performance and meaning across people and conditions. Neighbor test: A measurable speech property is evaluated as a possible health signal, with clinical limits kept explicit.
+
+**What the papers share:** Voice depends on anatomy, age, health, emotion, language history, social setting, and equipment; these differences affect both communication and measurement. The subtheme asks: What ordinary speech pressure is handled by speech measurements associated with health, and what evidence distinguishes it from neighboring pressures?
+**The shortcut they outgrow:** A first attempt would answer the question only with clinical speech marker, but that shortcut misses the boundary: Association with a diagnosis is not clinical validity, causation, or permission to make a medical decision.
+**The repeated mechanism:** Across this subtheme, papers make clinical speech marker explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Use acoustic-to-articulatory inversion to obtain interpretable movement variables, then test subtype differences with a mixed-effects statistical model across children and target sounds.
+
+#### Concepts inside this boundary
+
+**Clinical speech marker.** Measure a reproducible speech property associated with a clinical condition or progression, while separating it from age, device, and language effects.
+Boundary: Association with a diagnosis is not clinical validity, causation, or permission to make a medical decision.
+
+#### Named evidence
+
+- **Subtyping Speech Errors in Childhood Speech Sound Disorders with Acoustic-to-Articulatory Speech Inversion** (`benway25_interspeech`; D3): Use acoustic-to-articulatory inversion to obtain interpretable movement variables, then test subtype differences with a mixed-effects statistical model across children and target sounds. Evaluation: Speech inversion holds much potential to describe speech errors in childhood speech sound disorders. Limit: The study is limited to selected American-English child error types and an inversion model; clinical interpretability is demonstrated for these comparisons, not established for all disorders or speakers. No independent reproduction was performed.
+- **Acoustic and Linguistic Biomarkers for Cognitive Impairment Detection from Speech** (`botelho25_interspeech`; D3): Combine acoustic, linguistic, knowledge-based, and neural representations, selecting complementary class-aware systems. Evaluation: Based on our previous experience on the use of speech and text-derived biomarkers for disease detection, we evaluate here the use of knowledge-based acoustic and text-based feature sets, as well as LLM-based macro-descriptors, and multiple neural representations (e.g., Longformer, ECAPA-TDNN, and… Limit: Challenge data, demographic overlap, and missing metadata limit the claim; this is not clinical validation.
+- **Pitfalls and Limits in Automatic Dementia Assessment** (`braun25_interspeech`; D3): Inspect the automated Syndrom-Kurz-Test pipeline by subgroup, transcription quality, item type, and fallback behavior rather than relying on one aggregate number. Evaluation: Current work on speech-based dementia assessment focuses on either feature extraction to predict assessment scales, or on the automation of existing test procedures. Limit: This is an analysis of one standardized assessment and its data; it warns against clinical claims, not a universal ranking of dementia-screening systems.
+- **Perception of Emotional Speech by Individuals with High Borderline Personality Features** (`chen25c_interspeech`; D3): Present Mandarin emotional speech at controlled intensities and compare emotion-identification accuracy and confusions for participants with high and low borderline-personality features. Evaluation: High-BPF participants showed lower accuracy in identifying neutral speech, more frequently misidentifying it as other emotions, and were less accurate in identifying high-intensity happy speech, tending to misclassify it as neutral. Limit: Mandarin synthetic stimuli, university participants, self-report grouping, F0 manipulation, and perceptual task bound generalization; the findings do not diagnose BPD or explain all underlying causes.
+
+**Boundary from neighboring subthemes:** Association with a diagnosis is not clinical validity, causation, or permission to make a medical decision.
+**What this evidence does not establish:** The shared story is supported only by the reviewed papers listed here; D2 entries support the problem and stated method, while D3 entries support the reported mechanism and evaluation. It is not a venue-wide prevalence claim.
+**Open question:** What changes when this move is tested outside the speakers, languages, rooms, devices, or benchmark conditions represented by the 10 D3 paper(s)?
+
+### Communicating with atypical or impaired speech
+
+**Baseline link:** signal-message-separation
+**Question:** What ordinary speech pressure is handled by communicating with atypical or impaired speech, and what evidence distinguishes it from neighboring pressures?
+**Derivation:** Baseline link: Fant pp. 6-7: physical signal parameters and message-level distinctions are related but not identical; this is the baseline for testing when speaker variation is useful evidence or nuisance. Ordinary pressure: Voice depends on anatomy, age, health, emotion, language history, social setting, and equipment; these differences affect both communication and measurement. Failed shortcut: Treating variation as noise makes systems work best for a narrow population and can turn a health or identity signal into an unwanted demographic shortcut. Recurring paper move: Measure which variation is task-relevant, model it explicitly when appropriate, and test performance and meaning across people and conditions. Neighbor test: The goal is recognition or expression for people whose speech does not match majority training data.
+
+**What the papers share:** Voice depends on anatomy, age, health, emotion, language history, social setting, and equipment; these differences affect both communication and measurement. The subtheme asks: What ordinary speech pressure is handled by communicating with atypical or impaired speech, and what evidence distinguishes it from neighboring pressures?
+**The shortcut they outgrow:** A first attempt would answer the question only with atypical articulation and dysarthria, but that shortcut misses the boundary: Small datasets and speaker-specific patterns make broad claims especially fragile.
+**The repeated mechanism:** Across this subtheme, papers make atypical articulation and dysarthria, augmentative communication explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Continue self-supervised pre-training on pathological speech, use etiology-specific codebooks, and select external examples by semantic similarity.
+
+#### Concepts inside this boundary
+
+**Atypical articulation and dysarthria.** Recognize or synthesize speech whose timing, precision, or coordination differs from training norms instead of treating it as mere noise.
+Boundary: Small datasets and speaker-specific patterns make broad claims especially fragile.
+
+**Augmentative communication.** Use residual vocal, muscular, visual, or typed signals to help a person express intended language or control a device.
+Boundary: A system should preserve the person's authorship and offer correction, not silently decide what they meant.
+
+#### Named evidence
+
+- **Pathology-Aware Speech Encoding and Data Augmentation for Dysarthric Speech Recognition** (`baumann25_interspeech`; D3): Continue self-supervised pre-training on pathological speech, use etiology-specific codebooks, and select external examples by semantic similarity. Evaluation: We achieve a 13.2% relative word error rate (WER) improvement using the pathology-aware speech encoder with etiology-specific continued pre-training. Limit: Etiologies, corpora, similarity model, and ratios bound the claim; improvements differ by condition and synthetic speech may not preserve clinical variation.
+- **EEG-based Voice Conversion : Hearing the Voice of Your Brain** (`geng25b_interspeech`; D3): Align EEG features with speaker voice features and use a speech-trained zero-shot voice-conversion model. Evaluation: The connection between Electroencephalography (EEG) signals and human voice has gained significant attention, with studies demonstrating the feasibility of speech synthesis from EEG data. Limit: Single words, EEG setup, target voices, and small dataset define the claim; intelligibility, privacy, consent, and real assistive communication remain open.
+- **A Silent Speech Decoding System from EEG and EMG with Heterogenous Electrode Configurations** (`inoue25b_interspeech`; D3): Handle heterogeneous electrodes and use multitask training for cross-subject and cross-language calibration. Evaluation: Silent speech decoding, which performs unvocalized human speech recognition from electroencephalography/electromyography (EEG/EMG), increases accessibility for speech-impaired humans. Limit: Patient count, setup, calibration, and author-reported results limit clinical deployment claims.
+- **EEG-based Speech Decoding Based on Multi-mode Joint Modeling** (`li25j_interspeech`; D3): Train one model across modes with dynamic masking, then use its learned channel relevance to make a smaller single-mode decoder. Evaluation: The accuracy improvements and channel selection capability demonstrate the effectiveness of the proposed joint modeling framework. Limit: The four-vowel task, participants, EEG hardware, mode definitions, and accuracy metric bound the result; it does not demonstrate unrestricted communication or clinical readiness.
+
+**Boundary from neighboring subthemes:** Small datasets and speaker-specific patterns make broad claims especially fragile.; A system should preserve the person's authorship and offer correction, not silently decide what they meant.
+**What this evidence does not establish:** The shared story is supported only by the reviewed papers listed here; D2 entries support the problem and stated method, while D3 entries support the reported mechanism and evaluation. It is not a venue-wide prevalence claim.
+**Open question:** What changes when this move is tested outside the speakers, languages, rooms, devices, or benchmark conditions represented by the 9 D3 paper(s)?
+
+### Whether the system actually helps a person
+
+**Baseline link:** signal-message-separation
+**Question:** What ordinary speech pressure is handled by whether the system actually helps a person, and what evidence distinguishes it from neighboring pressures?
+**Derivation:** Baseline link: Fant pp. 6-7: physical signal parameters and message-level distinctions are related but not identical; this is the baseline for testing when speaker variation is useful evidence or nuisance. Ordinary pressure: Voice depends on anatomy, age, health, emotion, language history, social setting, and equipment; these differences affect both communication and measurement. Failed shortcut: Treating variation as noise makes systems work best for a narrow population and can turn a health or identity signal into an unwanted demographic shortcut. Recurring paper move: Measure which variation is task-relevant, model it explicitly when appropriate, and test performance and meaning across people and conditions. Neighbor test: The target is effort, control, access, and fit in a real activity rather than model accuracy alone.
+
+**What the papers share:** Voice depends on anatomy, age, health, emotion, language history, social setting, and equipment; these differences affect both communication and measurement. The subtheme asks: What ordinary speech pressure is handled by whether the system actually helps a person, and what evidence distinguishes it from neighboring pressures?
+**The shortcut they outgrow:** A first attempt would answer the question only with listener effort, but that shortcut misses the boundary: Effort measures depend on task, listener experience, and presentation conditions.
+**The repeated mechanism:** Across this subtheme, papers make listener effort, user control and consent, accessibility fit explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Fuse STFT audio features with visual embeddings in a dual-branch CNN-BLSTM attention model and jointly predict PESQ and STOI.
+
+#### Concepts inside this boundary
+
+**Listener effort.** Measure how much concentration, repetition, or repair a listener needs, not just whether a word error count changed.
+Boundary: Effort measures depend on task, listener experience, and presentation conditions.
+
+**User control and consent.** Let speakers decide how their voice is recorded, adapted, generated, shared, or corrected, especially when identity is involved.
+Boundary: A consent checkbox does not solve power imbalance, downstream copying, or inability to withdraw a trained model.
+
+**Accessibility fit.** Judge whether a system works within a person's actual device, environment, communication practice, and time constraints.
+Boundary: A lab improvement can be irrelevant or harmful if setup, latency, or interaction burden is omitted.
+
+#### Named evidence
+
+- **A Study on Speech Assessment with Visual Cues** (`ahmed25_interspeech`; D3): Fuse STFT audio features with visual embeddings in a dual-branch CNN-BLSTM attention model and jointly predict PESQ and STOI. Evaluation: Evaluations on the LRS3-TED dataset, augmented with noise from the DEMAND corpus, show that our model outperforms the audio-only baseline. Limit: Seen-noise conditions, proxy targets, visual availability, dataset, and correlation metric limit transfer; proxy prediction is not a listener study.
+- **Can We Trust Machine Learning? The Reliability of Features from Open-Source Speech Analysis Tools for Speech Modeling** (`chowdhury25_interspeech`; D3): Compare tools directly in the target population and test how feature differences alter models and group behavior. Evaluation: We evaluate speech features extracted from two widely used speech analysis tools, OpenSMILE and Praat, to assess their reliability when considering adolescents with autism. Limit: The population, features, tools, and behavioral tasks define the boundary; the study does not identify one universally correct toolkit.
+- **EAA: Emotion-Aware Audio Large Language Models with Dual Cross-Attention and Context-Aware Instruction Tuning** (`du25b_interspeech`; D3): Use dual cross-attention and context-aware instruction tuning for emotion-aware audio-language modeling. Evaluation: Understanding speech emotion through artificial intelligence (AI) is crucial for human-computer interaction and mental health monitoring. Limit: Labels, prompts, audio quality, model, and human agreement bound transfer.
+- **Speech stimulus design to study the neural coding of speech and the impact of cochlear synaptopathy** (`gaudrain25_interspeech`; D3): Analyze and resynthesize speech so temporal fine structure and other dimensions can be parametrically varied while preserving naturalistic speech cues. Evaluation: Here, speech stimuli were designed to assess the involvement of a specific coding mechanism: the coding of temporal fine structure through phase-locking. Limit: Stimulus fidelity, resynthesis artifacts, listener population, language, and study protocol bound the inference; a designed cue isolates a mechanism only insofar as unedited cues remain controlled.
+
+**Boundary from neighboring subthemes:** Effort measures depend on task, listener experience, and presentation conditions.; A consent checkbox does not solve power imbalance, downstream copying, or inability to withdraw a trained model.; A lab improvement can be irrelevant or harmful if setup, latency, or interaction burden is omitted.
+**What this evidence does not establish:** The shared story is supported only by the reviewed papers listed here; D2 entries support the problem and stated method, while D3 entries support the reported mechanism and evaluation. It is not a venue-wide prevalence claim.
+**Open question:** What changes when this move is tested outside the speakers, languages, rooms, devices, or benchmark conditions represented by the 19 D3 paper(s)?
+
+## Many languages, accents, and unequal evidence
+
+**Baseline connection:** Fant, Gunnar. Sound, features, and perception. STL-QPSR 8(2-3), 1967, pp. 1-14.
+**Ordinary problem:** Languages differ in sounds, writing systems, grammar, prosody, code-switching, and social meaning; data and tools are distributed unevenly.
+**Why the first shortcut fails:** Scaling an English-centered recipe or translating labels assumes that all languages expose the same units, data, and errors.
+**Recurring move across this theme:** Share useful structure across languages while preserving language-specific distinctions, measuring who benefits, and making uncertainty visible where evidence is thin.
+**Theme limit:** Transfer can import pronunciation or cultural assumptions, and aggregate multilingual scores can hide severe failures in a small language or community.
+
+### Sharing structure across languages
+
+**Baseline link:** contextual-realization
+**Question:** What ordinary speech pressure is handled by sharing structure across languages, and what evidence distinguishes it from neighboring pressures?
+**Derivation:** Baseline link: Fant pp. 5-7: physical cues vary with context and production, and a single message distinction may have different signal realizations; language-specific evidence must therefore be tested rather than assumed. Ordinary pressure: Languages differ in sounds, writing systems, grammar, prosody, code-switching, and social meaning; data and tools are distributed unevenly. Failed shortcut: Scaling an English-centered recipe or translating labels assumes that all languages expose the same units, data, and errors. Recurring paper move: Share useful structure across languages while preserving language-specific distinctions, measuring who benefits, and making uncertainty visible where evidence is thin. Neighbor test: The central question is what can be shared while retaining language-specific distinctions.
+
+**What the papers share:** Languages differ in sounds, writing systems, grammar, prosody, code-switching, and social meaning; data and tools are distributed unevenly. The subtheme asks: What ordinary speech pressure is handled by sharing structure across languages, and what evidence distinguishes it from neighboring pressures?
+**The shortcut they outgrow:** A first attempt would answer the question only with cross-lingual transfer, but that shortcut misses the boundary: Transfer may favor high-resource languages and erase distinctions absent from the source language.
+**The repeated mechanism:** Across this subtheme, papers make cross-lingual transfer, language and variety identification, code-switching explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Build a culturally aligned multilingual spoken QA dataset and evaluate the ASR-plus-LLM chain on naturally spoken questions and answers.
+
+#### Concepts inside this boundary
+
+**Cross-lingual transfer.** Reuse representations or training signals from one language to improve another when their speech structure overlaps.
+Boundary: Transfer may favor high-resource languages and erase distinctions absent from the source language.
+
+**Language and variety identification.** Determine which language or variety is being spoken so the appropriate recognizer or interaction policy can be selected.
+Boundary: Closely related varieties and code-switching make a single label inadequate or politically loaded.
+
+**Code-switching.** Handle a speaker moving between languages within an utterance, including pronunciation, grammar, and word-boundary changes.
+Boundary: A monolingual metric can count appropriate switching as error and fail to define the intended transcript.
+
+#### Named evidence
+
+- **SpokenNativQA: Multilingual Everyday Spoken Queries for LLMs** (`alam25_interspeech`; D3): Build a culturally aligned multilingual spoken QA dataset and evaluate the ASR-plus-LLM chain on naturally spoken questions and answers. Evaluation: However, benchmarking their capabilities with multilingual spoken queries remains largely unexplored. Limit: Language coverage, annotation, question domains, ASR errors, and answer scoring bound the result; a benchmark does not establish equal usefulness across all represented communities.
+- **TalTech Systems for the Interspeech 2025 ML-SUPERB 2.0 Challenge** (`alumae25_interspeech`; D3): Use hybrid language identification, multilingual and language-specific models, and targeted decoding resources. Evaluation: The ML-SUPERB 2.0 development and dialect-development sets evaluate language-identification accuracy and character error rate across the challenge languages, dialects, and accents. Uniform interpolation of the embedding and generative LID models is compared with each component; the reported… Limit: Challenge data, language mix, averaging, and tuning limit all-multilingual claims.
+- **A Study of Speech Embedding Similarities Between Australian Aboriginal and High-Resource Languages** (`ambikairajah25_interspeech`; D3): Compare speech embeddings across Aboriginal and high-resource languages and inspect what kinds of similarity and transfer the representation actually supports. Evaluation: Our results reveal that aboriginal languages are most frequently identified as Māori, suggesting phonetic or structural similarities, while showing significant differences from globally dominant languages. Limit: Similarity is not a language description or a guarantee of recognition transfer; data quantity, speaker coverage, and community context limit interpretation. No independent reproduction was performed.
+- **From Context to Code-switching: Examining the Interplay of Language Proficiency and Multilingualism in Speech** (`bhattacharya25_interspeech`; D3): Model code-switching quantity, dominant language, and switching strategy together with speaker background variables such as parental language, schooling language, and self-reported ability. Evaluation: To answer this question, we examine the Bangor Miami corpus of spontaneous Spanish-English speech and analyze the linguistic and demographic profiles of its speakers alongside features of their conversational language production. Limit: The analysis is observational, focused on Spanish-English Bangor Miami speakers and available self-reports; background variables may be correlated and do not establish why a speaker switched. Findings do not generalize automatically to other language pairs, communities, or tasks; no independent…
+
+**Boundary from neighboring subthemes:** Transfer may favor high-resource languages and erase distinctions absent from the source language.; Closely related varieties and code-switching make a single label inadequate or politically loaded.; A monolingual metric can count appropriate switching as error and fail to define the intended transcript.
+**What this evidence does not establish:** The shared story is supported only by the reviewed papers listed here; D2 entries support the problem and stated method, while D3 entries support the reported mechanism and evaluation. It is not a venue-wide prevalence claim.
+**Open question:** What changes when this move is tested outside the speakers, languages, rooms, devices, or benchmark conditions represented by the 19 D3 paper(s)?
+
+### Learning from sparse labels
+
+**Baseline link:** contextual-realization
+**Question:** What ordinary speech pressure is handled by learning from sparse labels, and what evidence distinguishes it from neighboring pressures?
+**Derivation:** Baseline link: Fant pp. 5-7: physical cues vary with context and production, and a single message distinction may have different signal realizations; language-specific evidence must therefore be tested rather than assumed. Ordinary pressure: Languages differ in sounds, writing systems, grammar, prosody, code-switching, and social meaning; data and tools are distributed unevenly. Failed shortcut: Scaling an English-centered recipe or translating labels assumes that all languages expose the same units, data, and errors. Recurring paper move: Share useful structure across languages while preserving language-specific distinctions, measuring who benefits, and making uncertainty visible where evidence is thin. Neighbor test: The method changes how a model learns when labeled examples are scarce.
+
+**What the papers share:** Languages differ in sounds, writing systems, grammar, prosody, code-switching, and social meaning; data and tools are distributed unevenly. The subtheme asks: What ordinary speech pressure is handled by learning from sparse labels, and what evidence distinguishes it from neighboring pressures?
+**The shortcut they outgrow:** A first attempt would answer the question only with self-training, but that shortcut misses the boundary: Errors can reinforce themselves and create a false appearance of data scale.
+**The repeated mechanism:** Across this subtheme, papers make self-training, few-shot adaptation explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Continue pretraining a compact HuBERT-style model on a much wider set of African-language audio, then test whether the shared representation transfers to downstream tasks.
+
+#### Concepts inside this boundary
+
+**Self-training.** Use a model's predictions on unlabeled speech as additional training signals, ideally filtering or weighting uncertain labels.
+Boundary: Errors can reinforce themselves and create a false appearance of data scale.
+
+**Few-shot adaptation.** Adjust a model to a language, speaker, or domain from a small number of examples rather than retraining from scratch.
+Boundary: Few examples may cover only one speaker or style and make variance look like progress.
+
+#### Named evidence
+
+- **AfriHuBERT: A self-supervised speech representation model for African languages** (`alabi25_interspeech`; D3): Continue pretraining a compact HuBERT-style model on a much wider set of African-language audio, then test whether the shared representation transfers to downstream tasks. Evaluation: We evaluate AfriHuBERT on two key speech tasks, Spoken Language Identification (SLID) and Automatic Speech Recognition (ASR), using the FLEURS benchmark. Limit: Language coverage does not mean equal data quality or equal downstream performance; the languages, hours, speaker balance, and task results determine the practical reach. No independent reproduction was performed.
+- **Evaluating Large Language Models in Data Generation for Low-Resource Scenarios: A Case Study on Question Answering** (`arisoy25_interspeech`; D3): Use large-language-model-generated question-answer data and test its value separately on text QA, spoken QA, and Turkish spoken QA. Evaluation: Large Language Models (LLMs) are powerful tools for generating synthetic data, offering a promising solution to data scarcity in low-resource scenarios. Limit: Prompting, filtering, language, synthetic distribution, and evaluation splits limit transfer; synthetic gains do not establish factual or linguistic quality everywhere.
+- **Better Semi-supervised Learning for Multi-domain ASR Through Incremental Retraining and Data Filtering** (`carofilis25_interspeech`; D3): Incrementally combine in-domain labels with related-domain data, then filter pseudo-labels using multi-model consensus or named-entity recognition. Evaluation: We propose an incremental semi-supervised learning pipeline that first integrates a small in-domain labeled set and an auxiliary dataset from a closely related domain, achieving a relative improvement of 4% over no auxiliary data. Limit: The gains are bounded to the two English corpora, model ensemble, filtering thresholds, and author-reported WER; other domains and languages remain unresolved.
+- **MSDA: Combining Pseudo-labeling and Self-Supervision for Unsupervised Domain Adaptation in ASR** (`damianos25_interspeech`; D3): Cascade self-supervised representation adaptation with pseudo-label training so each stage prepares the next. Evaluation: MSDA is evaluated for six source-to-target Greek domain transfers using target-domain WER, comparing supervised source fine-tuning, continual pretraining, M2DS2, Meta pseudo-labeling, CASTLE, and MSDA. The corpora include 72-hour Logotypografia, 12-hour Common Voice, 99-hour HParl, and weakly… Limit: The languages, pseudo-label quality, source models, and domain shifts bound the claim; robustness to severely wrong pseudo-labels remains open.
+
+**Boundary from neighboring subthemes:** Errors can reinforce themselves and create a false appearance of data scale.; Few examples may cover only one speaker or style and make variance look like progress.
+**What this evidence does not establish:** The shared story is supported only by the reviewed papers listed here; D2 entries support the problem and stated method, while D3 entries support the reported mechanism and evaluation. It is not a venue-wide prevalence claim.
+**Open question:** What changes when this move is tested outside the speakers, languages, rooms, devices, or benchmark conditions represented by the 10 D3 paper(s)?
+
+### Making missing speech evidence
+
+**Baseline link:** contextual-realization
+**Question:** What ordinary speech pressure is handled by making missing speech evidence, and what evidence distinguishes it from neighboring pressures?
+**Derivation:** Baseline link: Fant pp. 5-7: physical cues vary with context and production, and a single message distinction may have different signal realizations; language-specific evidence must therefore be tested rather than assumed. Ordinary pressure: Languages differ in sounds, writing systems, grammar, prosody, code-switching, and social meaning; data and tools are distributed unevenly. Failed shortcut: Scaling an English-centered recipe or translating labels assumes that all languages expose the same units, data, and errors. Recurring paper move: Share useful structure across languages while preserving language-specific distinctions, measuring who benefits, and making uncertainty visible where evidence is thin. Neighbor test: The work creates speakers, prompts, labels, or recordings needed by a community or task.
+
+**What the papers share:** Languages differ in sounds, writing systems, grammar, prosody, code-switching, and social meaning; data and tools are distributed unevenly. The subtheme asks: What ordinary speech pressure is handled by making missing speech evidence, and what evidence distinguishes it from neighboring pressures?
+**The shortcut they outgrow:** A first attempt would answer the question only with speech data collection, but that shortcut misses the boundary: More hours do not fix biased sampling, poor transcripts, or a task definition that excludes natural speech.
+**The repeated mechanism:** Across this subtheme, papers make speech data collection explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Build open hardware whose microphone, baffle, and analog path can be changed, then compare raw scores and phonological contrasts against a commercial device.
+
+#### Concepts inside this boundary
+
+**Speech data collection.** Design recording prompts, speakers, transcription, and consent so newly collected data covers the intended community and task.
+Boundary: More hours do not fix biased sampling, poor transcripts, or a task definition that excludes natural speech.
+
+#### Named evidence
+
+- **Nosey: Open-Source Hardware for Acoustic Nasalance** (`dewhurst25_interspeech`; D3): Build open hardware whose microphone, baffle, and analog path can be changed, then compare raw scores and phonological contrasts against a commercial device. Evaluation: We also review ways of customizing the hardware to facilitate testing, such as comparison of microphones and different construction materials. Limit: The tested speakers, microphones, baffle geometry, placement, and phonological materials bound the comparison; raw-score offsets and cross-signal bleed prevent treating Nosey and commercial values as directly interchangeable.
+- **Transcribing Oral History Recordings Using the Transcription Portal** (`draxler25_interspeech`; D3): Put recognition, human correction, and export into one preconfigured web workflow designed around the user's task rather than the model's internals. Evaluation: The Transcription Portal workflow is demonstrated on four 1976 Italian oral-history interviews with five Ravensbrück survivors and approximately 18 hours of speech digitized at 96 kHz/24-bit. Evaluation is a bounded transcription-workflow demonstration comparing ASR-generated SRT material with… Limit: The demonstration corpus, user effort, ASR model, correction time, and export format bound the result; a convenient workflow does not establish transcription accuracy without an error audit or independent user study.
+- **The NaijaVoices Dataset: Cultivating Large-Scale, High-Quality, Culturally-Rich Speech Data for African Languages** (`emezue25_interspeech`; D3): Collect a large, culturally grounded speech-text corpus and test whether it improves several ASR families. Evaluation: The development of high-performing, robust, and reliable speech technologies depends on large, high-quality datasets. Limit: The corpus languages, collection process, transcription policy, and model choices bound the result; coverage of other African languages and deployment conditions remains open.
+- **Speech LLMs in Low-Resource Scenarios: Data Volume Requirements and the Impact of Pretraining on High-Resource Languages** (`fong25_interspeech`; D3): Pretrain the small bridge between a speech encoder and language model on high-resource languages, then reuse it and measure how much low-resource data is still needed. Evaluation: Using multilingual LLMs (EuroLLM, Salamandra) with whisper-large-v3-turbo, we evaluate performance on several public benchmarks, providing insights for future research on optimizing Speech LLMs for low-resource languages and multilinguality. Limit: Language choice, data cleanliness, projector, LLM, benchmark split, and WER bound the claim; transfer from high-resource languages does not establish equal performance or cultural adequacy.
+
+**Boundary from neighboring subthemes:** More hours do not fix biased sampling, poor transcripts, or a task definition that excludes natural speech.
+**What this evidence does not establish:** The shared story is supported only by the reviewed papers listed here; D2 entries support the problem and stated method, while D3 entries support the reported mechanism and evaluation. It is not a venue-wide prevalence claim.
+**Open question:** What changes when this move is tested outside the speakers, languages, rooms, devices, or benchmark conditions represented by the 10 D3 paper(s)?
+
+### Respecting variation and local meaning
+
+**Baseline link:** contextual-realization
+**Question:** What ordinary speech pressure is handled by respecting variation and local meaning, and what evidence distinguishes it from neighboring pressures?
+**Derivation:** Baseline link: Fant pp. 5-7: physical cues vary with context and production, and a single message distinction may have different signal realizations; language-specific evidence must therefore be tested rather than assumed. Ordinary pressure: Languages differ in sounds, writing systems, grammar, prosody, code-switching, and social meaning; data and tools are distributed unevenly. Failed shortcut: Scaling an English-centered recipe or translating labels assumes that all languages expose the same units, data, and errors. Recurring paper move: Share useful structure across languages while preserving language-specific distinctions, measuring who benefits, and making uncertainty visible where evidence is thin. Neighbor test: This boundary covers differences in pronunciation, variety, and local meaning that affect who is understood and how speech is interpreted; it is separate from generic low-resource learning because more data alone cannot decide whether a social or cultural distinction was represented correctly.
+
+**What the papers share:** Languages differ in sounds, writing systems, grammar, prosody, code-switching, and social meaning; data and tools are distributed unevenly. The subtheme asks: What ordinary speech pressure is handled by respecting variation and local meaning, and what evidence distinguishes it from neighboring pressures?
+**The shortcut they outgrow:** A first attempt would answer the question only with accent robustness, but that shortcut misses the boundary: A single pooled error rate cannot show which accents fail or whether adaptation changes identity representation.
+**The repeated mechanism:** Across this subtheme, papers make accent robustness, dialect and variety, cultural meaning explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Cross-examine /s/ production in a multilingual Nigerian context using linguistic and social context.
+
+#### Concepts inside this boundary
+
+**Accent robustness.** Maintain intended-word accuracy across pronunciation patterns that differ from the training majority.
+Boundary: A single pooled error rate cannot show which accents fail or whether adaptation changes identity representation.
+
+**Dialect and variety.** Treat grammar, vocabulary, pronunciation, and discourse conventions of a variety as part of the language, not merely deviations from a standard.
+Boundary: Dialect labels can be contested and may conflate region, ethnicity, class, and speaker identity.
+
+**Cultural meaning.** Interpret politeness, indirectness, emotion, and conversational norms within the community that uses them.
+Boundary: A label imported from another culture may be statistically convenient but semantically wrong.
+
+#### Named evidence
+
+- **Is it all about race?: A Cross-examination of /s/ in a Multilingual (Nigerian) Context** (`amoniyan25_interspeech`; D3): Cross-examine /s/ production in a multilingual Nigerian context using linguistic and social context. Evaluation: The analysis uses 4,056 /s/ tokens from 42 Nigerian English speakers across Hausa, Igbo, and Yoruba groups. CoG, duration, skewness, and zero-crossing measures are analyzed with mixed-effects regressions using gender, birth year, segment duration, speaker, and phonological environment; reported… Limit: Community, language, sampling, annotation, and interpretation bound transfer.
+- **LID Models are Actually Accent Classifiers: Implications and Solutions for LID on Accented Speech** (`bafna25_interspeech`; D3): Add phoneme-sequence or discretized-unit views and test the shortcut by permuting short speech chunks. Evaluation: Prior research indicates that LID model performance significantly declines on accented speech; however, the specific causes, extent, and characterization of these errors remain under-explored. Limit: Datasets, accent categories, chunking, and aggregation define the result; it diagnoses a shortcut but does not prove cultural neutrality or universal transfer.
+- **Accent Normalization Using Self-Supervised Discrete Tokens with Non-Parallel Data** (`bai25_interspeech`; D3): Use self-supervised discrete tokens, nonparallel conversion, flow matching, and explicit duration preservation. Evaluation: Accent normalization is evaluated on seven accents from L2-ARCTIC/ARCTIC, with four speakers per accent, 50 validation and 80 held-out test sentences, and one unseen speaker per accent. WER, speaker-embedding cosine similarity, MUSHRA naturalness/accentedness, and best-worst speaker similarity are… Limit: Accent definitions, targets, subjective judgments, and nonparallel training bound the claim; native-like is not universally better.
+- **A Multi-Dialectal Dataset for German Dialect ASR and Dialect-to-Standard Speech Translation** (`blaschke25_interspeech`; D3): Create a multi-dialect benchmark with dialectal and Standard German transcriptions, then compare multilingual ASR systems on recognition and dialect-to-standard speech translation. Evaluation: To enable studies of how robust models are towards dialectal variation, we present Betthupferl, an evaluation dataset containing four hours of read speech in three dialect groups spoken in Southeast Germany (Franconian, Bavarian, Alemannic), and half an hour of Standard German speech. Limit: Read speech, regional coverage, speaker sampling, benchmark size, and translation direction constrain the conclusions; dataset inclusion does not guarantee broad fairness or dialect preservation in deployed systems.
+
+**Boundary from neighboring subthemes:** A single pooled error rate cannot show which accents fail or whether adaptation changes identity representation.; Dialect labels can be contested and may conflate region, ethnicity, class, and speaker identity.; A label imported from another culture may be statistically convenient but semantically wrong.
+**What this evidence does not establish:** The shared story is supported only by the reviewed papers listed here; D2 entries support the problem and stated method, while D3 entries support the reported mechanism and evaluation. It is not a venue-wide prevalence claim.
+**Open question:** What changes when this move is tested outside the speakers, languages, rooms, devices, or benchmark conditions represented by the 19 D3 paper(s)?
+
+## Evidence, practical systems, and consequences
+
+**Baseline connection:** Fant, Gunnar. Sound, features, and perception. STL-QPSR 8(2-3), 1967, pp. 1-14.
+**Ordinary problem:** Speech systems are used through microphones, networks, interfaces, policies, and people; a benchmark number is only one observation of that whole chain.
+**Why the first shortcut fails:** Reporting one average score on one dataset encourages the reader to treat a proxy as universal ability and ignores latency, failure recovery, privacy, and misuse.
+**Recurring move across this theme:** Align the evaluation with the real target, expose subgroup and condition variation, account for the full system boundary, and preserve an audit trail from evidence to claim.
+**Theme limit:** Broader evaluation costs time and data, but narrow evidence can create false confidence exactly where speech systems affect access, identity, or safety.
+
+### Connecting scores to human goals
+
+**Baseline link:** compact-description-and-limits
+**Question:** What ordinary speech pressure is handled by connecting scores to human goals, and what evidence distinguishes it from neighboring pressures?
+**Derivation:** Baseline link: Fant pp. 3-4: a compact description should retain needed message information, but every description is approximate and task-dependent; scores must therefore be tied to the use they stand for. Ordinary pressure: Speech systems are used through microphones, networks, interfaces, policies, and people; a benchmark number is only one observation of that whole chain. Failed shortcut: Reporting one average score on one dataset encourages the reader to treat a proxy as universal ability and ignores latency, failure recovery, privacy, and misuse. Recurring paper move: Align the evaluation with the real target, expose subgroup and condition variation, account for the full system boundary, and preserve an audit trail from evidence to claim. Neighbor test: A metric is a proxy and must be tied to the human or engineering property it represents.
+
+**What the papers share:** Speech systems are used through microphones, networks, interfaces, policies, and people; a benchmark number is only one observation of that whole chain. The subtheme asks: What ordinary speech pressure is handled by connecting scores to human goals, and what evidence distinguishes it from neighboring pressures?
+**The shortcut they outgrow:** A first attempt would answer the question only with word error versus understanding, but that shortcut misses the boundary: A word metric can miss critical entity errors and can penalize harmless orthographic or dialect differences.
+**The repeated mechanism:** Across this subtheme, papers make word error versus understanding, quality and naturalness, calibration and selective use explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Combine CLAP similarity with repetition penalties, clipping, and LLM feedback during reward optimization.
+
+#### Concepts inside this boundary
+
+**Word error versus understanding.** A transcript edit distance counts substitutions, insertions, and deletions, but a small count is not automatically successful task understanding.
+Boundary: A word metric can miss critical entity errors and can penalize harmless orthographic or dialect differences.
+
+**Quality and naturalness.** Listening ratings, preference tests, and signal measures estimate different aspects of whether generated or enhanced speech is acceptable.
+Boundary: A score without listeners, conditions, and target definition cannot support a general quality claim.
+
+**Calibration and selective use.** A system should know when its uncertainty is high enough to defer, ask, or show alternatives rather than making every output look certain.
+Boundary: Calibration on a held-out sample does not guarantee safety under a new population or distribution.
+
+#### Named evidence
+
+- **Optimizing CLAP Reward with LLM Feedback for Semantically Aligned and Diverse Automated Audio Captioning** (`ahn25b_interspeech`; D3): Combine CLAP similarity with repetition penalties, clipping, and LLM feedback during reward optimization. Evaluation: To address this, reinforcement learning (RL) techniques have been adopted to directly optimize evaluation metrics, but these methods often suffer from word repetition and contextual distortion. Limit: The result depends on caption datasets, evaluator prompts, and reward weighting; human agreement and out-of-domain audio remain open.
+- **SMARTMOS: Modeling Subjective Audio Quality Evaluation for Real-Time Applications** (`balasubramanian25_interspeech`; D3): Learn a model of subjective quality from listening-test ratings and design it for fast prediction in the intended real-time setting. Evaluation: Evaluating audio quality is a crucial task, with subjective listening tests being the gold standard. Limit: Human ratings, test conditions, and audio distortions define the target; a predictor can reproduce annotator bias and fail on unseen codecs or populations. No independent reproduction was performed.
+- **Intelligibility Prediction for Time-Modified Speech Signals Using Spectro-Temporal Modulation Features** (`bashir25_interspeech`; D3): Align clean and time-modified speech with selected spectro-temporal modulation features, then feed the alignment into existing reference-based intelligibility predictors. Evaluation: Using these methods, we compare the output scores of the RB-SIPA with listening test scores and show better correlation results using the STM features as compared to MFCCs. Limit: The listening datasets, degradation types, chosen modulation channels, and reference availability bound the claim; correlation is not a complete model of listener experience.
+- **Benchmarking and Confidence Evaluation of LALMs For Temporal Reasoning** (`bhattacharya25b_interspeech`; D3): Build the TREA temporal-reasoning dataset, benchmark audio language models against people, and measure uncertainty through invariance to semantically identical perturbations. Evaluation: In this quest, large audio language models (LALMs) have to be evaluated on reasoning related tasks which are different from traditional classification or generation tasks. Limit: The dataset, perturbations, models, human comparison, and temporal tasks bound conclusions; invariance is one operational uncertainty test, not a complete account of confidence.
+
+**Boundary from neighboring subthemes:** A word metric can miss critical entity errors and can penalize harmless orthographic or dialect differences.; A score without listeners, conditions, and target definition cannot support a general quality claim.; Calibration on a held-out sample does not guarantee safety under a new population or distribution.
+**What this evidence does not establish:** The shared story is supported only by the reviewed papers listed here; D2 entries support the problem and stated method, while D3 entries support the reported mechanism and evaluation. It is not a venue-wide prevalence claim.
+**Open question:** What changes when this move is tested outside the speakers, languages, rooms, devices, or benchmark conditions represented by the 19 D3 paper(s)?
+
+### Changing speakers, rooms, and conditions
+
+**Baseline link:** compact-description-and-limits
+**Question:** What ordinary speech pressure is handled by changing speakers, rooms, and conditions, and what evidence distinguishes it from neighboring pressures?
+**Derivation:** Baseline link: Fant pp. 3-4: a compact description should retain needed message information, but every description is approximate and task-dependent; scores must therefore be tied to the use they stand for. Ordinary pressure: Speech systems are used through microphones, networks, interfaces, policies, and people; a benchmark number is only one observation of that whole chain. Failed shortcut: Reporting one average score on one dataset encourages the reader to treat a proxy as universal ability and ignores latency, failure recovery, privacy, and misuse. Recurring paper move: Align the evaluation with the real target, expose subgroup and condition variation, account for the full system boundary, and preserve an audit trail from evidence to claim. Neighbor test: The question is whether failures are detected and recovered when conditions differ from training.
+
+**What the papers share:** Speech systems are used through microphones, networks, interfaces, policies, and people; a benchmark number is only one observation of that whole chain. The subtheme asks: What ordinary speech pressure is handled by changing speakers, rooms, and conditions, and what evidence distinguishes it from neighboring pressures?
+**The shortcut they outgrow:** A first attempt would answer the question only with distribution shift, but that shortcut misses the boundary: A named shift is not evidence of coverage; the shift must be measured and tied to the failure.
+**The repeated mechanism:** Across this subtheme, papers make distribution shift, end-to-end recovery explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Use annotated SFUSED speech errors to stratify WhisperX performance by error type and word position.
+
+#### Concepts inside this boundary
+
+**Distribution shift.** Performance changes when speakers, microphones, rooms, languages, topics, or noise differ from training and test conditions.
+Boundary: A named shift is not evidence of coverage; the shift must be measured and tied to the failure.
+
+**End-to-end recovery.** Handle uncertainty through confirmation, correction, fallback, and logging so one recognition error does not become an irreversible action.
+Boundary: A robust component is not an end-to-end safe system if downstream policy ignores its uncertainty.
+
+#### Named evidence
+
+- **Evaluating ASR Robustness to Spontaneous Speech Errors: A Study of WhisperX Using a Speech Error Database** (`alderete25_interspeech`; D3): Use annotated SFUSED speech errors to stratify WhisperX performance by error type and word position. Evaluation: The Simon Fraser University Speech Error Database (SFUSED) is a public data collection developed for linguistic and psycholinguistic research. Limit: Database, annotations, WhisperX, language, and task design limit generalization.
+- **Defending Speech-enabled LLMs Against Adversarial Jailbreak Threats** (`alexos25_interspeech`; D3): Train with synthesized harmful and benign speech queries and test against strong white-box attacks across two model sizes and data configurations. Evaluation: We experiment with different training data configurations, and evaluate the methods on strong white-box adversarial attacks. Limit: The two models, synthesized data, attack family, safety measure, and training recipe bound the result; robustness to unseen speakers, attacks, languages, and real-world misuse remains open.
+- **Pushing the Limits of End-to-End Diarization** (`broughton25_interspeech`; D3): Use one end-to-end non-autoregressive model and scale pretraining across systematically represented eight-speaker mixtures. Evaluation: In this paper, we present state-of-the-art diarization error rates (DERs) on multiple publicly available datasets, including AliMeeting-far, AliMeeting-near, AMI-Mix, AMI-SDM, DIHARD III, and MagicData RAMC. Limit: The simulations, corpora, speaker counts, and model speed define the boundary; spontaneous conditions beyond these meetings remain open.
+- **Multi-Channel Sequence-to-Sequence Neural Diarization: Experimental Results for The MISP 2025 Challenge** (`cheng25b_interspeech`; D3): Generate initial predictions with sequence-to-sequence neural diarization, then refine them with multi-channel audio in MC-S2SND for the MISP challenge. Evaluation: The final system achieves a diarization error rate (DER) of 8.09% on the evaluation set of the competition database, ranking first place in the speaker diarization task of the MISP 2025 Challenge. Limit: Challenge data, channel layout, scoring convention, enrollment assumptions, and test conditions bound generalization; rank and DER do not guarantee usable transcripts in every meeting.
+
+**Boundary from neighboring subthemes:** A named shift is not evidence of coverage; the shift must be measured and tied to the failure.; A robust component is not an end-to-end safe system if downstream policy ignores its uncertainty.
+**What this evidence does not establish:** The shared story is supported only by the reviewed papers listed here; D2 entries support the problem and stated method, while D3 entries support the reported mechanism and evaluation. It is not a venue-wide prevalence claim.
+**Open question:** What changes when this move is tested outside the speakers, languages, rooms, devices, or benchmark conditions represented by the 7 D3 paper(s)?
+
+### Meeting time, memory, and hardware limits
+
+**Baseline link:** compact-description-and-limits
+**Question:** What ordinary speech pressure is handled by meeting time, memory, and hardware limits, and what evidence distinguishes it from neighboring pressures?
+**Derivation:** Baseline link: Fant pp. 3-4: a compact description should retain needed message information, but every description is approximate and task-dependent; scores must therefore be tied to the use they stand for. Ordinary pressure: Speech systems are used through microphones, networks, interfaces, policies, and people; a benchmark number is only one observation of that whole chain. Failed shortcut: Reporting one average score on one dataset encourages the reader to treat a proxy as universal ability and ignores latency, failure recovery, privacy, and misuse. Recurring paper move: Align the evaluation with the real target, expose subgroup and condition variation, account for the full system boundary, and preserve an audit trail from evidence to claim. Neighbor test: The system must operate within a device or interaction budget without hiding cost elsewhere.
+
+**What the papers share:** Speech systems are used through microphones, networks, interfaces, policies, and people; a benchmark number is only one observation of that whole chain. The subtheme asks: What ordinary speech pressure is handled by meeting time, memory, and hardware limits, and what evidence distinguishes it from neighboring pressures?
+**The shortcut they outgrow:** A first attempt would answer the question only with latency and resource budget, but that shortcut misses the boundary: A faster model may emit less context, reduce quality, or move cost into an unreported service.
+**The repeated mechanism:** Across this subtheme, papers make latency and resource budget explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Ablate frame rate, bitrate, and causality, then design NanoCodec around a low-rate operating point and compare reconstruction quality.
+
+#### Concepts inside this boundary
+
+**Latency and resource budget.** A system must meet timing, memory, energy, bandwidth, and hardware limits while preserving the property users need.
+Boundary: A faster model may emit less context, reduce quality, or move cost into an unreported service.
+
+#### Named evidence
+
+- **NanoCodec: Towards High-Quality Ultra Fast Speech LLM Inference** (`casanova25_interspeech`; D3): Ablate frame rate, bitrate, and causality, then design NanoCodec around a low-rate operating point and compare reconstruction quality. Evaluation: NanoCodec outperforms related works across various bitrate ranges, establishing a new benchmark for low-latency and efficient Speech LLM training and inference. Limit: Audio domain, codec training data, perceptual metric, hardware, and causality setting bound transfer; codec quality is not end-to-end speech generation quality.
+- **Breaking Resource Barriers in Speech Emotion Recognition via Data Distillation** (`chang25d_interspeech`; D3): Distill the original emotional speech into a smaller synthesized dataset and test whether models trained on it retain emotion-recognition performance. Evaluation: Speech emotion recognition (SER) plays a crucial role in human-computer interaction. Limit: The distillation procedure, emotion labels, source corpora, privacy threat model, model initialization, and UAR evaluation bound the claim; smaller data is not automatically private or representative.
+- **PruneSLU: Efficient On-device Spoken Language Understanding through Vocabulary and Structural Pruning** (`do25_interspeech`; D3): Prune task-irrelevant vocabulary first, prune layers structurally, then refine with distillation and contrastive losses. Evaluation: Experiments on the STOP and SLURP datasets demonstrate that PruneSLU compresses a 39M model to 15M while retaining 98\% of its original performance, outperforming previous compression techniques. Limit: STOP/SLURP domains, Whisper initialization, five seeds, and author-reported comparisons bound the result; energy and open-world commands are not tested.
+- **GTA: Towards Generative Text-To-Audio Retrieval via Multi-Scale Tokenizer** (`fang25c_interspeech`; D3): Use a multi-scale tokenizer and generative retrieval architecture with explicit resource tradeoffs. Evaluation: Currently, mainstream approaches primarily employ a dual-tower architecture, independently encoding text and audio while performing similarity score matching. Limit: Audio, prompts, token rates, metrics, hardware, and generation budget bound transfer.
+
+**Boundary from neighboring subthemes:** A faster model may emit less context, reduce quality, or move cost into an unreported service.
+**What this evidence does not establish:** The shared story is supported only by the reviewed papers listed here; D2 entries support the problem and stated method, while D3 entries support the reported mechanism and evaluation. It is not a venue-wide prevalence claim.
+**Open question:** What changes when this move is tested outside the speakers, languages, rooms, devices, or benchmark conditions represented by the 11 D3 paper(s)?
+
+### Protecting voice and resisting misuse
+
+**Baseline link:** compact-description-and-limits
+**Question:** What ordinary speech pressure is handled by protecting voice and resisting misuse, and what evidence distinguishes it from neighboring pressures?
+**Derivation:** Baseline link: Fant pp. 3-4: a compact description should retain needed message information, but every description is approximate and task-dependent; scores must therefore be tied to the use they stand for. Ordinary pressure: Speech systems are used through microphones, networks, interfaces, policies, and people; a benchmark number is only one observation of that whole chain. Failed shortcut: Reporting one average score on one dataset encourages the reader to treat a proxy as universal ability and ignores latency, failure recovery, privacy, and misuse. Recurring paper move: Align the evaluation with the real target, expose subgroup and condition variation, account for the full system boundary, and preserve an audit trail from evidence to claim. Neighbor test: This boundary covers harm from exposing voice identity or accepting imitation, replay, or generated speech as genuine; it is separate from ordinary robustness because the failure is unauthorized inference or deception, not merely a lower score in a changed condition.
+
+**What the papers share:** Speech systems are used through microphones, networks, interfaces, policies, and people; a benchmark number is only one observation of that whole chain. The subtheme asks: What ordinary speech pressure is handled by protecting voice and resisting misuse, and what evidence distinguishes it from neighboring pressures?
+**The shortcut they outgrow:** A first attempt would answer the question only with voice privacy, but that shortcut misses the boundary: Removing words does not necessarily remove speaker identity or sensitive acoustic information.
+**The repeated mechanism:** Across this subtheme, papers make voice privacy, spoofing and synthetic voice misuse explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Build a documented pipeline for high-quality bona-fide data, transcription-based segmentation, and several synthesis regimes, then measure naturalness and confusion.
+
+#### Concepts inside this boundary
+
+**Voice privacy.** Speech recordings reveal content and may reveal identity, health, location, emotion, or group membership, so collection and storage are part of the technical problem.
+Boundary: Removing words does not necessarily remove speaker identity or sensitive acoustic information.
+
+**Spoofing and synthetic voice misuse.** A system must distinguish authorized speech from replayed or generated audio when identity or access depends on it.
+Boundary: A detector trained on known generators can fail on unseen synthesis, replay channels, or an attacker who changes the interaction.
+
+#### Named evidence
+
+- **Collecting, Curating, and Annotating Good Quality Speech deepfake dataset for Famous Figures: Process and Challenges** (`ali25_interspeech`; D3): Build a documented pipeline for high-quality bona-fide data, transcription-based segmentation, and several synthesis regimes, then measure naturalness and confusion. Evaluation: The resulting dataset comprises bonafide and synthetic speech samples from ten public figures, demonstrating superior quality with a NISQA-TTS naturalness score of 3.69 and the highest human misclassification rate of 61.9%. Limit: The ten figures, synthesis systems, listeners, and dataset protocol bound the result; new generators and adversarially chosen public speech remain open.
+- **ATMM-SAGA: Alternating Training for Multi-Module with Score-Aware Gated Attention SASV system** (`asali25_interspeech`; D3): Alternate training of speaker and anti-spoofing modules and use score-aware gated attention to combine their evidence. Evaluation: The objective of automatic speaker verification (ASV) systems is to determine whether a given test speech utterance corresponds to a claimed enrolled speaker. Limit: Thresholds and spoof types determine operating behavior; benchmark attacks do not exhaust unseen synthesis or replay conditions. No independent reproduction was performed.
+- **WavShape: Information-Theoretic Speech Representation Learning for Fair and Privacy-Aware Audio Processing** (`baser25_interspeech`; D3): Optimize mutual information in two directions: reduce dependence between the public embedding and sensitive labels while retaining dependence with task labels and the original speech representation. Evaluation: Experimental results on three known datasets show that WavShape reduces MI between embeddings and sensitive attributes by up to 81% while retaining 97% of task-relevant information. Limit: Mutual-information estimation depends on the estimator, labels, datasets, and chosen sensitive attributes; unmeasured attributes or powerful attackers may still recover information. The figures are author-reported, and no independent privacy attack or reproduction was performed.
+- **PhonemeFake: Redefining Deepfake Realism with Language-Driven Segmental Manipulation and Adaptive Bilevel Detection** (`baser25b_interspeech`; D3): Use language reasoning to choose critical phoneme segments for manipulation, then detect those regions with an adaptive two-level model. Evaluation: However, our study reveals that existing DF datasets fail to deceive human perception, unlike real DF attacks that influence public discourse. Limit: These are author-reported results tied to attack construction, datasets, detector thresholds, and the chosen language reasoning; unseen generators and adversarial adaptation remain open.
+
+**Boundary from neighboring subthemes:** Removing words does not necessarily remove speaker identity or sensitive acoustic information.; A detector trained on known generators can fail on unseen synthesis, replay channels, or an attacker who changes the interaction.
+**What this evidence does not establish:** The shared story is supported only by the reviewed papers listed here; D2 entries support the problem and stated method, while D3 entries support the reported mechanism and evaluation. It is not a venue-wide prevalence claim.
+**Open question:** What changes when this move is tested outside the speakers, languages, rooms, devices, or benchmark conditions represented by the 19 D3 paper(s)?
+
+### Keeping claims inspectable and contestable
+
+**Baseline link:** compact-description-and-limits
+**Question:** What ordinary speech pressure is handled by keeping claims inspectable and contestable, and what evidence distinguishes it from neighboring pressures?
+**Derivation:** Baseline link: Fant pp. 3-4: a compact description should retain needed message information, but every description is approximate and task-dependent; scores must therefore be tied to the use they stand for. Ordinary pressure: Speech systems are used through microphones, networks, interfaces, policies, and people; a benchmark number is only one observation of that whole chain. Failed shortcut: Reporting one average score on one dataset encourages the reader to treat a proxy as universal ability and ignores latency, failure recovery, privacy, and misuse. Recurring paper move: Align the evaluation with the real target, expose subgroup and condition variation, account for the full system boundary, and preserve an audit trail from evidence to claim. Neighbor test: A person must be able to trace evidence, uncertainty, and correction when a speech system matters.
+
+**What the papers share:** Speech systems are used through microphones, networks, interfaces, policies, and people; a benchmark number is only one observation of that whole chain. The subtheme asks: What ordinary speech pressure is handled by keeping claims inspectable and contestable, and what evidence distinguishes it from neighboring pressures?
+**The shortcut they outgrow:** A first attempt would answer the question only with auditability and contestability, but that shortcut misses the boundary: A stored confidence number is not an explanation of what evidence drove the decision.
+**The repeated mechanism:** Across this subtheme, papers make auditability and contestability explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Build an interactive platform that converts the same user prompt into alternative voices, shows paired model responses, and combines direct inspection with automated speech, sentiment, quality, pitch, and semantic-consistency measures.
+
+#### Concepts inside this boundary
+
+**Auditability and contestability.** Keep enough provenance, uncertainty, and correction path for a person to understand and challenge a consequential speech-derived decision.
+Boundary: A stored confidence number is not an explanation of what evidence drove the decision.
+
+#### Named evidence
+
+- **Hear Me Out: Interactive evaluation and bias discovery platform for speech-to-speech conversational AI** (`bokkahallisatish25_interspeech`; D3): Build an interactive platform that converts the same user prompt into alternative voices, shows paired model responses, and combines direct inspection with automated speech, sentiment, quality, pitch, and semantic-consistency measures. Evaluation: ‘Hear Me Out’ evaluates their ability to preserve crucial vocal cues, enabling users to explore how variations in speaker characteristics and paralinguistic features influence AI responses. Limit: The work is a platform/demo, not a powered user study or population-level fairness audit; its automated metrics and selected voice profiles constrain what can be observed. The authors explicitly call for larger studies and additional bias metrics, and no independent reproduction was performed.
+- **FaiST: A Benchmark Dataset for Fairness in Speech Technology** (`jahan25_interspeech`; D3): Create a benchmark that measures fairness across speech-technology tasks and demographic or linguistic conditions with explicit group-level evidence. Evaluation: To help combat this problem, we are introducing FaiST (Fairness in Speech Technology), a novel speech dataset from American English speakers of various racial, ethnic, and national origin groups. Limit: Group definitions, labels, sample balance, tasks, metrics, and consent bound the conclusions; benchmark parity is not proof of social fairness.
+- **A Comprehensive Real-World Assessment of Audio Watermarking Algorithms: Will They Survive Neural Codecs?** (`ozer25_interspeech`; D3): Evaluate audio-watermarking algorithms under a broad real-world transformation suite, including neural codecs, and compare detectability and audio quality. Evaluation: We present the Robust Audio Watermarking Benchmark (RAW-Bench) to foster the evaluation of deep learning-based audio watermarking algorithms, establishing a standardized benchmark and allowing systematic comparisons. Limit: Algorithms, codec versions, payloads, thresholds, and attack suite bound the result; survival in tested codecs is not universal tamper resistance.
+
+**Boundary from neighboring subthemes:** A stored confidence number is not an explanation of what evidence drove the decision.
+**What this evidence does not establish:** The shared story is supported only by the reviewed papers listed here; D2 entries support the problem and stated method, while D3 entries support the reported mechanism and evaluation. It is not a venue-wide prevalence claim.
+**Open question:** What changes when this move is tested outside the speakers, languages, rooms, devices, or benchmark conditions represented by the 3 D3 paper(s)?
