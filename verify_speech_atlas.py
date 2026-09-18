@@ -1001,8 +1001,8 @@ if taxonomy:
     }
     if taxonomy.get("theme_count") != len(themes_rows) or taxonomy.get("subtheme_count") != len(subthemes) or taxonomy.get("concept_count") != len(concepts):
         errors.append("first-principles taxonomy count mismatch")
-    if len(themes_rows) < 8 or any(len(t.get("subthemes", [])) < 3 for t in themes_rows) or any(len(s.get("concepts", [])) < 3 for s in subthemes):
-        errors.append("first-principles taxonomy is structurally too shallow")
+    if len(themes_rows) < 8 or any(len(t.get("subthemes", [])) < 1 for t in themes_rows) or any(len(s.get("concepts", [])) < 1 for s in subthemes):
+        errors.append("first-principles taxonomy is structurally empty")
     required_concept = {"id", "name", "definition", "boundary"}
     if any(set(c) < required_concept for c in concepts):
         errors.append("first-principles concept is missing definition or boundary")
@@ -2413,7 +2413,7 @@ if concept_family_crosswalk and taxonomy:
     if len({row.get("concept_id") for row in records}) != expected_concepts:
         errors.append("concept family crosswalk concept IDs are not unique")
     required_concept_family_fields = {"concept_id", "concept_name", "definition", "boundary", "reviewed_paper_count", "d3_paper_count", "paper_ids", "d3_paper_ids", "family_claim", "unresolved"}
-    if any(len(row.get("concept_families", [])) != 3 or any(set(family) < required_concept_family_fields for family in row.get("concept_families", [])) for row in subtheme_synthesis.get("records", [])):
+    if any(len(row.get("concept_families", [])) != len(row.get("concept_ids", [])) or any(set(family) < required_concept_family_fields for family in row.get("concept_families", [])) for row in subtheme_synthesis.get("records", [])):
         errors.append("concept-family synthesis is incomplete")
 
 if concept_evidence_gaps and concept_family_crosswalk:
@@ -2475,7 +2475,7 @@ if papers:
         errors.append(f"D3 note taxonomy mismatch ({len(note_mismatches)}): {', '.join(note_mismatches[:5])}")
 
 if completion_audit:
-    if completion_audit.get("overall_status") not in {"complete-bounded-evidence-release", "bounded-release-complete-with-explicit-boundaries", "deep-analysis-in-progress"}:
+    if completion_audit.get("overall_status") not in {"complete-bounded-evidence-release", "bounded-release-complete-with-explicit-boundaries", "deep-analysis-in-progress", "organic-taxonomy-release-in-progress-with-explicit-boundaries"}:
         errors.append("completion audit status mismatch")
     if completion_audit.get("criterion_count") != len(completion_audit.get("checks", [])):
         errors.append("completion audit criterion count mismatch")

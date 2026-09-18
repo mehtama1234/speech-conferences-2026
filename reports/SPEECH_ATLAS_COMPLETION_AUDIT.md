@@ -1,21 +1,21 @@
 # Speech atlas completion audit
 
-**Status:** `bounded-release-complete-with-explicit-boundaries`
+**Status:** `organic-taxonomy-release-in-progress-with-explicit-boundaries`
 
-The bounded ICML-style conceptual and paper-grounded atlas is complete: its semantic layers, D3 family coverage, syntheses, provenance, artifact audit, reader path, rebuild, and validator are internally consistent. Unresolved science and source-access limits remain explicit rather than being presented as completed evidence.
+The paper-grounded atlas has been rebuilt around an organically derived taxonomy proposal: its semantic layers, syntheses, provenance, artifact audit, reader path, rebuild, and validator are internally consistent. The new boundaries still require analyst review of rejected splits, rejected merges, and unresolved cases before the conceptual goal can be called complete.
 
 | Requirement | Status | Evidence |
 |---|---|---|
 | corpus-provenance | `verified-with-boundaries` | ICASSP preserved-input source manifest plus official ISCA archive manifest; 3739 official ICASSP accepted-paper title/paper-number matches are preserved, while the corpus remains discovery metadata for abstracts and full text. |
 | full-paper-coverage-record | `verified-with-boundaries` | 1179 per-paper D2/D3 records; 469 D3 and 710 D2. |
 | icassp-paper-evidence | `verified-with-boundaries` | 3864 ICASSP D1/D2 per-paper evidence records now preserve title-only versus abstract-backed boundaries; full-paper access remains unavailable for the corpus. |
-| conceptual-taxonomy | `verified-with-boundaries` | The bounded taxonomy has 8 themes, 24 subthemes, and 72 concepts; 72/72 concepts have explicit definitions, boundaries, positive/negative membership examples, and D1/D2/D3 evidence rules. All 1179 INTERSPEECH and 3864 ICASSP records have explicit reviewed membership; the taxonomy remains an analytic model, not a claim about all speech research. |
+| conceptual-taxonomy | `verified-with-boundaries` | The bounded taxonomy has 8 themes, 34 subthemes, and 72 concepts; 72/72 concepts have explicit definitions, boundaries, positive/negative membership examples, and D1/D2/D3 evidence rules. All 1179 INTERSPEECH and 3864 ICASSP records have explicit reviewed membership; the taxonomy remains an analytic model, not a claim about all speech research. |
 | semantic-review-closure | `verified-with-boundaries` | An explainable proposal queue covers 1179 INTERSPEECH papers; 1179 have analyst-reviewed D2/D3 dispositions, with no provisional or unresolved INTERSPEECH rows. |
 | corpus-wide-semantic-dispositions | `verified-with-boundaries` | Every INTERSPEECH and ICASSP record has an explicit disposition with preserved evidence and unresolved reason: INTERSPEECH {'analyst-confirmed': 1130, 'analyst-rejected': 49}, ICASSP {'analyst-rejected': 3254, 'analyst-confirmed': 609, 'analyst-unresolved': 1}. Provisional candidates are visibly not counted as analyst-confirmed. |
 | icassp-semantic-boundary | `verified-with-boundaries` | An explicit queue covers 3864 ICASSP records with D1/D2 depth; 3864 have analyst-reviewed dispositions, including 1 explicitly insufficient-evidence case(s). This closes membership adjudication at the available metadata boundary; it does not make title-only records full-paper evidence. |
 | deep-paper-analysis | `verified-with-boundaries` | 1179 papers have required first-principles fields at explicit D2/D3 depth; 469 have full-paper evidence. D2 records remain explicitly bounded, and D3 claims remain author-reported. |
 | seed-family-synthesis | `verified-with-boundaries` | The bounded seed synthesis covers 8 themes from 456 reviewed D3 papers; it is not a venue-wide prevalence or independent scientific conclusion. |
-| subtheme-synthesis | `verified-with-boundaries` | All 24 taxonomy subthemes have explicit synthesis records; 24 contain analyst-reviewed D2/D3 evidence and 24 contain D3 evidence. The taxonomy-valid D3 minimum is 18 papers across 24 subthemes, with concept boundaries and tradeoffs preserved. |
+| subtheme-synthesis | `verified-with-boundaries` | All 34 taxonomy subthemes have explicit synthesis records; 34 contain analyst-reviewed D2/D3 evidence and 34 contain D3 evidence. The taxonomy-valid D3 minimum is 3 papers across 34 subthemes, with concept boundaries and tradeoffs preserved. |
 | reader-navigation | `verified-with-boundaries` | First-principles reading paths connect ordinary problems, failed shortcuts, conceptual moves, subthemes, papers, and evidence limits; the paths remain bounded by the reviewed D3 seed. |
 | atlas-index | `verified-with-boundaries` | A plain-language index points readers to the taxonomy, reading paths, subtheme syntheses, paper analyses, gaps, and cross-venue comparison while preserving the incomplete-review boundary. |
 | unresolved-case-visibility | `verified-with-boundaries` | A human-readable semantic-gap report separates ambiguous, insufficient-evidence, and ICASSP out-of-scope rows with examples and next actions; unresolved cases remain open. |
@@ -27,7 +27,7 @@ The bounded ICML-style conceptual and paper-grounded atlas is complete: its sema
 
 ## Remaining bounded work
 
-- No required analytical work remains within the bounded release scope.
+- Review the organic derivation ledger: confirm or revise each proposed split, merge, and unresolved boundary against the baseline account and named paper evidence before declaring the conceptual taxonomy final.
 
 ## Open evidence boundaries
 

@@ -218,6 +218,15 @@ def normalize_review_row(
         return out
     target = CONTEXT.get((old_theme, old_subtheme, old_concept)) or LEGACY.get(old_concept)
     if target:
+        # Legacy entries often already name the surviving concept but retain
+        # the subtheme that existed before the organic regrouping.  Resolve
+        # the concept against the live taxonomy one more time so every
+        # reviewed row follows the current concept parent.
+        if canonical_triples and target[2] in valid_concepts:
+            parent = next((triple for triple in canonical_triples if triple[2] == target[2]), None)
+            if parent:
+                out["theme_id"], out["subtheme_id"], out["concept_id"] = parent
+                return out
         if target[0] == "people-and-variation":
             target = ("people-variation-and-health", target[1], target[2])
         out["theme_id"], out["subtheme_id"], out["concept_id"] = target

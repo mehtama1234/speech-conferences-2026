@@ -1,12 +1,10 @@
 # Speech first-principles conceptual taxonomy
 
-This taxonomy is a conceptual scaffold for semantic review, not an official conference classification or a prevalence estimate.
+Themes and variable subthemes are derived from the baseline first-principles account and explicit paper-family boundary tests; this is not an official conference classification or prevalence estimate.
 
-This is the semantic contract for the deep atlas. The old keyword map only discovers candidates.
+This organically derived proposal has 8 themes, 34 variable subthemes, and 72 concepts. Counts are not equalized.
 
 ## Sound, bodies, rooms, and recording
-
-**Question:** How does a human or other source turn a physical event into the signal a machine receives?
 
 **Ordinary problem:** Speech reaches a microphone as changing air pressure after vocal-fold vibration, mouth shape, room reflections, and electronics have already mixed together.
 
@@ -16,9 +14,11 @@ This is the semantic contract for the deep atlas. The old keyword map only disco
 
 **Tradeoff/boundary:** A useful physical description can be wrong when bodies, rooms, or microphones violate its assumptions.
 
-### How bodies make voiced and unvoiced sound
+### Making a physical sound
 
-**Question:** Which parts of the signal come from the source and which from the moving vocal tract?
+**Question:** What ordinary speech pressure is handled by making a physical sound, and what evidence distinguishes it from neighboring pressures?
+**Why this boundary exists:** The source and tract shape the pressure wave before a device records it.
+**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
 
 #### Periodic vocal-fold source
 
@@ -44,6 +44,12 @@ The tongue, lips, jaw, and throat reshape source energy so some frequency region
 
 **Evidence rule:** D2 abstract evidence must name the spoken-speech object and conceptual pressure; D3 full-paper evidence must additionally support the mechanism and evaluation object.
 
+### Coordinating moving speech parts
+
+**Question:** What ordinary speech pressure is handled by coordinating moving speech parts, and what evidence distinguishes it from neighboring pressures?
+**Why this boundary exists:** Gesture overlap and timing are the object; a static source/filter description is not enough.
+**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
+
 #### Articulatory coordination
 
 Speech is a timed coordination of several moving constrictions, not a sequence of isolated sounds; overlap lets one gesture affect its neighbors.
@@ -56,9 +62,11 @@ Speech is a timed coordination of several moving constrictions, not a sequence o
 
 **Evidence rule:** D2 abstract evidence must name the spoken-speech object and conceptual pressure; D3 full-paper evidence must additionally support the mechanism and evaluation object.
 
-### Representing a changing sound
+### Representing a changing signal
 
-**Question:** What must be preserved when a continuous signal is made into manageable measurements?
+**Question:** What ordinary speech pressure is handled by representing a changing signal, and what evidence distinguishes it from neighboring pressures?
+**Why this boundary exists:** The question is what a digital representation keeps or loses across time, frequency, and precision.
+**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
 
 #### Local frequency content
 
@@ -96,9 +104,11 @@ A digital recording keeps a finite set of amplitude measurements, so the samplin
 
 **Evidence rule:** D2 abstract evidence must name the spoken-speech object and conceptual pressure; D3 full-paper evidence must additionally support the mechanism and evaluation object.
 
-### Rooms, devices, and unusual sensors
+### Changing the path from source to sensor
 
-**Question:** How does the path from talker to sensor alter the speech evidence?
+**Question:** What ordinary speech pressure is handled by changing the path from source to sensor, and what evidence distinguishes it from neighboring pressures?
+**Why this boundary exists:** Room reflections, device coloration, and alternate sensors change the evidence before recognition.
+**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
 
 #### Reverberant room mixture
 
@@ -138,8 +148,6 @@ Neck vibration, ultrasound, radar, or muscle signals can observe speech when air
 
 ## Listening through noise, overlap, and missing sound
 
-**Question:** How can a system recover one useful speech stream from several competing or damaged signals?
-
 **Ordinary problem:** A listener often hears several talkers, music, echo, and device noise at once, yet needs one person's words or an intelligible mixture.
 
 **Why the naive approach fails:** Amplifying everything or subtracting an average noise profile also removes quiet consonants and fails when the interferer changes with the speech.
@@ -148,9 +156,11 @@ Neck vibration, ultrasound, radar, or muscle signals can observe speech when air
 
 **Tradeoff/boundary:** A cleaner waveform may be less faithful, introduce artifacts, or favor the wrong speaker when the mixture is ambiguous.
 
-### Suppressing background noise without erasing speech
+### Suppressing changing interference
 
-**Question:** Which variation is nuisance and which is the quiet speech cue needed for intelligibility?
+**Question:** What ordinary speech pressure is handled by suppressing changing interference, and what evidence distinguishes it from neighboring pressures?
+**Why this boundary exists:** The target is one speech stream and the failure is removing speech along with noise.
+**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
 
 #### Time-frequency masking
 
@@ -188,9 +198,11 @@ The useful distinction is whether noise changes faster than the system can track
 
 **Evidence rule:** D2 abstract evidence must name the spoken-speech object and conceptual pressure; D3 full-paper evidence must additionally support the mechanism and evaluation object.
 
-### Choosing one source from a mixture
+### Recovering several hidden sources
 
-**Question:** How can a system decide which part of a mixture belongs to the target talker?
+**Question:** What ordinary speech pressure is handled by recovering several hidden sources, and what evidence distinguishes it from neighboring pressures?
+**Why this boundary exists:** The mixture contains multiple sources and the system must infer source identity or count.
+**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
 
 #### Blind source separation
 
@@ -201,18 +213,6 @@ Infer several hidden signals from their mixture using differences in statistics,
 **Negative/boundary example:** A target voice embedding supplied at test time makes the task target-conditioned rather than blind.
 
 **Boundary:** The mixture may not contain enough information to identify sources uniquely; permutation and source-count assumptions matter.
-
-**Evidence rule:** D2 abstract evidence must name the spoken-speech object and conceptual pressure; D3 full-paper evidence must additionally support the mechanism and evaluation object.
-
-#### Spatial filtering
-
-Several microphones provide direction-dependent differences, allowing a filter to reinforce one location and reject others.
-
-**Positive membership example:** Microphone-array direction or spatial covariance is used to reinforce one location.
-
-**Negative/boundary example:** A single-channel spectral model with no spatial input is not spatial filtering.
-
-**Boundary:** A single microphone or moving speaker removes the spatial cue the method depends on.
 
 **Evidence rule:** D2 abstract evidence must name the spoken-speech object and conceptual pressure; D3 full-paper evidence must additionally support the mechanism and evaluation object.
 
@@ -228,9 +228,29 @@ A voice example, enrollment identity, or visual cue tells the separator which so
 
 **Evidence rule:** D2 abstract evidence must name the spoken-speech object and conceptual pressure; D3 full-paper evidence must additionally support the mechanism and evaluation object.
 
-### Removing echo and repairing missing evidence
+### Using location to select sound
 
-**Question:** When should the system cancel an unwanted copy and when must it reconstruct what is no longer observed?
+**Question:** What ordinary speech pressure is handled by using location to select sound, and what evidence distinguishes it from neighboring pressures?
+**Why this boundary exists:** Microphone geometry and direction are the evidence; a single-channel separator has a different limit.
+**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
+
+#### Spatial filtering
+
+Several microphones provide direction-dependent differences, allowing a filter to reinforce one location and reject others.
+
+**Positive membership example:** Microphone-array direction or spatial covariance is used to reinforce one location.
+
+**Negative/boundary example:** A single-channel spectral model with no spatial input is not spatial filtering.
+
+**Boundary:** A single microphone or moving speaker removes the spatial cue the method depends on.
+
+**Evidence rule:** D2 abstract evidence must name the spoken-speech object and conceptual pressure; D3 full-paper evidence must additionally support the mechanism and evaluation object.
+
+### Canceling copies and filling gaps
+
+**Question:** What ordinary speech pressure is handled by canceling copies and filling gaps, and what evidence distinguishes it from neighboring pressures?
+**Why this boundary exists:** The unwanted signal is a known delayed copy or missing frame, not an arbitrary background.
+**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
 
 #### Acoustic echo cancellation
 
@@ -256,6 +276,12 @@ When transmitted audio frames disappear, infer a short continuation from nearby 
 
 **Evidence rule:** D2 abstract evidence must name the spoken-speech object and conceptual pressure; D3 full-paper evidence must additionally support the mechanism and evaluation object.
 
+### Optimizing what a listener can use
+
+**Question:** What ordinary speech pressure is handled by optimizing what a listener can use, and what evidence distinguishes it from neighboring pressures?
+**Why this boundary exists:** The target is intelligibility or acceptability rather than exact waveform recovery.
+**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
+
 #### Perceptual enhancement
 
 Optimize what a listener can understand or tolerate rather than preserving every sample, using intelligibility or quality as the target.
@@ -270,8 +296,6 @@ Optimize what a listener can understand or tolerate rather than preserving every
 
 ## From sound to words and structured speech
 
-**Question:** How does a system turn a continuous acoustic stream into the words, boundaries, and disfluencies a user meant?
-
 **Ordinary problem:** Speech has no visible spaces between words, and pronunciation, speed, accent, noise, and hesitation vary even when the intended sentence is the same.
 
 **Why the naive approach fails:** Matching each sound to a fixed dictionary pronunciation or treating the utterance as already segmented fails on coarticulation, new words, and disfluency.
@@ -280,9 +304,11 @@ Optimize what a listener can understand or tolerate rather than preserving every
 
 **Tradeoff/boundary:** A fluent transcript can be easier to read but less faithful to what was said, including omissions, hesitation, or uncertainty.
 
-### Mapping continuous acoustics to linguistic units
+### Learning reusable sound units
 
-**Question:** How can changing sound be assigned to phones, words, or tokens without visible boundaries?
+**Question:** What ordinary speech pressure is handled by learning reusable sound units, and what evidence distinguishes it from neighboring pressures?
+**Why this boundary exists:** The system first decides what reusable evidence can be extracted from continuous sound.
+**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
 
 #### Acoustic-to-token mapping
 
@@ -308,6 +334,12 @@ Predicting or grouping parts of unlabeled audio can provide reusable units befor
 
 **Evidence rule:** D2 abstract evidence must name the spoken-speech object and conceptual pressure; D3 full-paper evidence must additionally support the mechanism and evaluation object.
 
+### Allowing different realizations of words
+
+**Question:** What ordinary speech pressure is handled by allowing different realizations of words, and what evidence distinguishes it from neighboring pressures?
+**Why this boundary exists:** The same intended unit has multiple acoustic paths; this is distinct from learning a unit representation.
+**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
+
 #### Pronunciation variation
 
 The same word can have reductions, substitutions, or accent-specific realizations, so recognition must allow more than one acoustic path.
@@ -320,9 +352,11 @@ The same word can have reductions, substitutions, or accent-specific realization
 
 **Evidence rule:** D2 abstract evidence must name the spoken-speech object and conceptual pressure; D3 full-paper evidence must additionally support the mechanism and evaluation object.
 
-### Boundaries, timing, and sequence constraints
+### Locating units in time
 
-**Question:** How does the system decide where units begin, end, and depend on one another?
+**Question:** What ordinary speech pressure is handled by locating units in time, and what evidence distinguishes it from neighboring pressures?
+**Why this boundary exists:** The output must preserve or locate timing, hesitation, repair, or sequence boundaries.
+**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
 
 #### Temporal alignment
 
@@ -333,18 +367,6 @@ Align an audio timeline with words, phones, or labels so duration and position c
 **Negative/boundary example:** An utterance-level class with no temporal correspondence is not alignment.
 
 **Boundary:** Forced alignment assumes the transcript is correct and can conceal recognition errors.
-
-**Evidence rule:** D2 abstract evidence must name the spoken-speech object and conceptual pressure; D3 full-paper evidence must additionally support the mechanism and evaluation object.
-
-#### Long-context decoding
-
-Use words and turns before and after a sound to resolve locally ambiguous acoustics, such as homophones or clipped endings.
-
-**Positive membership example:** Earlier or later words and turns resolve an acoustically ambiguous local segment.
-
-**Negative/boundary example:** A frame-local classifier that never uses surrounding context is not long-context decoding.
-
-**Boundary:** Context can override a rare but correct word, especially when the language model has a strong prior.
 
 **Evidence rule:** D2 abstract evidence must name the spoken-speech object and conceptual pressure; D3 full-paper evidence must additionally support the mechanism and evaluation object.
 
@@ -360,19 +382,21 @@ Represent pauses, repetitions, repairs, laughter, and overlap when those events 
 
 **Evidence rule:** D2 abstract evidence must name the spoken-speech object and conceptual pressure; D3 full-paper evidence must additionally support the mechanism and evaluation object.
 
-### Recognizing new speakers, domains, and words
+### Using context without inventing words
 
-**Question:** How can recognition remain useful when the test speech differs from training speech?
+**Question:** What ordinary speech pressure is handled by using context without inventing words, and what evidence distinguishes it from neighboring pressures?
+**Why this boundary exists:** Context, speaker evidence, and new words resolve ambiguity but can override what was actually said.
+**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
 
-#### Speaker adaptation
+#### Long-context decoding
 
-Adjust the acoustic or decoding assumptions to a talker's voice, speaking rate, or pronunciation using a small amount of evidence.
+Use words and turns before and after a sound to resolve locally ambiguous acoustics, such as homophones or clipped endings.
 
-**Positive membership example:** A small enrollment sample changes acoustic or decoding assumptions for a particular talker.
+**Positive membership example:** Earlier or later words and turns resolve an acoustically ambiguous local segment.
 
-**Negative/boundary example:** A single population-wide model with no speaker evidence is not adaptation.
+**Negative/boundary example:** A frame-local classifier that never uses surrounding context is not long-context decoding.
 
-**Boundary:** Adaptation can overfit a short sample and degrade when the talker changes state or the enrollment is wrong.
+**Boundary:** Context can override a rare but correct word, especially when the language model has a strong prior.
 
 **Evidence rule:** D2 abstract evidence must name the spoken-speech object and conceptual pressure; D3 full-paper evidence must additionally support the mechanism and evaluation object.
 
@@ -385,6 +409,18 @@ Use the meeting topic, contact list, or application vocabulary to raise plausibl
 **Negative/boundary example:** A generic language model with no task context is not contextual biasing.
 
 **Boundary:** A biased vocabulary can turn uncertainty into confident but context-shaped substitutions.
+
+**Evidence rule:** D2 abstract evidence must name the spoken-speech object and conceptual pressure; D3 full-paper evidence must additionally support the mechanism and evaluation object.
+
+#### Speaker adaptation
+
+Adjust the acoustic or decoding assumptions to a talker's voice, speaking rate, or pronunciation using a small amount of evidence.
+
+**Positive membership example:** A small enrollment sample changes acoustic or decoding assumptions for a particular talker.
+
+**Negative/boundary example:** A single population-wide model with no speaker evidence is not adaptation.
+
+**Boundary:** Adaptation can overfit a short sample and degrade when the talker changes state or the enrollment is wrong.
 
 **Evidence rule:** D2 abstract evidence must name the spoken-speech object and conceptual pressure; D3 full-paper evidence must additionally support the mechanism and evaluation object.
 
@@ -402,8 +438,6 @@ Handle names, code-switching, jargon, and newly encountered words without requir
 
 ## From spoken form to meaning and coordinated action
 
-**Question:** What does an utterance mean here, and what should another participant do with it?
-
 **Ordinary problem:** The same words can request, question, joke, refuse, or warn depending on prosody, shared history, timing, and the surrounding situation.
 
 **Why the naive approach fails:** A transcript-only system treats words as the whole message and misses intent, reference, turn structure, and what is appropriate to do next.
@@ -412,9 +446,11 @@ Handle names, code-switching, jargon, and newly encountered words without requir
 
 **Tradeoff/boundary:** More context can resolve ambiguity but can also leak private information, over-interpret the speaker, or make a system confidently act on a wrong inference.
 
-### Prosody, emotion, and communicative intent
+### Meaning carried by how speech sounds
 
-**Question:** What does timing, pitch, loudness, and voice quality add beyond the words?
+**Question:** What ordinary speech pressure is handled by meaning carried by how speech sounds, and what evidence distinguishes it from neighboring pressures?
+**Why this boundary exists:** Pitch, timing, voice quality, and effort add information beyond words.
+**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
 
 #### Prosodic meaning
 
@@ -440,6 +476,12 @@ Voice properties can provide clues about emotion, fatigue, engagement, or health
 
 **Evidence rule:** D2 abstract evidence must name the spoken-speech object and conceptual pressure; D3 full-paper evidence must additionally support the mechanism and evaluation object.
 
+### Inferring what a speaker is trying to do
+
+**Question:** What ordinary speech pressure is handled by inferring what a speaker is trying to do, and what evidence distinguishes it from neighboring pressures?
+**Why this boundary exists:** The system tracks goals, commitments, and situation rather than only classifying acoustic style.
+**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
+
 #### Intent in context
 
 Infer what the speaker is trying to accomplish from words plus the situation and prior turns, then keep uncertainty when several intents fit.
@@ -449,22 +491,6 @@ Infer what the speaker is trying to accomplish from words plus the situation and
 **Negative/boundary example:** Assigning intent from isolated keywords alone is not context-sensitive intent inference.
 
 **Boundary:** Intent labels often reflect annotator interpretation and may erase ambiguity or culturally different readings.
-
-**Evidence rule:** D2 abstract evidence must name the spoken-speech object and conceptual pressure; D3 full-paper evidence must additionally support the mechanism and evaluation object.
-
-### Conversation as joint timing
-
-**Question:** How do participants know when to listen, speak, yield, repair, or overlap?
-
-#### Turn-boundary prediction
-
-Predict whether a speaker is continuing, yielding, or likely to stop so a system can respond without cutting them off.
-
-**Positive membership example:** The system predicts whether a speaker will continue, yield, or stop before responding.
-
-**Negative/boundary example:** Detecting sentence punctuation after the turn is complete is not turn-boundary prediction.
-
-**Boundary:** A pause is not always a turn end; cultures, speakers, and task types change timing conventions.
 
 **Evidence rule:** D2 abstract evidence must name the spoken-speech object and conceptual pressure; D3 full-paper evidence must additionally support the mechanism and evaluation object.
 
@@ -480,6 +506,24 @@ Track unresolved questions, commitments, entities, and prior actions so a respon
 
 **Evidence rule:** D2 abstract evidence must name the spoken-speech object and conceptual pressure; D3 full-paper evidence must additionally support the mechanism and evaluation object.
 
+### Coordinating participation under uncertainty
+
+**Question:** What ordinary speech pressure is handled by coordinating participation under uncertainty, and what evidence distinguishes it from neighboring pressures?
+**Why this boundary exists:** The problem is when to speak, yield, interrupt, or ask for clarification.
+**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
+
+#### Turn-boundary prediction
+
+Predict whether a speaker is continuing, yielding, or likely to stop so a system can respond without cutting them off.
+
+**Positive membership example:** The system predicts whether a speaker will continue, yield, or stop before responding.
+
+**Negative/boundary example:** Detecting sentence punctuation after the turn is complete is not turn-boundary prediction.
+
+**Boundary:** A pause is not always a turn end; cultures, speakers, and task types change timing conventions.
+
+**Evidence rule:** D2 abstract evidence must name the spoken-speech object and conceptual pressure; D3 full-paper evidence must additionally support the mechanism and evaluation object.
+
 #### Repair and clarification
 
 When recognition or understanding is uncertain, ask a targeted question or offer alternatives instead of silently continuing.
@@ -492,9 +536,11 @@ When recognition or understanding is uncertain, ask a targeted question or offer
 
 **Evidence rule:** D2 abstract evidence must name the spoken-speech object and conceptual pressure; D3 full-paper evidence must additionally support the mechanism and evaluation object.
 
-### Connecting speech to people, objects, and actions
+### Connecting language to a shared world
 
-**Question:** How does a spoken description become a shared reference or an authorized action?
+**Question:** What ordinary speech pressure is handled by connecting language to a shared world, and what evidence distinguishes it from neighboring pressures?
+**Why this boundary exists:** A phrase must identify a referent or authorized action and remain corrigible through feedback.
+**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
 
 #### Referential grounding
 
@@ -534,8 +580,6 @@ Let user corrections, confirmations, and response outcomes update the system's i
 
 ## Creating speech while keeping the right things fixed
 
-**Question:** How can a system produce intelligible speech while controlling content, identity, timing, style, and naturalness separately?
-
 **Ordinary problem:** A useful synthetic voice must say the requested content, sound like the intended speaker or style, and remain understandable as it changes over time.
 
 **Why the naive approach fails:** Copying a recording or predicting samples directly entangles words with identity, pitch, rhythm, and recording conditions, making controlled change difficult.
@@ -544,9 +588,11 @@ Let user corrections, confirmations, and response outcomes update the system's i
 
 **Tradeoff/boundary:** Factor separation is rarely perfect: changing identity can change content, style controls can sound artificial, and a plausible voice can be misused.
 
-### Turning language plans into audible speech
+### Turning language into a timed speech plan
 
-**Question:** How does a text or linguistic plan become a timed, pronounceable signal?
+**Question:** What ordinary speech pressure is handled by turning language into a timed speech plan, and what evidence distinguishes it from neighboring pressures?
+**Why this boundary exists:** Text must become pronunciation, duration, pitch targets, and an audible sequence.
+**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
 
 #### Text-to-speech planning
 
@@ -559,6 +605,12 @@ Choose pronunciation, durations, pitch targets, and acoustic details before or w
 **Boundary:** Text does not specify one correct prosody, and a fluent output can still mispronounce names or sound unnatural.
 
 **Evidence rule:** D2 abstract evidence must name the spoken-speech object and conceptual pressure; D3 full-paper evidence must additionally support the mechanism and evaluation object.
+
+### Producing or compressing audible detail
+
+**Question:** What ordinary speech pressure is handled by producing or compressing audible detail, and what evidence distinguishes it from neighboring pressures?
+**Why this boundary exists:** The issue is sample-level detail and the tradeoff between faithful content and natural sound.
+**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
 
 #### Waveform synthesis
 
@@ -584,9 +636,11 @@ Treat ease of understanding and human-likeness as related but distinct targets t
 
 **Evidence rule:** D2 abstract evidence must name the spoken-speech object and conceptual pressure; D3 full-paper evidence must additionally support the mechanism and evaluation object.
 
-### Changing who sounds like they are speaking
+### Changing who sounds like the speaker
 
-**Question:** How can voice identity change while the spoken message remains the same?
+**Question:** What ordinary speech pressure is handled by changing who sounds like the speaker, and what evidence distinguishes it from neighboring pressures?
+**Why this boundary exists:** Identity changes while linguistic content is meant to remain stable.
+**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
 
 #### Speaker identity representation
 
@@ -624,9 +678,11 @@ Use a voice description or brief enrollment to synthesize a speaker not represen
 
 **Evidence rule:** D2 abstract evidence must name the spoken-speech object and conceptual pressure; D3 full-paper evidence must additionally support the mechanism and evaluation object.
 
-### Controlling timing, style, and expression
+### Changing style, timing, and response behavior
 
-**Question:** Which expressive choices should the user specify, and which should the system infer?
+**Question:** What ordinary speech pressure is handled by changing style, timing, and response behavior, and what evidence distinguishes it from neighboring pressures?
+**Why this boundary exists:** The system must obey expressive controls quickly without breaking continuity or meaning.
+**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
 
 #### Prosody control
 
@@ -666,8 +722,6 @@ Produce speech quickly enough for a conversation while preserving continuity and
 
 ## Speakers as changing people, not nuisance variables
 
-**Question:** How should speech systems represent differences between people and changes within one person?
-
 **Ordinary problem:** Voice depends on anatomy, age, health, emotion, language history, social setting, and equipment; these differences affect both communication and measurement.
 
 **Why the naive approach fails:** Treating variation as noise makes systems work best for a narrow population and can turn a health or identity signal into an unwanted demographic shortcut.
@@ -676,9 +730,11 @@ Produce speech quickly enough for a conversation while preserving continuity and
 
 **Tradeoff/boundary:** A factor that helps prediction may be sensitive, confounded, or harmful to expose; personalization can improve access while increasing privacy risk.
 
-### Identity, age, gender, and speaking style
+### Identity, age, and changing voice
 
-**Question:** Which voice differences should be preserved, normalized, or treated as evidence?
+**Question:** What ordinary speech pressure is handled by identity, age, and changing voice, and what evidence distinguishes it from neighboring pressures?
+**Why this boundary exists:** The evidence concerns who is speaking and how that person's voice changes across time and state.
+**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
 
 #### Speaker verification
 
@@ -716,9 +772,11 @@ The same person's voice shifts with fatigue, emotion, health, audience, and spea
 
 **Evidence rule:** D2 abstract evidence must name the spoken-speech object and conceptual pressure; D3 full-paper evidence must additionally support the mechanism and evaluation object.
 
-### Speech as a health or access signal
+### Speech measurements associated with health
 
-**Question:** How can speech technology help when speaking or hearing itself is impaired or changing?
+**Question:** What ordinary speech pressure is handled by speech measurements associated with health, and what evidence distinguishes it from neighboring pressures?
+**Why this boundary exists:** A measurable speech property is evaluated as a possible health signal, with clinical limits kept explicit.
+**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
 
 #### Clinical speech marker
 
@@ -731,6 +789,12 @@ Measure a reproducible speech property associated with a clinical condition or p
 **Boundary:** Association with a diagnosis is not clinical validity, causation, or permission to make a medical decision.
 
 **Evidence rule:** D2 abstract evidence must name the spoken-speech object and conceptual pressure; D3 full-paper evidence must additionally support the mechanism and evaluation object.
+
+### Communicating with atypical or impaired speech
+
+**Question:** What ordinary speech pressure is handled by communicating with atypical or impaired speech, and what evidence distinguishes it from neighboring pressures?
+**Why this boundary exists:** The goal is recognition or expression for people whose speech does not match majority training data.
+**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
 
 #### Atypical articulation and dysarthria
 
@@ -756,9 +820,11 @@ Use residual vocal, muscular, visual, or typed signals to help a person express 
 
 **Evidence rule:** D2 abstract evidence must name the spoken-speech object and conceptual pressure; D3 full-paper evidence must additionally support the mechanism and evaluation object.
 
-### Whether the system helps a real person
+### Whether the system actually helps a person
 
-**Question:** What does success mean for the person using or affected by the speech system?
+**Question:** What ordinary speech pressure is handled by whether the system actually helps a person, and what evidence distinguishes it from neighboring pressures?
+**Why this boundary exists:** The target is effort, control, access, and fit in a real activity rather than model accuracy alone.
+**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
 
 #### Listener effort
 
@@ -798,8 +864,6 @@ Judge whether a system works within a person's actual device, environment, commu
 
 ## Many languages, accents, and unequal evidence
 
-**Question:** How can speech technology serve people whose language or variety has little labeled data or little institutional support?
-
 **Ordinary problem:** Languages differ in sounds, writing systems, grammar, prosody, code-switching, and social meaning; data and tools are distributed unevenly.
 
 **Why the naive approach fails:** Scaling an English-centered recipe or translating labels assumes that all languages expose the same units, data, and errors.
@@ -810,7 +874,9 @@ Judge whether a system works within a person's actual device, environment, commu
 
 ### Sharing structure across languages
 
-**Question:** What can be shared, and what must remain language-specific?
+**Question:** What ordinary speech pressure is handled by sharing structure across languages, and what evidence distinguishes it from neighboring pressures?
+**Why this boundary exists:** The central question is what can be shared while retaining language-specific distinctions.
+**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
 
 #### Cross-lingual transfer
 
@@ -848,9 +914,11 @@ Handle a speaker moving between languages within an utterance, including pronunc
 
 **Evidence rule:** D2 abstract evidence must name the spoken-speech object and conceptual pressure; D3 full-paper evidence must additionally support the mechanism and evaluation object.
 
-### Learning when labels and recordings are scarce
+### Learning from sparse labels
 
-**Question:** How can a system improve without assuming a large clean labeled corpus?
+**Question:** What ordinary speech pressure is handled by learning from sparse labels, and what evidence distinguishes it from neighboring pressures?
+**Why this boundary exists:** The method changes how a model learns when labeled examples are scarce.
+**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
 
 #### Self-training
 
@@ -861,18 +929,6 @@ Use a model's predictions on unlabeled speech as additional training signals, id
 **Negative/boundary example:** Adding more human-transcribed data is not self-training.
 
 **Boundary:** Errors can reinforce themselves and create a false appearance of data scale.
-
-**Evidence rule:** D2 abstract evidence must name the spoken-speech object and conceptual pressure; D3 full-paper evidence must additionally support the mechanism and evaluation object.
-
-#### Speech data collection
-
-Design recording prompts, speakers, transcription, and consent so newly collected data covers the intended community and task.
-
-**Positive membership example:** A study designs prompts, speakers, transcripts, permissions, and sampling for a new speech corpus.
-
-**Negative/boundary example:** Using an existing benchmark without examining its collection is not data-collection analysis.
-
-**Boundary:** More hours do not fix biased sampling, poor transcripts, or a task definition that excludes natural speech.
 
 **Evidence rule:** D2 abstract evidence must name the spoken-speech object and conceptual pressure; D3 full-paper evidence must additionally support the mechanism and evaluation object.
 
@@ -888,9 +944,29 @@ Adjust a model to a language, speaker, or domain from a small number of examples
 
 **Evidence rule:** D2 abstract evidence must name the spoken-speech object and conceptual pressure; D3 full-paper evidence must additionally support the mechanism and evaluation object.
 
-### Accent, dialect, and cultural interpretation
+### Making missing speech evidence
 
-**Question:** When is a difference a recognition problem, and when is it the system's narrow norm?
+**Question:** What ordinary speech pressure is handled by making missing speech evidence, and what evidence distinguishes it from neighboring pressures?
+**Why this boundary exists:** The work creates speakers, prompts, labels, or recordings needed by a community or task.
+**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
+
+#### Speech data collection
+
+Design recording prompts, speakers, transcription, and consent so newly collected data covers the intended community and task.
+
+**Positive membership example:** A study designs prompts, speakers, transcripts, permissions, and sampling for a new speech corpus.
+
+**Negative/boundary example:** Using an existing benchmark without examining its collection is not data-collection analysis.
+
+**Boundary:** More hours do not fix biased sampling, poor transcripts, or a task definition that excludes natural speech.
+
+**Evidence rule:** D2 abstract evidence must name the spoken-speech object and conceptual pressure; D3 full-paper evidence must additionally support the mechanism and evaluation object.
+
+### Respecting variation and local meaning
+
+**Question:** What ordinary speech pressure is handled by respecting variation and local meaning, and what evidence distinguishes it from neighboring pressures?
+**Why this boundary exists:** The boundary is social and linguistic interpretation, not only transfer accuracy.
+**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
 
 #### Accent robustness
 
@@ -930,8 +1006,6 @@ Interpret politeness, indirectness, emotion, and conversational norms within the
 
 ## Evidence, practical systems, and consequences
 
-**Question:** What does a result establish, under what conditions, and who is affected when the system leaves the paper?
-
 **Ordinary problem:** Speech systems are used through microphones, networks, interfaces, policies, and people; a benchmark number is only one observation of that whole chain.
 
 **Why the naive approach fails:** Reporting one average score on one dataset encourages the reader to treat a proxy as universal ability and ignores latency, failure recovery, privacy, and misuse.
@@ -940,9 +1014,11 @@ Interpret politeness, indirectness, emotion, and conversational norms within the
 
 **Tradeoff/boundary:** Broader evaluation costs time and data, but narrow evidence can create false confidence exactly where speech systems affect access, identity, or safety.
 
-### What a metric actually measures
+### Connecting scores to human goals
 
-**Question:** Which human or engineering property is the score standing in for?
+**Question:** What ordinary speech pressure is handled by connecting scores to human goals, and what evidence distinguishes it from neighboring pressures?
+**Why this boundary exists:** A metric is a proxy and must be tied to the human or engineering property it represents.
+**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
 
 #### Word error versus understanding
 
@@ -980,9 +1056,11 @@ A system should know when its uncertainty is high enough to defer, ask, or show 
 
 **Evidence rule:** D2 abstract evidence must name the spoken-speech object and conceptual pressure; D3 full-paper evidence must additionally support the mechanism and evaluation object.
 
-### From model score to deployed behavior
+### Changing speakers, rooms, and conditions
 
-**Question:** What changes when the model is placed in a real device and interaction loop?
+**Question:** What ordinary speech pressure is handled by changing speakers, rooms, and conditions, and what evidence distinguishes it from neighboring pressures?
+**Why this boundary exists:** The question is whether failures are detected and recovered when conditions differ from training.
+**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
 
 #### Distribution shift
 
@@ -993,18 +1071,6 @@ Performance changes when speakers, microphones, rooms, languages, topics, or noi
 **Negative/boundary example:** Calling a dataset diverse without measuring a train-test change is not distribution-shift evidence.
 
 **Boundary:** A named shift is not evidence of coverage; the shift must be measured and tied to the failure.
-
-**Evidence rule:** D2 abstract evidence must name the spoken-speech object and conceptual pressure; D3 full-paper evidence must additionally support the mechanism and evaluation object.
-
-#### Latency and resource budget
-
-A system must meet timing, memory, energy, bandwidth, and hardware limits while preserving the property users need.
-
-**Positive membership example:** A paper measures response time, memory, energy, bandwidth, or compute under a deployment constraint.
-
-**Negative/boundary example:** A smaller parameter count with no resource or timing measurement is not a deployment-budget result.
-
-**Boundary:** A faster model may emit less context, reduce quality, or move cost into an unreported service.
 
 **Evidence rule:** D2 abstract evidence must name the spoken-speech object and conceptual pressure; D3 full-paper evidence must additionally support the mechanism and evaluation object.
 
@@ -1020,9 +1086,29 @@ Handle uncertainty through confirmation, correction, fallback, and logging so on
 
 **Evidence rule:** D2 abstract evidence must name the spoken-speech object and conceptual pressure; D3 full-paper evidence must additionally support the mechanism and evaluation object.
 
-### Voice data, identity, and social risk
+### Meeting time, memory, and hardware limits
 
-**Question:** What can be inferred or done with speech beyond the immediate task?
+**Question:** What ordinary speech pressure is handled by meeting time, memory, and hardware limits, and what evidence distinguishes it from neighboring pressures?
+**Why this boundary exists:** The system must operate within a device or interaction budget without hiding cost elsewhere.
+**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
+
+#### Latency and resource budget
+
+A system must meet timing, memory, energy, bandwidth, and hardware limits while preserving the property users need.
+
+**Positive membership example:** A paper measures response time, memory, energy, bandwidth, or compute under a deployment constraint.
+
+**Negative/boundary example:** A smaller parameter count with no resource or timing measurement is not a deployment-budget result.
+
+**Boundary:** A faster model may emit less context, reduce quality, or move cost into an unreported service.
+
+**Evidence rule:** D2 abstract evidence must name the spoken-speech object and conceptual pressure; D3 full-paper evidence must additionally support the mechanism and evaluation object.
+
+### Protecting voice and resisting misuse
+
+**Question:** What ordinary speech pressure is handled by protecting voice and resisting misuse, and what evidence distinguishes it from neighboring pressures?
+**Why this boundary exists:** The risk concerns sensitive voice evidence, impersonation, replay, and generated speech.
+**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
 
 #### Voice privacy
 
@@ -1047,6 +1133,12 @@ A system must distinguish authorized speech from replayed or generated audio whe
 **Boundary:** A detector trained on known generators can fail on unseen synthesis, replay channels, or an attacker who changes the interaction.
 
 **Evidence rule:** D2 abstract evidence must name the spoken-speech object and conceptual pressure; D3 full-paper evidence must additionally support the mechanism and evaluation object.
+
+### Keeping claims inspectable and contestable
+
+**Question:** What ordinary speech pressure is handled by keeping claims inspectable and contestable, and what evidence distinguishes it from neighboring pressures?
+**Why this boundary exists:** A person must be able to trace evidence, uncertainty, and correction when a speech system matters.
+**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
 
 #### Auditability and contestability
 

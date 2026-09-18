@@ -8,9 +8,9 @@ Reviewed evidence: 1179 INTERSPEECH records and 3864 ICASSP records.
 
 **Ordinary pressure:** Speech reaches a microphone as changing air pressure after vocal-fold vibration, mouth shape, room reflections, and electronics have already mixed together.
 
-### How bodies make voiced and unvoiced sound
+### Making a physical sound
 
-**Question:** Which parts of the signal come from the source and which from the moving vocal tract?
+**Question:** What ordinary speech pressure is handled by making a physical sound, and what evidence distinguishes it from neighboring pressures?
 
 #### Periodic vocal-fold source
 
@@ -48,6 +48,10 @@ Reviewed evidence: 1179 INTERSPEECH records and 3864 ICASSP records.
 
 **Paper IDs:** INTERSPEECH a25_interspeech, arai25_interspeech, birkholz25_interspeech, birkholz25b_interspeech, buech25_interspeech, chen25n_interspeech, hutin25_interspeech, wu25j_interspeech, xiang25b_interspeech; ICASSP b301ede7dc6fe1c050314ed5bfe5a460259304c3.
 
+### Coordinating moving speech parts
+
+**Question:** What ordinary speech pressure is handled by coordinating moving speech parts, and what evidence distinguishes it from neighboring pressures?
+
 #### Articulatory coordination
 
 **Definition:** Speech is a timed coordination of several moving constrictions, not a sequence of isolated sounds; overlap lets one gesture affect its neighbors.
@@ -66,9 +70,9 @@ Reviewed evidence: 1179 INTERSPEECH records and 3864 ICASSP records.
 
 **Paper IDs:** INTERSPEECH azzouz25_interspeech, bandekar25_interspeech, berthommier25_interspeech, bodur25_interspeech, eads25_interspeech, espywilson25_interspeech, fan25b_interspeech, hermes25_interspeech, huang25f_interspeech, kwon25b_interspeech, mcgahay25_interspeech, mcghee25_interspeech, mcguire25_interspeech, piyadasa25_interspeech, proctor25_interspeech, rommel25_interspeech, sharma25b_interspeech, shi25g_interspeech, simko25_interspeech, sun25h_interspeech, szalay25b_interspeech, tabatabaee25b_interspeech, talkar25_interspeech, tanner25_interspeech, teplansky25_interspeech, vurma25_interspeech, wang25c_interspeech, yang25i_interspeech, zhang25i_interspeech; ICASSP none yet.
 
-### Representing a changing sound
+### Representing a changing signal
 
-**Question:** What must be preserved when a continuous signal is made into manageable measurements?
+**Question:** What ordinary speech pressure is handled by representing a changing signal, and what evidence distinguishes it from neighboring pressures?
 
 #### Local frequency content
 
@@ -124,9 +128,9 @@ Reviewed evidence: 1179 INTERSPEECH records and 3864 ICASSP records.
 
 **Paper IDs:** INTERSPEECH choi25d_interspeech, ferrofilho25_interspeech, sadok25_interspeech, wen25_interspeech, wu25f_interspeech, zhang25k_interspeech, zhang25l_interspeech, zheng25b_interspeech; ICASSP 13058f7ce84fd16da34a06922ca6ed2152230c12, 28017a19068a1c3689f41654551529b6c8c09350, 2e136c64ecad6bca958622bd640ee00d3aa38311, 4ee203fff1f9320565d56faad3953ae137fd56d8, aea106410b217fd7f2344ce26a3650c8c94d14a8, f41ec924916b88a1a0215218cfa566185a475a2c.
 
-### Rooms, devices, and unusual sensors
+### Changing the path from source to sensor
 
-**Question:** How does the path from talker to sensor alter the speech evidence?
+**Question:** What ordinary speech pressure is handled by changing the path from source to sensor, and what evidence distinguishes it from neighboring pressures?
 
 #### Reverberant room mixture
 
@@ -186,9 +190,9 @@ Reviewed evidence: 1179 INTERSPEECH records and 3864 ICASSP records.
 
 **Ordinary pressure:** A listener often hears several talkers, music, echo, and device noise at once, yet needs one person's words or an intelligible mixture.
 
-### Suppressing background noise without erasing speech
+### Suppressing changing interference
 
-**Question:** Which variation is nuisance and which is the quiet speech cue needed for intelligibility?
+**Question:** What ordinary speech pressure is handled by suppressing changing interference, and what evidence distinguishes it from neighboring pressures?
 
 #### Time-frequency masking
 
@@ -244,9 +248,9 @@ Reviewed evidence: 1179 INTERSPEECH records and 3864 ICASSP records.
 
 **Paper IDs:** INTERSPEECH chae25b_interspeech, chi25b_interspeech, dang25_interspeech, fathan25b_interspeech, hu25g_interspeech, hu25m_interspeech, lay25_interspeech, saladukha25_interspeech, wang25h_interspeech, wu25d_interspeech; ICASSP 0f5109dc24b6cf8dc0dc0715ca5057dde161540c, 3b9021143ff728a6cf7b3092c418c0ff60c1a85e, 4a964c86c015577ecd5ba1c8992e72660a14f0f5, 6039bd6c9fb2e47714a644ef5b93caba242b38e2, 8e5830626e2fc4f09d4e157ff865fee93752c9de, b0f4b9718fb0b578cc7236c65a2a742e83931dea, fdc47da159b6fc57b213faabd437e1cf3ba456b7.
 
-### Choosing one source from a mixture
+### Recovering several hidden sources
 
-**Question:** How can a system decide which part of a mixture belongs to the target talker?
+**Question:** What ordinary speech pressure is handled by recovering several hidden sources, and what evidence distinguishes it from neighboring pressures?
 
 #### Blind source separation
 
@@ -266,24 +270,6 @@ Reviewed evidence: 1179 INTERSPEECH records and 3864 ICASSP records.
 
 **Paper IDs:** INTERSPEECH alizadeh25_interspeech, avidan25_interspeech, elkheir25_interspeech, grossman25_interspeech, horiguchi25b_interspeech, huang25k_interspeech, jing25_interspeech, kim25h_interspeech, lee25g_interspeech, wang25j_interspeech, wang25t_interspeech, yang25_interspeech, yang25d_interspeech; ICASSP 0474ae80a5a5bfc4371b4cdeb8bab58c6333d9b1, 08ad5f25492709dddba346ca401f29fac4fa380d, 3f75d05059d3992131f35fa8a0d391c7c573230f, 5331fe1016a8ff681a7dc5873b28d4ee98a107b8, 55fe457194f7dc62b01ebc0abf1612e1a8112ad0, 6c78ad33fed0c4e824d0a8824fd810aa708948f6, 6eb99e4599f047f16712fb8f4225b55340d91b63, 6ef606385df2873c8570937816958ffcb0e24480, 9dda34ca21164e123f236c272b9a967c61cbca16, c3cee23f9184a1952fbacb69b7575bd4dac89e46, cac70ccdb14e412559b291b12a6440fb4231d1de, deef773b3c27f7fd5de51ea7329364cf23586315, ea6f4e24aedef987b73c53cb293b2d591b947e13, f0556f0e9a554c6cbf114ea04659792c4d3a15e7.
 
-#### Spatial filtering
-
-**Definition:** Several microphones provide direction-dependent differences, allowing a filter to reinforce one location and reject others.
-
-**Boundary:** A single microphone or moving speaker removes the spatial cue the method depends on.
-
-**INTERSPEECH reviewed:** 14 (2 D3, 12 D2); **ICASSP reviewed:** 12 (4 D2, 8 D1).
-
-**Candidate coverage, not final assignment:** 0 INTERSPEECH and 0 ICASSP records mention the surrounding subtheme in the discovery queue.
-
-**Family reading:** The ordinary pressure is Several microphones provide direction-dependent differences, allowing a filter to reinforce one location and reject others. The reviewed examples are counted below by venue and depth; they show how this pressure is made operational, while the boundary remains: A single microphone or moving speaker removes the spatial cue the method depends on.
-
-**Cross-venue reading:** INTERSPEECH has 14 reviewed example(s) and ICASSP has 12 reviewed example(s). The difference cannot be read as research prevalence because the reviewed sets are selected, ICASSP includes 8 title-only records among these examples, and the remaining candidate coverage is unresolved.
-
-**Unresolved:** Which of the 0 open candidate records actually belongs to this concept after reading the problem and mechanism, and where does the concept boundary fail against neighboring subthemes?
-
-**Paper IDs:** INTERSPEECH alcalapadilla25_interspeech, chen25k_interspeech, chen25l_interspeech, cordlandwehr25_interspeech, guzik25_interspeech, he25b_interspeech, jiang25_interspeech, jing25b_interspeech, kim25v_interspeech, tao25b_interspeech, xiao25_interspeech, yang25k_interspeech, zhao25c_interspeech, zhu25_interspeech; ICASSP 075e67a89d63d18e2bc50fc08d56c1a64930499c, 07bf93966087f1a0a3ee5f7735fa4d6aed40a53d, 0af01b1801747cbafb93b3dff32bc1ed179c9b8d, 266bb3efdcaad92e310cbd6ca03cd33b2a99f98e, 30e8a66494d1e1e7ec936ccaec2906c2bfa51e3f, 6599ad30ece84a9f571a837dbf05989981c9ac5b, 72156810522bbfe62a02bb99c66e22f9697a5155, 78d3f7d76084a19f984595afa028650e19bb24c8, b3fb69b7c671c266abe3f90b0db6b06c9617acab, bb31aa4d39f252722b88a9ab77b093ce636ef7ff, f81fa194ade81067b617e35304194dd3e9884ff5, fef784e8377f62db477265919d25298185f259c2.
-
 #### Target-conditioned separation
 
 **Definition:** A voice example, enrollment identity, or visual cue tells the separator which source to preserve rather than asking it to output every source.
@@ -302,9 +288,31 @@ Reviewed evidence: 1179 INTERSPEECH records and 3864 ICASSP records.
 
 **Paper IDs:** INTERSPEECH chan25_interspeech, dasilva25_interspeech, deng25_interspeech, escobargrisales25_interspeech, gan25_interspeech, han25d_interspeech, itani25_interspeech, jalal25_interspeech, kienegger25_interspeech, li25c_interspeech, li25da_interspeech, lin25b_interspeech, luo25b_interspeech, ma25c_interspeech, maciejewski25_interspeech, maeda25_interspeech, makishima25_interspeech, medennikov25_interspeech, navon25_interspeech, nguyen25b_interspeech, pallala25_interspeech, palzer25_interspeech, pan25_interspeech, pan25d_interspeech, sakuma25_interspeech, seong25_interspeech, serre25_interspeech, subramanian25b_interspeech, sun25i_interspeech, wakayama25_interspeech, wang25y_interspeech, wu25h_interspeech, xie25_interspeech, yang25c_interspeech, yu25b_interspeech, zhang25p_interspeech; ICASSP 0ef0b2693e1aab1f0a7c06fe01b20c1f6a6be9d0, 156cfdc110a9f73b7e8c5893b569d98e361ae573, 1e83e39d30fafa6ef144cacd82f276347615d1d0, 2aa7d97b928fe996b38dadf25451433a44c380ae, 3c4b3a29df5e8841a5f1b92d67b6a3c285c355cd, 412b2762028b666985f4832aea40a2848b01547b, 4811d23ab656972dc064f2e83a627f857d72aa63, 60d255bd00b63837339b03c74ab44e4a7691653f, 68aad77e17f25b06e9fe42fd85415056ffb0fb5b, 6c79a29332af1653da5ef579148e0a736bc7ae3f, 6e49385da2225edc2f8ab3a7582dc218f22d015e, 724a162c2cd60edb3d14a1aa575359d6bcecc1ef, 803bf703bd7cfd4f7bb05078e582391d4ded9db1, 862b4c47558097540ed6e396031d6da6d6cf7557, 912db650c4cc9a3db2cf2c003c7a1b797ca7009e, a964b07db3f902cd4429c55981417bc044461dd6, b825e59147fc9302e536389263e599c492ff5746, b8a5252be9fe294d23daccd78f63d930f0788eda, b92560a40b9ab39486284f9d578d4ba30d3555d5, cd3019a89f4f838d160016e095a6f601fef985a1, d18190bbefd1c4b3729d5ac36ee6aafefcad56d9, d9b1ef17ca01a3e13e6b0fdd761a079b2585e1a0, df0a895267ef8c1a0d57f87e55f8836d0c329722.
 
-### Removing echo and repairing missing evidence
+### Using location to select sound
 
-**Question:** When should the system cancel an unwanted copy and when must it reconstruct what is no longer observed?
+**Question:** What ordinary speech pressure is handled by using location to select sound, and what evidence distinguishes it from neighboring pressures?
+
+#### Spatial filtering
+
+**Definition:** Several microphones provide direction-dependent differences, allowing a filter to reinforce one location and reject others.
+
+**Boundary:** A single microphone or moving speaker removes the spatial cue the method depends on.
+
+**INTERSPEECH reviewed:** 14 (2 D3, 12 D2); **ICASSP reviewed:** 12 (4 D2, 8 D1).
+
+**Candidate coverage, not final assignment:** 0 INTERSPEECH and 0 ICASSP records mention the surrounding subtheme in the discovery queue.
+
+**Family reading:** The ordinary pressure is Several microphones provide direction-dependent differences, allowing a filter to reinforce one location and reject others. The reviewed examples are counted below by venue and depth; they show how this pressure is made operational, while the boundary remains: A single microphone or moving speaker removes the spatial cue the method depends on.
+
+**Cross-venue reading:** INTERSPEECH has 14 reviewed example(s) and ICASSP has 12 reviewed example(s). The difference cannot be read as research prevalence because the reviewed sets are selected, ICASSP includes 8 title-only records among these examples, and the remaining candidate coverage is unresolved.
+
+**Unresolved:** Which of the 0 open candidate records actually belongs to this concept after reading the problem and mechanism, and where does the concept boundary fail against neighboring subthemes?
+
+**Paper IDs:** INTERSPEECH alcalapadilla25_interspeech, chen25k_interspeech, chen25l_interspeech, cordlandwehr25_interspeech, guzik25_interspeech, he25b_interspeech, jiang25_interspeech, jing25b_interspeech, kim25v_interspeech, tao25b_interspeech, xiao25_interspeech, yang25k_interspeech, zhao25c_interspeech, zhu25_interspeech; ICASSP 075e67a89d63d18e2bc50fc08d56c1a64930499c, 07bf93966087f1a0a3ee5f7735fa4d6aed40a53d, 0af01b1801747cbafb93b3dff32bc1ed179c9b8d, 266bb3efdcaad92e310cbd6ca03cd33b2a99f98e, 30e8a66494d1e1e7ec936ccaec2906c2bfa51e3f, 6599ad30ece84a9f571a837dbf05989981c9ac5b, 72156810522bbfe62a02bb99c66e22f9697a5155, 78d3f7d76084a19f984595afa028650e19bb24c8, b3fb69b7c671c266abe3f90b0db6b06c9617acab, bb31aa4d39f252722b88a9ab77b093ce636ef7ff, f81fa194ade81067b617e35304194dd3e9884ff5, fef784e8377f62db477265919d25298185f259c2.
+
+### Canceling copies and filling gaps
+
+**Question:** What ordinary speech pressure is handled by canceling copies and filling gaps, and what evidence distinguishes it from neighboring pressures?
 
 #### Acoustic echo cancellation
 
@@ -342,6 +350,10 @@ Reviewed evidence: 1179 INTERSPEECH records and 3864 ICASSP records.
 
 **Paper IDs:** INTERSPEECH cohen25_interspeech, dinh25_interspeech, quinterovillalobos25_interspeech, rong25_interspeech; ICASSP none yet.
 
+### Optimizing what a listener can use
+
+**Question:** What ordinary speech pressure is handled by optimizing what a listener can use, and what evidence distinguishes it from neighboring pressures?
+
 #### Perceptual enhancement
 
 **Definition:** Optimize what a listener can understand or tolerate rather than preserving every sample, using intelligibility or quality as the target.
@@ -364,9 +376,9 @@ Reviewed evidence: 1179 INTERSPEECH records and 3864 ICASSP records.
 
 **Ordinary pressure:** Speech has no visible spaces between words, and pronunciation, speed, accent, noise, and hesitation vary even when the intended sentence is the same.
 
-### Mapping continuous acoustics to linguistic units
+### Learning reusable sound units
 
-**Question:** How can changing sound be assigned to phones, words, or tokens without visible boundaries?
+**Question:** What ordinary speech pressure is handled by learning reusable sound units, and what evidence distinguishes it from neighboring pressures?
 
 #### Acoustic-to-token mapping
 
@@ -404,6 +416,10 @@ Reviewed evidence: 1179 INTERSPEECH records and 3864 ICASSP records.
 
 **Paper IDs:** INTERSPEECH ahn25_interspeech, ashihara25_interspeech, bentum25_interspeech, chi25_interspeech, choi25b_interspeech, deheerkloots25_interspeech, getman25_interspeech, hilmes25_interspeech, huo25_interspeech, hussein25_interspeech, kando25_interspeech, khurana25_interspeech, kutsakov25_interspeech, mitrofanov25_interspeech, mousavi25_interspeech, ofaolain25_interspeech, onda25c_interspeech, pepino25_interspeech, rittergutierrez25_interspeech, singh25d_interspeech, tian25b_interspeech, visser25_interspeech, wang25f_interspeech, wang25m_interspeech, wang25w_interspeech, xie25b_interspeech, yadav25_interspeech; ICASSP 1c7473f66eca9c5ac5bdd076e0ecc814616b10db, 23ee11c59dbdd9045d08998cadef43ba39251003, 3a176b4c85bc9328e2657e7026ee503719c455d1, 5f68aa1240bf0a8a28b8a81c59253d454244b7ee, 795b51a1a6ad481b22e277ca6095984a65f66f49, a754babfcb3be7d7b368a9de72a60217d919f900, aeaafa08c713bfc127c269676c49038df07119f3, bb7ab71e29a5af246baa10c5f11b0bd7ff0061fc, c3d264865e4a492f7bae1683da3eaa73a07fa530, db2b51133ec78012205df0c3608342ac3d759bc3, f9b9441f4c573b538dced6abc5d338b5f575a271.
 
+### Allowing different realizations of words
+
+**Question:** What ordinary speech pressure is handled by allowing different realizations of words, and what evidence distinguishes it from neighboring pressures?
+
 #### Pronunciation variation
 
 **Definition:** The same word can have reductions, substitutions, or accent-specific realizations, so recognition must allow more than one acoustic path.
@@ -422,9 +438,9 @@ Reviewed evidence: 1179 INTERSPEECH records and 3864 ICASSP records.
 
 **Paper IDs:** INTERSPEECH bagat25_interspeech, balajishankar25_interspeech, carta25_interspeech, cheema25_interspeech, gao25c_interspeech, geng25c_interspeech, mak25_interspeech, parikh25b_interspeech, phan25_interspeech, popescu25_interspeech, sirigiaju25_interspeech, stein25_interspeech, sun25_interspeech, wu25l_interspeech, zhengjie25_interspeech, zhou25h_interspeech; ICASSP 225b0647776efa2a3670145ccafa5995ccceddc1, b66fd8a567973dfb4b60733b52f3e18f0ad93a83.
 
-### Boundaries, timing, and sequence constraints
+### Locating units in time
 
-**Question:** How does the system decide where units begin, end, and depend on one another?
+**Question:** What ordinary speech pressure is handled by locating units in time, and what evidence distinguishes it from neighboring pressures?
 
 #### Temporal alignment
 
@@ -444,24 +460,6 @@ Reviewed evidence: 1179 INTERSPEECH records and 3864 ICASSP records.
 
 **Paper IDs:** INTERSPEECH cai25_interspeech, chae25_interspeech, christodoulidou25_interspeech, eom25_interspeech, freisinger25_interspeech, gao25g_interspeech, hu25_interspeech, hu25e_interspeech, huang25_interspeech, jin25b_interspeech, kong25b_interspeech, kumar25d_interspeech, liang25c_interspeech, novitasari25_interspeech, ohnaka25_interspeech, parikh25_interspeech, qian25_interspeech, roman25_interspeech, so25_interspeech, suen25_interspeech, tan25_interspeech, tripathi25_interspeech, ye25b_interspeech, yu25_interspeech, zhang25_interspeech, zhou25b_interspeech, zhuang25_interspeech; ICASSP 0170388633269ae1f3c8c47d58fad1dd2ec4e657, 14649513fd5736f0c48e841f94506ee95b85e408, 1e96005d1136b5724f4868e4b5d72bf4258600c9, 3faeca88c30da020507ec08f801840828383262b, 6cfea1f4e985754dc1fa8ec28e7482aa89308291, a72f084a74b385cb895854bee7fbfedb556e5ab5, c1bee1bb8b1d5f37356bb868ad79b565d129817d, feae3e5e4abfb50309eb769b65ccc629651c8dca.
 
-#### Long-context decoding
-
-**Definition:** Use words and turns before and after a sound to resolve locally ambiguous acoustics, such as homophones or clipped endings.
-
-**Boundary:** Context can override a rare but correct word, especially when the language model has a strong prior.
-
-**INTERSPEECH reviewed:** 13 (1 D3, 12 D2); **ICASSP reviewed:** 11 (5 D2, 6 D1).
-
-**Candidate coverage, not final assignment:** 0 INTERSPEECH and 0 ICASSP records mention the surrounding subtheme in the discovery queue.
-
-**Family reading:** The ordinary pressure is Use words and turns before and after a sound to resolve locally ambiguous acoustics, such as homophones or clipped endings. The reviewed examples are counted below by venue and depth; they show how this pressure is made operational, while the boundary remains: Context can override a rare but correct word, especially when the language model has a strong prior.
-
-**Cross-venue reading:** INTERSPEECH has 13 reviewed example(s) and ICASSP has 11 reviewed example(s). The difference cannot be read as research prevalence because the reviewed sets are selected, ICASSP includes 6 title-only records among these examples, and the remaining candidate coverage is unresolved.
-
-**Unresolved:** Which of the 0 open candidate records actually belongs to this concept after reading the problem and mechanism, and where does the concept boundary fail against neighboring subthemes?
-
-**Paper IDs:** INTERSPEECH choi25g_interspeech, cui25_interspeech, higuchi25_interspeech, ho25_interspeech, kamo25_interspeech, linke25_interspeech, meng25b_interspeech, mittal25_interspeech, oh25c_interspeech, ratajczak25_interspeech, xia25_interspeech, yuen25_interspeech, zhou25_interspeech; ICASSP 04bc5dc9cb6f4ffdb8109153c0762ceb4ec93fba, 15d8dcdc31eb595bfcbe9afc625c0e58fef5c877, 80f97dfe4226f84e6e3ac744f0c739cf1ff1c88d, 9ec1f211dc888682c1e78fed3de940cb022571b9, a3a2d0a03aaf90b18c3ea8db0a951bb3a2bed73a, a865cfc4e91bf5c478e2dc62ae4b33c0d0c480fa, bba13f58f9c9f543a280dc22f2fb27cf7b4986f3, c17ba845024c6779c20c90ab07312fa23a3b62f2, d0c53dfab969742a85df4ddbfec08e147ffed239, d4de91d048a62fbdd4717dd33d2fcb47d7035923, da02d9998c528c02e8189fc418f45beee9e5c4c1.
-
 #### Disfluency and event preservation
 
 **Definition:** Represent pauses, repetitions, repairs, laughter, and overlap when those events are part of the communication or the clinical signal.
@@ -480,27 +478,27 @@ Reviewed evidence: 1179 INTERSPEECH records and 3864 ICASSP records.
 
 **Paper IDs:** INTERSPEECH akinrintoyo25_interspeech, ghosh25_interspeech, kirkland25_interspeech, kommagouni25_interspeech, niculescu25_interspeech, ram25_interspeech, smith25_interspeech, teleki25_interspeech, vidal25_interspeech, wepner25_interspeech; ICASSP none yet.
 
-### Recognizing new speakers, domains, and words
+### Using context without inventing words
 
-**Question:** How can recognition remain useful when the test speech differs from training speech?
+**Question:** What ordinary speech pressure is handled by using context without inventing words, and what evidence distinguishes it from neighboring pressures?
 
-#### Speaker adaptation
+#### Long-context decoding
 
-**Definition:** Adjust the acoustic or decoding assumptions to a talker's voice, speaking rate, or pronunciation using a small amount of evidence.
+**Definition:** Use words and turns before and after a sound to resolve locally ambiguous acoustics, such as homophones or clipped endings.
 
-**Boundary:** Adaptation can overfit a short sample and degrade when the talker changes state or the enrollment is wrong.
+**Boundary:** Context can override a rare but correct word, especially when the language model has a strong prior.
 
-**INTERSPEECH reviewed:** 5 (2 D3, 3 D2); **ICASSP reviewed:** 1 (0 D2, 1 D1).
+**INTERSPEECH reviewed:** 13 (1 D3, 12 D2); **ICASSP reviewed:** 11 (5 D2, 6 D1).
 
 **Candidate coverage, not final assignment:** 0 INTERSPEECH and 0 ICASSP records mention the surrounding subtheme in the discovery queue.
 
-**Family reading:** The ordinary pressure is Adjust the acoustic or decoding assumptions to a talker's voice, speaking rate, or pronunciation using a small amount of evidence. The reviewed examples are counted below by venue and depth; they show how this pressure is made operational, while the boundary remains: Adaptation can overfit a short sample and degrade when the talker changes state or the enrollment is wrong.
+**Family reading:** The ordinary pressure is Use words and turns before and after a sound to resolve locally ambiguous acoustics, such as homophones or clipped endings. The reviewed examples are counted below by venue and depth; they show how this pressure is made operational, while the boundary remains: Context can override a rare but correct word, especially when the language model has a strong prior.
 
-**Cross-venue reading:** INTERSPEECH has 5 reviewed example(s) and ICASSP has 1 reviewed example(s). The difference cannot be read as research prevalence because the reviewed sets are selected, ICASSP includes 1 title-only records among these examples, and the remaining candidate coverage is unresolved.
+**Cross-venue reading:** INTERSPEECH has 13 reviewed example(s) and ICASSP has 11 reviewed example(s). The difference cannot be read as research prevalence because the reviewed sets are selected, ICASSP includes 6 title-only records among these examples, and the remaining candidate coverage is unresolved.
 
 **Unresolved:** Which of the 0 open candidate records actually belongs to this concept after reading the problem and mechanism, and where does the concept boundary fail against neighboring subthemes?
 
-**Paper IDs:** INTERSPEECH ahadzi25_interspeech, ducorroy25_interspeech, guillaume25_interspeech, lin25_interspeech, yong25_interspeech; ICASSP 09213e8ddcf4f227af2c7b167e960c420d62e3f4.
+**Paper IDs:** INTERSPEECH choi25g_interspeech, cui25_interspeech, higuchi25_interspeech, ho25_interspeech, kamo25_interspeech, linke25_interspeech, meng25b_interspeech, mittal25_interspeech, oh25c_interspeech, ratajczak25_interspeech, xia25_interspeech, yuen25_interspeech, zhou25_interspeech; ICASSP 04bc5dc9cb6f4ffdb8109153c0762ceb4ec93fba, 15d8dcdc31eb595bfcbe9afc625c0e58fef5c877, 80f97dfe4226f84e6e3ac744f0c739cf1ff1c88d, 9ec1f211dc888682c1e78fed3de940cb022571b9, a3a2d0a03aaf90b18c3ea8db0a951bb3a2bed73a, a865cfc4e91bf5c478e2dc62ae4b33c0d0c480fa, bba13f58f9c9f543a280dc22f2fb27cf7b4986f3, c17ba845024c6779c20c90ab07312fa23a3b62f2, d0c53dfab969742a85df4ddbfec08e147ffed239, d4de91d048a62fbdd4717dd33d2fcb47d7035923, da02d9998c528c02e8189fc418f45beee9e5c4c1.
 
 #### Domain and context biasing
 
@@ -519,6 +517,24 @@ Reviewed evidence: 1179 INTERSPEECH records and 3864 ICASSP records.
 **Unresolved:** Which of the 0 open candidate records actually belongs to this concept after reading the problem and mechanism, and where does the concept boundary fail against neighboring subthemes?
 
 **Paper IDs:** INTERSPEECH acevedo25_interspeech, agrawal25b_interspeech, bataev25_interspeech, cm25_interspeech, gong25_interspeech, he25_interspeech, hou25_interspeech, kong25_interspeech, kwok25b_interspeech, lin25g_interspeech, nakagome25_interspeech, sudo25_interspeech, sudo25b_interspeech, vangysel25_interspeech, yamashita25_interspeech, yang25j_interspeech; ICASSP 02243661b4fee8c9a88d369aa883fa870956ec84, 1b7e4d682dce9825876280b45f3317f80d9bccbd, 223a9bfefeff18c4f5d78fa988eda2ce16235b8e, 3a4364bbb5ad323940eb26c191336f1c18d40a45, 4503994cf38fd02246697453c852a414fa53ffaf, 4be134ffad97a3a473833d3aba007c6b59054fc3, 616a1e4bc31e23239e591fd67c8c4375cdea9512, 77b077287ef1fad8c8334d9dd24d916ea6eec144, 8495cf197ceeb211cf6154b8a83aaf59d8cbe964, 8b7e2132083c3aad254a6207cb4b7a29bf80fd3a, 8b91884ff16133bdcfff32e9603382a16e131143, a90b2cf4bc51065b9cd7ece3552bfa0821b1597b, b552fde861cf6a9a24c02ff9fbf0010165a12aea, c91dffb73ca94e785cdbe002ef99106045e43127, edf62145e97da07b3228b410df780646b08c96c4, eff379d6545c6ed72544a72932676e3c90849bd0.
+
+#### Speaker adaptation
+
+**Definition:** Adjust the acoustic or decoding assumptions to a talker's voice, speaking rate, or pronunciation using a small amount of evidence.
+
+**Boundary:** Adaptation can overfit a short sample and degrade when the talker changes state or the enrollment is wrong.
+
+**INTERSPEECH reviewed:** 5 (2 D3, 3 D2); **ICASSP reviewed:** 1 (0 D2, 1 D1).
+
+**Candidate coverage, not final assignment:** 0 INTERSPEECH and 0 ICASSP records mention the surrounding subtheme in the discovery queue.
+
+**Family reading:** The ordinary pressure is Adjust the acoustic or decoding assumptions to a talker's voice, speaking rate, or pronunciation using a small amount of evidence. The reviewed examples are counted below by venue and depth; they show how this pressure is made operational, while the boundary remains: Adaptation can overfit a short sample and degrade when the talker changes state or the enrollment is wrong.
+
+**Cross-venue reading:** INTERSPEECH has 5 reviewed example(s) and ICASSP has 1 reviewed example(s). The difference cannot be read as research prevalence because the reviewed sets are selected, ICASSP includes 1 title-only records among these examples, and the remaining candidate coverage is unresolved.
+
+**Unresolved:** Which of the 0 open candidate records actually belongs to this concept after reading the problem and mechanism, and where does the concept boundary fail against neighboring subthemes?
+
+**Paper IDs:** INTERSPEECH ahadzi25_interspeech, ducorroy25_interspeech, guillaume25_interspeech, lin25_interspeech, yong25_interspeech; ICASSP 09213e8ddcf4f227af2c7b167e960c420d62e3f4.
 
 #### Open-vocabulary recognition
 
@@ -542,9 +558,9 @@ Reviewed evidence: 1179 INTERSPEECH records and 3864 ICASSP records.
 
 **Ordinary pressure:** The same words can request, question, joke, refuse, or warn depending on prosody, shared history, timing, and the surrounding situation.
 
-### Prosody, emotion, and communicative intent
+### Meaning carried by how speech sounds
 
-**Question:** What does timing, pitch, loudness, and voice quality add beyond the words?
+**Question:** What ordinary speech pressure is handled by meaning carried by how speech sounds, and what evidence distinguishes it from neighboring pressures?
 
 #### Prosodic meaning
 
@@ -582,6 +598,10 @@ Reviewed evidence: 1179 INTERSPEECH records and 3864 ICASSP records.
 
 **Paper IDs:** INTERSPEECH araizaillan25_interspeech, battula25_interspeech, bijoy25_interspeech, cheng25_interspeech, cho25_interspeech, dutta25_interspeech, fang25b_interspeech, feng25_interspeech, gomezzaragoza25_interspeech, gong25b_interspeech, he25c_interspeech, hu25c_interspeech, inoue25_interspeech, jon25_interspeech, kakouros25_interspeech, kang25_interspeech, kawanishi25_interspeech, kim25c_interspeech, lahtinen25_interspeech, lee25_interspeech, lertpetchpun25_interspeech, leygue25_interspeech, li25ba_interspeech, lin25c_interspeech, liu25m_interspeech, luo25_interspeech, mai25b_interspeech, mai25c_interspeech, markitantov25_interspeech, mohamedismailyasararafath25_interspeech, morais25_interspeech, naini25_interspeech, niebuhr25_interspeech, pendyala25_interspeech, phukan25b_interspeech, phukan25e_interspeech, rachman25_interspeech, ryu25_interspeech, shi25c_interspeech, shi25d_interspeech, shi25e_interspeech, singh25b_interspeech, sun25c_interspeech, tamir25_interspeech, tzeng25_interspeech, ueda25_interspeech, uniyal25_interspeech, wang25e_interspeech, wang25k_interspeech, xiang25c_interspeech, zgorzynski25_interspeech, zhou25f_interspeech, zhou25i_interspeech; ICASSP 050635ffb58be0408255845d4ad98798b8929ba6, 0510abedf28ab2ff580cde1a691e1189cc53fe73, 0b2e98d178862a3c87fda6e70159c2324e9d2446, 11303a06ceaffe7797c7617cf893255fb38f02d4, 11b7584c9eb86153649dc9087c684705a7a4b513, 165b642e85eb1e87fdce906317e81b03606e362a, 1c6d9829cb49bafa683cd2cfce1e1af06aae1d9b, 23fbd2303bfeea0db8aa5b18b19bc6fdd4e3442e, 26ad929e3cfdc85cfe2776c18d31a5f3a43b9cae, 2cf3ff950c47f73a828be8ba72ecded16cbd9a63, 44add82e8532ca50ed5d5e2904abaa5e2e757016, 5333a836a46f3b563dcdc5e9dedd98af93698b59, 5ca505f745b70f6d9a849aeb917685c67d1847fd, 5d33f0b903d577c6144ed4ad9fd2b2cc64b44075, 68edcdb1a7eeeb95d1b3cef31da62bd72ac5bad7, 70b0b370785d331d9c422baf0710ee17d4085747, 7571ad7c1a0af585d9ad7d04ea3ef3cfb1e82d5f, 782606c69daf2ddd2a3657d0861af3f7517dc192, 8038a3853dfdd9cd126eb3c07838edb71fce1cbc, 916fc9493e71e7ab8bd6d8bb738923d276447efe, 918f732e16d886a9034de5dcb511ec0f2233f100, aa3482b669f412fca13087a86194d3d69d3f4725, ac4bc340ad2965e56c69ff538b36db1136b7bd53, b61c2e96738de828504e0268c63d4741f8d32c98, b79cec720f1d85878b8aba254c543ba40d367a4e, bab92391b7f85cba53ae716f07227f84f6bf5573, bb50db60215ca0d171752ee09cb48b9dda10873b, bccd76bb5f248e0565b9b76458ea2fdde31dabee, cebaec8acc70e6390a269b4e2d456e318ef1a4ab, cfb40c957353851cdccc0497f9e6c1696f0f020e, e45510076a027f702edb742c8752c28cb223dc6b, e5cfa34259fb4eed3c2d7c3aacde858b19d0cc43, f2abc333ac4fd78e1783e0a3d0cd0a7afa852630.
 
+### Inferring what a speaker is trying to do
+
+**Question:** What ordinary speech pressure is handled by inferring what a speaker is trying to do, and what evidence distinguishes it from neighboring pressures?
+
 #### Intent in context
 
 **Definition:** Infer what the speaker is trying to accomplish from words plus the situation and prior turns, then keep uncertainty when several intents fit.
@@ -599,28 +619,6 @@ Reviewed evidence: 1179 INTERSPEECH records and 3864 ICASSP records.
 **Unresolved:** Which of the 0 open candidate records actually belongs to this concept after reading the problem and mechanism, and where does the concept boundary fail against neighboring subthemes?
 
 **Paper IDs:** INTERSPEECH aggarwal25_interspeech, agrawal25_interspeech, chatzichristodoulou25_interspeech, halim25_interspeech, koudounas25_interspeech, kumar25b_interspeech, lepagnol25_interspeech, peirolilja25_interspeech; ICASSP 085852d8c01df95279b17e54165cf8bcc327e8ff, 0fd6674c828f0fdaa4da1ff78b7fcf411dd7f769, 9212141e66d29e78e0c08d6d524689fd842b6867, b7efe85da9a2014f7cf2bb510dcaf5e730327609, d9f764f6cc990b6044c7907ef50ad2799613cb94.
-
-### Conversation as joint timing
-
-**Question:** How do participants know when to listen, speak, yield, repair, or overlap?
-
-#### Turn-boundary prediction
-
-**Definition:** Predict whether a speaker is continuing, yielding, or likely to stop so a system can respond without cutting them off.
-
-**Boundary:** A pause is not always a turn end; cultures, speakers, and task types change timing conventions.
-
-**INTERSPEECH reviewed:** 12 (3 D3, 9 D2); **ICASSP reviewed:** 7 (3 D2, 4 D1).
-
-**Candidate coverage, not final assignment:** 0 INTERSPEECH and 0 ICASSP records mention the surrounding subtheme in the discovery queue.
-
-**Family reading:** The ordinary pressure is Predict whether a speaker is continuing, yielding, or likely to stop so a system can respond without cutting them off. The reviewed examples are counted below by venue and depth; they show how this pressure is made operational, while the boundary remains: A pause is not always a turn end; cultures, speakers, and task types change timing conventions.
-
-**Cross-venue reading:** INTERSPEECH has 12 reviewed example(s) and ICASSP has 7 reviewed example(s). The difference cannot be read as research prevalence because the reviewed sets are selected, ICASSP includes 4 title-only records among these examples, and the remaining candidate coverage is unresolved.
-
-**Unresolved:** Which of the 0 open candidate records actually belongs to this concept after reading the problem and mechanism, and where does the concept boundary fail against neighboring subthemes?
-
-**Paper IDs:** INTERSPEECH baihaqi25_interspeech, cavalcanti25_interspeech, charuau25_interspeech, elmers25_interspeech, fukunaga25_interspeech, heo25_interspeech, hu25f_interspeech, oconnorrussell25_interspeech, ohashi25_interspeech, paierl25_interspeech, peng25b_interspeech, slomianka25_interspeech; ICASSP 0431020f65a8b81c27946dd682982ee4610aca37, 50bb514fcea96ad5e0f8474fcc57e43bc3c15e6a, 6a3b096e625acdd8d4873ac9de35c66d316f6428, 8acbc8ec45ece03f9c9eff5f15d136e382a3b101, a127f6df9b9af46e20a51a0124222d07c2849ec2, deab2a991a985b09dcbdc9baf60ee3b0d5379004, e6ecebcdaaebec99fdd11b8e6574469092ca2628.
 
 #### Dialogue state
 
@@ -640,6 +638,28 @@ Reviewed evidence: 1179 INTERSPEECH records and 3864 ICASSP records.
 
 **Paper IDs:** INTERSPEECH arora25_interspeech, barahona25_interspeech, chang25c_interspeech, fang25_interspeech, gong25c_interspeech, gulzar25_interspeech, hegde25_interspeech, huang25d_interspeech, kim25k_interspeech, moore25_interspeech, mori25b_interspeech, raut25_interspeech, sedlacek25_interspeech, wang25x_interspeech; ICASSP 036b21f2e7000e3b4b6d1875c95aa0dca52d70af, 1a0ad427c5f5480248c9b1cc7f5f09a702202b8d, 2d0e4481166e55eb34d6efb8a9e079aaae0ae73e, 30a6b7b3036cf9c279f9b26bd5d535cd7e9a81b0, 55c342722bc5357808194912973e1c500348a201, 8b6a6f22bc92ddc6c3ed33ba2eb5654b71361439, bad275e401ee3a3be85c7a873d54eb71c84b3ff1, bbf024a804b9674211e8acb0a9e9ce20e822b5f5, f45b71835dbeba1ae340561e72cbe6dde771bd02, f48789d81eb50bf2bf625fe35e4c5b262f5e5c3c.
 
+### Coordinating participation under uncertainty
+
+**Question:** What ordinary speech pressure is handled by coordinating participation under uncertainty, and what evidence distinguishes it from neighboring pressures?
+
+#### Turn-boundary prediction
+
+**Definition:** Predict whether a speaker is continuing, yielding, or likely to stop so a system can respond without cutting them off.
+
+**Boundary:** A pause is not always a turn end; cultures, speakers, and task types change timing conventions.
+
+**INTERSPEECH reviewed:** 12 (3 D3, 9 D2); **ICASSP reviewed:** 7 (3 D2, 4 D1).
+
+**Candidate coverage, not final assignment:** 0 INTERSPEECH and 0 ICASSP records mention the surrounding subtheme in the discovery queue.
+
+**Family reading:** The ordinary pressure is Predict whether a speaker is continuing, yielding, or likely to stop so a system can respond without cutting them off. The reviewed examples are counted below by venue and depth; they show how this pressure is made operational, while the boundary remains: A pause is not always a turn end; cultures, speakers, and task types change timing conventions.
+
+**Cross-venue reading:** INTERSPEECH has 12 reviewed example(s) and ICASSP has 7 reviewed example(s). The difference cannot be read as research prevalence because the reviewed sets are selected, ICASSP includes 4 title-only records among these examples, and the remaining candidate coverage is unresolved.
+
+**Unresolved:** Which of the 0 open candidate records actually belongs to this concept after reading the problem and mechanism, and where does the concept boundary fail against neighboring subthemes?
+
+**Paper IDs:** INTERSPEECH baihaqi25_interspeech, cavalcanti25_interspeech, charuau25_interspeech, elmers25_interspeech, fukunaga25_interspeech, heo25_interspeech, hu25f_interspeech, oconnorrussell25_interspeech, ohashi25_interspeech, paierl25_interspeech, peng25b_interspeech, slomianka25_interspeech; ICASSP 0431020f65a8b81c27946dd682982ee4610aca37, 50bb514fcea96ad5e0f8474fcc57e43bc3c15e6a, 6a3b096e625acdd8d4873ac9de35c66d316f6428, 8acbc8ec45ece03f9c9eff5f15d136e382a3b101, a127f6df9b9af46e20a51a0124222d07c2849ec2, deab2a991a985b09dcbdc9baf60ee3b0d5379004, e6ecebcdaaebec99fdd11b8e6574469092ca2628.
+
 #### Repair and clarification
 
 **Definition:** When recognition or understanding is uncertain, ask a targeted question or offer alternatives instead of silently continuing.
@@ -658,9 +678,9 @@ Reviewed evidence: 1179 INTERSPEECH records and 3864 ICASSP records.
 
 **Paper IDs:** INTERSPEECH ho25b_interspeech; ICASSP 813d412c3a68a707adfd60c8e9a98d1f415f79c4.
 
-### Connecting speech to people, objects, and actions
+### Connecting language to a shared world
 
-**Question:** How does a spoken description become a shared reference or an authorized action?
+**Question:** What ordinary speech pressure is handled by connecting language to a shared world, and what evidence distinguishes it from neighboring pressures?
 
 #### Referential grounding
 
@@ -720,9 +740,9 @@ Reviewed evidence: 1179 INTERSPEECH records and 3864 ICASSP records.
 
 **Ordinary pressure:** A useful synthetic voice must say the requested content, sound like the intended speaker or style, and remain understandable as it changes over time.
 
-### Turning language plans into audible speech
+### Turning language into a timed speech plan
 
-**Question:** How does a text or linguistic plan become a timed, pronounceable signal?
+**Question:** What ordinary speech pressure is handled by turning language into a timed speech plan, and what evidence distinguishes it from neighboring pressures?
 
 #### Text-to-speech planning
 
@@ -741,6 +761,10 @@ Reviewed evidence: 1179 INTERSPEECH records and 3864 ICASSP records.
 **Unresolved:** Which of the 0 open candidate records actually belongs to this concept after reading the problem and mechanism, and where does the concept boundary fail against neighboring subthemes?
 
 **Paper IDs:** INTERSPEECH berger25_interspeech, choi25c_interspeech, futami25_interspeech, gourav25_interspeech, hsiao25_interspeech, kim25b_interspeech, kim25r_interspeech, li25b_interspeech, liang25e_interspeech, lu25b_interspeech, lu25e_interspeech, pham25_interspeech, shepardson25_interspeech, zhang25c_interspeech, zheng25c_interspeech; ICASSP 1d9d53c8debfbf7ed246bd7a53cdd1342998264c, 1f8a801c970c93b61ebe34702e2f3164d8b0a956, 21f61c426a74f6519f57e0819309129fba61b735, 38f6bf21c738d202e87685df5ca9761a7c8b5476, 3b9a2c34cd9e9dfe79350f9685af96c60fc5fe4c, 54c3c5ac59c612e4e4f0abc055888c8370208316, 83eb5e352285c2760a730ab63d706f0ab2d76159, a761c70798d74d17ce14ad9cc4334f7bcb869b62, c92d0c92d4c00e0e9d8a14c0d72ef26d81f92cbc, eeeda17592489a89d4293eeb05c692378ee9a7a2, f1ad862c634587bcf8357c1e958d1b58764a9919.
+
+### Producing or compressing audible detail
+
+**Question:** What ordinary speech pressure is handled by producing or compressing audible detail, and what evidence distinguishes it from neighboring pressures?
 
 #### Waveform synthesis
 
@@ -778,9 +802,9 @@ Reviewed evidence: 1179 INTERSPEECH records and 3864 ICASSP records.
 
 **Paper IDs:** INTERSPEECH marcinek25_interspeech, park25e_interspeech, roychowdhury25_interspeech, zalkow25_interspeech; ICASSP 838fc7aa4deffa24d2a2ad4f46012edeba818640, b32bfec9debaa6dd37f7c09b3df017e3c3fbe365.
 
-### Changing who sounds like they are speaking
+### Changing who sounds like the speaker
 
-**Question:** How can voice identity change while the spoken message remains the same?
+**Question:** What ordinary speech pressure is handled by changing who sounds like the speaker, and what evidence distinguishes it from neighboring pressures?
 
 #### Speaker identity representation
 
@@ -836,9 +860,9 @@ Reviewed evidence: 1179 INTERSPEECH records and 3864 ICASSP records.
 
 **Paper IDs:** INTERSPEECH chou25_interspeech, franzreb25_interspeech, jeon25_interspeech, murata25b_interspeech, pathak25_interspeech, raju25_interspeech, ren25b_interspeech, zhao25d_interspeech; ICASSP 454db90b70ea3dd1da6a572e15cadd201a6e82e4, a3fc7ede7606bcc85119bcd941e2c596004f096f, b755d2dfd70a82b967565c805ade5850dbda0a84, c249f101eedb0599e84b79c3a828d772c0329975, fe57ef4a3f50dd43df25151ffedf6bb5ad4e0c89.
 
-### Controlling timing, style, and expression
+### Changing style, timing, and response behavior
 
-**Question:** Which expressive choices should the user specify, and which should the system infer?
+**Question:** What ordinary speech pressure is handled by changing style, timing, and response behavior, and what evidence distinguishes it from neighboring pressures?
 
 #### Prosody control
 
@@ -898,9 +922,9 @@ Reviewed evidence: 1179 INTERSPEECH records and 3864 ICASSP records.
 
 **Ordinary pressure:** Voice depends on anatomy, age, health, emotion, language history, social setting, and equipment; these differences affect both communication and measurement.
 
-### Identity, age, gender, and speaking style
+### Identity, age, and changing voice
 
-**Question:** Which voice differences should be preserved, normalized, or treated as evidence?
+**Question:** What ordinary speech pressure is handled by identity, age, and changing voice, and what evidence distinguishes it from neighboring pressures?
 
 #### Speaker verification
 
@@ -956,9 +980,9 @@ Reviewed evidence: 1179 INTERSPEECH records and 3864 ICASSP records.
 
 **Paper IDs:** INTERSPEECH chen25_interspeech, dai25b_interspeech, letellier25_interspeech, lobato25_interspeech, lu25g_interspeech, martinek25_interspeech, millot25_interspeech, netzorg25_interspeech, polle25_interspeech, rautenberg25_interspeech, ross25_interspeech, weirich25_interspeech; ICASSP 1e5c84848c9d71233080a3cbeb0926cd20dfe8b3, 5dcb315487049d194ce0336e8a536496085c4bd4, 706f9d8fd024f6ca3ec3c6883db04b44cca003ab, 8c76937b26e8aab0c19592f81f654e006f463e1b, bcb97164784540986701bd9ed5ff048012da1bea, efe12b9be500170b4441691f784a08eb6aab9a95.
 
-### Speech as a health or access signal
+### Speech measurements associated with health
 
-**Question:** How can speech technology help when speaking or hearing itself is impaired or changing?
+**Question:** What ordinary speech pressure is handled by speech measurements associated with health, and what evidence distinguishes it from neighboring pressures?
 
 #### Clinical speech marker
 
@@ -977,6 +1001,10 @@ Reviewed evidence: 1179 INTERSPEECH records and 3864 ICASSP records.
 **Unresolved:** Which of the 0 open candidate records actually belongs to this concept after reading the problem and mechanism, and where does the concept boundary fail against neighboring subthemes?
 
 **Paper IDs:** INTERSPEECH benway25_interspeech, botelho25_interspeech, braun25_interspeech, chen25c_interspeech, chen25o_interspeech, choi25h_interspeech, dumpala25_interspeech, gao25b_interspeech, gao25e_interspeech, gebauer25_interspeech, gimenogomez25_interspeech, hidalgojulia25_interspeech, hovsepyan25_interspeech, hwang25_interspeech, jia25_interspeech, jin25c_interspeech, kang25d_interspeech, ke25_interspeech, kim25_interspeech, kim25p_interspeech, kim25w_interspeech, kommineni25_interspeech, kothare25_interspeech, koudounas25b_interspeech, krzywdziak25_interspeech, leschly25_interspeech, lewis25_interspeech, liang25_interspeech, liu25k_interspeech, liu25l_interspeech, loweimi25_interspeech, maji25_interspeech, mansi25_interspeech, martin25_interspeech, miyahara25_interspeech, mun25_interspeech, mun25b_interspeech, neumann25_interspeech, nie25_interspeech, niizumi25_interspeech, pan25c_interspeech, park25d_interspeech, peters25_interspeech, phukan25c_interspeech, pierotti25_interspeech, postma25_interspeech, prakrankamanant25_interspeech, premananth25_interspeech, reinders25_interspeech, roquefort25_interspeech, rustagi25_interspeech, sanguedolce25_interspeech, shahidi25_interspeech, shao25_interspeech, sun25b_interspeech, tam25_interspeech, titeux25_interspeech, toikkanen25_interspeech, valente25_interspeech, vanbemmel25_interspeech, wang25aa_interspeech, wei25_interspeech, white25b_interspeech, wu25_interspeech, xiao25e_interspeech, yan25b_interspeech, yang25b_interspeech, yong25b_interspeech, you25_interspeech, young25_interspeech, ys25_interspeech, zhang25u_interspeech, zhong25b_interspeech, zuo25_interspeech; ICASSP 064179583b8ff35904bee372f1aa7729625802d3, 12926467a7c78a140099849f25e173349dc9e88f, 21fff85b5e9fd31c25b499c14e34a1c9d53cc441, 2b3bcd44dd8fd6a8819f6743cc2eb66870941ff3, 344fe6791f8fa625dfbeeb8cc65557291e6463c4, 3ac4c8f39bd3092d1fcc4d3d301aa709e481df81, 3eb2375221ef0a1352b192d43e73fff287cdb0b0, 470de39094a921d74e222c0561ee33d97f2186c6, 5b41e3c200362ac9e517bd4e74e895d503ca09f2, 61aba23dd5c58f25ac58fefaf21e5f3962325023, 64bf350e3e39c298180a4880f33b136f214998d9, 6f359baa8790aa0da4d0e9b8e87bb0a41f11a174, 72ba7ce0f45de6486710d5da65930e47dedc1177, 7b3746f1a67c4f24e95c987ff84a012e5eb49df4, 7cba329305bc054a6ad2565a83a98b963f9883cf, 889896508123af9e564d6b7caa252c3616d28c19, 8bb0a3187e680dd770ec55c68546d74ef05e8216, a27f4499d459f32a571078f6b19651b2e776ffe9, b0d7f13393cb3a8ed0e3fd7c9c00da894e0a2754, b2988abe0d2256450a910514d500edbb9b99516f, b37f5532e67a880ba83401ac29659de4f4a504e3, bddadbef17ae03f31601ff615fd701fc95322f56, c190b7b4ce26a6046fa2680549d7ecb545f4d0a5, c6cf0ea9ddc329952b67a5114d8386ca9ef9b5ce, d90d42d847c14e006b4f0a368833df6d5453fbed, dab4d746066207fd1627bdaf5be41ce61e0c8468.
+
+### Communicating with atypical or impaired speech
+
+**Question:** What ordinary speech pressure is handled by communicating with atypical or impaired speech, and what evidence distinguishes it from neighboring pressures?
 
 #### Atypical articulation and dysarthria
 
@@ -1014,9 +1042,9 @@ Reviewed evidence: 1179 INTERSPEECH records and 3864 ICASSP records.
 
 **Paper IDs:** INTERSPEECH geng25b_interspeech, inoue25b_interspeech, li25j_interspeech, liang25d_interspeech, papadimitriou25_interspeech, sanchez25_interspeech, scheck25_interspeech, shah25_interspeech, szekely25_interspeech, wang25l_interspeech; ICASSP 40aa5944f6fb2455caef5a6948c337d6baa6d047, 77ce1ad011b2fc3fade0dd1a7161d198746d7ad6, b9cfa81c19fe036a685912d449d076aa0bce10bd, e5e9bdfab1dee9b3d504c5fd0d01a28a225c30eb.
 
-### Whether the system helps a real person
+### Whether the system actually helps a person
 
-**Question:** What does success mean for the person using or affected by the speech system?
+**Question:** What ordinary speech pressure is handled by whether the system actually helps a person, and what evidence distinguishes it from neighboring pressures?
 
 #### Listener effort
 
@@ -1078,7 +1106,7 @@ Reviewed evidence: 1179 INTERSPEECH records and 3864 ICASSP records.
 
 ### Sharing structure across languages
 
-**Question:** What can be shared, and what must remain language-specific?
+**Question:** What ordinary speech pressure is handled by sharing structure across languages, and what evidence distinguishes it from neighboring pressures?
 
 #### Cross-lingual transfer
 
@@ -1134,9 +1162,9 @@ Reviewed evidence: 1179 INTERSPEECH records and 3864 ICASSP records.
 
 **Paper IDs:** INTERSPEECH alam25_interspeech, bhattacharya25_interspeech, biswas25_interspeech, mena25_interspeech, nguyen25_interspeech, yan25c_interspeech, yang25p_interspeech; ICASSP 332f8f234226d44e2586064d5d69b6ec5d1eff15, f05884d7d29f9638836ac2787ddf9d4c4ec1aa44.
 
-### Learning when labels and recordings are scarce
+### Learning from sparse labels
 
-**Question:** How can a system improve without assuming a large clean labeled corpus?
+**Question:** What ordinary speech pressure is handled by learning from sparse labels, and what evidence distinguishes it from neighboring pressures?
 
 #### Self-training
 
@@ -1156,24 +1184,6 @@ Reviewed evidence: 1179 INTERSPEECH records and 3864 ICASSP records.
 
 **Paper IDs:** INTERSPEECH alabi25_interspeech, arisoy25_interspeech, carofilis25_interspeech, damianos25_interspeech, grigoryan25_interspeech, mohammadamini25_interspeech, park25_interspeech, park25f_interspeech, prakash25_interspeech, rangappa25_interspeech, shao25b_interspeech, tadevosyan25_interspeech, wang25i_interspeech; ICASSP 9862889a562e2a2896cfca777aad486f876a6221, d18fc2002429dcb8aa66ab092aa490e10fde3560.
 
-#### Speech data collection
-
-**Definition:** Design recording prompts, speakers, transcription, and consent so newly collected data covers the intended community and task.
-
-**Boundary:** More hours do not fix biased sampling, poor transcripts, or a task definition that excludes natural speech.
-
-**INTERSPEECH reviewed:** 40 (1 D3, 39 D2); **ICASSP reviewed:** 8 (4 D2, 4 D1).
-
-**Candidate coverage, not final assignment:** 0 INTERSPEECH and 0 ICASSP records mention the surrounding subtheme in the discovery queue.
-
-**Family reading:** The ordinary pressure is Design recording prompts, speakers, transcription, and consent so newly collected data covers the intended community and task. The reviewed examples are counted below by venue and depth; they show how this pressure is made operational, while the boundary remains: More hours do not fix biased sampling, poor transcripts, or a task definition that excludes natural speech.
-
-**Cross-venue reading:** INTERSPEECH has 40 reviewed example(s) and ICASSP has 8 reviewed example(s). The difference cannot be read as research prevalence because the reviewed sets are selected, ICASSP includes 4 title-only records among these examples, and the remaining candidate coverage is unresolved.
-
-**Unresolved:** Which of the 0 open candidate records actually belongs to this concept after reading the problem and mechanism, and where does the concept boundary fail against neighboring subthemes?
-
-**Paper IDs:** INTERSPEECH dewhurst25_interspeech, draxler25_interspeech, emezue25_interspeech, fong25_interspeech, hameed25_interspeech, hiruta25_interspeech, johnson25_interspeech, joshi25_interspeech, jung25c_interspeech, kondo25_interspeech, langman25_interspeech, li25ea_interspeech, liu25e_interspeech, marmor25_interspeech, minixhofer25_interspeech, mizumoto25_interspeech, naseem25_interspeech, nguyen25d_interspeech, ong25_interspeech, parcollet25_interspeech, peng25c_interspeech, peurey25_interspeech, raokoluguri25_interspeech, ravenscroft25_interspeech, salihs25_interspeech, santamariajorda25_interspeech, serrand25_interspeech, sheikh25_interspeech, siegert25_interspeech, szalay25_interspeech, toyin25_interspeech, tran25_interspeech, vaessen25_interspeech, vesterbacka25_interspeech, vukovic25_interspeech, wu25e_interspeech, yue25_interspeech, zhang25s_interspeech, znotins25_interspeech, zwilling25_interspeech; ICASSP 22dc19dcc4dc31a240c8e6523017075154159a8e, 73d69ca576dc8e65e0f4826f6f6c3db3d0e8a2f2, 956c5a2961ac5d0cd05773d0f2bb9ea5803fd8a0, c8b22be558c208683b1e247876248b897fa9e655, db0ff89b489a91f54d0e90b6f7acf961bfa058c5, e65a730cec7f585fc8aca755c2b19470c1833614, e72eae582cd331df83d870bd11204aea7a896c83, f2e289a5e1a0f1aac8a9f50a14d4ca85a8c90c1c.
-
 #### Few-shot adaptation
 
 **Definition:** Adjust a model to a language, speaker, or domain from a small number of examples rather than retraining from scratch.
@@ -1192,9 +1202,31 @@ Reviewed evidence: 1179 INTERSPEECH records and 3864 ICASSP records.
 
 **Paper IDs:** INTERSPEECH dao25_interspeech, fang25d_interspeech, fort25_interspeech, glazer25_interspeech, hannan25b_interspeech, karpov25_interspeech, klejch25_interspeech, kwon25_interspeech, li25ca_interspeech, mitsumori25_interspeech, si25_interspeech, taylor25_interspeech, wang25u_interspeech, zevallos25_interspeech, zhuo25_interspeech; ICASSP 467e67ae21f49486c193e2e6302bc3550ff35186, 76563a65a7a290db0475ee3ed91838d452df688c, b3fb63852e7054a894168d220324bd4148249207, cb3409d64edcf270597ab76df73b0c0080d0264f, d7de85d1a50b28c6be89c52bf4f280b4040c8814, f4812e23e13ef4174a9f09890c6c67aabb47c6af, f76b8e5bf1828e1a59fd362967dff8ccfb4b5521.
 
-### Accent, dialect, and cultural interpretation
+### Making missing speech evidence
 
-**Question:** When is a difference a recognition problem, and when is it the system's narrow norm?
+**Question:** What ordinary speech pressure is handled by making missing speech evidence, and what evidence distinguishes it from neighboring pressures?
+
+#### Speech data collection
+
+**Definition:** Design recording prompts, speakers, transcription, and consent so newly collected data covers the intended community and task.
+
+**Boundary:** More hours do not fix biased sampling, poor transcripts, or a task definition that excludes natural speech.
+
+**INTERSPEECH reviewed:** 40 (1 D3, 39 D2); **ICASSP reviewed:** 8 (4 D2, 4 D1).
+
+**Candidate coverage, not final assignment:** 0 INTERSPEECH and 0 ICASSP records mention the surrounding subtheme in the discovery queue.
+
+**Family reading:** The ordinary pressure is Design recording prompts, speakers, transcription, and consent so newly collected data covers the intended community and task. The reviewed examples are counted below by venue and depth; they show how this pressure is made operational, while the boundary remains: More hours do not fix biased sampling, poor transcripts, or a task definition that excludes natural speech.
+
+**Cross-venue reading:** INTERSPEECH has 40 reviewed example(s) and ICASSP has 8 reviewed example(s). The difference cannot be read as research prevalence because the reviewed sets are selected, ICASSP includes 4 title-only records among these examples, and the remaining candidate coverage is unresolved.
+
+**Unresolved:** Which of the 0 open candidate records actually belongs to this concept after reading the problem and mechanism, and where does the concept boundary fail against neighboring subthemes?
+
+**Paper IDs:** INTERSPEECH dewhurst25_interspeech, draxler25_interspeech, emezue25_interspeech, fong25_interspeech, hameed25_interspeech, hiruta25_interspeech, johnson25_interspeech, joshi25_interspeech, jung25c_interspeech, kondo25_interspeech, langman25_interspeech, li25ea_interspeech, liu25e_interspeech, marmor25_interspeech, minixhofer25_interspeech, mizumoto25_interspeech, naseem25_interspeech, nguyen25d_interspeech, ong25_interspeech, parcollet25_interspeech, peng25c_interspeech, peurey25_interspeech, raokoluguri25_interspeech, ravenscroft25_interspeech, salihs25_interspeech, santamariajorda25_interspeech, serrand25_interspeech, sheikh25_interspeech, siegert25_interspeech, szalay25_interspeech, toyin25_interspeech, tran25_interspeech, vaessen25_interspeech, vesterbacka25_interspeech, vukovic25_interspeech, wu25e_interspeech, yue25_interspeech, zhang25s_interspeech, znotins25_interspeech, zwilling25_interspeech; ICASSP 22dc19dcc4dc31a240c8e6523017075154159a8e, 73d69ca576dc8e65e0f4826f6f6c3db3d0e8a2f2, 956c5a2961ac5d0cd05773d0f2bb9ea5803fd8a0, c8b22be558c208683b1e247876248b897fa9e655, db0ff89b489a91f54d0e90b6f7acf961bfa058c5, e65a730cec7f585fc8aca755c2b19470c1833614, e72eae582cd331df83d870bd11204aea7a896c83, f2e289a5e1a0f1aac8a9f50a14d4ca85a8c90c1c.
+
+### Respecting variation and local meaning
+
+**Question:** What ordinary speech pressure is handled by respecting variation and local meaning, and what evidence distinguishes it from neighboring pressures?
 
 #### Accent robustness
 
@@ -1254,9 +1286,9 @@ Reviewed evidence: 1179 INTERSPEECH records and 3864 ICASSP records.
 
 **Ordinary pressure:** Speech systems are used through microphones, networks, interfaces, policies, and people; a benchmark number is only one observation of that whole chain.
 
-### What a metric actually measures
+### Connecting scores to human goals
 
-**Question:** Which human or engineering property is the score standing in for?
+**Question:** What ordinary speech pressure is handled by connecting scores to human goals, and what evidence distinguishes it from neighboring pressures?
 
 #### Word error versus understanding
 
@@ -1312,9 +1344,9 @@ Reviewed evidence: 1179 INTERSPEECH records and 3864 ICASSP records.
 
 **Paper IDs:** INTERSPEECH bhattacharya25b_interspeech, chen25i_interspeech, choi25f_interspeech, durmus25_interspeech, oh25_interspeech, ravi25_interspeech, sanders25_interspeech, shen25b_interspeech, shi25f_interspeech, whetten25_interspeech, zhang25d_interspeech; ICASSP 098f4e21120d05b0acb4c15705c1ba37e2a8e467, 10908f287b34b7b35b8939a41101bf97951e7194, 2fa79695d2ba5fcdaee3664a69a18031748f4242, 4b580de823ac5593b4bedaecb0e2fd33fba3b352, 660f35b8352b53a899ba4c4c25fcacabd473e27a, 893ce28f671feec9882616854700af85b48a6510, 8f879a97fe9480dfd7865131eeb0b223162d215b, bc910f279b719376c53e0df3c9eeeb5479f4fe38, bf6c53ec9bca47fd8f79b7d4b3e3f4b0ce9aeb3f, f029a2feba6282850dda13ba6d32e6b0224d4780.
 
-### From model score to deployed behavior
+### Changing speakers, rooms, and conditions
 
-**Question:** What changes when the model is placed in a real device and interaction loop?
+**Question:** What ordinary speech pressure is handled by changing speakers, rooms, and conditions, and what evidence distinguishes it from neighboring pressures?
 
 #### Distribution shift
 
@@ -1334,24 +1366,6 @@ Reviewed evidence: 1179 INTERSPEECH records and 3864 ICASSP records.
 
 **Paper IDs:** INTERSPEECH alderete25_interspeech, combei25_interspeech, ko25_interspeech, ng25_interspeech, panda25_interspeech, shi25_interspeech, tseng25_interspeech, ugan25_interspeech, vandalen25_interspeech, vieting25_interspeech, xiao25b_interspeech; ICASSP 43737c2851b028c44c9d08aee1d52c5000014a7d, 502aba0d0be1f72c5bd3b0f976e19899597dc5d7, 6ff5eef157077a5dfee1454e817dba8353c19c4b, b5c385f66048432475ec096077e111934ee2efce, fb88cd068e0a2b62372a4fced53c6b4dd86d433f.
 
-#### Latency and resource budget
-
-**Definition:** A system must meet timing, memory, energy, bandwidth, and hardware limits while preserving the property users need.
-
-**Boundary:** A faster model may emit less context, reduce quality, or move cost into an unreported service.
-
-**INTERSPEECH reviewed:** 29 (2 D3, 27 D2); **ICASSP reviewed:** 7 (1 D2, 6 D1).
-
-**Candidate coverage, not final assignment:** 0 INTERSPEECH and 0 ICASSP records mention the surrounding subtheme in the discovery queue.
-
-**Family reading:** The ordinary pressure is A system must meet timing, memory, energy, bandwidth, and hardware limits while preserving the property users need. The reviewed examples are counted below by venue and depth; they show how this pressure is made operational, while the boundary remains: A faster model may emit less context, reduce quality, or move cost into an unreported service.
-
-**Cross-venue reading:** INTERSPEECH has 29 reviewed example(s) and ICASSP has 7 reviewed example(s). The difference cannot be read as research prevalence because the reviewed sets are selected, ICASSP includes 6 title-only records among these examples, and the remaining candidate coverage is unresolved.
-
-**Unresolved:** Which of the 0 open candidate records actually belongs to this concept after reading the problem and mechanism, and where does the concept boundary fail against neighboring subthemes?
-
-**Paper IDs:** INTERSPEECH casanova25_interspeech, chang25d_interspeech, do25_interspeech, fang25c_interspeech, gan25b_interspeech, gu25b_interspeech, kim25o_interspeech, lay25b_interspeech, li25_interspeech, li25u_interspeech, li25v_interspeech, moriya25_interspeech, mun25c_interspeech, nam25_interspeech, nethil25_interspeech, okabe25_interspeech, pei25_interspeech, rolland25_interspeech, rossenbach25_interspeech, rouas25_interspeech, someki25_interspeech, song25b_interspeech, wan25_interspeech, xu25c_interspeech, xu25e_interspeech, xu25i_interspeech, yoneyama25_interspeech, zhang25n_interspeech, zhao25f_interspeech; ICASSP 1b3a97557f11e537bee409963df14cf43451e8b0, 441388b56ae6e0904f2efb5711fae7c4feced9e5, 58309794fbce780b33ddfc233c5acca528510343, 688146d07467757d9ff7aa3ccbfbdd338e639819, bd4a0b8c6b271049041fb09bbc3aaf0be0296d7f, d1189ffafd42775c9453b9141866dfd65ea76c3e, d434cb2b975c321e138b608a86834cef5f4f8dfe.
-
 #### End-to-end recovery
 
 **Definition:** Handle uncertainty through confirmation, correction, fallback, and logging so one recognition error does not become an irreversible action.
@@ -1370,9 +1384,31 @@ Reviewed evidence: 1179 INTERSPEECH records and 3864 ICASSP records.
 
 **Paper IDs:** INTERSPEECH alexos25_interspeech, broughton25_interspeech, cheng25b_interspeech, wang25b_interspeech; ICASSP d287262678f9e25dc2d91d324751b88a270ce02c.
 
-### Voice data, identity, and social risk
+### Meeting time, memory, and hardware limits
 
-**Question:** What can be inferred or done with speech beyond the immediate task?
+**Question:** What ordinary speech pressure is handled by meeting time, memory, and hardware limits, and what evidence distinguishes it from neighboring pressures?
+
+#### Latency and resource budget
+
+**Definition:** A system must meet timing, memory, energy, bandwidth, and hardware limits while preserving the property users need.
+
+**Boundary:** A faster model may emit less context, reduce quality, or move cost into an unreported service.
+
+**INTERSPEECH reviewed:** 29 (2 D3, 27 D2); **ICASSP reviewed:** 7 (1 D2, 6 D1).
+
+**Candidate coverage, not final assignment:** 0 INTERSPEECH and 0 ICASSP records mention the surrounding subtheme in the discovery queue.
+
+**Family reading:** The ordinary pressure is A system must meet timing, memory, energy, bandwidth, and hardware limits while preserving the property users need. The reviewed examples are counted below by venue and depth; they show how this pressure is made operational, while the boundary remains: A faster model may emit less context, reduce quality, or move cost into an unreported service.
+
+**Cross-venue reading:** INTERSPEECH has 29 reviewed example(s) and ICASSP has 7 reviewed example(s). The difference cannot be read as research prevalence because the reviewed sets are selected, ICASSP includes 6 title-only records among these examples, and the remaining candidate coverage is unresolved.
+
+**Unresolved:** Which of the 0 open candidate records actually belongs to this concept after reading the problem and mechanism, and where does the concept boundary fail against neighboring subthemes?
+
+**Paper IDs:** INTERSPEECH casanova25_interspeech, chang25d_interspeech, do25_interspeech, fang25c_interspeech, gan25b_interspeech, gu25b_interspeech, kim25o_interspeech, lay25b_interspeech, li25_interspeech, li25u_interspeech, li25v_interspeech, moriya25_interspeech, mun25c_interspeech, nam25_interspeech, nethil25_interspeech, okabe25_interspeech, pei25_interspeech, rolland25_interspeech, rossenbach25_interspeech, rouas25_interspeech, someki25_interspeech, song25b_interspeech, wan25_interspeech, xu25c_interspeech, xu25e_interspeech, xu25i_interspeech, yoneyama25_interspeech, zhang25n_interspeech, zhao25f_interspeech; ICASSP 1b3a97557f11e537bee409963df14cf43451e8b0, 441388b56ae6e0904f2efb5711fae7c4feced9e5, 58309794fbce780b33ddfc233c5acca528510343, 688146d07467757d9ff7aa3ccbfbdd338e639819, bd4a0b8c6b271049041fb09bbc3aaf0be0296d7f, d1189ffafd42775c9453b9141866dfd65ea76c3e, d434cb2b975c321e138b608a86834cef5f4f8dfe.
+
+### Protecting voice and resisting misuse
+
+**Question:** What ordinary speech pressure is handled by protecting voice and resisting misuse, and what evidence distinguishes it from neighboring pressures?
 
 #### Voice privacy
 
@@ -1409,6 +1445,10 @@ Reviewed evidence: 1179 INTERSPEECH records and 3864 ICASSP records.
 **Unresolved:** Which of the 0 open candidate records actually belongs to this concept after reading the problem and mechanism, and where does the concept boundary fail against neighboring subthemes?
 
 **Paper IDs:** INTERSPEECH ali25_interspeech, asali25_interspeech, baser25b_interspeech, buker25_interspeech, chandra25b_interspeech, chen25j_interspeech, das25_interspeech, dutta25b_interspeech, falez25_interspeech, febrinanto25_interspeech, firc25_interspeech, gorthi25_interspeech, huang25b_interspeech, huang25e_interspeech, kim25g_interspeech, kim25j_interspeech, klein25_interspeech, koutsianos25_interspeech, kulkarni25_interspeech, kwok25_interspeech, li25aa_interspeech, li25h_interspeech, mahapatra25_interspeech, muller25_interspeech, negroni25_interspeech, nguyen25e_interspeech, phukan25_interspeech, phuong25_interspeech, ranjan25_interspeech, ranjan25b_interspeech, sankala25_interspeech, shiota25_interspeech, srinivasavaradhan25_interspeech, stan25_interspeech, trachu25_interspeech, tran25b_interspeech, urai25_interspeech, wang25q_interspeech, weizman25_interspeech, wu25i_interspeech, xiao25d_interspeech, yang25l_interspeech, yu25c_interspeech, zhang25g_interspeech; ICASSP 038fb68ee9e308e13c125e66b71cafef48eb7174, 06a9e45523b1b67eda62ac12b6db46c06167f30e, 191294c576ca75d76f70cb728d2290d6417f3749, 1e470965d610b962554bd756fa4d5d837be4c0e8, 206fced6cf644b81963ed305bbdd3eff408c9ddc, 24493088ae4c9fbc1adae4d471dbb3bb8e71f306, 25890b928d7c3e60a9d4a3235c2a067ed0e74119, 34951200bd03611f5ca5bf0309779af8cac29f97, 36c5490ee2bb16eef209794008ae6bcae92a5c63, 396086a780ffd204b1a467bae77c39ad2885d0fd, 439e5824d51567971972cda0d403e35dc2cb32e8, 4d989bc72dbc0c12ff4c28dd4d73d75c69953cb4, 51d6cdd34dd2c20106c9fb38fac53700e9978612, 5286e4c6b44b4986da4a0a790af3bf8ac5893e00, 554cd489c5895dd613b0de284120b1099330f1f4, 56774f3ae80d0bb4f025443614ff7ea7f36d9c9a, 5ec8a32bb2cff662b1eafde87a14775ee696a204, 6075575aabc2e17bfa07b4309de4ab59129d75e1, 653efeb59c5b066720dc0c457bd2189a063fab37, 76027423d418665db7a133787c6b817143a9112f, 8d037e8b595bec358b0e82835b2090c9cc2e6bee, 8e16277adee97a48218203a0fd59570ebb560967, 8f23e5c63ba6928faf75a98f2d4213964f2ccc6f, 8f29c9401994870d518c2d61ee27c4b5d95cf57f, 9ebadcacaec354b601e244bb3c4e2f8fce18fb81, 9f6c870ee35050d73c2a2ec1eceb4b64bf87686a, aef8e955a158867909b3dc5c22b529f24384c1e0, b6b6bce799b302f90e5f159fc79178ed595bbfeb, c4ef85911ee7d188b0d62636f76ffba73dee0d8f, d02fafa19a3ca6416c1cb66d42bcad99c167ca5e, d9adafcf5122950f31099fd630aa14a2cdc5a1fa, dcf1cfac25f51e1490915903a948998d3be86a38, dfd27df13f693bd9b9ab366e67fedd919132edfc, e5ddce2b50a7696faf858e68acbb161109f3952c, ea768741d49d91543ade5e922f0ba1ae227d9ad8, f055e70a53e3f09ceb592427159e000554c0f6a6, f30f800954d57e1fcda2b7724ac89df1ff830d14, fc17c3af8734c19c6e030d992dedc6d87cf5409e.
+
+### Keeping claims inspectable and contestable
+
+**Question:** What ordinary speech pressure is handled by keeping claims inspectable and contestable, and what evidence distinguishes it from neighboring pressures?
 
 #### Auditability and contestability
 

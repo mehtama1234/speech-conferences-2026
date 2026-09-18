@@ -10,6 +10,8 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 STEPS = [
     [sys.executable, "build_conceptual_taxonomy.py"],
+    [sys.executable, "build_organic_taxonomy_proposal.py"],
+    [sys.executable, "build_organic_taxonomy.py"],
     [sys.executable, "build_icassp_semantic_batch_052.py"],
     [sys.executable, "build_icassp_semantic_batch_053.py"],
     [sys.executable, "build_icassp_semantic_batch_054.py"],

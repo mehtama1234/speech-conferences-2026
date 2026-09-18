@@ -144,12 +144,12 @@ checks = [
 ]
 payload = {
     "release_id": "speech-icasp-interspeech-2025-r1",
-    "overall_status": "bounded-release-complete-with-explicit-boundaries",
-    "scope_statement": "The bounded ICML-style conceptual and paper-grounded atlas is complete: its semantic layers, D3 family coverage, syntheses, provenance, artifact audit, reader path, rebuild, and validator are internally consistent. Unresolved science and source-access limits remain explicit rather than being presented as completed evidence.",
+    "overall_status": "organic-taxonomy-release-in-progress-with-explicit-boundaries",
+    "scope_statement": "The paper-grounded atlas has been rebuilt around an organically derived taxonomy proposal: its semantic layers, syntheses, provenance, artifact audit, reader path, rebuild, and validator are internally consistent. The new boundaries still require analyst review of rejected splits, rejected merges, and unresolved cases before the conceptual goal can be called complete.",
     "criterion_count": len(checks),
     "status_counts": {status: sum(x["status"] == status for x in checks) for status in sorted({x["status"] for x in checks})},
     "checks": checks,
-    "remaining_work": ["No required analytical work remains within the bounded release scope."],
+    "remaining_work": ["Review the organic derivation ledger: confirm or revise each proposed split, merge, and unresolved boundary against the baseline account and named paper evidence before declaring the conceptual taxonomy final."],
     "open_boundaries": [f"Additional D3 readings beyond the current {d3_analysis_count}-paper seed are optional expansion, not a closure defect.", "The artifact audit contains bounded syntax/package/smoke checks; data-dependent training and independent scientific reproduction remain unestablished.", "The ICASSP official supplement matches 3739 discovery records; 125 discovery records remain unmatched and are retained with their source boundary."],
 }
 out = HERE / "data/speech-atlas-completion-audit.json"
