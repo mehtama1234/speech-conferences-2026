@@ -245,59 +245,104 @@ The release must include:
 
 ## Current completion state
 
-The evidence and engineering layers are strong but the conceptual taxonomy is not
-yet complete. The current release has 1,179 INTERSPEECH and 3,864 ICASSP records,
-closed semantic dispositions, captured-paper hashes, D2/D3 analyses, family
-syntheses, artifact audits, navigation, a release manifest, and a clean validator.
-However, its 8 themes, 24 subthemes, and 72 concepts were partly authored as a
-regular scaffold: every theme has three subthemes and every subtheme has three
-concepts. That regularity is a design artifact, not proof that the boundaries arose
-from the baseline conceptual account and the papers.
+The current files are an audited processing release, not the finished intellectual
+work. They contain 1,179 INTERSPEECH records and 3,864 ICASSP records, but that
+does not mean every paper has been deeply read. The current D3 set is a selected
+full-paper reading set; D2 rows are abstract-bounded; ICASSP rows are largely
+title/abstract-bounded. The present taxonomy is an organic proposal, not yet a
+fully defended account of the field.
 
-The goal is therefore reopened for conceptual repair. The existing taxonomy,
-assignments, notes, and syntheses are evidence to inspect, not boundaries to
-protect. The next release must derive a variable taxonomy organically and then
-re-run semantic assignment and synthesis against that revised structure.
+The goal is complete only after the entire active corpus has been examined at the
+strongest depth actually available and the final taxonomy has been written as a
+clear first-principles explanation of speech research.
 
-The following remain explicit evidence boundaries throughout the work: additional
-D3 readings may be needed after the new boundaries are known; data-dependent
-training and independent scientific reproduction are not established; and 125
-ICASSP discovery records remain unmatched to the official supplement.
+### Required end-to-end work
 
-The goal is complete only when:
+1. Establish the baseline account. Name the baseline paper or papers, record the
+   exact passages used, and extract the starting facts about sound, speakers,
+   listeners, language, interaction, devices, and consequences. Do not begin from
+   conference keywords or the current scaffold.
 
-1. The conceptual taxonomy is visibly derived from the named baseline
-   first-principles source and the paper evidence. Its themes, subthemes, and
-   concepts have plain-language explanations, rules, examples, and boundaries;
-   its counts are unequal where the evidence requires unequal structure; and its
-   rejected splits, rejected merges, and unresolved boundaries are preserved.
-2. The whole active corpus has semantic assignments or explicit unsupported,
-   ambiguous, or insufficient-evidence decisions; no active queue is silently
-   left unreviewed.
-3. Every paper has a depth-labeled evidence record, and the major papers in each
-   theme/family have full first-principles notes rather than vague summaries.
-4. Every theme, subtheme, concept, and paper family has a connected synthesis
-   grounded in named papers and explicit denominators.
-5. ICASSP and INTERSPEECH comparisons separate research differences from source,
-   access, and taxonomy differences.
-6. Code, data, presentation, and execution evidence are audited without claiming
-   reproduction where none occurred.
-7. The final reader path is explanatory: it teaches the field from ordinary
-   speech problems through mechanisms, mathematics, evidence, and limits.
-8. A clean rebuild reproduces the semantic layers, reports, manifests, and release
-   artifacts; focused tests and validators pass with zero errors.
+2. Examine every corpus record. For every paper, attempt the official page, PDF,
+   abstract, code, data, model, and presentation links in that order where they
+   exist. Record what was read, what was unavailable, and why. Every record must
+   end with either a supported assignment or an explicit unsupported, ambiguous,
+   or insufficient-evidence decision. No paper may be counted as deeply read when
+   only its title or abstract was available.
 
-9. An independent reader can trace at least one complete derivation for every
-   final subtheme:
+3. Write every paper analysis at its real evidence depth. A full-paper record must
+   explain the actual problem, failed simple approach, central move, step-by-step
+   mechanism, mathematical object, evaluation, reported result, assumptions, and
+   limits. An abstract-only record must say exactly which of those facts remain
+   unknown. No record may be padded with details borrowed from the model name or
+   from a different paper.
 
-   `baseline observation -> ordinary pressure -> failed simple solution ->
-   recurring paper move -> boundary from neighboring subthemes -> named evidence`.
+4. Derive the taxonomy from the baseline and readings. For every proposed theme
+   and subtheme, preserve the chain:
 
-10. No final subtheme exists only because a quota, keyword, conference label, or
-    convenient implementation demanded it. If two subthemes cannot be explained
-    as different ordinary problems or different evidence boundaries, they must be
-    merged before completion.
+   `baseline fact -> ordinary speech pressure -> tempting simple solution ->
+   concrete failure -> recurring paper move -> boundary from neighbors -> named
+   evidence`
 
-The bounded release is not complete merely because its files are reproducible.
-It is complete when the reproducible files contain the deep conceptual and
-paper-grounded analysis that makes the atlas useful.
+   A subtheme exists only when this chain differs in a way that changes the
+   problem, information being handled, mechanism, evaluation target, or evidence
+   limit. If two chains are the same, merge them. If one chain contains two
+   different problems or mechanisms, split it. Equal counts are neither a goal nor
+   evidence.
+
+5. Write the complete theme and subtheme account. Every final theme must have a
+   substantial plain-language writeup. Every final subtheme must have its own
+   writeup containing all of the following:
+
+   - the ordinary situation before a model is introduced;
+   - what is mixed, missing, changing, or hard to observe;
+   - the smart beginner's first solution;
+   - the precise reason that solution fails;
+   - the recurring move shared by the papers;
+   - the inputs, outputs, and steps of that move;
+   - the relevant mathematical idea explained in ordinary language;
+   - at least two named supporting papers when the corpus permits;
+   - a positive case, a negative case, and a boundary case;
+   - the neighboring subtheme it could be confused with and the reason it is
+     separate;
+   - what the evidence does and does not establish.
+
+   A paragraph that only says “papers use transformers,” “papers improve
+   robustness,” “papers model prosody,” or “papers use embeddings” is not a
+   writeup. Those phrases must be unpacked into a concrete speech problem and a
+   sequence of operations.
+
+6. Re-adjudicate membership after the taxonomy is written. Do not merely move old
+   labels to new parents. Re-read the evidence for each supported membership and
+   record why the paper belongs there rather than in its nearest neighbor. Keep
+   rejected assignments and unresolved cases visible.
+
+7. Synthesize paper families and venues. Explain what several papers jointly show,
+   where they disagree, what changes across speakers, languages, rooms, devices,
+   and tasks, and where a metric fails to represent human usefulness. Every broad
+   statement must have named evidence and a denominator.
+
+8. Audit the result. Rebuild the full release, verify hashes and provenance, run
+   validators, inspect the human-readable reports, and check that the reports say
+   “unknown” whenever the evidence is unknown. Separate author-reported results,
+   analyst interpretation, artifact inspection, and independent execution.
+
+### Completion gates
+
+The goal is not complete unless all of these are true:
+
+- every active record has a recorded evidence depth and disposition;
+- every full-paper claim points to a captured page, section, or text hash;
+- every final theme and subtheme has the complete first-principles writeup above;
+- every final subtheme has a derivation record and named supporting evidence;
+- rejected splits, rejected merges, and unresolved boundaries are preserved;
+- no subtheme exists only because of a quota, keyword, venue label, or convenient
+  implementation;
+- all syntheses use explicit denominators and distinguish D1/D2/D3/D4/D5 evidence;
+- the clean rebuild and validators pass, and an independent reader can follow the
+  atlas from an ordinary speech problem to a mechanism, evidence, and limit.
+
+The release is therefore not complete merely because files are reproducible or a
+validator is green. It is complete only when the writing itself demonstrates that
+the themes and subthemes are necessary, understandable, evidence-backed divisions
+of speech research.
