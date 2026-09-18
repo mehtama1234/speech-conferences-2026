@@ -252,6 +252,7 @@ STEPS = [
     [sys.executable, "build_first_principles_synthesis.py"],
     [sys.executable, "build_reading_paths.py"],
     [sys.executable, "build_subtheme_syntheses.py"],
+    [sys.executable, "audit_first_principles_writeups.py"],
     [sys.executable, "build_concept_family_crosswalk.py"],
     [sys.executable, "build_concept_evidence_gaps.py"],
     [sys.executable, "build_icassp_official_metadata_supplement.py"],
