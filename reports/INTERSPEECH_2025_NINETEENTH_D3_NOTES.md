@@ -110,7 +110,7 @@ Twenty-three additional official-PDF readings add mechanism contrasts across the
 - **Naive attempt:** Choose gestures from fixed rules or train a large motion generator for each agent.
 - **Central move:** Use an LLM to plan context and select reusable primitive actions that can be adapted across agents.
 - **Mechanism:** The proposed model uses LLM-driven primitive action selection for co-speech motion in virtual agents and robots.
-- **Conceptual structure:** The key object is the mapping from dialogue context to a sequence of primitive actions; the paper's abstract does not expose a complete quantitative comparison.
+- **Conceptual structure:** The operative object is a mapping from dialogue context to a sequence of reusable primitive actions; the captured paper does not establish a completed quantitative comparison.
 - **What paper reports:** The paper presents a flexible and scalable approach, but the preserved evidence does not establish a numerical gain.
 - **Limits:** Full mechanism, baselines, human judgments, and cross-embodiment transfer require the paper's detailed evaluation; the result is not a claim of human-like motion.
 
@@ -222,7 +222,7 @@ Twenty-three additional official-PDF readings add mechanism contrasts across the
 - **Naive attempt:** Offer a static symbol board and one default synthetic voice.
 - **Central move:** Generate visual symbols and use zero-shot TTS so users can personalize both the concept representation and voice.
 - **Mechanism:** The proposed AAC system combines text-to-image generation with zero-shot TTS for children with autism.
-- **Conceptual structure:** The conceptual objects are symbol coverage, voice personalization, and eventual social validity; the paper's abstract does not report a completed comparative trial.
+- **Conceptual structure:** The operative objects are symbol coverage, voice personalization, and eventual social validity; the captured paper does not report a completed comparative trial.
 - **What paper reports:** The paper presents a broader expressive design but leaves long-term communication outcomes for future study.
 - **Limits:** No causal benefit or clinical efficacy should be inferred; user satisfaction, safety, cultural fit, and long-term adaptation remain open.
 

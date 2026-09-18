@@ -246,6 +246,7 @@ STEPS = [
     [sys.executable, "build_semantic_gap_report.py"],
     [sys.executable, "build_atlas_index.py"],
     [sys.executable, "build_deep_paper_analyses.py"],
+    [sys.executable, "audit_paper_analysis_quality.py"],
     [sys.executable, "normalize_d3_note_taxonomy.py"],
     [sys.executable, "build_normalized_d3_notes_report.py"],
     [sys.executable, "build_evaluation_audit.py"],

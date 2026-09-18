@@ -2292,7 +2292,7 @@ These papers share a conceptual pressure, but this seed batch does not justify r
 
 **Mechanism:** The proposed model uses LLM-driven primitive action selection for co-speech motion in virtual agents and robots.
 
-**Mathematical/evaluation object:** The key object is the mapping from dialogue context to a sequence of primitive actions; the paper's abstract does not expose a complete quantitative comparison.
+**Mathematical/evaluation object:** The operative object is a mapping from dialogue context to a sequence of reusable primitive actions; the captured paper does not establish a completed quantitative comparison.
 
 **Reported evidence:** The paper presents a flexible and scalable approach, but the preserved evidence does not establish a numerical gain.
 
@@ -3032,7 +3032,7 @@ These papers share a conceptual pressure, but this seed batch does not justify r
 
 **Mechanism:** The proposed AAC system combines text-to-image generation with zero-shot TTS for children with autism.
 
-**Mathematical/evaluation object:** The conceptual objects are symbol coverage, voice personalization, and eventual social validity; the paper's abstract does not report a completed comparative trial.
+**Mathematical/evaluation object:** The operative objects are symbol coverage, voice personalization, and eventual social validity; the captured paper does not report a completed comparative trial.
 
 **Reported evidence:** The paper presents a broader expressive design but leaves long-term communication outcomes for future study.
 
