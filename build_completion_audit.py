@@ -12,6 +12,7 @@ official_icassp = json.loads((HERE / "data/icassp-2026-official-metadata-supplem
 queue = json.loads((HERE / "data/interspeech-2025-review-queue.json").read_text())
 evidence = [json.loads(line) for line in (HERE / "data/interspeech-2025-paper-evidence.jsonl").read_text().splitlines() if line.strip()]
 taxonomy = json.loads((HERE / "data/speech-first-principles-taxonomy.json").read_text())
+baseline_source = json.loads((HERE / "data/speech-baseline-source.json").read_text()) if (HERE / "data/speech-baseline-source.json").exists() else {"status": "missing", "anchors": []}
 taxonomy_concepts = [concept for theme in taxonomy.get("themes", []) for subtheme in theme.get("subthemes", []) for concept in subtheme.get("concepts", [])]
 taxonomy_examples_complete = sum(bool(concept.get("positive_example") and concept.get("negative_example") and concept.get("membership_evidence_rule")) for concept in taxonomy_concepts)
 semantic_queue = json.loads((HERE / "data/interspeech-2025-semantic-review-queue.json").read_text())
@@ -124,6 +125,7 @@ claim_ids = {
 }
 claim_count = len(claim_ids)
 checks = [
+    {"id":"baseline-first-principles-source", "status":"verified-with-boundaries" if baseline_source.get("status") == "baseline-source-adopted" and baseline_source.get("anchors") else "in-progress", "evidence":f"{baseline_source.get('citation', 'No baseline source recorded')}; {len(baseline_source.get('anchors', []))} page-anchored principles are recorded. The source provides a conceptual chain, not a complete taxonomy or proof of current paper claims."},
     {"id":"corpus-provenance", "status":"verified-with-boundaries", "evidence":f"ICASSP preserved-input source manifest plus official ISCA archive manifest; {len(official_icassp.get('records', []))} official ICASSP accepted-paper title/paper-number matches are preserved, while the corpus remains discovery metadata for abstracts and full text."},
     {"id":"full-paper-coverage-record", "status":"verified-with-boundaries", "evidence":f"{len(evidence)} per-paper D2/D3 records; {sum(x['evidence_depth']=='D3' for x in evidence)} D3 and {sum(x['evidence_depth']=='D2' for x in evidence)} D2."},
     {"id":"icassp-paper-evidence", "status":"verified-with-boundaries", "evidence":f"{icassp_evidence_count} ICASSP D1/D2 per-paper evidence records now preserve title-only versus abstract-backed boundaries; full-paper access remains unavailable for the corpus."},

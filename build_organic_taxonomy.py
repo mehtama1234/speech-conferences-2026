@@ -13,6 +13,7 @@ ROOT=Path(__file__).resolve().parent; DATA=ROOT/"data"; REPORTS=ROOT/"reports"
 def main():
     base=json.loads((DATA/"speech-first-principles-taxonomy.json").read_text())
     proposal=json.loads((DATA/"speech-organic-taxonomy-proposal.json").read_text())
+    baseline=json.loads((DATA/"speech-baseline-source.json").read_text())
     old_themes={t["id"]:t for t in base["themes"]}
     old_concepts={c["id"]:c for t in base["themes"] for s in t["subthemes"] for c in s["concepts"]}
     themes=[]; seen=[]
@@ -33,9 +34,9 @@ def main():
         themes.append({k:old[k] for k in ("id","name","question","ordinary_problem","naive_failure","recurring_move","tradeoff")} | {"subthemes":subs})
     if sorted(seen)!=sorted(old_concepts):
         raise SystemExit("organic taxonomy does not partition the baseline concepts exactly")
-    out={"schema_version":2,"taxonomy_status":"analyst-authored-organically-derived-proposal","claim_boundary":"Themes and variable subthemes are derived from the baseline first-principles account and explicit paper-family boundary tests; this is not an official conference classification or prevalence estimate.","source_boundary":"Concept definitions come from the baseline taxonomy. Subtheme boundaries are proposed from recurring ordinary pressures, failures, mechanisms, and evidence counts; paper membership is adjudicated separately.","membership_evidence_rule":base["membership_evidence_rule"],"derivation_source":"data/speech-organic-taxonomy-proposal.json","theme_count":len(themes),"subtheme_count":sum(len(t["subthemes"]) for t in themes),"concept_count":len(seen),"themes":themes}
+    out={"schema_version":2,"taxonomy_status":"analyst-authored-organically-derived-proposal","claim_boundary":"Themes and variable subthemes are derived from the named baseline paper and explicit paper-family boundary tests; this is not an official conference classification or prevalence estimate.","baseline_source":baseline,"source_boundary":"Concept definitions begin from the baseline account. Subtheme boundaries are proposed from recurring ordinary pressures, failures, mechanisms, and evidence counts; paper membership is adjudicated separately.","membership_evidence_rule":base["membership_evidence_rule"],"derivation_source":"data/speech-organic-taxonomy-proposal.json","theme_count":len(themes),"subtheme_count":sum(len(t["subthemes"]) for t in themes),"concept_count":len(seen),"themes":themes}
     (DATA/"speech-first-principles-taxonomy.json").write_text(json.dumps(out,indent=2,ensure_ascii=False)+"\n")
-    lines=["# Speech first-principles conceptual taxonomy","",out["claim_boundary"],"",f"This organically derived proposal has {out['theme_count']} themes, {out['subtheme_count']} variable subthemes, and {out['concept_count']} concepts. Counts are not equalized.",""]
+    lines=["# Speech first-principles conceptual taxonomy","",out["claim_boundary"],"",f"**Baseline:** {baseline['citation']} — {baseline['source_url']}","",f"This organically derived proposal has {out['theme_count']} themes, {out['subtheme_count']} variable subthemes, and {out['concept_count']} concepts. Counts are not equalized.",""]
     for t in themes:
         lines += [f"## {t['name']}","",f"**Ordinary problem:** {t['ordinary_problem']}","",f"**Why the naive approach fails:** {t['naive_failure']}","",f"**Recurring conceptual move:** {t['recurring_move']}", "", f"**Tradeoff/boundary:** {t['tradeoff']}", ""]
         for s in t["subthemes"]:

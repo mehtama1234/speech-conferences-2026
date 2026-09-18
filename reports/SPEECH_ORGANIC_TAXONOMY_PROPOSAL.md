@@ -2,6 +2,8 @@
 
 This is a derivation proposal, not yet the canonical taxonomy. It records why each proposed boundary exists and which reviewed concept families motivate it.
 
+**Baseline source:** Fant, Gunnar. Sound, features, and perception. STL-QPSR 8(2-3), 1967, pp. 1-14. — https://www.speech.kth.se/qpsr/1967/1967_8_2-3_001-014.pdf
+
 Proposed subthemes: **34**; current fixed subthemes: **24**.
 
 ## Sound, bodies, rooms, and recording — 4 proposed subthemes

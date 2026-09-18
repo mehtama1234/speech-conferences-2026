@@ -6,6 +6,7 @@ The paper-grounded atlas has been rebuilt around an organically derived taxonomy
 
 | Requirement | Status | Evidence |
 |---|---|---|
+| baseline-first-principles-source | `verified-with-boundaries` | Fant, Gunnar. Sound, features, and perception. STL-QPSR 8(2-3), 1967, pp. 1-14.; 6 page-anchored principles are recorded. The source provides a conceptual chain, not a complete taxonomy or proof of current paper claims. |
 | corpus-provenance | `verified-with-boundaries` | ICASSP preserved-input source manifest plus official ISCA archive manifest; 3739 official ICASSP accepted-paper title/paper-number matches are preserved, while the corpus remains discovery metadata for abstracts and full text. |
 | full-paper-coverage-record | `verified-with-boundaries` | 1179 per-paper D2/D3 records; 469 D3 and 710 D2. |
 | icassp-paper-evidence | `verified-with-boundaries` | 3864 ICASSP D1/D2 per-paper evidence records now preserve title-only versus abstract-backed boundaries; full-paper access remains unavailable for the corpus. |

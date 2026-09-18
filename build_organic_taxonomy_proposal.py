@@ -65,6 +65,7 @@ P=[
 ]
 
 def main():
+    baseline=json.loads((DATA/"speech-baseline-source.json").read_text())
     taxonomy=json.loads((DATA/"speech-first-principles-taxonomy.json").read_text())
     queue=json.loads((DATA/"interspeech-2025-semantic-review-queue.json").read_text())
     old_to_count={}
@@ -79,9 +80,9 @@ def main():
         for sid,name,concepts,boundary in theme["subthemes"]:
             subs.append({"id":sid,"name":name,"supporting_current_concepts":concepts,"supported_paper_count":sum(old_to_count.get(c,0) for c in concepts),"boundary":boundary,"derivation":"Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups."})
         records.append({"theme_id":theme["theme_id"],"theme":theme["theme"],"derivation_reason":theme["reason"],"subtheme_count":len(subs),"subthemes":subs})
-    payload={"status":"proposal-not-canonical","method":"baseline first-principles pressure -> failed simple solution -> recurring paper move -> boundary test","fixed_cardinality_detected":all(len(t["subthemes"])==3 for t in taxonomy["themes"]),"canonical_concept_count":len(old_concepts),"proposed_theme_count":len(records),"proposed_subtheme_count":sum(r["subtheme_count"] for r in records),"records":records,"decision_rule":"Do not merge or split solely to equalize counts; reassign papers only after each boundary has named evidence."}
+    payload={"status":"proposal-not-canonical","baseline_source":baseline,"method":"baseline communication-chain stage or message/signal distinction -> ordinary pressure -> failed simple solution -> recurring paper move -> boundary test","fixed_cardinality_detected":all(len(t["subthemes"])==3 for t in taxonomy["themes"]),"canonical_concept_count":len(old_concepts),"proposed_theme_count":len(records),"proposed_subtheme_count":sum(r["subtheme_count"] for r in records),"records":records,"decision_rule":"Do not merge or split solely to equalize counts; reassign papers only after each boundary has named evidence."}
     (DATA/"speech-organic-taxonomy-proposal.json").write_text(json.dumps(payload,indent=2,ensure_ascii=False)+"\n")
-    md=["# Organic taxonomy proposal","","This is a derivation proposal, not yet the canonical taxonomy. It records why each proposed boundary exists and which reviewed concept families motivate it.","",f"Proposed subthemes: **{payload['proposed_subtheme_count']}**; current fixed subthemes: **24**.",""]
+    md=["# Organic taxonomy proposal","","This is a derivation proposal, not yet the canonical taxonomy. It records why each proposed boundary exists and which reviewed concept families motivate it.","",f"**Baseline source:** {baseline['citation']} — {baseline['source_url']}","",f"Proposed subthemes: **{payload['proposed_subtheme_count']}**; current fixed subthemes: **24**.",""]
     for r in records:
         md += [f"## {r['theme']} — {r['subtheme_count']} proposed subthemes","",r["derivation_reason"],""]
         for s in r["subthemes"]:

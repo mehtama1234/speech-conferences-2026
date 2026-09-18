@@ -1,6 +1,8 @@
 # Speech first-principles conceptual taxonomy
 
-Themes and variable subthemes are derived from the baseline first-principles account and explicit paper-family boundary tests; this is not an official conference classification or prevalence estimate.
+Themes and variable subthemes are derived from the named baseline paper and explicit paper-family boundary tests; this is not an official conference classification or prevalence estimate.
+
+**Baseline:** Fant, Gunnar. Sound, features, and perception. STL-QPSR 8(2-3), 1967, pp. 1-14. — https://www.speech.kth.se/qpsr/1967/1967_8_2-3_001-014.pdf
 
 This organically derived proposal has 8 themes, 34 variable subthemes, and 72 concepts. Counts are not equalized.
 
