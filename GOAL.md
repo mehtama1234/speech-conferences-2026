@@ -57,9 +57,11 @@ parts and the real failure being reduced are named.
 
 Create a machine-readable and human-readable taxonomy with:
 
-- 8–12 top-level speech themes;
-- 3–6 subthemes under each theme;
-- 3–5 concrete concepts under each subtheme;
+- a small number of top-level themes derived from the baseline conceptual account;
+- a variable number of subthemes under each theme, determined by real differences
+  in the ordinary problem, failure mode, mechanism, or evidence—not by a quota;
+- concrete concepts under each subtheme, only when they have a distinct boundary
+  and at least one paper family that needs that boundary;
 - a plain-language definition for every theme, subtheme, and concept;
 - the ordinary problem, naive failure, recurring mechanism, and tradeoff for each;
 - positive examples, negative examples, and boundary cases;
@@ -70,6 +72,46 @@ transcription; spoken meaning and dialogue; generation and voice; separation and
 repair; speaker identity and paralinguistics; languages, accents, health, and
 access; evaluation and deployment; and social consequences. These are hypotheses
 to be tested against the papers, not final labels to be defended by intuition.
+
+### Organic derivation rule
+
+The taxonomy must be derived in a visible sequence from the baseline
+first-principles conceptual account:
+
+1. Name the baseline source or sources and record the exact sections that support
+   each physical, human, or communicative starting point.
+2. Rewrite each starting point as an ordinary pressure: what is happening in the
+   world, what information is missing or mixed together, and what a person needs
+   to hear, say, understand, or do.
+3. For each pressure, record the tempting simple solution and the concrete reason
+   it fails. Do not start with model names, conference labels, or keywords.
+4. Read the papers and collect recurring moves: what is measured, preserved,
+   discarded, separated, aligned, inferred, generated, or checked.
+5. Propose a subtheme only when several papers share the same pressure and move,
+   and when separating it from a neighboring subtheme changes the assumptions,
+   failure cases, mechanism, or evaluation target.
+6. Merge subthemes when their ordinary problem, mechanism, evidence, and limits
+   are materially the same. Split them when a reader would learn a different
+   causal story by keeping them apart.
+7. Let the number of subthemes be the result of those tests. There must be no
+   requirement that themes have equal numbers of subthemes or that subthemes have
+   equal numbers of concepts.
+8. Preserve rejected splits, rejected merges, and unresolved boundaries in the
+   taxonomy record so the final structure can be challenged and revised.
+
+The previous fixed three-subthemes-per-theme structure is not evidence of organic
+derivation and must not be used as the final taxonomy. A passing validator may
+check consistency, but it cannot certify that the conceptual divisions are good.
+
+For every theme, subtheme, and concept, the record must answer in plain language:
+
+- What ordinary situation creates the problem?
+- What is mixed together, missing, changing, or misunderstood?
+- What simple solution fails, and why?
+- What recurring move solves part of the problem?
+- Why is this boundary different from its neighbors?
+- Which named papers support the boundary, and what evidence depth do they have?
+- What paper or evidence would make the boundary split, merge, or disappear?
 
 The taxonomy must become more precise than those umbrella labels. For example,
 “recognition” should separate acoustic-to-text mapping, alignment and boundary
@@ -203,22 +245,32 @@ The release must include:
 
 ## Current completion state
 
-The bounded end-to-end goal is complete. The atlas contains 1,179 INTERSPEECH and
-3,864 ICASSP records with closed semantic dispositions, 8 themes, 24 subthemes, and
-72 concepts. It contains 469 D3 and 710 D2 INTERSPEECH evidence records; every
-subtheme has 18–22 D3 papers, with captured-PDF/text hashes, family comparisons,
-cross-venue denominators, artifact audits, reader navigation, release manifests,
-and a clean deterministic rebuild. The final validator passes with zero errors.
+The evidence and engineering layers are strong but the conceptual taxonomy is not
+yet complete. The current release has 1,179 INTERSPEECH and 3,864 ICASSP records,
+closed semantic dispositions, captured-paper hashes, D2/D3 analyses, family
+syntheses, artifact audits, navigation, a release manifest, and a clean validator.
+However, its 8 themes, 24 subthemes, and 72 concepts were partly authored as a
+regular scaffold: every theme has three subthemes and every subtheme has three
+concepts. That regularity is a design artifact, not proof that the boundaries arose
+from the baseline conceptual account and the papers.
 
-The completion audit remains explicit about boundaries: additional D3 readings are
-optional expansion; data-dependent training and independent scientific reproduction
-are not established; and 125 ICASSP discovery records remain unmatched to the
-official supplement. These are not silently upgraded into evidence.
+The goal is therefore reopened for conceptual repair. The existing taxonomy,
+assignments, notes, and syntheses are evidence to inspect, not boundaries to
+protect. The next release must derive a variable taxonomy organically and then
+re-run semantic assignment and synthesis against that revised structure.
+
+The following remain explicit evidence boundaries throughout the work: additional
+D3 readings may be needed after the new boundaries are known; data-dependent
+training and independent scientific reproduction are not established; and 125
+ICASSP discovery records remain unmatched to the official supplement.
 
 The goal is complete only when:
 
-1. The conceptual taxonomy has precise first-principles themes, subthemes, and
-   concepts with plain-language explanations, rules, examples, and boundaries.
+1. The conceptual taxonomy is visibly derived from the named baseline
+   first-principles source and the paper evidence. Its themes, subthemes, and
+   concepts have plain-language explanations, rules, examples, and boundaries;
+   its counts are unequal where the evidence requires unequal structure; and its
+   rejected splits, rejected merges, and unresolved boundaries are preserved.
 2. The whole active corpus has semantic assignments or explicit unsupported,
    ambiguous, or insufficient-evidence decisions; no active queue is silently
    left unreviewed.
@@ -234,6 +286,17 @@ The goal is complete only when:
    speech problems through mechanisms, mathematics, evidence, and limits.
 8. A clean rebuild reproduces the semantic layers, reports, manifests, and release
    artifacts; focused tests and validators pass with zero errors.
+
+9. An independent reader can trace at least one complete derivation for every
+   final subtheme:
+
+   `baseline observation -> ordinary pressure -> failed simple solution ->
+   recurring paper move -> boundary from neighboring subthemes -> named evidence`.
+
+10. No final subtheme exists only because a quota, keyword, conference label, or
+    convenient implementation demanded it. If two subthemes cannot be explained
+    as different ordinary problems or different evidence boundaries, they must be
+    merged before completion.
 
 The bounded release is not complete merely because its files are reproducible.
 It is complete when the reproducible files contain the deep conceptual and
