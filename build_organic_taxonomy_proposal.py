@@ -64,9 +64,21 @@ P=[
  ]},
 ]
 
+BASELINE_LINK = {
+ "sound-and-production": ("production-source-filter", "Fant pp. 2-3: production moves from intended message through articulatory activity to acoustic production, where source and filter are separate descriptions."),
+ "listening-and-separation": ("medium-and-signal-description", "Fant pp. 2-4: the technical medium carries the speech wave, and a useful description should preserve task-relevant message information without treating every signal detail as equally necessary."),
+ "recognition-and-alignment": ("perception-and-message-signal", "Fant pp. 6-7, 11-12: message units and signal segments do not line up one-to-one, so perception uses context, memory, comparison, and prediction."),
+ "meaning-and-interaction": ("intended-message-and-received-message", "Fant pp. 2, 11-12: the chain begins with intended meaning and ends with a received message; intermediate acoustic cues are evidence, not the message itself."),
+ "voice-generation-and-control": ("production-stages", "Fant pp. 2-3: production passes through message, sentence form, motor activity, and acoustic processes; a generator must keep these layers aligned."),
+ "people-variation-and-health": ("signal-message-separation", "Fant pp. 6-7: physical signal parameters and message-level distinctions are related but not identical; this is the baseline for testing when speaker variation is useful evidence or nuisance."),
+ "languages-accents-and-resources": ("contextual-realization", "Fant pp. 5-7: physical cues vary with context and production, and a single message distinction may have different signal realizations; language-specific evidence must therefore be tested rather than assumed."),
+ "evaluation-deployment-and-consequence": ("compact-description-and-limits", "Fant pp. 3-4: a compact description should retain needed message information, but every description is approximate and task-dependent; scores must therefore be tied to the use they stand for."),
+}
+
 def main():
     baseline=json.loads((DATA/"speech-baseline-source.json").read_text())
     taxonomy=json.loads((DATA/"speech-first-principles-taxonomy.json").read_text())
+    taxonomy_by_id={theme["id"]: theme for theme in taxonomy["themes"]}
     queue=json.loads((DATA/"interspeech-2025-semantic-review-queue.json").read_text())
     old_to_count={}
     for row in queue["rows"]:
@@ -79,7 +91,12 @@ def main():
         subs=[]
         for sid,name,concepts,boundary in theme["subthemes"]:
             subs.append({"id":sid,"name":name,"supporting_current_concepts":concepts,"supported_paper_count":sum(old_to_count.get(c,0) for c in concepts),"boundary":boundary,"derivation":"Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups."})
-        records.append({"theme_id":theme["theme_id"],"theme":theme["theme"],"derivation_reason":theme["reason"],"subtheme_count":len(subs),"subthemes":subs})
+        anchor_id, anchor_text = BASELINE_LINK[theme["theme_id"]]
+        for sub in subs:
+            sub["baseline_anchor"] = anchor_id
+            baseline_theme=taxonomy_by_id[theme["theme_id"]]
+            sub["derivation"] = f"Baseline link: {anchor_text} Ordinary pressure: {baseline_theme['ordinary_problem']} Failed shortcut: {baseline_theme['naive_failure']} Recurring paper move: {baseline_theme['recurring_move']} Neighbor test: {sub['boundary']}"
+        records.append({"theme_id":theme["theme_id"],"theme":theme["theme"],"baseline_anchor":anchor_id,"baseline_anchor_text":anchor_text,"derivation_reason":theme["reason"],"subtheme_count":len(subs),"subthemes":subs})
     payload={"status":"proposal-not-canonical","baseline_source":baseline,"method":"baseline communication-chain stage or message/signal distinction -> ordinary pressure -> failed simple solution -> recurring paper move -> boundary test","fixed_cardinality_detected":all(len(t["subthemes"])==3 for t in taxonomy["themes"]),"canonical_concept_count":len(old_concepts),"proposed_theme_count":len(records),"proposed_subtheme_count":sum(r["subtheme_count"] for r in records),"records":records,"decision_rule":"Do not merge or split solely to equalize counts; reassign papers only after each boundary has named evidence."}
     (DATA/"speech-organic-taxonomy-proposal.json").write_text(json.dumps(payload,indent=2,ensure_ascii=False)+"\n")
     md=["# Organic taxonomy proposal","","This is a derivation proposal, not yet the canonical taxonomy. It records why each proposed boundary exists and which reviewed concept families motivate it.","",f"**Baseline source:** {baseline['citation']} — {baseline['source_url']}","",f"Proposed subthemes: **{payload['proposed_subtheme_count']}**; current fixed subthemes: **24**.",""]

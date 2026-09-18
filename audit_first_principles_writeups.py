@@ -59,6 +59,10 @@ def main() -> None:
                 missing.append("specific subtheme question")
             if words(subtheme.get("derivation_boundary")) < 12:
                 missing.append("specific derivation boundary")
+            if not subtheme.get("baseline_anchor"):
+                missing.append("baseline anchor")
+            if words(subtheme.get("derivation_evidence")) < 45:
+                missing.append("complete baseline-to-boundary derivation")
             if named_papers < 2:
                 missing.append("at least two named supporting papers")
             if not row:

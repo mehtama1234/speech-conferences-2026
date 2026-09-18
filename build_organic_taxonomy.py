@@ -28,6 +28,7 @@ def main():
                 "question":f"What ordinary speech pressure is handled by {ps['name'].lower()}, and what evidence distinguishes it from neighboring pressures?",
                 "derivation_boundary":ps["boundary"],
                 "derivation_evidence":ps["derivation"],
+                "baseline_anchor":ps.get("baseline_anchor"),
                 "concepts":concepts,
             })
             seen.extend(c["id"] for c in concepts)

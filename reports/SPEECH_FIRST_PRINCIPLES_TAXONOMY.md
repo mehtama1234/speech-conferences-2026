@@ -20,7 +20,7 @@ This organically derived proposal has 8 themes, 34 variable subthemes, and 72 co
 
 **Question:** What ordinary speech pressure is handled by making a physical sound, and what evidence distinguishes it from neighboring pressures?
 **Why this boundary exists:** The source and tract shape the pressure wave before a device records it.
-**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
+**Derivation rule:** Baseline link: Fant pp. 2-3: production moves from intended message through articulatory activity to acoustic production, where source and filter are separate descriptions. Ordinary pressure: Speech reaches a microphone as changing air pressure after vocal-fold vibration, mouth shape, room reflections, and electronics have already mixed together. Failed shortcut: Treating the waveform as an unstructured list of samples hides which changes came from the talker, the room, or the recording device. Recurring paper move: Separate source, filter, geometry, and time scale so a measured signal can be related back to a physical cause. Neighbor test: The source and tract shape the pressure wave before a device records it.
 
 #### Periodic vocal-fold source
 
@@ -50,7 +50,7 @@ The tongue, lips, jaw, and throat reshape source energy so some frequency region
 
 **Question:** What ordinary speech pressure is handled by coordinating moving speech parts, and what evidence distinguishes it from neighboring pressures?
 **Why this boundary exists:** Gesture overlap and timing are the object; a static source/filter description is not enough.
-**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
+**Derivation rule:** Baseline link: Fant pp. 2-3: production moves from intended message through articulatory activity to acoustic production, where source and filter are separate descriptions. Ordinary pressure: Speech reaches a microphone as changing air pressure after vocal-fold vibration, mouth shape, room reflections, and electronics have already mixed together. Failed shortcut: Treating the waveform as an unstructured list of samples hides which changes came from the talker, the room, or the recording device. Recurring paper move: Separate source, filter, geometry, and time scale so a measured signal can be related back to a physical cause. Neighbor test: Gesture overlap and timing are the object; a static source/filter description is not enough.
 
 #### Articulatory coordination
 
@@ -68,7 +68,7 @@ Speech is a timed coordination of several moving constrictions, not a sequence o
 
 **Question:** What ordinary speech pressure is handled by representing a changing signal, and what evidence distinguishes it from neighboring pressures?
 **Why this boundary exists:** The question is what a digital representation keeps or loses across time, frequency, and precision.
-**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
+**Derivation rule:** Baseline link: Fant pp. 2-3: production moves from intended message through articulatory activity to acoustic production, where source and filter are separate descriptions. Ordinary pressure: Speech reaches a microphone as changing air pressure after vocal-fold vibration, mouth shape, room reflections, and electronics have already mixed together. Failed shortcut: Treating the waveform as an unstructured list of samples hides which changes came from the talker, the room, or the recording device. Recurring paper move: Separate source, filter, geometry, and time scale so a measured signal can be related back to a physical cause. Neighbor test: The question is what a digital representation keeps or loses across time, frequency, and precision.
 
 #### Local frequency content
 
@@ -110,7 +110,7 @@ A digital recording keeps a finite set of amplitude measurements, so the samplin
 
 **Question:** What ordinary speech pressure is handled by changing the path from source to sensor, and what evidence distinguishes it from neighboring pressures?
 **Why this boundary exists:** Room reflections, device coloration, and alternate sensors change the evidence before recognition.
-**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
+**Derivation rule:** Baseline link: Fant pp. 2-3: production moves from intended message through articulatory activity to acoustic production, where source and filter are separate descriptions. Ordinary pressure: Speech reaches a microphone as changing air pressure after vocal-fold vibration, mouth shape, room reflections, and electronics have already mixed together. Failed shortcut: Treating the waveform as an unstructured list of samples hides which changes came from the talker, the room, or the recording device. Recurring paper move: Separate source, filter, geometry, and time scale so a measured signal can be related back to a physical cause. Neighbor test: Room reflections, device coloration, and alternate sensors change the evidence before recognition.
 
 #### Reverberant room mixture
 
@@ -162,7 +162,7 @@ Neck vibration, ultrasound, radar, or muscle signals can observe speech when air
 
 **Question:** What ordinary speech pressure is handled by suppressing changing interference, and what evidence distinguishes it from neighboring pressures?
 **Why this boundary exists:** The target is one speech stream and the failure is removing speech along with noise.
-**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
+**Derivation rule:** Baseline link: Fant pp. 2-4: the technical medium carries the speech wave, and a useful description should preserve task-relevant message information without treating every signal detail as equally necessary. Ordinary pressure: A listener often hears several talkers, music, echo, and device noise at once, yet needs one person's words or an intelligible mixture. Failed shortcut: Amplifying everything or subtracting an average noise profile also removes quiet consonants and fails when the interferer changes with the speech. Recurring paper move: Use structure that differs between target and interference—time, frequency, space, source identity, or learned speech regularity—to estimate and reconstruct the target. Neighbor test: The target is one speech stream and the failure is removing speech along with noise.
 
 #### Time-frequency masking
 
@@ -204,7 +204,7 @@ The useful distinction is whether noise changes faster than the system can track
 
 **Question:** What ordinary speech pressure is handled by recovering several hidden sources, and what evidence distinguishes it from neighboring pressures?
 **Why this boundary exists:** The mixture contains multiple sources and the system must infer source identity or count.
-**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
+**Derivation rule:** Baseline link: Fant pp. 2-4: the technical medium carries the speech wave, and a useful description should preserve task-relevant message information without treating every signal detail as equally necessary. Ordinary pressure: A listener often hears several talkers, music, echo, and device noise at once, yet needs one person's words or an intelligible mixture. Failed shortcut: Amplifying everything or subtracting an average noise profile also removes quiet consonants and fails when the interferer changes with the speech. Recurring paper move: Use structure that differs between target and interference—time, frequency, space, source identity, or learned speech regularity—to estimate and reconstruct the target. Neighbor test: The mixture contains multiple sources and the system must infer source identity or count.
 
 #### Blind source separation
 
@@ -234,7 +234,7 @@ A voice example, enrollment identity, or visual cue tells the separator which so
 
 **Question:** What ordinary speech pressure is handled by using location to select sound, and what evidence distinguishes it from neighboring pressures?
 **Why this boundary exists:** Microphone geometry and direction are the evidence; a single-channel separator has a different limit.
-**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
+**Derivation rule:** Baseline link: Fant pp. 2-4: the technical medium carries the speech wave, and a useful description should preserve task-relevant message information without treating every signal detail as equally necessary. Ordinary pressure: A listener often hears several talkers, music, echo, and device noise at once, yet needs one person's words or an intelligible mixture. Failed shortcut: Amplifying everything or subtracting an average noise profile also removes quiet consonants and fails when the interferer changes with the speech. Recurring paper move: Use structure that differs between target and interference—time, frequency, space, source identity, or learned speech regularity—to estimate and reconstruct the target. Neighbor test: Microphone geometry and direction are the evidence; a single-channel separator has a different limit.
 
 #### Spatial filtering
 
@@ -252,7 +252,7 @@ Several microphones provide direction-dependent differences, allowing a filter t
 
 **Question:** What ordinary speech pressure is handled by canceling copies and filling gaps, and what evidence distinguishes it from neighboring pressures?
 **Why this boundary exists:** The unwanted signal is a known delayed copy or missing frame, not an arbitrary background.
-**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
+**Derivation rule:** Baseline link: Fant pp. 2-4: the technical medium carries the speech wave, and a useful description should preserve task-relevant message information without treating every signal detail as equally necessary. Ordinary pressure: A listener often hears several talkers, music, echo, and device noise at once, yet needs one person's words or an intelligible mixture. Failed shortcut: Amplifying everything or subtracting an average noise profile also removes quiet consonants and fails when the interferer changes with the speech. Recurring paper move: Use structure that differs between target and interference—time, frequency, space, source identity, or learned speech regularity—to estimate and reconstruct the target. Neighbor test: The unwanted signal is a known delayed copy or missing frame, not an arbitrary background.
 
 #### Acoustic echo cancellation
 
@@ -282,7 +282,7 @@ When transmitted audio frames disappear, infer a short continuation from nearby 
 
 **Question:** What ordinary speech pressure is handled by optimizing what a listener can use, and what evidence distinguishes it from neighboring pressures?
 **Why this boundary exists:** This boundary is for methods whose target is what a listener can understand or tolerate; it is separate from noise removal, separation, and packet repair, which target a signal or source before the listener judges it.
-**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
+**Derivation rule:** Baseline link: Fant pp. 2-4: the technical medium carries the speech wave, and a useful description should preserve task-relevant message information without treating every signal detail as equally necessary. Ordinary pressure: A listener often hears several talkers, music, echo, and device noise at once, yet needs one person's words or an intelligible mixture. Failed shortcut: Amplifying everything or subtracting an average noise profile also removes quiet consonants and fails when the interferer changes with the speech. Recurring paper move: Use structure that differs between target and interference—time, frequency, space, source identity, or learned speech regularity—to estimate and reconstruct the target. Neighbor test: This boundary is for methods whose target is what a listener can understand or tolerate; it is separate from noise removal, separation, and packet repair, which target a signal or source before the listener judges it.
 
 #### Perceptual enhancement
 
@@ -310,7 +310,7 @@ Optimize what a listener can understand or tolerate rather than preserving every
 
 **Question:** What ordinary speech pressure is handled by learning reusable sound units, and what evidence distinguishes it from neighboring pressures?
 **Why this boundary exists:** The system first decides what reusable evidence can be extracted from continuous sound.
-**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
+**Derivation rule:** Baseline link: Fant pp. 6-7, 11-12: message units and signal segments do not line up one-to-one, so perception uses context, memory, comparison, and prediction. Ordinary pressure: Speech has no visible spaces between words, and pronunciation, speed, accent, noise, and hesitation vary even when the intended sentence is the same. Failed shortcut: Matching each sound to a fixed dictionary pronunciation or treating the utterance as already segmented fails on coarticulation, new words, and disfluency. Recurring paper move: Infer a sequence of linguistic units while allowing uncertainty about boundaries, pronunciation, context, and what should be preserved. Neighbor test: The system first decides what reusable evidence can be extracted from continuous sound.
 
 #### Acoustic-to-token mapping
 
@@ -340,7 +340,7 @@ Predicting or grouping parts of unlabeled audio can provide reusable units befor
 
 **Question:** What ordinary speech pressure is handled by allowing different realizations of words, and what evidence distinguishes it from neighboring pressures?
 **Why this boundary exists:** The same intended unit has multiple acoustic paths; this is distinct from learning a unit representation.
-**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
+**Derivation rule:** Baseline link: Fant pp. 6-7, 11-12: message units and signal segments do not line up one-to-one, so perception uses context, memory, comparison, and prediction. Ordinary pressure: Speech has no visible spaces between words, and pronunciation, speed, accent, noise, and hesitation vary even when the intended sentence is the same. Failed shortcut: Matching each sound to a fixed dictionary pronunciation or treating the utterance as already segmented fails on coarticulation, new words, and disfluency. Recurring paper move: Infer a sequence of linguistic units while allowing uncertainty about boundaries, pronunciation, context, and what should be preserved. Neighbor test: The same intended unit has multiple acoustic paths; this is distinct from learning a unit representation.
 
 #### Pronunciation variation
 
@@ -358,7 +358,7 @@ The same word can have reductions, substitutions, or accent-specific realization
 
 **Question:** What ordinary speech pressure is handled by locating units in time, and what evidence distinguishes it from neighboring pressures?
 **Why this boundary exists:** The output must preserve or locate timing, hesitation, repair, or sequence boundaries.
-**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
+**Derivation rule:** Baseline link: Fant pp. 6-7, 11-12: message units and signal segments do not line up one-to-one, so perception uses context, memory, comparison, and prediction. Ordinary pressure: Speech has no visible spaces between words, and pronunciation, speed, accent, noise, and hesitation vary even when the intended sentence is the same. Failed shortcut: Matching each sound to a fixed dictionary pronunciation or treating the utterance as already segmented fails on coarticulation, new words, and disfluency. Recurring paper move: Infer a sequence of linguistic units while allowing uncertainty about boundaries, pronunciation, context, and what should be preserved. Neighbor test: The output must preserve or locate timing, hesitation, repair, or sequence boundaries.
 
 #### Temporal alignment
 
@@ -388,7 +388,7 @@ Represent pauses, repetitions, repairs, laughter, and overlap when those events 
 
 **Question:** What ordinary speech pressure is handled by using context without inventing words, and what evidence distinguishes it from neighboring pressures?
 **Why this boundary exists:** Context, speaker evidence, and new words resolve ambiguity but can override what was actually said.
-**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
+**Derivation rule:** Baseline link: Fant pp. 6-7, 11-12: message units and signal segments do not line up one-to-one, so perception uses context, memory, comparison, and prediction. Ordinary pressure: Speech has no visible spaces between words, and pronunciation, speed, accent, noise, and hesitation vary even when the intended sentence is the same. Failed shortcut: Matching each sound to a fixed dictionary pronunciation or treating the utterance as already segmented fails on coarticulation, new words, and disfluency. Recurring paper move: Infer a sequence of linguistic units while allowing uncertainty about boundaries, pronunciation, context, and what should be preserved. Neighbor test: Context, speaker evidence, and new words resolve ambiguity but can override what was actually said.
 
 #### Long-context decoding
 
@@ -452,7 +452,7 @@ Handle names, code-switching, jargon, and newly encountered words without requir
 
 **Question:** What ordinary speech pressure is handled by meaning carried by how speech sounds, and what evidence distinguishes it from neighboring pressures?
 **Why this boundary exists:** This boundary covers information carried by pitch, timing, loudness, voice quality, or effort beyond the words; it is separate from dialogue action because the cue is in how an utterance sounds, not in the conversational state alone.
-**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
+**Derivation rule:** Baseline link: Fant pp. 2, 11-12: the chain begins with intended meaning and ends with a received message; intermediate acoustic cues are evidence, not the message itself. Ordinary pressure: The same words can request, question, joke, refuse, or warn depending on prosody, shared history, timing, and the surrounding situation. Failed shortcut: A transcript-only system treats words as the whole message and misses intent, reference, turn structure, and what is appropriate to do next. Recurring paper move: Combine linguistic content with speaker, discourse history, prosody, visual or environmental context, and an explicit action or response target. Neighbor test: This boundary covers information carried by pitch, timing, loudness, voice quality, or effort beyond the words; it is separate from dialogue action because the cue is in how an utterance sounds, not in the conversational state alone.
 
 #### Prosodic meaning
 
@@ -482,7 +482,7 @@ Voice properties can provide clues about emotion, fatigue, engagement, or health
 
 **Question:** What ordinary speech pressure is handled by inferring what a speaker is trying to do, and what evidence distinguishes it from neighboring pressures?
 **Why this boundary exists:** The system tracks goals, commitments, and situation rather than only classifying acoustic style.
-**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
+**Derivation rule:** Baseline link: Fant pp. 2, 11-12: the chain begins with intended meaning and ends with a received message; intermediate acoustic cues are evidence, not the message itself. Ordinary pressure: The same words can request, question, joke, refuse, or warn depending on prosody, shared history, timing, and the surrounding situation. Failed shortcut: A transcript-only system treats words as the whole message and misses intent, reference, turn structure, and what is appropriate to do next. Recurring paper move: Combine linguistic content with speaker, discourse history, prosody, visual or environmental context, and an explicit action or response target. Neighbor test: The system tracks goals, commitments, and situation rather than only classifying acoustic style.
 
 #### Intent in context
 
@@ -512,7 +512,7 @@ Track unresolved questions, commitments, entities, and prior actions so a respon
 
 **Question:** What ordinary speech pressure is handled by coordinating participation under uncertainty, and what evidence distinguishes it from neighboring pressures?
 **Why this boundary exists:** The problem is when to speak, yield, interrupt, or ask for clarification.
-**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
+**Derivation rule:** Baseline link: Fant pp. 2, 11-12: the chain begins with intended meaning and ends with a received message; intermediate acoustic cues are evidence, not the message itself. Ordinary pressure: The same words can request, question, joke, refuse, or warn depending on prosody, shared history, timing, and the surrounding situation. Failed shortcut: A transcript-only system treats words as the whole message and misses intent, reference, turn structure, and what is appropriate to do next. Recurring paper move: Combine linguistic content with speaker, discourse history, prosody, visual or environmental context, and an explicit action or response target. Neighbor test: The problem is when to speak, yield, interrupt, or ask for clarification.
 
 #### Turn-boundary prediction
 
@@ -542,7 +542,7 @@ When recognition or understanding is uncertain, ask a targeted question or offer
 
 **Question:** What ordinary speech pressure is handled by connecting language to a shared world, and what evidence distinguishes it from neighboring pressures?
 **Why this boundary exists:** A phrase must identify a referent or authorized action and remain corrigible through feedback.
-**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
+**Derivation rule:** Baseline link: Fant pp. 2, 11-12: the chain begins with intended meaning and ends with a received message; intermediate acoustic cues are evidence, not the message itself. Ordinary pressure: The same words can request, question, joke, refuse, or warn depending on prosody, shared history, timing, and the surrounding situation. Failed shortcut: A transcript-only system treats words as the whole message and misses intent, reference, turn structure, and what is appropriate to do next. Recurring paper move: Combine linguistic content with speaker, discourse history, prosody, visual or environmental context, and an explicit action or response target. Neighbor test: A phrase must identify a referent or authorized action and remain corrigible through feedback.
 
 #### Referential grounding
 
@@ -594,7 +594,7 @@ Let user corrections, confirmations, and response outcomes update the system's i
 
 **Question:** What ordinary speech pressure is handled by turning language into a timed speech plan, and what evidence distinguishes it from neighboring pressures?
 **Why this boundary exists:** This boundary covers the step from intended text or meaning to pronunciation, duration, pitch targets, and sequence; it is separate from waveform generation, which realizes an already chosen plan as samples.
-**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
+**Derivation rule:** Baseline link: Fant pp. 2-3: production passes through message, sentence form, motor activity, and acoustic processes; a generator must keep these layers aligned. Ordinary pressure: A useful synthetic voice must say the requested content, sound like the intended speaker or style, and remain understandable as it changes over time. Failed shortcut: Copying a recording or predicting samples directly entangles words with identity, pitch, rhythm, and recording conditions, making controlled change difficult. Recurring paper move: Represent or condition distinct factors, generate a time-consistent waveform or acoustic sequence, and evaluate each requested property separately. Neighbor test: This boundary covers the step from intended text or meaning to pronunciation, duration, pitch targets, and sequence; it is separate from waveform generation, which realizes an already chosen plan as samples.
 
 #### Text-to-speech planning
 
@@ -612,7 +612,7 @@ Choose pronunciation, durations, pitch targets, and acoustic details before or w
 
 **Question:** What ordinary speech pressure is handled by producing or compressing audible detail, and what evidence distinguishes it from neighboring pressures?
 **Why this boundary exists:** The issue is sample-level detail and the tradeoff between faithful content and natural sound.
-**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
+**Derivation rule:** Baseline link: Fant pp. 2-3: production passes through message, sentence form, motor activity, and acoustic processes; a generator must keep these layers aligned. Ordinary pressure: A useful synthetic voice must say the requested content, sound like the intended speaker or style, and remain understandable as it changes over time. Failed shortcut: Copying a recording or predicting samples directly entangles words with identity, pitch, rhythm, and recording conditions, making controlled change difficult. Recurring paper move: Represent or condition distinct factors, generate a time-consistent waveform or acoustic sequence, and evaluate each requested property separately. Neighbor test: The issue is sample-level detail and the tradeoff between faithful content and natural sound.
 
 #### Waveform synthesis
 
@@ -642,7 +642,7 @@ Treat ease of understanding and human-likeness as related but distinct targets t
 
 **Question:** What ordinary speech pressure is handled by changing who sounds like the speaker, and what evidence distinguishes it from neighboring pressures?
 **Why this boundary exists:** This boundary covers changing or measuring who the voice sounds like while keeping the message stable; it is separate from expression control, which changes emotion or style, and from content planning, which changes the speech plan.
-**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
+**Derivation rule:** Baseline link: Fant pp. 2-3: production passes through message, sentence form, motor activity, and acoustic processes; a generator must keep these layers aligned. Ordinary pressure: A useful synthetic voice must say the requested content, sound like the intended speaker or style, and remain understandable as it changes over time. Failed shortcut: Copying a recording or predicting samples directly entangles words with identity, pitch, rhythm, and recording conditions, making controlled change difficult. Recurring paper move: Represent or condition distinct factors, generate a time-consistent waveform or acoustic sequence, and evaluate each requested property separately. Neighbor test: This boundary covers changing or measuring who the voice sounds like while keeping the message stable; it is separate from expression control, which changes emotion or style, and from content planning, which changes the speech plan.
 
 #### Speaker identity representation
 
@@ -684,7 +684,7 @@ Use a voice description or brief enrollment to synthesize a speaker not represen
 
 **Question:** What ordinary speech pressure is handled by changing style, timing, and response behavior, and what evidence distinguishes it from neighboring pressures?
 **Why this boundary exists:** The system must obey expressive controls quickly without breaking continuity or meaning.
-**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
+**Derivation rule:** Baseline link: Fant pp. 2-3: production passes through message, sentence form, motor activity, and acoustic processes; a generator must keep these layers aligned. Ordinary pressure: A useful synthetic voice must say the requested content, sound like the intended speaker or style, and remain understandable as it changes over time. Failed shortcut: Copying a recording or predicting samples directly entangles words with identity, pitch, rhythm, and recording conditions, making controlled change difficult. Recurring paper move: Represent or condition distinct factors, generate a time-consistent waveform or acoustic sequence, and evaluate each requested property separately. Neighbor test: The system must obey expressive controls quickly without breaking continuity or meaning.
 
 #### Prosody control
 
@@ -736,7 +736,7 @@ Produce speech quickly enough for a conversation while preserving continuity and
 
 **Question:** What ordinary speech pressure is handled by identity, age, and changing voice, and what evidence distinguishes it from neighboring pressures?
 **Why this boundary exists:** The evidence concerns who is speaking and how that person's voice changes across time and state.
-**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
+**Derivation rule:** Baseline link: Fant pp. 6-7: physical signal parameters and message-level distinctions are related but not identical; this is the baseline for testing when speaker variation is useful evidence or nuisance. Ordinary pressure: Voice depends on anatomy, age, health, emotion, language history, social setting, and equipment; these differences affect both communication and measurement. Failed shortcut: Treating variation as noise makes systems work best for a narrow population and can turn a health or identity signal into an unwanted demographic shortcut. Recurring paper move: Measure which variation is task-relevant, model it explicitly when appropriate, and test performance and meaning across people and conditions. Neighbor test: The evidence concerns who is speaking and how that person's voice changes across time and state.
 
 #### Speaker verification
 
@@ -778,7 +778,7 @@ The same person's voice shifts with fatigue, emotion, health, audience, and spea
 
 **Question:** What ordinary speech pressure is handled by speech measurements associated with health, and what evidence distinguishes it from neighboring pressures?
 **Why this boundary exists:** A measurable speech property is evaluated as a possible health signal, with clinical limits kept explicit.
-**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
+**Derivation rule:** Baseline link: Fant pp. 6-7: physical signal parameters and message-level distinctions are related but not identical; this is the baseline for testing when speaker variation is useful evidence or nuisance. Ordinary pressure: Voice depends on anatomy, age, health, emotion, language history, social setting, and equipment; these differences affect both communication and measurement. Failed shortcut: Treating variation as noise makes systems work best for a narrow population and can turn a health or identity signal into an unwanted demographic shortcut. Recurring paper move: Measure which variation is task-relevant, model it explicitly when appropriate, and test performance and meaning across people and conditions. Neighbor test: A measurable speech property is evaluated as a possible health signal, with clinical limits kept explicit.
 
 #### Clinical speech marker
 
@@ -796,7 +796,7 @@ Measure a reproducible speech property associated with a clinical condition or p
 
 **Question:** What ordinary speech pressure is handled by communicating with atypical or impaired speech, and what evidence distinguishes it from neighboring pressures?
 **Why this boundary exists:** The goal is recognition or expression for people whose speech does not match majority training data.
-**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
+**Derivation rule:** Baseline link: Fant pp. 6-7: physical signal parameters and message-level distinctions are related but not identical; this is the baseline for testing when speaker variation is useful evidence or nuisance. Ordinary pressure: Voice depends on anatomy, age, health, emotion, language history, social setting, and equipment; these differences affect both communication and measurement. Failed shortcut: Treating variation as noise makes systems work best for a narrow population and can turn a health or identity signal into an unwanted demographic shortcut. Recurring paper move: Measure which variation is task-relevant, model it explicitly when appropriate, and test performance and meaning across people and conditions. Neighbor test: The goal is recognition or expression for people whose speech does not match majority training data.
 
 #### Atypical articulation and dysarthria
 
@@ -826,7 +826,7 @@ Use residual vocal, muscular, visual, or typed signals to help a person express 
 
 **Question:** What ordinary speech pressure is handled by whether the system actually helps a person, and what evidence distinguishes it from neighboring pressures?
 **Why this boundary exists:** The target is effort, control, access, and fit in a real activity rather than model accuracy alone.
-**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
+**Derivation rule:** Baseline link: Fant pp. 6-7: physical signal parameters and message-level distinctions are related but not identical; this is the baseline for testing when speaker variation is useful evidence or nuisance. Ordinary pressure: Voice depends on anatomy, age, health, emotion, language history, social setting, and equipment; these differences affect both communication and measurement. Failed shortcut: Treating variation as noise makes systems work best for a narrow population and can turn a health or identity signal into an unwanted demographic shortcut. Recurring paper move: Measure which variation is task-relevant, model it explicitly when appropriate, and test performance and meaning across people and conditions. Neighbor test: The target is effort, control, access, and fit in a real activity rather than model accuracy alone.
 
 #### Listener effort
 
@@ -878,7 +878,7 @@ Judge whether a system works within a person's actual device, environment, commu
 
 **Question:** What ordinary speech pressure is handled by sharing structure across languages, and what evidence distinguishes it from neighboring pressures?
 **Why this boundary exists:** The central question is what can be shared while retaining language-specific distinctions.
-**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
+**Derivation rule:** Baseline link: Fant pp. 5-7: physical cues vary with context and production, and a single message distinction may have different signal realizations; language-specific evidence must therefore be tested rather than assumed. Ordinary pressure: Languages differ in sounds, writing systems, grammar, prosody, code-switching, and social meaning; data and tools are distributed unevenly. Failed shortcut: Scaling an English-centered recipe or translating labels assumes that all languages expose the same units, data, and errors. Recurring paper move: Share useful structure across languages while preserving language-specific distinctions, measuring who benefits, and making uncertainty visible where evidence is thin. Neighbor test: The central question is what can be shared while retaining language-specific distinctions.
 
 #### Cross-lingual transfer
 
@@ -920,7 +920,7 @@ Handle a speaker moving between languages within an utterance, including pronunc
 
 **Question:** What ordinary speech pressure is handled by learning from sparse labels, and what evidence distinguishes it from neighboring pressures?
 **Why this boundary exists:** The method changes how a model learns when labeled examples are scarce.
-**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
+**Derivation rule:** Baseline link: Fant pp. 5-7: physical cues vary with context and production, and a single message distinction may have different signal realizations; language-specific evidence must therefore be tested rather than assumed. Ordinary pressure: Languages differ in sounds, writing systems, grammar, prosody, code-switching, and social meaning; data and tools are distributed unevenly. Failed shortcut: Scaling an English-centered recipe or translating labels assumes that all languages expose the same units, data, and errors. Recurring paper move: Share useful structure across languages while preserving language-specific distinctions, measuring who benefits, and making uncertainty visible where evidence is thin. Neighbor test: The method changes how a model learns when labeled examples are scarce.
 
 #### Self-training
 
@@ -950,7 +950,7 @@ Adjust a model to a language, speaker, or domain from a small number of examples
 
 **Question:** What ordinary speech pressure is handled by making missing speech evidence, and what evidence distinguishes it from neighboring pressures?
 **Why this boundary exists:** The work creates speakers, prompts, labels, or recordings needed by a community or task.
-**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
+**Derivation rule:** Baseline link: Fant pp. 5-7: physical cues vary with context and production, and a single message distinction may have different signal realizations; language-specific evidence must therefore be tested rather than assumed. Ordinary pressure: Languages differ in sounds, writing systems, grammar, prosody, code-switching, and social meaning; data and tools are distributed unevenly. Failed shortcut: Scaling an English-centered recipe or translating labels assumes that all languages expose the same units, data, and errors. Recurring paper move: Share useful structure across languages while preserving language-specific distinctions, measuring who benefits, and making uncertainty visible where evidence is thin. Neighbor test: The work creates speakers, prompts, labels, or recordings needed by a community or task.
 
 #### Speech data collection
 
@@ -968,7 +968,7 @@ Design recording prompts, speakers, transcription, and consent so newly collecte
 
 **Question:** What ordinary speech pressure is handled by respecting variation and local meaning, and what evidence distinguishes it from neighboring pressures?
 **Why this boundary exists:** This boundary covers differences in pronunciation, variety, and local meaning that affect who is understood and how speech is interpreted; it is separate from generic low-resource learning because more data alone cannot decide whether a social or cultural distinction was represented correctly.
-**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
+**Derivation rule:** Baseline link: Fant pp. 5-7: physical cues vary with context and production, and a single message distinction may have different signal realizations; language-specific evidence must therefore be tested rather than assumed. Ordinary pressure: Languages differ in sounds, writing systems, grammar, prosody, code-switching, and social meaning; data and tools are distributed unevenly. Failed shortcut: Scaling an English-centered recipe or translating labels assumes that all languages expose the same units, data, and errors. Recurring paper move: Share useful structure across languages while preserving language-specific distinctions, measuring who benefits, and making uncertainty visible where evidence is thin. Neighbor test: This boundary covers differences in pronunciation, variety, and local meaning that affect who is understood and how speech is interpreted; it is separate from generic low-resource learning because more data alone cannot decide whether a social or cultural distinction was represented correctly.
 
 #### Accent robustness
 
@@ -1020,7 +1020,7 @@ Interpret politeness, indirectness, emotion, and conversational norms within the
 
 **Question:** What ordinary speech pressure is handled by connecting scores to human goals, and what evidence distinguishes it from neighboring pressures?
 **Why this boundary exists:** A metric is a proxy and must be tied to the human or engineering property it represents.
-**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
+**Derivation rule:** Baseline link: Fant pp. 3-4: a compact description should retain needed message information, but every description is approximate and task-dependent; scores must therefore be tied to the use they stand for. Ordinary pressure: Speech systems are used through microphones, networks, interfaces, policies, and people; a benchmark number is only one observation of that whole chain. Failed shortcut: Reporting one average score on one dataset encourages the reader to treat a proxy as universal ability and ignores latency, failure recovery, privacy, and misuse. Recurring paper move: Align the evaluation with the real target, expose subgroup and condition variation, account for the full system boundary, and preserve an audit trail from evidence to claim. Neighbor test: A metric is a proxy and must be tied to the human or engineering property it represents.
 
 #### Word error versus understanding
 
@@ -1062,7 +1062,7 @@ A system should know when its uncertainty is high enough to defer, ask, or show 
 
 **Question:** What ordinary speech pressure is handled by changing speakers, rooms, and conditions, and what evidence distinguishes it from neighboring pressures?
 **Why this boundary exists:** The question is whether failures are detected and recovered when conditions differ from training.
-**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
+**Derivation rule:** Baseline link: Fant pp. 3-4: a compact description should retain needed message information, but every description is approximate and task-dependent; scores must therefore be tied to the use they stand for. Ordinary pressure: Speech systems are used through microphones, networks, interfaces, policies, and people; a benchmark number is only one observation of that whole chain. Failed shortcut: Reporting one average score on one dataset encourages the reader to treat a proxy as universal ability and ignores latency, failure recovery, privacy, and misuse. Recurring paper move: Align the evaluation with the real target, expose subgroup and condition variation, account for the full system boundary, and preserve an audit trail from evidence to claim. Neighbor test: The question is whether failures are detected and recovered when conditions differ from training.
 
 #### Distribution shift
 
@@ -1092,7 +1092,7 @@ Handle uncertainty through confirmation, correction, fallback, and logging so on
 
 **Question:** What ordinary speech pressure is handled by meeting time, memory, and hardware limits, and what evidence distinguishes it from neighboring pressures?
 **Why this boundary exists:** The system must operate within a device or interaction budget without hiding cost elsewhere.
-**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
+**Derivation rule:** Baseline link: Fant pp. 3-4: a compact description should retain needed message information, but every description is approximate and task-dependent; scores must therefore be tied to the use they stand for. Ordinary pressure: Speech systems are used through microphones, networks, interfaces, policies, and people; a benchmark number is only one observation of that whole chain. Failed shortcut: Reporting one average score on one dataset encourages the reader to treat a proxy as universal ability and ignores latency, failure recovery, privacy, and misuse. Recurring paper move: Align the evaluation with the real target, expose subgroup and condition variation, account for the full system boundary, and preserve an audit trail from evidence to claim. Neighbor test: The system must operate within a device or interaction budget without hiding cost elsewhere.
 
 #### Latency and resource budget
 
@@ -1110,7 +1110,7 @@ A system must meet timing, memory, energy, bandwidth, and hardware limits while 
 
 **Question:** What ordinary speech pressure is handled by protecting voice and resisting misuse, and what evidence distinguishes it from neighboring pressures?
 **Why this boundary exists:** This boundary covers harm from exposing voice identity or accepting imitation, replay, or generated speech as genuine; it is separate from ordinary robustness because the failure is unauthorized inference or deception, not merely a lower score in a changed condition.
-**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
+**Derivation rule:** Baseline link: Fant pp. 3-4: a compact description should retain needed message information, but every description is approximate and task-dependent; scores must therefore be tied to the use they stand for. Ordinary pressure: Speech systems are used through microphones, networks, interfaces, policies, and people; a benchmark number is only one observation of that whole chain. Failed shortcut: Reporting one average score on one dataset encourages the reader to treat a proxy as universal ability and ignores latency, failure recovery, privacy, and misuse. Recurring paper move: Align the evaluation with the real target, expose subgroup and condition variation, account for the full system boundary, and preserve an audit trail from evidence to claim. Neighbor test: This boundary covers harm from exposing voice identity or accepting imitation, replay, or generated speech as genuine; it is separate from ordinary robustness because the failure is unauthorized inference or deception, not merely a lower score in a changed condition.
 
 #### Voice privacy
 
@@ -1140,7 +1140,7 @@ A system must distinguish authorized speech from replayed or generated audio whe
 
 **Question:** What ordinary speech pressure is handled by keeping claims inspectable and contestable, and what evidence distinguishes it from neighboring pressures?
 **Why this boundary exists:** A person must be able to trace evidence, uncertainty, and correction when a speech system matters.
-**Derivation rule:** Split or retained because the ordinary pressure, failure mode, mechanism, or evaluation target differs from neighboring groups.
+**Derivation rule:** Baseline link: Fant pp. 3-4: a compact description should retain needed message information, but every description is approximate and task-dependent; scores must therefore be tied to the use they stand for. Ordinary pressure: Speech systems are used through microphones, networks, interfaces, policies, and people; a benchmark number is only one observation of that whole chain. Failed shortcut: Reporting one average score on one dataset encourages the reader to treat a proxy as universal ability and ignores latency, failure recovery, privacy, and misuse. Recurring paper move: Align the evaluation with the real target, expose subgroup and condition variation, account for the full system boundary, and preserve an audit trail from evidence to claim. Neighbor test: A person must be able to trace evidence, uncertainty, and correction when a speech system matters.
 
 #### Auditability and contestability
 
