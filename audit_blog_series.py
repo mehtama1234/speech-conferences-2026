@@ -39,7 +39,7 @@ def main():
             continue
         text = path.read_text()
         missing = []
-        for marker in ("## Start with the baseline", "## The boundaries", "## Closing note", "**What this evidence does not establish.**", "**Where this boundary stops.**", "### Words used in this section"):
+        for marker in ("## Start with the baseline", "## The boundaries", "## Plain-language dictionary", "## Closing note", "**The pressure.**", "**Why the easy answer breaks.**", "**The move that recurs.**", "**What this evidence does not establish.**", "**Where this boundary stops.**", "### Words used in this section", "### What the evidence shows"):
             if marker not in text:
                 missing.append(marker)
         subtheme_count = sum(1 for name in expected_subthemes if f"## {name}\n" in text)
@@ -52,6 +52,10 @@ def main():
         links = re.findall(r"\[[^\]]+\]\((https?://[^)]+)\)", text)
         if not links:
             failures.append(f"{essay['theme_id']}: no paper links")
+        if "D2 means" not in text and "**D2.**" not in text:
+            failures.append(f"{essay['theme_id']}: D2 is not defined in plain language")
+        if "D3 means" not in text and "**D3.**" not in text:
+            failures.append(f"{essay['theme_id']}: D3 is not defined in plain language")
         if missing:
             failures.append(f"{essay['theme_id']}: missing {', '.join(missing)}")
         records.append({"theme_id": essay["theme_id"], "word_count": len(text.split()), "subtheme_count": subtheme_count, "paper_link_count": len(links), "missing": missing, "cliche_warnings": found_cliches})

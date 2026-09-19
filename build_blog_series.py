@@ -27,12 +27,35 @@ THEME_ORDER = [
     "voice-generation-and-control", "people-variation-and-health", "languages-accents-and-resources", "evaluation-deployment-and-consequence",
 ]
 
+PLAIN_LANGUAGE_DICTIONARY = [
+    ("Fant's speech chain", "a practical way to follow speech from a speaker's body, through the air and a recording device, to a listener and an interpretation"),
+    ("D2", "evidence checked in the official paper abstract; it supports the paper's stated problem and approach, but not details that appear only in the full paper"),
+    ("D3", "evidence checked in the official full paper text; it supports what the authors report about their method and tests, but it is still not an independent reproduction"),
+    ("ASR", "automatic speech recognition: software that turns speech recordings into written words"),
+    ("TTS", "text-to-speech: software that turns written words into a spoken signal"),
+    ("speaker embedding", "a compact numerical description intended to preserve characteristics of a voice or speaker"),
+    ("self-supervised learning", "training in which the recording supplies part of its own teaching signal, so hand-written labels are needed less often"),
+    ("voice activity detection", "a decision about whether a signal segment contains speech"),
+    ("word error rate", "the number of word substitutions, insertions, and deletions divided by the reference word count"),
+    ("equal error rate", "the point at which two kinds of biometric decision error—false acceptance and false rejection—are equal"),
+    ("interaural", "between the two ears; an interaural difference is a difference in timing or level between left and right channels"),
+    ("MRI", "magnetic resonance imaging, used here to observe anatomy or movement without cutting into the body"),
+    ("EEG", "electroencephalography, a measurement of electrical activity at the scalp"),
+    ("MFCC", "a compact description of the broad shape of a sound spectrum, often used as an input feature"),
+    ("F0", "the rate of vocal-fold vibration, commonly heard as the main component of pitch"),
+]
+
 
 def compact(value: object, limit: int = 520) -> str:
     text = " ".join(str(value or "").split())
     if len(text) <= limit:
         return text
     return text[: limit - 1].rsplit(" ", 1)[0] + "…"
+
+
+def lower_initial(value: object) -> str:
+    text = str(value or "").strip()
+    return text[:1].lower() + text[1:] if text else text
 
 
 def slug(index: int, name: str) -> str:
@@ -65,20 +88,25 @@ def main() -> None:
             "## Start with the baseline", "",
             f"Fant's speech-chain account places this theme at the following point in communication: {theme.get('baseline_anchor_text', '')}", "",
             f"The ordinary problem is simple to state: {theme.get('ordinary_problem', '')}", "",
-            f"A tempting shortcut is to {theme.get('naive_failure', '').rstrip('.')}. That shortcut fails because it hides the distinction this essay needs to keep visible.", "",
-            f"The recurring move across this theme is to {theme.get('recurring_move', '').rstrip('.')}. The cost is equally important: {theme.get('tradeoff', '')}", "",
+            f"One tempting shortcut is: {theme.get('naive_failure', '').rstrip('.')}. It fails because it hides the distinction this essay needs to keep visible.", "",
+            f"The recurring move across this theme is to {lower_initial(theme.get('recurring_move', '')).rstrip('.')}. The cost is equally important: {theme.get('tradeoff', '')}", "",
             "## The boundaries", "",
             "Each section below uses the same test: what pressure is being handled, what shortcut fails, what move recurs, and where the evidence stops.", "",
+            "## Plain-language dictionary", "",
+            "The papers use specialized names because they measure specialized things. These are the terms that recur in this essay, translated before they do argumentative work:", "",
         ]
+        for term, definition in PLAIN_LANGUAGE_DICTIONARY:
+            lines.append(f"**{term}.** {definition}.")
+        lines += ["", "This is a map of distinctions, not a ranking of methods. A paper can be useful while still answering only one narrow question.", ""]
         for subtheme in theme.get("subthemes", []):
             row = by_subtheme.get(subtheme["id"], {})
             family = row.get("family_synthesis", {}) or {}
             concepts = subtheme.get("concepts", [])
-            lines += [f"## {subtheme['name']}", "", f"**The question.** {subtheme.get('question', '')}", "", f"**How this boundary is derived.** {subtheme.get('derivation_evidence', '')}", "", f"**What the papers share.** {family.get('ordinary_pressure', '')}", "", f"**Why the shortcut fails.** {family.get('naive_shortcut', '')}", "", f"**The recurring move.** {family.get('recurring_move', '')}", ""]
+            lines += [f"## {subtheme['name']}", "", f"This boundary follows from the baseline account: {lower_initial(subtheme.get('derivation_evidence', ''))}", "", f"**The question.** {subtheme.get('question', '')}", "", f"**The pressure.** {family.get('ordinary_pressure', '')}", "", f"**Why the easy answer breaks.** {family.get('naive_shortcut', '')}", "", f"**The move that recurs.** {family.get('recurring_move', '')}", ""]
             lines += ["### Words used in this section", ""]
             for concept in concepts:
                 lines += [f"**{concept['name']}.** {concept.get('definition', '')}", f"*Boundary:* {concept.get('boundary', '')}", ""]
-            lines += ["### What the papers show", ""]
+            lines += ["### What the evidence shows", ""]
             matrix = family.get("d3_comparison_matrix", []) or []
             evidence_ids = [p.get("paper_id") for p in matrix[:4]] or row.get("paper_ids", [])[:4]
             if matrix:

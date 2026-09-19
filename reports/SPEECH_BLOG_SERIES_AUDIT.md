@@ -8,11 +8,11 @@ Essays: **8**; subtheme sections: **34**; failures: **0**.
 
 | Essay | Words | Subthemes | Paper links | Cliché warnings |
 |---|---:|---:|---:|---|
-| sound-and-production | 3689 | 4 | 16 | — |
-| listening-and-separation | 4225 | 5 | 20 | — |
-| recognition-and-alignment | 3576 | 4 | 16 | — |
-| meaning-and-interaction | 3495 | 4 | 16 | — |
-| voice-generation-and-control | 3568 | 4 | 16 | — |
-| people-variation-and-health | 3538 | 4 | 16 | — |
-| languages-accents-and-resources | 3552 | 4 | 16 | — |
-| evaluation-deployment-and-consequence | 4289 | 5 | 19 | — |
+| sound-and-production | 4010 | 4 | 16 | — |
+| listening-and-separation | 4548 | 5 | 20 | — |
+| recognition-and-alignment | 3897 | 4 | 16 | — |
+| meaning-and-interaction | 3816 | 4 | 16 | — |
+| voice-generation-and-control | 3889 | 4 | 16 | — |
+| people-variation-and-health | 3859 | 4 | 16 | — |
+| languages-accents-and-resources | 3873 | 4 | 16 | — |
+| evaluation-deployment-and-consequence | 4612 | 5 | 19 | — |

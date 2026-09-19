@@ -10,25 +10,47 @@ Fant's speech-chain account places this theme at the following point in communic
 
 The ordinary problem is simple to state: Speech has no visible spaces between words, and pronunciation, speed, accent, noise, and hesitation vary even when the intended sentence is the same.
 
-A tempting shortcut is to Matching each sound to a fixed dictionary pronunciation or treating the utterance as already segmented fails on coarticulation, new words, and disfluency. That shortcut fails because it hides the distinction this essay needs to keep visible.
+One tempting shortcut is: Matching each sound to a fixed dictionary pronunciation or treating the utterance as already segmented fails on coarticulation, new words, and disfluency. It fails because it hides the distinction this essay needs to keep visible.
 
-The recurring move across this theme is to Infer a sequence of linguistic units while allowing uncertainty about boundaries, pronunciation, context, and what should be preserved. The cost is equally important: A fluent transcript can be easier to read but less faithful to what was said, including omissions, hesitation, or uncertainty.
+The recurring move across this theme is to infer a sequence of linguistic units while allowing uncertainty about boundaries, pronunciation, context, and what should be preserved. The cost is equally important: A fluent transcript can be easier to read but less faithful to what was said, including omissions, hesitation, or uncertainty.
 
 ## The boundaries
 
 Each section below uses the same test: what pressure is being handled, what shortcut fails, what move recurs, and where the evidence stops.
 
+## Plain-language dictionary
+
+The papers use specialized names because they measure specialized things. These are the terms that recur in this essay, translated before they do argumentative work:
+
+**Fant's speech chain.** a practical way to follow speech from a speaker's body, through the air and a recording device, to a listener and an interpretation.
+**D2.** evidence checked in the official paper abstract; it supports the paper's stated problem and approach, but not details that appear only in the full paper.
+**D3.** evidence checked in the official full paper text; it supports what the authors report about their method and tests, but it is still not an independent reproduction.
+**ASR.** automatic speech recognition: software that turns speech recordings into written words.
+**TTS.** text-to-speech: software that turns written words into a spoken signal.
+**speaker embedding.** a compact numerical description intended to preserve characteristics of a voice or speaker.
+**self-supervised learning.** training in which the recording supplies part of its own teaching signal, so hand-written labels are needed less often.
+**voice activity detection.** a decision about whether a signal segment contains speech.
+**word error rate.** the number of word substitutions, insertions, and deletions divided by the reference word count.
+**equal error rate.** the point at which two kinds of biometric decision error—false acceptance and false rejection—are equal.
+**interaural.** between the two ears; an interaural difference is a difference in timing or level between left and right channels.
+**MRI.** magnetic resonance imaging, used here to observe anatomy or movement without cutting into the body.
+**EEG.** electroencephalography, a measurement of electrical activity at the scalp.
+**MFCC.** a compact description of the broad shape of a sound spectrum, often used as an input feature.
+**F0.** the rate of vocal-fold vibration, commonly heard as the main component of pitch.
+
+This is a map of distinctions, not a ranking of methods. A paper can be useful while still answering only one narrow question.
+
 ## Learning reusable sound units
+
+This boundary follows from the baseline account: baseline link: Fant pp. 6-7, 11-12: message units and signal segments do not line up one-to-one, so perception uses context, memory, comparison, and prediction. Ordinary pressure: Speech has no visible spaces between words, and pronunciation, speed, accent, noise, and hesitation vary even when the intended sentence is the same. Failed shortcut: Matching each sound to a fixed dictionary pronunciation or treating the utterance as already segmented fails on coarticulation, new words, and disfluency. Recurring paper move: Infer a sequence of linguistic units while allowing uncertainty about boundaries, pronunciation, context, and what should be preserved. Neighbor test: The system first decides what reusable evidence can be extracted from continuous sound.
 
 **The question.** What ordinary speech pressure is handled by learning reusable sound units, and what evidence distinguishes it from neighboring pressures?
 
-**How this boundary is derived.** Baseline link: Fant pp. 6-7, 11-12: message units and signal segments do not line up one-to-one, so perception uses context, memory, comparison, and prediction. Ordinary pressure: Speech has no visible spaces between words, and pronunciation, speed, accent, noise, and hesitation vary even when the intended sentence is the same. Failed shortcut: Matching each sound to a fixed dictionary pronunciation or treating the utterance as already segmented fails on coarticulation, new words, and disfluency. Recurring paper move: Infer a sequence of linguistic units while allowing uncertainty about boundaries, pronunciation, context, and what should be preserved. Neighbor test: The system first decides what reusable evidence can be extracted from continuous sound.
+**The pressure.** Speech has no visible spaces between words, and pronunciation, speed, accent, noise, and hesitation vary even when the intended sentence is the same. The subtheme asks: What ordinary speech pressure is handled by learning reusable sound units, and what evidence distinguishes it from neighboring pressures?
 
-**What the papers share.** Speech has no visible spaces between words, and pronunciation, speed, accent, noise, and hesitation vary even when the intended sentence is the same. The subtheme asks: What ordinary speech pressure is handled by learning reusable sound units, and what evidence distinguishes it from neighboring pressures?
+**Why the easy answer breaks.** A first attempt would answer the question only with acoustic-to-token mapping, but that shortcut misses the boundary: The highest-scoring sequence may exploit dataset regularities instead of matching the actual speech.
 
-**Why the shortcut fails.** A first attempt would answer the question only with acoustic-to-token mapping, but that shortcut misses the boundary: The highest-scoring sequence may exploit dataset regularities instead of matching the actual speech.
-
-**The recurring move.** Across this subtheme, papers make acoustic-to-token mapping, learned speech units explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Benchmark CTC, Whisper, and LLM-enhanced decoders, including bridge networks and a Q-Former that connects Whisper acoustic features to Vicuna for context-aware decoding.
+**The move that recurs.** Across this subtheme, papers make acoustic-to-token mapping, learned speech units explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Benchmark CTC, Whisper, and LLM-enhanced decoders, including bridge networks and a Q-Former that connects Whisper acoustic features to Vicuna for context-aware decoding.
 
 ### Words used in this section
 
@@ -38,7 +60,7 @@ Each section below uses the same test: what pressure is being handled, what shor
 **Learned speech units.** Predicting or grouping parts of unlabeled audio can provide reusable units before a task-specific word recognizer is trained.
 *Boundary:* A useful pretraining prediction need not produce units aligned with words, phonemes, or human categories.
 
-### What the papers show
+### What the evidence shows
 
 - [Bridging ASR and LLMs for Dysarthric Speech Recognition: Benchmarking Self-Supervised and Generative Approaches](https://www.isca-archive.org/interspeech_2025/aboeitta25_interspeech.html) (D3): Benchmark CTC, Whisper, and LLM-enhanced decoders, including bridge networks and a Q-Former that connects Whisper acoustic features to Vicuna for context-aware decoding. **Measured or tested:** This study systematically benchmarks these models with different decoding strategies, including CTC, seq2seq, and LLM-enhanced decoding (BART, GPT-2, Vicuna). **Limit:** Dataset splits, severity labels, model scale, decoding prompts, and WER limit the claim; lower WER does not prove faithful preservation of disfluencies or speaker intent.
 - [HuBERT-VIC: Improving Noise-Robust Automatic Speech Recognition of Speech Foundation Model via Variance-Invariance-Covariance Regularization](https://www.isca-archive.org/interspeech_2025/ahn25_interspeech.html) (D3): Add variance, invariance, and covariance constraints during HuBERT pretraining. **Measured or tested:** Noise robustness in speech foundation models (SFMs) has been a critical challenge, as most models are primarily trained on clean data and experience performance degradation when the models are exposed to noisy speech. **Limit:** MUSAN, SNR choices, HuBERT, and LibriSpeech bound the result; real conversational noise is not established.
@@ -53,22 +75,22 @@ Each section below uses the same test: what pressure is being handled, what shor
 
 ## Allowing different realizations of words
 
+This boundary follows from the baseline account: baseline link: Fant pp. 6-7, 11-12: message units and signal segments do not line up one-to-one, so perception uses context, memory, comparison, and prediction. Ordinary pressure: Speech has no visible spaces between words, and pronunciation, speed, accent, noise, and hesitation vary even when the intended sentence is the same. Failed shortcut: Matching each sound to a fixed dictionary pronunciation or treating the utterance as already segmented fails on coarticulation, new words, and disfluency. Recurring paper move: Infer a sequence of linguistic units while allowing uncertainty about boundaries, pronunciation, context, and what should be preserved. Neighbor test: The same intended unit has multiple acoustic paths; this is distinct from learning a unit representation.
+
 **The question.** What ordinary speech pressure is handled by allowing different realizations of words, and what evidence distinguishes it from neighboring pressures?
 
-**How this boundary is derived.** Baseline link: Fant pp. 6-7, 11-12: message units and signal segments do not line up one-to-one, so perception uses context, memory, comparison, and prediction. Ordinary pressure: Speech has no visible spaces between words, and pronunciation, speed, accent, noise, and hesitation vary even when the intended sentence is the same. Failed shortcut: Matching each sound to a fixed dictionary pronunciation or treating the utterance as already segmented fails on coarticulation, new words, and disfluency. Recurring paper move: Infer a sequence of linguistic units while allowing uncertainty about boundaries, pronunciation, context, and what should be preserved. Neighbor test: The same intended unit has multiple acoustic paths; this is distinct from learning a unit representation.
+**The pressure.** Speech has no visible spaces between words, and pronunciation, speed, accent, noise, and hesitation vary even when the intended sentence is the same. The subtheme asks: What ordinary speech pressure is handled by allowing different realizations of words, and what evidence distinguishes it from neighboring pressures?
 
-**What the papers share.** Speech has no visible spaces between words, and pronunciation, speed, accent, noise, and hesitation vary even when the intended sentence is the same. The subtheme asks: What ordinary speech pressure is handled by allowing different realizations of words, and what evidence distinguishes it from neighboring pressures?
+**Why the easy answer breaks.** A first attempt would answer the question only with pronunciation variation, but that shortcut misses the boundary: Adding variants without evidence can increase confusions and may encode an accent as an error.
 
-**Why the shortcut fails.** A first attempt would answer the question only with pronunciation variation, but that shortcut misses the boundary: Adding variants without evidence can increase confusions and may encode an accent as an error.
-
-**The recurring move.** Across this subtheme, papers make pronunciation variation explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Keep several small accent-specific adapters and let the system combine them, with or without knowing the accent.
+**The move that recurs.** Across this subtheme, papers make pronunciation variation explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Keep several small accent-specific adapters and let the system combine them, with or without knowing the accent.
 
 ### Words used in this section
 
 **Pronunciation variation.** The same word can have reductions, substitutions, or accent-specific realizations, so recognition must allow more than one acoustic path.
 *Boundary:* Adding variants without evidence can increase confusions and may encode an accent as an error.
 
-### What the papers show
+### What the evidence shows
 
 - [Mixture of LoRA Experts for Low-Resourced Multi-Accent Automatic Speech Recognition](https://www.isca-archive.org/interspeech_2025/bagat25_interspeech.html) (D3): Keep several small accent-specific adapters and let the system combine them, with or without knowing the accent. **Measured or tested:** Our experiments, conducted using Whisper on the L2-ARCTIC corpus, demonstrate significant improvements in Word Error Rate compared to regular LoRA and full fine-tuning when the accent is unknown. **Limit:** The result is tied to L2-ARCTIC, its accent set, Whisper, and routing assumptions; spontaneous speech and accents outside the corpus remain open.
 - [CHSER: A Dataset and Case Study on Generative Speech Error Correction for Child ASR](https://www.isca-archive.org/interspeech_2025/balajishankar25_interspeech.html) (D3): Create a large hypothesis-to-reference dataset for children and learn a generative correction model whose errors can be inspected by type. **Measured or tested:** Automatic Speech Recognition (ASR) systems struggle with child speech due to its distinct acoustic and linguistic variability and limited availability of child speech datasets, leading to high transcription error rates. **Limit:** The corpus, languages, ASR hypotheses, and correction model bound the result; preserving clinically meaningful disfluencies outside these settings remains open.
@@ -83,15 +105,15 @@ Each section below uses the same test: what pressure is being handled, what shor
 
 ## Locating units in time
 
+This boundary follows from the baseline account: baseline link: Fant pp. 6-7, 11-12: message units and signal segments do not line up one-to-one, so perception uses context, memory, comparison, and prediction. Ordinary pressure: Speech has no visible spaces between words, and pronunciation, speed, accent, noise, and hesitation vary even when the intended sentence is the same. Failed shortcut: Matching each sound to a fixed dictionary pronunciation or treating the utterance as already segmented fails on coarticulation, new words, and disfluency. Recurring paper move: Infer a sequence of linguistic units while allowing uncertainty about boundaries, pronunciation, context, and what should be preserved. Neighbor test: The output must preserve or locate timing, hesitation, repair, or sequence boundaries.
+
 **The question.** What ordinary speech pressure is handled by locating units in time, and what evidence distinguishes it from neighboring pressures?
 
-**How this boundary is derived.** Baseline link: Fant pp. 6-7, 11-12: message units and signal segments do not line up one-to-one, so perception uses context, memory, comparison, and prediction. Ordinary pressure: Speech has no visible spaces between words, and pronunciation, speed, accent, noise, and hesitation vary even when the intended sentence is the same. Failed shortcut: Matching each sound to a fixed dictionary pronunciation or treating the utterance as already segmented fails on coarticulation, new words, and disfluency. Recurring paper move: Infer a sequence of linguistic units while allowing uncertainty about boundaries, pronunciation, context, and what should be preserved. Neighbor test: The output must preserve or locate timing, hesitation, repair, or sequence boundaries.
+**The pressure.** Speech has no visible spaces between words, and pronunciation, speed, accent, noise, and hesitation vary even when the intended sentence is the same. The subtheme asks: What ordinary speech pressure is handled by locating units in time, and what evidence distinguishes it from neighboring pressures?
 
-**What the papers share.** Speech has no visible spaces between words, and pronunciation, speed, accent, noise, and hesitation vary even when the intended sentence is the same. The subtheme asks: What ordinary speech pressure is handled by locating units in time, and what evidence distinguishes it from neighboring pressures?
+**Why the easy answer breaks.** A first attempt would answer the question only with temporal alignment, but that shortcut misses the boundary: Forced alignment assumes the transcript is correct and can conceal recognition errors.
 
-**Why the shortcut fails.** A first attempt would answer the question only with temporal alignment, but that shortcut misses the boundary: Forced alignment assumes the transcript is correct and can conceal recognition errors.
-
-**The recurring move.** Across this subtheme, papers make temporal alignment, disfluency and event preservation explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Fine-tune Whisper on DementiaBank and an in-house dataset, explicitly evaluating filler inclusion and F1 as well as WER.
+**The move that recurs.** Across this subtheme, papers make temporal alignment, disfluency and event preservation explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Fine-tune Whisper on DementiaBank and an in-house dataset, explicitly evaluating filler inclusion and F1 as well as WER.
 
 ### Words used in this section
 
@@ -101,7 +123,7 @@ Each section below uses the same test: what pressure is being handled, what shor
 **Disfluency and event preservation.** Represent pauses, repetitions, repairs, laughter, and overlap when those events are part of the communication or the clinical signal.
 *Boundary:* Removing them may improve readability while destroying evidence needed for conversation analysis or diagnosis.
 
-### What the papers show
+### What the evidence shows
 
 - [WhisperD: Dementia Speech Recognition and Filler Word Detection with Whisper](https://www.isca-archive.org/interspeech_2025/akinrintoyo25_interspeech.html) (D3): Fine-tune Whisper on DementiaBank and an in-house dataset, explicitly evaluating filler inclusion and F1 as well as WER. **Measured or tested:** In this work, we fine-tune Whisper with the open-source dementia speech dataset (DementiaBank) and our in-house dataset to improve its word error rate (WER). **Limit:** The dataset is 11.39 hours, some audio is mumbled or unintelligible, and diagnostic or clinical benefit is not established by ASR scores alone.
 - [ASR-based segmentation for the analysis of larger child-speech datasets: Performance evaluation on vowels from Australian-English speaking children aged 4 to 11 years](https://www.isca-archive.org/interspeech_2025/cai25_interspeech.html) (D3): Compare human-human reliability with manual-versus-Montreal-Forced-Aligner boundaries across child ages and inspect systematic discrepancies. **Measured or tested:** Annotation of segment boundaries in child speech presents a persistent challenge, particularly with large-scale datasets. **Limit:** The evidence is tied to the tested vowels, ages, language variety, and annotators; it supports semi-automatic caution rather than universal aligner failure.
@@ -116,15 +138,15 @@ Each section below uses the same test: what pressure is being handled, what shor
 
 ## Using context without inventing words
 
+This boundary follows from the baseline account: baseline link: Fant pp. 6-7, 11-12: message units and signal segments do not line up one-to-one, so perception uses context, memory, comparison, and prediction. Ordinary pressure: Speech has no visible spaces between words, and pronunciation, speed, accent, noise, and hesitation vary even when the intended sentence is the same. Failed shortcut: Matching each sound to a fixed dictionary pronunciation or treating the utterance as already segmented fails on coarticulation, new words, and disfluency. Recurring paper move: Infer a sequence of linguistic units while allowing uncertainty about boundaries, pronunciation, context, and what should be preserved. Neighbor test: Context, speaker evidence, and new words resolve ambiguity but can override what was actually said.
+
 **The question.** What ordinary speech pressure is handled by using context without inventing words, and what evidence distinguishes it from neighboring pressures?
 
-**How this boundary is derived.** Baseline link: Fant pp. 6-7, 11-12: message units and signal segments do not line up one-to-one, so perception uses context, memory, comparison, and prediction. Ordinary pressure: Speech has no visible spaces between words, and pronunciation, speed, accent, noise, and hesitation vary even when the intended sentence is the same. Failed shortcut: Matching each sound to a fixed dictionary pronunciation or treating the utterance as already segmented fails on coarticulation, new words, and disfluency. Recurring paper move: Infer a sequence of linguistic units while allowing uncertainty about boundaries, pronunciation, context, and what should be preserved. Neighbor test: Context, speaker evidence, and new words resolve ambiguity but can override what was actually said.
+**The pressure.** Speech has no visible spaces between words, and pronunciation, speed, accent, noise, and hesitation vary even when the intended sentence is the same. The subtheme asks: What ordinary speech pressure is handled by using context without inventing words, and what evidence distinguishes it from neighboring pressures?
 
-**What the papers share.** Speech has no visible spaces between words, and pronunciation, speed, accent, noise, and hesitation vary even when the intended sentence is the same. The subtheme asks: What ordinary speech pressure is handled by using context without inventing words, and what evidence distinguishes it from neighboring pressures?
+**Why the easy answer breaks.** A first attempt would answer the question only with long-context decoding, but that shortcut misses the boundary: Context can override a rare but correct word, especially when the language model has a strong prior.
 
-**Why the shortcut fails.** A first attempt would answer the question only with long-context decoding, but that shortcut misses the boundary: Context can override a rare but correct word, especially when the language model has a strong prior.
-
-**The recurring move.** Across this subtheme, papers make long-context decoding, domain and context biasing, speaker adaptation, open-vocabulary recognition explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Adapt the audio side using representative target-domain sound examples and test transfer across environments.
+**The move that recurs.** Across this subtheme, papers make long-context decoding, domain and context biasing, speaker adaptation, open-vocabulary recognition explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Adapt the audio side using representative target-domain sound examples and test transfer across environments.
 
 ### Words used in this section
 
@@ -140,7 +162,7 @@ Each section below uses the same test: what pressure is being handled, what shor
 **Open-vocabulary recognition.** Handle names, code-switching, jargon, and newly encountered words without requiring a fixed closed list.
 *Boundary:* Open vocabulary expands recall but makes spelling, segmentation, and evaluation less settled.
 
-### What the papers show
+### What the evidence shows
 
 - [Domain Adaptation Method and Modality Gap Impact in Audio-Text Models for Prototypical Sound Classification](https://www.isca-archive.org/interspeech_2025/acevedo25_interspeech.html) (D3): Adapt the audio side using representative target-domain sound examples and test transfer across environments. **Measured or tested:** Our domain adaptation technique enhances accuracy across various backgrounds and SNR conditions. **Limit:** Sound set, target examples, class construction, and reported accuracy limit open-world claims.
 - [Spot and Merge: A Hybrid Context Biasing Approach for Rare Word and Out of Vocabulary Recognition](https://www.isca-archive.org/interspeech_2025/agrawal25b_interspeech.html) (D3): Use LoRA adaptation and a spot-and-merge method that detects bias phrases in cross-attention and merges them with ASR output. **Measured or tested:** Unlike existing methods, our approach maintains strong performance even with larger biasing lists, achieving a 1.0% absolute word error rate (WER) reduction on LibriSpeech. **Limit:** The in-house data are not independently available in this atlas, and future multilingual/low-resource extension remains open.

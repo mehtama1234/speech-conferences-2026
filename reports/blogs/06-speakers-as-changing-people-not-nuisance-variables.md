@@ -10,25 +10,47 @@ Fant's speech-chain account places this theme at the following point in communic
 
 The ordinary problem is simple to state: Voice depends on anatomy, age, health, emotion, language history, social setting, and equipment; these differences affect both communication and measurement.
 
-A tempting shortcut is to Treating variation as noise makes systems work best for a narrow population and can turn a health or identity signal into an unwanted demographic shortcut. That shortcut fails because it hides the distinction this essay needs to keep visible.
+One tempting shortcut is: Treating variation as noise makes systems work best for a narrow population and can turn a health or identity signal into an unwanted demographic shortcut. It fails because it hides the distinction this essay needs to keep visible.
 
-The recurring move across this theme is to Measure which variation is task-relevant, model it explicitly when appropriate, and test performance and meaning across people and conditions. The cost is equally important: A factor that helps prediction may be sensitive, confounded, or harmful to expose; personalization can improve access while increasing privacy risk.
+The recurring move across this theme is to measure which variation is task-relevant, model it explicitly when appropriate, and test performance and meaning across people and conditions. The cost is equally important: A factor that helps prediction may be sensitive, confounded, or harmful to expose; personalization can improve access while increasing privacy risk.
 
 ## The boundaries
 
 Each section below uses the same test: what pressure is being handled, what shortcut fails, what move recurs, and where the evidence stops.
 
+## Plain-language dictionary
+
+The papers use specialized names because they measure specialized things. These are the terms that recur in this essay, translated before they do argumentative work:
+
+**Fant's speech chain.** a practical way to follow speech from a speaker's body, through the air and a recording device, to a listener and an interpretation.
+**D2.** evidence checked in the official paper abstract; it supports the paper's stated problem and approach, but not details that appear only in the full paper.
+**D3.** evidence checked in the official full paper text; it supports what the authors report about their method and tests, but it is still not an independent reproduction.
+**ASR.** automatic speech recognition: software that turns speech recordings into written words.
+**TTS.** text-to-speech: software that turns written words into a spoken signal.
+**speaker embedding.** a compact numerical description intended to preserve characteristics of a voice or speaker.
+**self-supervised learning.** training in which the recording supplies part of its own teaching signal, so hand-written labels are needed less often.
+**voice activity detection.** a decision about whether a signal segment contains speech.
+**word error rate.** the number of word substitutions, insertions, and deletions divided by the reference word count.
+**equal error rate.** the point at which two kinds of biometric decision error—false acceptance and false rejection—are equal.
+**interaural.** between the two ears; an interaural difference is a difference in timing or level between left and right channels.
+**MRI.** magnetic resonance imaging, used here to observe anatomy or movement without cutting into the body.
+**EEG.** electroencephalography, a measurement of electrical activity at the scalp.
+**MFCC.** a compact description of the broad shape of a sound spectrum, often used as an input feature.
+**F0.** the rate of vocal-fold vibration, commonly heard as the main component of pitch.
+
+This is a map of distinctions, not a ranking of methods. A paper can be useful while still answering only one narrow question.
+
 ## Identity, age, and changing voice
+
+This boundary follows from the baseline account: baseline link: Fant pp. 6-7: physical signal parameters and message-level distinctions are related but not identical; this is the baseline for testing when speaker variation is useful evidence or nuisance. Ordinary pressure: Voice depends on anatomy, age, health, emotion, language history, social setting, and equipment; these differences affect both communication and measurement. Failed shortcut: Treating variation as noise makes systems work best for a narrow population and can turn a health or identity signal into an unwanted demographic shortcut. Recurring paper move: Measure which variation is task-relevant, model it explicitly when appropriate, and test performance and meaning across people and conditions. Neighbor test: The evidence concerns who is speaking and how that person's voice changes across time and state.
 
 **The question.** What ordinary speech pressure is handled by identity, age, and changing voice, and what evidence distinguishes it from neighboring pressures?
 
-**How this boundary is derived.** Baseline link: Fant pp. 6-7: physical signal parameters and message-level distinctions are related but not identical; this is the baseline for testing when speaker variation is useful evidence or nuisance. Ordinary pressure: Voice depends on anatomy, age, health, emotion, language history, social setting, and equipment; these differences affect both communication and measurement. Failed shortcut: Treating variation as noise makes systems work best for a narrow population and can turn a health or identity signal into an unwanted demographic shortcut. Recurring paper move: Measure which variation is task-relevant, model it explicitly when appropriate, and test performance and meaning across people and conditions. Neighbor test: The evidence concerns who is speaking and how that person's voice changes across time and state.
+**The pressure.** Voice depends on anatomy, age, health, emotion, language history, social setting, and equipment; these differences affect both communication and measurement. The subtheme asks: What ordinary speech pressure is handled by identity, age, and changing voice, and what evidence distinguishes it from neighboring pressures?
 
-**What the papers share.** Voice depends on anatomy, age, health, emotion, language history, social setting, and equipment; these differences affect both communication and measurement. The subtheme asks: What ordinary speech pressure is handled by identity, age, and changing voice, and what evidence distinguishes it from neighboring pressures?
+**Why the easy answer breaks.** A first attempt would answer the question only with speaker verification, but that shortcut misses the boundary: Similarity scores are not identity proof and depend on enrollment quality, population, and decision threshold.
 
-**Why the shortcut fails.** A first attempt would answer the question only with speaker verification, but that shortcut misses the boundary: Similarity scores are not identity proof and depend on enrollment quality, population, and decision threshold.
-
-**The recurring move.** Across this subtheme, papers make speaker verification, age and developmental speech, within-speaker state variation explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Initialize an interactive phonetic agent model with real speech from two Southern Italian varieties and simulate metaphony, then compare diphthongization and categorical contrasts.
+**The move that recurs.** Across this subtheme, papers make speaker verification, age and developmental speech, within-speaker state variation explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Initialize an interactive phonetic agent model with real speech from two Southern Italian varieties and simulate metaphony, then compare diphthongization and categorical contrasts.
 
 ### Words used in this section
 
@@ -41,7 +63,7 @@ Each section below uses the same test: what pressure is being handled, what shor
 **Within-speaker state variation.** The same person's voice shifts with fatigue, emotion, health, audience, and speaking effort; robust systems must not confuse state with identity.
 *Boundary:* There is no universal stable identity vector independent of context.
 
-### What the papers show
+### What the evidence shows
 
 - [Agent-based modelling, sound change, and metaphony in Southern Italian varieties of Italo-Romance.](https://www.isca-archive.org/interspeech_2025/bressensdorf25_interspeech.html) (D3): Initialize an interactive phonetic agent model with real speech from two Southern Italian varieties and simulate metaphony, then compare diphthongization and categorical contrasts. **Measured or tested:** The study uses an agent-based computational model to test the hypothesis that contact between two dialects that are conservative and innovative as far as a sound change is concerned produces an asymmetric shift of the conservative speakers towards the innovative ones. **Limit:** The two dialects, 54 speakers collapsed to 13 agents, selected words, F1 trajectory representation, and model assumptions limit generalization to other communities or changes.
 - [Pitch Target Realization in Putonghua Tone Production of Children from Dialect-Speaking Regions](https://www.isca-archive.org/interspeech_2025/cao25_interspeech.html) (D3): Analyze on-target and off-target realization as interacting targets shaped by physiology and dialect experience. **Measured or tested:** This study examines the production of Putonghua tones from both on- and off-target perspectives, using data from 139 children (aged 35–71 months) with Changli dialect exposure, drawn from the CL-CHILD corpus. **Limit:** The age range, dialect exposure, corpus, and tone inventory bound the developmental claim; longitudinal and other language environments remain open.
@@ -56,22 +78,22 @@ Each section below uses the same test: what pressure is being handled, what shor
 
 ## Speech measurements associated with health
 
+This boundary follows from the baseline account: baseline link: Fant pp. 6-7: physical signal parameters and message-level distinctions are related but not identical; this is the baseline for testing when speaker variation is useful evidence or nuisance. Ordinary pressure: Voice depends on anatomy, age, health, emotion, language history, social setting, and equipment; these differences affect both communication and measurement. Failed shortcut: Treating variation as noise makes systems work best for a narrow population and can turn a health or identity signal into an unwanted demographic shortcut. Recurring paper move: Measure which variation is task-relevant, model it explicitly when appropriate, and test performance and meaning across people and conditions. Neighbor test: A measurable speech property is evaluated as a possible health signal, with clinical limits kept explicit.
+
 **The question.** What ordinary speech pressure is handled by speech measurements associated with health, and what evidence distinguishes it from neighboring pressures?
 
-**How this boundary is derived.** Baseline link: Fant pp. 6-7: physical signal parameters and message-level distinctions are related but not identical; this is the baseline for testing when speaker variation is useful evidence or nuisance. Ordinary pressure: Voice depends on anatomy, age, health, emotion, language history, social setting, and equipment; these differences affect both communication and measurement. Failed shortcut: Treating variation as noise makes systems work best for a narrow population and can turn a health or identity signal into an unwanted demographic shortcut. Recurring paper move: Measure which variation is task-relevant, model it explicitly when appropriate, and test performance and meaning across people and conditions. Neighbor test: A measurable speech property is evaluated as a possible health signal, with clinical limits kept explicit.
+**The pressure.** Voice depends on anatomy, age, health, emotion, language history, social setting, and equipment; these differences affect both communication and measurement. The subtheme asks: What ordinary speech pressure is handled by speech measurements associated with health, and what evidence distinguishes it from neighboring pressures?
 
-**What the papers share.** Voice depends on anatomy, age, health, emotion, language history, social setting, and equipment; these differences affect both communication and measurement. The subtheme asks: What ordinary speech pressure is handled by speech measurements associated with health, and what evidence distinguishes it from neighboring pressures?
+**Why the easy answer breaks.** A first attempt would answer the question only with clinical speech marker, but that shortcut misses the boundary: Association with a diagnosis is not clinical validity, causation, or permission to make a medical decision.
 
-**Why the shortcut fails.** A first attempt would answer the question only with clinical speech marker, but that shortcut misses the boundary: Association with a diagnosis is not clinical validity, causation, or permission to make a medical decision.
-
-**The recurring move.** Across this subtheme, papers make clinical speech marker explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Use acoustic-to-articulatory inversion to obtain interpretable movement variables, then test subtype differences with a mixed-effects statistical model across children and target sounds.
+**The move that recurs.** Across this subtheme, papers make clinical speech marker explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Use acoustic-to-articulatory inversion to obtain interpretable movement variables, then test subtype differences with a mixed-effects statistical model across children and target sounds.
 
 ### Words used in this section
 
 **Clinical speech marker.** Measure a reproducible speech property associated with a clinical condition or progression, while separating it from age, device, and language effects.
 *Boundary:* Association with a diagnosis is not clinical validity, causation, or permission to make a medical decision.
 
-### What the papers show
+### What the evidence shows
 
 - [Subtyping Speech Errors in Childhood Speech Sound Disorders with Acoustic-to-Articulatory Speech Inversion](https://www.isca-archive.org/interspeech_2025/benway25_interspeech.html) (D3): Use acoustic-to-articulatory inversion to obtain interpretable movement variables, then test subtype differences with a mixed-effects statistical model across children and target sounds. **Measured or tested:** Speech inversion holds much potential to describe speech errors in childhood speech sound disorders. **Limit:** The study is limited to selected American-English child error types and an inversion model; clinical interpretability is demonstrated for these comparisons, not established for all disorders or speakers. No independent reproduction was performed.
 - [Acoustic and Linguistic Biomarkers for Cognitive Impairment Detection from Speech](https://www.isca-archive.org/interspeech_2025/botelho25_interspeech.html) (D3): Combine acoustic, linguistic, knowledge-based, and neural representations, selecting complementary class-aware systems. **Measured or tested:** Based on our previous experience on the use of speech and text-derived biomarkers for disease detection, we evaluate here the use of knowledge-based acoustic and text-based feature sets, as well as LLM-based macro-descriptors, and multiple neural representations (e.g., Longformer, ECAPA-TDNN, and… **Limit:** Challenge data, demographic overlap, and missing metadata limit the claim; this is not clinical validation.
@@ -86,15 +108,15 @@ Each section below uses the same test: what pressure is being handled, what shor
 
 ## Communicating with atypical or impaired speech
 
+This boundary follows from the baseline account: baseline link: Fant pp. 6-7: physical signal parameters and message-level distinctions are related but not identical; this is the baseline for testing when speaker variation is useful evidence or nuisance. Ordinary pressure: Voice depends on anatomy, age, health, emotion, language history, social setting, and equipment; these differences affect both communication and measurement. Failed shortcut: Treating variation as noise makes systems work best for a narrow population and can turn a health or identity signal into an unwanted demographic shortcut. Recurring paper move: Measure which variation is task-relevant, model it explicitly when appropriate, and test performance and meaning across people and conditions. Neighbor test: The goal is recognition or expression for people whose speech does not match majority training data.
+
 **The question.** What ordinary speech pressure is handled by communicating with atypical or impaired speech, and what evidence distinguishes it from neighboring pressures?
 
-**How this boundary is derived.** Baseline link: Fant pp. 6-7: physical signal parameters and message-level distinctions are related but not identical; this is the baseline for testing when speaker variation is useful evidence or nuisance. Ordinary pressure: Voice depends on anatomy, age, health, emotion, language history, social setting, and equipment; these differences affect both communication and measurement. Failed shortcut: Treating variation as noise makes systems work best for a narrow population and can turn a health or identity signal into an unwanted demographic shortcut. Recurring paper move: Measure which variation is task-relevant, model it explicitly when appropriate, and test performance and meaning across people and conditions. Neighbor test: The goal is recognition or expression for people whose speech does not match majority training data.
+**The pressure.** Voice depends on anatomy, age, health, emotion, language history, social setting, and equipment; these differences affect both communication and measurement. The subtheme asks: What ordinary speech pressure is handled by communicating with atypical or impaired speech, and what evidence distinguishes it from neighboring pressures?
 
-**What the papers share.** Voice depends on anatomy, age, health, emotion, language history, social setting, and equipment; these differences affect both communication and measurement. The subtheme asks: What ordinary speech pressure is handled by communicating with atypical or impaired speech, and what evidence distinguishes it from neighboring pressures?
+**Why the easy answer breaks.** A first attempt would answer the question only with atypical articulation and dysarthria, but that shortcut misses the boundary: Small datasets and speaker-specific patterns make broad claims especially fragile.
 
-**Why the shortcut fails.** A first attempt would answer the question only with atypical articulation and dysarthria, but that shortcut misses the boundary: Small datasets and speaker-specific patterns make broad claims especially fragile.
-
-**The recurring move.** Across this subtheme, papers make atypical articulation and dysarthria, augmentative communication explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Continue self-supervised pre-training on pathological speech, use etiology-specific codebooks, and select external examples by semantic similarity.
+**The move that recurs.** Across this subtheme, papers make atypical articulation and dysarthria, augmentative communication explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Continue self-supervised pre-training on pathological speech, use etiology-specific codebooks, and select external examples by semantic similarity.
 
 ### Words used in this section
 
@@ -104,7 +126,7 @@ Each section below uses the same test: what pressure is being handled, what shor
 **Augmentative communication.** Use residual vocal, muscular, visual, or typed signals to help a person express intended language or control a device.
 *Boundary:* A system should preserve the person's authorship and offer correction, not silently decide what they meant.
 
-### What the papers show
+### What the evidence shows
 
 - [Pathology-Aware Speech Encoding and Data Augmentation for Dysarthric Speech Recognition](https://www.isca-archive.org/interspeech_2025/baumann25_interspeech.html) (D3): Continue self-supervised pre-training on pathological speech, use etiology-specific codebooks, and select external examples by semantic similarity. **Measured or tested:** We achieve a 13.2% relative word error rate (WER) improvement using the pathology-aware speech encoder with etiology-specific continued pre-training. **Limit:** Etiologies, corpora, similarity model, and ratios bound the claim; improvements differ by condition and synthetic speech may not preserve clinical variation.
 - [EEG-based Voice Conversion : Hearing the Voice of Your Brain](https://www.isca-archive.org/interspeech_2025/geng25b_interspeech.html) (D3): Align EEG features with speaker voice features and use a speech-trained zero-shot voice-conversion model. **Measured or tested:** The connection between Electroencephalography (EEG) signals and human voice has gained significant attention, with studies demonstrating the feasibility of speech synthesis from EEG data. **Limit:** Single words, EEG setup, target voices, and small dataset define the claim; intelligibility, privacy, consent, and real assistive communication remain open.
@@ -119,15 +141,15 @@ Each section below uses the same test: what pressure is being handled, what shor
 
 ## Whether the system actually helps a person
 
+This boundary follows from the baseline account: baseline link: Fant pp. 6-7: physical signal parameters and message-level distinctions are related but not identical; this is the baseline for testing when speaker variation is useful evidence or nuisance. Ordinary pressure: Voice depends on anatomy, age, health, emotion, language history, social setting, and equipment; these differences affect both communication and measurement. Failed shortcut: Treating variation as noise makes systems work best for a narrow population and can turn a health or identity signal into an unwanted demographic shortcut. Recurring paper move: Measure which variation is task-relevant, model it explicitly when appropriate, and test performance and meaning across people and conditions. Neighbor test: The target is effort, control, access, and fit in a real activity rather than model accuracy alone.
+
 **The question.** What ordinary speech pressure is handled by whether the system actually helps a person, and what evidence distinguishes it from neighboring pressures?
 
-**How this boundary is derived.** Baseline link: Fant pp. 6-7: physical signal parameters and message-level distinctions are related but not identical; this is the baseline for testing when speaker variation is useful evidence or nuisance. Ordinary pressure: Voice depends on anatomy, age, health, emotion, language history, social setting, and equipment; these differences affect both communication and measurement. Failed shortcut: Treating variation as noise makes systems work best for a narrow population and can turn a health or identity signal into an unwanted demographic shortcut. Recurring paper move: Measure which variation is task-relevant, model it explicitly when appropriate, and test performance and meaning across people and conditions. Neighbor test: The target is effort, control, access, and fit in a real activity rather than model accuracy alone.
+**The pressure.** Voice depends on anatomy, age, health, emotion, language history, social setting, and equipment; these differences affect both communication and measurement. The subtheme asks: What ordinary speech pressure is handled by whether the system actually helps a person, and what evidence distinguishes it from neighboring pressures?
 
-**What the papers share.** Voice depends on anatomy, age, health, emotion, language history, social setting, and equipment; these differences affect both communication and measurement. The subtheme asks: What ordinary speech pressure is handled by whether the system actually helps a person, and what evidence distinguishes it from neighboring pressures?
+**Why the easy answer breaks.** A first attempt would answer the question only with listener effort, but that shortcut misses the boundary: Effort measures depend on task, listener experience, and presentation conditions.
 
-**Why the shortcut fails.** A first attempt would answer the question only with listener effort, but that shortcut misses the boundary: Effort measures depend on task, listener experience, and presentation conditions.
-
-**The recurring move.** Across this subtheme, papers make listener effort, user control and consent, accessibility fit explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Fuse STFT audio features with visual embeddings in a dual-branch CNN-BLSTM attention model and jointly predict PESQ and STOI.
+**The move that recurs.** Across this subtheme, papers make listener effort, user control and consent, accessibility fit explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Fuse STFT audio features with visual embeddings in a dual-branch CNN-BLSTM attention model and jointly predict PESQ and STOI.
 
 ### Words used in this section
 
@@ -140,7 +162,7 @@ Each section below uses the same test: what pressure is being handled, what shor
 **Accessibility fit.** Judge whether a system works within a person's actual device, environment, communication practice, and time constraints.
 *Boundary:* A lab improvement can be irrelevant or harmful if setup, latency, or interaction burden is omitted.
 
-### What the papers show
+### What the evidence shows
 
 - [A Study on Speech Assessment with Visual Cues](https://www.isca-archive.org/interspeech_2025/ahmed25_interspeech.html) (D3): Fuse STFT audio features with visual embeddings in a dual-branch CNN-BLSTM attention model and jointly predict PESQ and STOI. **Measured or tested:** Evaluations on the LRS3-TED dataset, augmented with noise from the DEMAND corpus, show that our model outperforms the audio-only baseline. **Limit:** Seen-noise conditions, proxy targets, visual availability, dataset, and correlation metric limit transfer; proxy prediction is not a listener study.
 - [Can We Trust Machine Learning? The Reliability of Features from Open-Source Speech Analysis Tools for Speech Modeling](https://www.isca-archive.org/interspeech_2025/chowdhury25_interspeech.html) (D3): Compare tools directly in the target population and test how feature differences alter models and group behavior. **Measured or tested:** We evaluate speech features extracted from two widely used speech analysis tools, OpenSMILE and Praat, to assess their reliability when considering adolescents with autism. **Limit:** The population, features, tools, and behavioral tasks define the boundary; the study does not identify one universally correct toolkit.

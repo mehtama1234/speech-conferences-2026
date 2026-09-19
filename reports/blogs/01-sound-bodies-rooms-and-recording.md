@@ -10,25 +10,47 @@ Fant's speech-chain account places this theme at the following point in communic
 
 The ordinary problem is simple to state: Speech reaches a microphone as changing air pressure after vocal-fold vibration, mouth shape, room reflections, and electronics have already mixed together.
 
-A tempting shortcut is to Treating the waveform as an unstructured list of samples hides which changes came from the talker, the room, or the recording device. That shortcut fails because it hides the distinction this essay needs to keep visible.
+One tempting shortcut is: Treating the waveform as an unstructured list of samples hides which changes came from the talker, the room, or the recording device. It fails because it hides the distinction this essay needs to keep visible.
 
-The recurring move across this theme is to Separate source, filter, geometry, and time scale so a measured signal can be related back to a physical cause. The cost is equally important: A useful physical description can be wrong when bodies, rooms, or microphones violate its assumptions.
+The recurring move across this theme is to separate source, filter, geometry, and time scale so a measured signal can be related back to a physical cause. The cost is equally important: A useful physical description can be wrong when bodies, rooms, or microphones violate its assumptions.
 
 ## The boundaries
 
 Each section below uses the same test: what pressure is being handled, what shortcut fails, what move recurs, and where the evidence stops.
 
+## Plain-language dictionary
+
+The papers use specialized names because they measure specialized things. These are the terms that recur in this essay, translated before they do argumentative work:
+
+**Fant's speech chain.** a practical way to follow speech from a speaker's body, through the air and a recording device, to a listener and an interpretation.
+**D2.** evidence checked in the official paper abstract; it supports the paper's stated problem and approach, but not details that appear only in the full paper.
+**D3.** evidence checked in the official full paper text; it supports what the authors report about their method and tests, but it is still not an independent reproduction.
+**ASR.** automatic speech recognition: software that turns speech recordings into written words.
+**TTS.** text-to-speech: software that turns written words into a spoken signal.
+**speaker embedding.** a compact numerical description intended to preserve characteristics of a voice or speaker.
+**self-supervised learning.** training in which the recording supplies part of its own teaching signal, so hand-written labels are needed less often.
+**voice activity detection.** a decision about whether a signal segment contains speech.
+**word error rate.** the number of word substitutions, insertions, and deletions divided by the reference word count.
+**equal error rate.** the point at which two kinds of biometric decision error—false acceptance and false rejection—are equal.
+**interaural.** between the two ears; an interaural difference is a difference in timing or level between left and right channels.
+**MRI.** magnetic resonance imaging, used here to observe anatomy or movement without cutting into the body.
+**EEG.** electroencephalography, a measurement of electrical activity at the scalp.
+**MFCC.** a compact description of the broad shape of a sound spectrum, often used as an input feature.
+**F0.** the rate of vocal-fold vibration, commonly heard as the main component of pitch.
+
+This is a map of distinctions, not a ranking of methods. A paper can be useful while still answering only one narrow question.
+
 ## Making a physical sound
+
+This boundary follows from the baseline account: baseline link: Fant pp. 2-3: production moves from intended message through articulatory activity to acoustic production, where source and filter are separate descriptions. Ordinary pressure: Speech reaches a microphone as changing air pressure after vocal-fold vibration, mouth shape, room reflections, and electronics have already mixed together. Failed shortcut: Treating the waveform as an unstructured list of samples hides which changes came from the talker, the room, or the recording device. Recurring paper move: Separate source, filter, geometry, and time scale so a measured signal can be related back to a physical cause. Neighbor test: The source and tract shape the pressure wave before a device records it.
 
 **The question.** What ordinary speech pressure is handled by making a physical sound, and what evidence distinguishes it from neighboring pressures?
 
-**How this boundary is derived.** Baseline link: Fant pp. 2-3: production moves from intended message through articulatory activity to acoustic production, where source and filter are separate descriptions. Ordinary pressure: Speech reaches a microphone as changing air pressure after vocal-fold vibration, mouth shape, room reflections, and electronics have already mixed together. Failed shortcut: Treating the waveform as an unstructured list of samples hides which changes came from the talker, the room, or the recording device. Recurring paper move: Separate source, filter, geometry, and time scale so a measured signal can be related back to a physical cause. Neighbor test: The source and tract shape the pressure wave before a device records it.
+**The pressure.** Speech reaches a microphone as changing air pressure after vocal-fold vibration, mouth shape, room reflections, and electronics have already mixed together. The subtheme asks: What ordinary speech pressure is handled by making a physical sound, and what evidence distinguishes it from neighboring pressures?
 
-**What the papers share.** Speech reaches a microphone as changing air pressure after vocal-fold vibration, mouth shape, room reflections, and electronics have already mixed together. The subtheme asks: What ordinary speech pressure is handled by making a physical sound, and what evidence distinguishes it from neighboring pressures?
+**Why the easy answer breaks.** A first attempt would answer the question only with periodic vocal-fold source, but that shortcut misses the boundary: Not every speech segment is periodic: frication, stops, breath, and irregular phonation cannot be reduced to one stable pitch.
 
-**Why the shortcut fails.** A first attempt would answer the question only with periodic vocal-fold source, but that shortcut misses the boundary: Not every speech segment is periodic: frication, stops, breath, and irregular phonation cannot be reduced to one stable pitch.
-
-**The recurring move.** Across this subtheme, papers make periodic vocal-fold source, vocal-tract filtering explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Build a finite-element model with dual sources and vary tract geometry to connect physical parameters to observed bandwidth and resonance.
+**The move that recurs.** Across this subtheme, papers make periodic vocal-fold source, vocal-tract filtering explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Build a finite-element model with dual sources and vary tract geometry to connect physical parameters to observed bandwidth and resonance.
 
 ### Words used in this section
 
@@ -38,7 +60,7 @@ Each section below uses the same test: what pressure is being handled, what shor
 **Vocal-tract filtering.** The tongue, lips, jaw, and throat reshape source energy so some frequency regions are strengthened and others weakened; those regions carry much of vowel identity.
 *Boundary:* A filter-only explanation misses changes caused directly by source irregularity, radiation, or recording conditions.
 
-### What the papers show
+### What the evidence shows
 
 - [Analysis of Avian Biphonic Vocalization Using Computational Modelling](https://www.isca-archive.org/interspeech_2025/a25_interspeech.html) (D3): Build a finite-element model with dual sources and vary tract geometry to connect physical parameters to observed bandwidth and resonance. **Measured or tested:** COMSOL frequency-domain pressure-acoustics simulations vary tracheal length, glottis radius, and beak angle; simulated resonance peaks are compared with house-sparrow and domestic-canary vocalizations. The reported comparison is spectral/formant frequency and SPL behavior, not a human-listener… **Limit:** The model concerns avian vocalization rather than human speech; micro-CT reconstruction, source assumptions, and validation recordings constrain the result. No independent reproduction was performed.
 - [Vocal-tract model with two directions: Static design for a dummy head and dynamic design for a speaking machine](https://www.isca-archive.org/interspeech_2025/arai25_interspeech.html) (D3): Show the two ends of the design space: a fixed one-vowel dummy head and a cam-driven model whose blocks change shape in real time. **Measured or tested:** Physical models of the human vocal tract have been developed for many purposes, including education in acoustics and phonetics, speech and language pathology, and speech science/technology. **Limit:** This is a two-page demonstration with no shared quantitative evaluation or claim of human-speech equivalence.
@@ -53,22 +75,22 @@ Each section below uses the same test: what pressure is being handled, what shor
 
 ## Coordinating moving speech parts
 
+This boundary follows from the baseline account: baseline link: Fant pp. 2-3: production moves from intended message through articulatory activity to acoustic production, where source and filter are separate descriptions. Ordinary pressure: Speech reaches a microphone as changing air pressure after vocal-fold vibration, mouth shape, room reflections, and electronics have already mixed together. Failed shortcut: Treating the waveform as an unstructured list of samples hides which changes came from the talker, the room, or the recording device. Recurring paper move: Separate source, filter, geometry, and time scale so a measured signal can be related back to a physical cause. Neighbor test: Gesture overlap and timing are the object; a static source/filter description is not enough.
+
 **The question.** What ordinary speech pressure is handled by coordinating moving speech parts, and what evidence distinguishes it from neighboring pressures?
 
-**How this boundary is derived.** Baseline link: Fant pp. 2-3: production moves from intended message through articulatory activity to acoustic production, where source and filter are separate descriptions. Ordinary pressure: Speech reaches a microphone as changing air pressure after vocal-fold vibration, mouth shape, room reflections, and electronics have already mixed together. Failed shortcut: Treating the waveform as an unstructured list of samples hides which changes came from the talker, the room, or the recording device. Recurring paper move: Separate source, filter, geometry, and time scale so a measured signal can be related back to a physical cause. Neighbor test: Gesture overlap and timing are the object; a static source/filter description is not enough.
+**The pressure.** Speech reaches a microphone as changing air pressure after vocal-fold vibration, mouth shape, room reflections, and electronics have already mixed together. The subtheme asks: What ordinary speech pressure is handled by coordinating moving speech parts, and what evidence distinguishes it from neighboring pressures?
 
-**What the papers share.** Speech reaches a microphone as changing air pressure after vocal-fold vibration, mouth shape, room reflections, and electronics have already mixed together. The subtheme asks: What ordinary speech pressure is handled by coordinating moving speech parts, and what evidence distinguishes it from neighboring pressures?
+**Why the easy answer breaks.** A first attempt would answer the question only with articulatory coordination, but that shortcut misses the boundary: A label such as a phoneme is not itself a physical movement or a complete account of coarticulation.
 
-**Why the shortcut fails.** A first attempt would answer the question only with articulatory coordination, but that shortcut misses the boundary: A label such as a phoneme is not itself a physical movement or a complete account of coarticulation.
-
-**The recurring move.** Across this subtheme, papers make articulatory coordination explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Train acoustic-to-articulatory models against complete vocal-tract contours from real-time MRI and compare individual and joint articulator prediction.
+**The move that recurs.** Across this subtheme, papers make articulatory coordination explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Train acoustic-to-articulatory models against complete vocal-tract contours from real-time MRI and compare individual and joint articulator prediction.
 
 ### Words used in this section
 
 **Articulatory coordination.** Speech is a timed coordination of several moving constrictions, not a sequence of isolated sounds; overlap lets one gesture affect its neighbors.
 *Boundary:* A label such as a phoneme is not itself a physical movement or a complete account of coarticulation.
 
-### What the papers show
+### What the evidence shows
 
 - [Reconstruction of the Complete Vocal Tract Contour Through Acoustic to Articulatory Inversion Using Real-Time MRI Data](https://www.isca-archive.org/interspeech_2025/azzouz25_interspeech.html) (D3): Train acoustic-to-articulatory models against complete vocal-tract contours from real-time MRI and compare individual and joint articulator prediction. **Measured or tested:** The average RMSE precision on the test set is 1.65 mm to be compared with the pixel size which is 1.62 mm. **Limit:** Speakers, MRI protocol, segmentation, speech styles, and model assumptions limit generalization; contour accuracy is not a complete articulatory theory.
 - [Enhancing Acoustic-to-Articulatory Inversion with Multi-Target Pretraining for Low-Resource Settings](https://www.isca-archive.org/interspeech_2025/bandekar25_interspeech.html) (D3): Pretrain the inversion model against three related targets—phoneme labels, articulatory features, and critical articulator labels—so it receives useful structure without carrying the external extractor at deployment. **Measured or tested:** We evaluate our approach against both baseline and SSL-based models across various data conditions. **Limit:** The articulatory targets, speakers, language, and feature choices define the tested boundary; predicted movement is not equivalent to direct imaging. Reported gains and speed claims are author-reported and were not independently reproduced.
@@ -83,15 +105,15 @@ Each section below uses the same test: what pressure is being handled, what shor
 
 ## Representing a changing signal
 
+This boundary follows from the baseline account: baseline link: Fant pp. 2-3: production moves from intended message through articulatory activity to acoustic production, where source and filter are separate descriptions. Ordinary pressure: Speech reaches a microphone as changing air pressure after vocal-fold vibration, mouth shape, room reflections, and electronics have already mixed together. Failed shortcut: Treating the waveform as an unstructured list of samples hides which changes came from the talker, the room, or the recording device. Recurring paper move: Separate source, filter, geometry, and time scale so a measured signal can be related back to a physical cause. Neighbor test: The question is what a digital representation keeps or loses across time, frequency, and precision.
+
 **The question.** What ordinary speech pressure is handled by representing a changing signal, and what evidence distinguishes it from neighboring pressures?
 
-**How this boundary is derived.** Baseline link: Fant pp. 2-3: production moves from intended message through articulatory activity to acoustic production, where source and filter are separate descriptions. Ordinary pressure: Speech reaches a microphone as changing air pressure after vocal-fold vibration, mouth shape, room reflections, and electronics have already mixed together. Failed shortcut: Treating the waveform as an unstructured list of samples hides which changes came from the talker, the room, or the recording device. Recurring paper move: Separate source, filter, geometry, and time scale so a measured signal can be related back to a physical cause. Neighbor test: The question is what a digital representation keeps or loses across time, frequency, and precision.
+**The pressure.** Speech reaches a microphone as changing air pressure after vocal-fold vibration, mouth shape, room reflections, and electronics have already mixed together. The subtheme asks: What ordinary speech pressure is handled by representing a changing signal, and what evidence distinguishes it from neighboring pressures?
 
-**What the papers share.** Speech reaches a microphone as changing air pressure after vocal-fold vibration, mouth shape, room reflections, and electronics have already mixed together. The subtheme asks: What ordinary speech pressure is handled by representing a changing signal, and what evidence distinguishes it from neighboring pressures?
+**Why the easy answer breaks.** A first attempt would answer the question only with local frequency content, but that shortcut misses the boundary: A window discards some exact timing and long-range phase; two signals with similar spectra may still sound different.
 
-**Why the shortcut fails.** A first attempt would answer the question only with local frequency content, but that shortcut misses the boundary: A window discards some exact timing and long-range phase; two signals with similar spectra may still sound different.
-
-**The recurring move.** Across this subtheme, papers make local frequency content, multiple time scales, sampling and quantization explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Augment in-domain data, add glottal-activity information to spectral features, and normalize features with fMLLR.
+**The move that recurs.** Across this subtheme, papers make local frequency content, multiple time scales, sampling and quantization explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Augment in-domain data, add glottal-activity information to spectral features, and normalize features with fMLLR.
 
 ### Words used in this section
 
@@ -104,7 +126,7 @@ Each section below uses the same test: what pressure is being handled, what shor
 **Sampling and quantization.** A digital recording keeps a finite set of amplitude measurements, so the sampling rate and numeric precision set what can still be recovered.
 *Boundary:* A high sample rate cannot restore information lost through clipping, poor microphones, or an absent frequency range.
 
-### What the papers show
+### What the evidence shows
 
 - [On Enhancing the Performance of Children's ASR Task in Limited Data Scenario](https://www.isca-archive.org/interspeech_2025/ankita25_interspeech.html) (D3): Augment in-domain data, add glottal-activity information to spectral features, and normalize features with fMLLR. **Measured or tested:** As a consequence of applying fMLLR and then concatenating the normalized MFCC features with glottal activity parameters, a relative reduction in character error rate by 40% over the baseline is obtained. **Limit:** The evidence is limited to the child's speech data and tested feature pipeline; languages, age ranges, and transfer to new schools or microphones are not established.
 - [Influence of Proficiency and L2 Experience on Dynamic Spectral Cue Utilization in L2 Vowel Perception and Production](https://www.isca-archive.org/interspeech_2025/bakkouche25b_interspeech.html) (D3): Track vowel-inherent spectral change across the vowel and compare perception-production alignment with proficiency and immersion experience. **Measured or tested:** The acquisition of English vowels as an L2 is complex, yet most studies focus on static measures, with little attention to dynamic spectral cues like Vowel-Inherent Spectral Change (VISC). **Limit:** The learner group, contrasts, language experience, and measurements bound the result; other L1s and natural interaction need separate evidence.
@@ -119,15 +141,15 @@ Each section below uses the same test: what pressure is being handled, what shor
 
 ## Changing the path from source to sensor
 
+This boundary follows from the baseline account: baseline link: Fant pp. 2-3: production moves from intended message through articulatory activity to acoustic production, where source and filter are separate descriptions. Ordinary pressure: Speech reaches a microphone as changing air pressure after vocal-fold vibration, mouth shape, room reflections, and electronics have already mixed together. Failed shortcut: Treating the waveform as an unstructured list of samples hides which changes came from the talker, the room, or the recording device. Recurring paper move: Separate source, filter, geometry, and time scale so a measured signal can be related back to a physical cause. Neighbor test: Room reflections, device coloration, and alternate sensors change the evidence before recognition.
+
 **The question.** What ordinary speech pressure is handled by changing the path from source to sensor, and what evidence distinguishes it from neighboring pressures?
 
-**How this boundary is derived.** Baseline link: Fant pp. 2-3: production moves from intended message through articulatory activity to acoustic production, where source and filter are separate descriptions. Ordinary pressure: Speech reaches a microphone as changing air pressure after vocal-fold vibration, mouth shape, room reflections, and electronics have already mixed together. Failed shortcut: Treating the waveform as an unstructured list of samples hides which changes came from the talker, the room, or the recording device. Recurring paper move: Separate source, filter, geometry, and time scale so a measured signal can be related back to a physical cause. Neighbor test: Room reflections, device coloration, and alternate sensors change the evidence before recognition.
+**The pressure.** Speech reaches a microphone as changing air pressure after vocal-fold vibration, mouth shape, room reflections, and electronics have already mixed together. The subtheme asks: What ordinary speech pressure is handled by changing the path from source to sensor, and what evidence distinguishes it from neighboring pressures?
 
-**What the papers share.** Speech reaches a microphone as changing air pressure after vocal-fold vibration, mouth shape, room reflections, and electronics have already mixed together. The subtheme asks: What ordinary speech pressure is handled by changing the path from source to sensor, and what evidence distinguishes it from neighboring pressures?
+**Why the easy answer breaks.** A first attempt would answer the question only with reverberant room mixture, but that shortcut misses the boundary: Reverberation is not just additive stationary noise; its delay pattern depends on room geometry and position.
 
-**Why the shortcut fails.** A first attempt would answer the question only with reverberant room mixture, but that shortcut misses the boundary: Reverberation is not just additive stationary noise; its delay pattern depends on room geometry and position.
-
-**The recurring move.** Across this subtheme, papers make reverberant room mixture, microphone and channel coloration, non-airborne speech sensing explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Transcode millions of multilingual files through PSTN, VoIP, and neural codecs, then compare quality by language and gender.
+**The move that recurs.** Across this subtheme, papers make reverberant room mixture, microphone and channel coloration, non-airborne speech sensing explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Transcode millions of multilingual files through PSTN, VoIP, and neural codecs, then compare quality by language and gender.
 
 ### Words used in this section
 
@@ -140,7 +162,7 @@ Each section below uses the same test: what pressure is being handled, what shor
 **Non-airborne speech sensing.** Neck vibration, ultrasound, radar, or muscle signals can observe speech when airborne audio is missing, but they observe a different projection of the act.
 *Boundary:* A sensor that works in quiet laboratory placement is not automatically a replacement for ordinary audio in daily use.
 
-### What the papers show
+### What the evidence shows
 
 - [On the Language and Gender Biases in PSTN, VoIP and Neural Audio Codecs](https://www.isca-archive.org/interspeech_2025/altwlkany25_interspeech.html) (D3): Transcode millions of multilingual files through PSTN, VoIP, and neural codecs, then compare quality by language and gender. **Measured or tested:** The study transcodes 2,061,600 VoxForge files and 75,600 DARPA-TIMIT files through PSTN, VoIP, and neural codecs at specified bitrates, then computes ViSQOL speech-mode quality. Language effects are analyzed across 17 languages and gender effects on TIMIT metadata; codec/bitrate and subgroup are… **Limit:** Codec set, languages, gender labels, quality measure, and files define the boundary; causal mechanisms and mitigation in deployed networks remain open.
 - [AISHELL-5: The First Open-Source In-Car Multi-Channel Multi-Speaker Speech Dataset for Automatic Speech Diarization and Recognition](https://www.isca-archive.org/interspeech_2025/dai25c_interspeech.html) (D3): Release a multi-channel, multi-speaker in-car corpus with near-field references, far-field door microphones, real driving conditions, noise recordings, and a reproducible separation-plus-ASR baseline. **Measured or tested:** This paper delineates AISHELL-5, the first open-source in-car multi-channel multi-speaker Mandarin automatic speech recognition (ASR) dataset. **Limit:** The corpus is Mandarin and vehicle-specific, with its seating, microphones, and scenario design defining the boundary. The baseline does not establish that one separation method is best in all cars, and dataset availability is not independent reproduction of the reported scores.

@@ -517,7 +517,15 @@ FILES = [
     "reports/INTERSPEECH_2025_NINETEENTH_D3_NOTES.md",
     "reports/INTERSPEECH_2025_TWELFTH_D3_NOTES.md",
     "data/speech-atlas-completion-audit.json",
+    "data/speech-blog-series-manifest.json",
+    "data/speech-blog-series-audit.json",
     "reports/SPEECH_ATLAS_COMPLETION_AUDIT.md",
+    "reports/SPEECH_BLOG_SERIES_INDEX.md",
+    "reports/SPEECH_BLOG_SERIES_AUDIT.md",
+]
+FILES += [
+    str(path.relative_to(HERE))
+    for path in sorted((HERE / "reports/blogs").glob("*.md"))
 ]
 FILES += [
     str(path.relative_to(HERE))

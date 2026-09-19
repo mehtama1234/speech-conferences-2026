@@ -10,25 +10,47 @@ Fant's speech-chain account places this theme at the following point in communic
 
 The ordinary problem is simple to state: The same words can request, question, joke, refuse, or warn depending on prosody, shared history, timing, and the surrounding situation.
 
-A tempting shortcut is to A transcript-only system treats words as the whole message and misses intent, reference, turn structure, and what is appropriate to do next. That shortcut fails because it hides the distinction this essay needs to keep visible.
+One tempting shortcut is: A transcript-only system treats words as the whole message and misses intent, reference, turn structure, and what is appropriate to do next. It fails because it hides the distinction this essay needs to keep visible.
 
-The recurring move across this theme is to Combine linguistic content with speaker, discourse history, prosody, visual or environmental context, and an explicit action or response target. The cost is equally important: More context can resolve ambiguity but can also leak private information, over-interpret the speaker, or make a system confidently act on a wrong inference.
+The recurring move across this theme is to combine linguistic content with speaker, discourse history, prosody, visual or environmental context, and an explicit action or response target. The cost is equally important: More context can resolve ambiguity but can also leak private information, over-interpret the speaker, or make a system confidently act on a wrong inference.
 
 ## The boundaries
 
 Each section below uses the same test: what pressure is being handled, what shortcut fails, what move recurs, and where the evidence stops.
 
+## Plain-language dictionary
+
+The papers use specialized names because they measure specialized things. These are the terms that recur in this essay, translated before they do argumentative work:
+
+**Fant's speech chain.** a practical way to follow speech from a speaker's body, through the air and a recording device, to a listener and an interpretation.
+**D2.** evidence checked in the official paper abstract; it supports the paper's stated problem and approach, but not details that appear only in the full paper.
+**D3.** evidence checked in the official full paper text; it supports what the authors report about their method and tests, but it is still not an independent reproduction.
+**ASR.** automatic speech recognition: software that turns speech recordings into written words.
+**TTS.** text-to-speech: software that turns written words into a spoken signal.
+**speaker embedding.** a compact numerical description intended to preserve characteristics of a voice or speaker.
+**self-supervised learning.** training in which the recording supplies part of its own teaching signal, so hand-written labels are needed less often.
+**voice activity detection.** a decision about whether a signal segment contains speech.
+**word error rate.** the number of word substitutions, insertions, and deletions divided by the reference word count.
+**equal error rate.** the point at which two kinds of biometric decision error—false acceptance and false rejection—are equal.
+**interaural.** between the two ears; an interaural difference is a difference in timing or level between left and right channels.
+**MRI.** magnetic resonance imaging, used here to observe anatomy or movement without cutting into the body.
+**EEG.** electroencephalography, a measurement of electrical activity at the scalp.
+**MFCC.** a compact description of the broad shape of a sound spectrum, often used as an input feature.
+**F0.** the rate of vocal-fold vibration, commonly heard as the main component of pitch.
+
+This is a map of distinctions, not a ranking of methods. A paper can be useful while still answering only one narrow question.
+
 ## Meaning carried by how speech sounds
+
+This boundary follows from the baseline account: baseline link: Fant pp. 2, 11-12: the chain begins with intended meaning and ends with a received message; intermediate acoustic cues are evidence, not the message itself. Ordinary pressure: The same words can request, question, joke, refuse, or warn depending on prosody, shared history, timing, and the surrounding situation. Failed shortcut: A transcript-only system treats words as the whole message and misses intent, reference, turn structure, and what is appropriate to do next. Recurring paper move: Combine linguistic content with speaker, discourse history, prosody, visual or environmental context, and an explicit action or response target. Neighbor test: This boundary covers information carried by pitch, timing, loudness, voice quality, or effort beyond the words; it is separate from dialogue action because the cue is in how an utterance sounds, not in the conversational state alone.
 
 **The question.** What ordinary speech pressure is handled by meaning carried by how speech sounds, and what evidence distinguishes it from neighboring pressures?
 
-**How this boundary is derived.** Baseline link: Fant pp. 2, 11-12: the chain begins with intended meaning and ends with a received message; intermediate acoustic cues are evidence, not the message itself. Ordinary pressure: The same words can request, question, joke, refuse, or warn depending on prosody, shared history, timing, and the surrounding situation. Failed shortcut: A transcript-only system treats words as the whole message and misses intent, reference, turn structure, and what is appropriate to do next. Recurring paper move: Combine linguistic content with speaker, discourse history, prosody, visual or environmental context, and an explicit action or response target. Neighbor test: This boundary covers information carried by pitch, timing, loudness, voice quality, or effort beyond the words; it is separate from dialogue action because the cue is in how an utterance sounds, not in the conversational state alone.
+**The pressure.** The same words can request, question, joke, refuse, or warn depending on prosody, shared history, timing, and the surrounding situation. The subtheme asks: What ordinary speech pressure is handled by meaning carried by how speech sounds, and what evidence distinguishes it from neighboring pressures?
 
-**What the papers share.** The same words can request, question, joke, refuse, or warn depending on prosody, shared history, timing, and the surrounding situation. The subtheme asks: What ordinary speech pressure is handled by meaning carried by how speech sounds, and what evidence distinguishes it from neighboring pressures?
+**Why the easy answer breaks.** A first attempt would answer the question only with prosodic meaning, but that shortcut misses the boundary: Prosody is language- and speaker-dependent; a pitch pattern is not a universal emotion label.
 
-**Why the shortcut fails.** A first attempt would answer the question only with prosodic meaning, but that shortcut misses the boundary: Prosody is language- and speaker-dependent; a pitch pattern is not a universal emotion label.
-
-**The recurring move.** Across this subtheme, papers make prosodic meaning, paralinguistic state explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Compare a robot and computer interface on the same emotion task, including sensitivity, duration, and participant preference.
+**The move that recurs.** Across this subtheme, papers make prosodic meaning, paralinguistic state explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Compare a robot and computer interface on the same emotion task, including sensitivity, duration, and participant preference.
 
 ### Words used in this section
 
@@ -38,7 +60,7 @@ Each section below uses the same test: what pressure is being handled, what shor
 **Paralinguistic state.** Voice properties can provide clues about emotion, fatigue, engagement, or health that are not the literal linguistic content.
 *Boundary:* A correlational acoustic cue is not proof of an internal state or a reliable diagnosis.
 
-### What the papers show
+### What the evidence shows
 
 - [Robot-assisted Recognition of Vocal Emotions in Pseudospeech for Cochlear Implanted Adolescents](https://www.isca-archive.org/interspeech_2025/araizaillan25_interspeech.html) (D3): Compare a robot and computer interface on the same emotion task, including sensitivity, duration, and participant preference. **Measured or tested:** As regular monitoring could be burdensome, we propose a NAO robot as a test interface. **Limit:** The participants, robot, pseudospeech task, and small sample bound the result; long-term adherence and general hearing-device populations remain open.
 - [Coping with segmental–prosodic incongruity in spoken word recognition in Japanese](https://www.isca-archive.org/interspeech_2025/ariga25_interspeech.html) (D3): Create controlled incongruent words and use repetition priming and response timing to test each cue. **Measured or tested:** Thirty-two Tokyo Japanese listeners perform a 96-trial cross-modal lexical-decision experiment with congruent, prosodically mispronounced, segmentally mispronounced, and baseline primes. Reaction times are modeled with linear mixed effects over participants and items after accuracy/outlier… **Limit:** Japanese materials, pitch-accent system, participants, and laboratory task limit cross-language generalization.
@@ -53,15 +75,15 @@ Each section below uses the same test: what pressure is being handled, what shor
 
 ## Inferring what a speaker is trying to do
 
+This boundary follows from the baseline account: baseline link: Fant pp. 2, 11-12: the chain begins with intended meaning and ends with a received message; intermediate acoustic cues are evidence, not the message itself. Ordinary pressure: The same words can request, question, joke, refuse, or warn depending on prosody, shared history, timing, and the surrounding situation. Failed shortcut: A transcript-only system treats words as the whole message and misses intent, reference, turn structure, and what is appropriate to do next. Recurring paper move: Combine linguistic content with speaker, discourse history, prosody, visual or environmental context, and an explicit action or response target. Neighbor test: The system tracks goals, commitments, and situation rather than only classifying acoustic style.
+
 **The question.** What ordinary speech pressure is handled by inferring what a speaker is trying to do, and what evidence distinguishes it from neighboring pressures?
 
-**How this boundary is derived.** Baseline link: Fant pp. 2, 11-12: the chain begins with intended meaning and ends with a received message; intermediate acoustic cues are evidence, not the message itself. Ordinary pressure: The same words can request, question, joke, refuse, or warn depending on prosody, shared history, timing, and the surrounding situation. Failed shortcut: A transcript-only system treats words as the whole message and misses intent, reference, turn structure, and what is appropriate to do next. Recurring paper move: Combine linguistic content with speaker, discourse history, prosody, visual or environmental context, and an explicit action or response target. Neighbor test: The system tracks goals, commitments, and situation rather than only classifying acoustic style.
+**The pressure.** The same words can request, question, joke, refuse, or warn depending on prosody, shared history, timing, and the surrounding situation. The subtheme asks: What ordinary speech pressure is handled by inferring what a speaker is trying to do, and what evidence distinguishes it from neighboring pressures?
 
-**What the papers share.** The same words can request, question, joke, refuse, or warn depending on prosody, shared history, timing, and the surrounding situation. The subtheme asks: What ordinary speech pressure is handled by inferring what a speaker is trying to do, and what evidence distinguishes it from neighboring pressures?
+**Why the easy answer breaks.** A first attempt would answer the question only with intent in context, but that shortcut misses the boundary: Intent labels often reflect annotator interpretation and may erase ambiguity or culturally different readings.
 
-**Why the shortcut fails.** A first attempt would answer the question only with intent in context, but that shortcut misses the boundary: Intent labels often reflect annotator interpretation and may erase ambiguity or culturally different readings.
-
-**The recurring move.** Across this subtheme, papers make intent in context, dialogue state explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Evaluate large language models on spoken-interaction reasoning with explicit contextual knowledge and prompt structure.
+**The move that recurs.** Across this subtheme, papers make intent in context, dialogue state explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Evaluate large language models on spoken-interaction reasoning with explicit contextual knowledge and prompt structure.
 
 ### Words used in this section
 
@@ -71,7 +93,7 @@ Each section below uses the same test: what pressure is being handled, what shor
 **Dialogue state.** Track unresolved questions, commitments, entities, and prior actions so a response is connected to the conversation rather than only the last sentence.
 *Boundary:* A stored state can be stale, incorrectly inferred, or sensitive, and the system may not know when to discard it.
 
-### What the papers show
+### What the evidence shows
 
 - [Investigating the Reasoning Abilities of Large Language Models for Understanding Spoken Language in Interpersonal Interactions](https://www.isca-archive.org/interspeech_2025/aggarwal25_interspeech.html) (D3): Evaluate large language models on spoken-interaction reasoning with explicit contextual knowledge and prompt structure. **Measured or tested:** VetTrain interview data are evaluated with quantitative and qualitative spoken-interaction reasoning tests across language-model families and scales. Prompt ablations add domain knowledge and interaction context, and answer-quality comparisons separate the contribution of each information source;… **Limit:** Interview distribution, transcript quality, subjective scoring, prompt sensitivity, and model-family coverage limit claims about general conversational understanding.
 - [Spoken Language Understanding on Unseen Tasks With In-Context Learning](https://www.isca-archive.org/interspeech_2025/agrawal25_interspeech.html) (D3): Use symbol-based and randomized-label fine-tuning with a SALMONN speech-text model to reduce dependence on task-specific label semantics. **Measured or tested:** However, out-of-the-box, our evaluations indicate that the zero/few-shot performance of prominent open-source speech-text LLMs on SLU tasks are not up to the mark. **Limit:** Fine-tuning used batch size one and the task/model/data setup is narrower than general spoken reasoning.
@@ -86,15 +108,15 @@ Each section below uses the same test: what pressure is being handled, what shor
 
 ## Coordinating participation under uncertainty
 
+This boundary follows from the baseline account: baseline link: Fant pp. 2, 11-12: the chain begins with intended meaning and ends with a received message; intermediate acoustic cues are evidence, not the message itself. Ordinary pressure: The same words can request, question, joke, refuse, or warn depending on prosody, shared history, timing, and the surrounding situation. Failed shortcut: A transcript-only system treats words as the whole message and misses intent, reference, turn structure, and what is appropriate to do next. Recurring paper move: Combine linguistic content with speaker, discourse history, prosody, visual or environmental context, and an explicit action or response target. Neighbor test: The problem is when to speak, yield, interrupt, or ask for clarification.
+
 **The question.** What ordinary speech pressure is handled by coordinating participation under uncertainty, and what evidence distinguishes it from neighboring pressures?
 
-**How this boundary is derived.** Baseline link: Fant pp. 2, 11-12: the chain begins with intended meaning and ends with a received message; intermediate acoustic cues are evidence, not the message itself. Ordinary pressure: The same words can request, question, joke, refuse, or warn depending on prosody, shared history, timing, and the surrounding situation. Failed shortcut: A transcript-only system treats words as the whole message and misses intent, reference, turn structure, and what is appropriate to do next. Recurring paper move: Combine linguistic content with speaker, discourse history, prosody, visual or environmental context, and an explicit action or response target. Neighbor test: The problem is when to speak, yield, interrupt, or ask for clarification.
+**The pressure.** The same words can request, question, joke, refuse, or warn depending on prosody, shared history, timing, and the surrounding situation. The subtheme asks: What ordinary speech pressure is handled by coordinating participation under uncertainty, and what evidence distinguishes it from neighboring pressures?
 
-**What the papers share.** The same words can request, question, joke, refuse, or warn depending on prosody, shared history, timing, and the surrounding situation. The subtheme asks: What ordinary speech pressure is handled by coordinating participation under uncertainty, and what evidence distinguishes it from neighboring pressures?
+**Why the easy answer breaks.** A first attempt would answer the question only with turn-boundary prediction, but that shortcut misses the boundary: A pause is not always a turn end; cultures, speakers, and task types change timing conventions.
 
-**Why the shortcut fails.** A first attempt would answer the question only with turn-boundary prediction, but that shortcut misses the boundary: A pause is not always a turn end; cultures, speakers, and task types change timing conventions.
-
-**The recurring move.** Across this subtheme, papers make turn-boundary prediction, repair and clarification explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Prompt an LLM with a coordinated strategy for proactive behavior, personalization, and aizuchi backchannels, then measure both conversation and participant outcomes.
+**The move that recurs.** Across this subtheme, papers make turn-boundary prediction, repair and clarification explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Prompt an LLM with a coordinated strategy for proactive behavior, personalization, and aizuchi backchannels, then measure both conversation and participant outcomes.
 
 ### Words used in this section
 
@@ -104,7 +126,7 @@ Each section below uses the same test: what pressure is being handled, what shor
 **Repair and clarification.** When recognition or understanding is uncertain, ask a targeted question or offer alternatives instead of silently continuing.
 *Boundary:* A clarification costs time and can burden users if uncertainty estimates are poorly calibrated.
 
-### What the papers show
+### What the evidence shows
 
 - [Rapport-Building Dialogue Strategies for Deeper Connection: Integrating Proactive Behavior, Personalization, and Aizuchi Backchannels](https://www.isca-archive.org/interspeech_2025/baihaqi25_interspeech.html) (D3): Prompt an LLM with a coordinated strategy for proactive behavior, personalization, and aizuchi backchannels, then measure both conversation and participant outcomes. **Measured or tested:** This study integrates these behaviors into a rapport-building dialogue strategy using the CO-STAR and few-shot frameworks to prompt large language models (LLMs) within a human-robot interaction. **Limit:** The study is bounded to the robot, prompts, participants, and short interaction protocol; long-term trust, cultural variation, and causal attribution remain open.
 - [``Dyadosyncrasy'', Idiosyncrasy and Demographic Factors in Turn-Taking](https://www.isca-archive.org/interspeech_2025/cavalcanti25_interspeech.html) (D3): Measure transition-floor offset across dyads and model individual, demographic, topic, and pair-specific effects hierarchically. **Measured or tested:** This study examines how demographic (sex, age, education) and individual factors shape turn-taking using a large dataset of US English conversations (Fisher). **Limit:** English strangers, sparse older data, topic mix, and TFO limit familiar-relationship and full-dialogue claims.
@@ -119,15 +141,15 @@ Each section below uses the same test: what pressure is being handled, what shor
 
 ## Connecting language to a shared world
 
+This boundary follows from the baseline account: baseline link: Fant pp. 2, 11-12: the chain begins with intended meaning and ends with a received message; intermediate acoustic cues are evidence, not the message itself. Ordinary pressure: The same words can request, question, joke, refuse, or warn depending on prosody, shared history, timing, and the surrounding situation. Failed shortcut: A transcript-only system treats words as the whole message and misses intent, reference, turn structure, and what is appropriate to do next. Recurring paper move: Combine linguistic content with speaker, discourse history, prosody, visual or environmental context, and an explicit action or response target. Neighbor test: A phrase must identify a referent or authorized action and remain corrigible through feedback.
+
 **The question.** What ordinary speech pressure is handled by connecting language to a shared world, and what evidence distinguishes it from neighboring pressures?
 
-**How this boundary is derived.** Baseline link: Fant pp. 2, 11-12: the chain begins with intended meaning and ends with a received message; intermediate acoustic cues are evidence, not the message itself. Ordinary pressure: The same words can request, question, joke, refuse, or warn depending on prosody, shared history, timing, and the surrounding situation. Failed shortcut: A transcript-only system treats words as the whole message and misses intent, reference, turn structure, and what is appropriate to do next. Recurring paper move: Combine linguistic content with speaker, discourse history, prosody, visual or environmental context, and an explicit action or response target. Neighbor test: A phrase must identify a referent or authorized action and remain corrigible through feedback.
+**The pressure.** The same words can request, question, joke, refuse, or warn depending on prosody, shared history, timing, and the surrounding situation. The subtheme asks: What ordinary speech pressure is handled by connecting language to a shared world, and what evidence distinguishes it from neighboring pressures?
 
-**What the papers share.** The same words can request, question, joke, refuse, or warn depending on prosody, shared history, timing, and the surrounding situation. The subtheme asks: What ordinary speech pressure is handled by connecting language to a shared world, and what evidence distinguishes it from neighboring pressures?
+**Why the easy answer breaks.** A first attempt would answer the question only with referential grounding, but that shortcut misses the boundary: Words alone may underdetermine the referent; a model can infer a plausible object without actually observing it.
 
-**Why the shortcut fails.** A first attempt would answer the question only with referential grounding, but that shortcut misses the boundary: Words alone may underdetermine the referent; a model can infer a plausible object without actually observing it.
-
-**The recurring move.** Across this subtheme, papers make referential grounding, speech act, interactional feedback explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Use an LLM to plan context and select reusable primitive actions that can be adapted across agents.
+**The move that recurs.** Across this subtheme, papers make referential grounding, speech act, interactional feedback explicit rather than treating the speech evidence as one undifferentiated variable. The reviewed full-paper mechanisms instantiate that move in different ways; for example: Use an LLM to plan context and select reusable primitive actions that can be adapted across agents.
 
 ### Words used in this section
 
@@ -140,7 +162,7 @@ Each section below uses the same test: what pressure is being handled, what shor
 **Interactional feedback.** Let user corrections, confirmations, and response outcomes update the system's interpretation during the interaction.
 *Boundary:* Feedback can be sparse, ambiguous, or shaped by users adapting to the system's mistakes.
 
-### What the papers show
+### What the evidence shows
 
 - [Co-Speech Motion for Virtual Agents in Dialogue Using LLM-Driven Primitive Action Selection](https://www.isca-archive.org/interspeech_2025/baihaqi25b_interspeech.html) (D3): Use an LLM to plan context and select reusable primitive actions that can be adapted across agents. **Measured or tested:** Leveraging the power of Large Language Models (LLMs) for contextual planning and understanding, we propose an LLM-based motion control model that uses a primitive action selection strategy. **Limit:** Full mechanism, baselines, human judgments, and cross-embodiment transfer require the paper's detailed evaluation; the result is not a claim of human-like motion.
 - [Fact-Controlled Diagnosis of Hallucinations in Medical Text Summarization](https://www.isca-archive.org/interspeech_2025/bn25_interspeech.html) (D3): Construct a fact-controlled leave-one-out dataset and a natural hallucination dataset, then compare detection methods in the clinical setting. **Measured or tested:** In this paper, we conduct an evaluation of hallucination detection methods in the medical domain, and construct two datasets for the purpose: A fact-controlled Leave-N-out dataset - generated by systematically removing facts from source dialogues to induce hallucinated content in summaries; and a… **Limit:** Synthetic deletion, clinical language, annotation, summarizer, and detector thresholds limit generalization; detection is not prevention or clinical validation.
