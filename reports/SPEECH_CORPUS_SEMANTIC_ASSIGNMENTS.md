@@ -10,8 +10,8 @@ Records: **1179**
 
 | Disposition | Count |
 |---|---:|
-| analyst-confirmed | 1109 |
-| analyst-rejected | 70 |
+| analyst-confirmed | 1108 |
+| analyst-rejected | 71 |
 
 ## icassp-2026
 
