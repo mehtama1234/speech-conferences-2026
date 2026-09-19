@@ -19,7 +19,7 @@ Records: **3864**
 
 | Disposition | Count |
 |---|---:|
-| analyst-confirmed | 593 |
-| analyst-rejected | 3270 |
+| analyst-confirmed | 588 |
+| analyst-rejected | 3275 |
 | analyst-unresolved | 1 |
 
