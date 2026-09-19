@@ -41,6 +41,7 @@ claim_ledger = load("data/interspeech-2025-claim-ledger.json")
 icassp_source_manifest = load("data/icassp-2026-source-manifest.json")
 completion_audit = load("data/speech-atlas-completion-audit.json")
 taxonomy = load("data/speech-first-principles-taxonomy.json")
+taxonomy_adjudication = load("data/speech-taxonomy-adjudication-queue.json")
 semantic_queue = load("data/interspeech-2025-semantic-review-queue.json")
 interspeech_assignments_path = HERE / "data/interspeech-2025-semantic-assignments.jsonl"
 interspeech_assignments = []
@@ -1402,6 +1403,18 @@ if icassp_semantic and icassp_data:
     if any(row.get("semantic_disposition") in {"provisional-candidate", "unresolved", "analyst-unresolved"} and not row.get("unresolved_reason") for row in icassp_assignments):
         errors.append("ICASSP unresolved semantic assignment lacks a reason")
     reviewed_decisions = Counter(row.get("decision") for row in rows if row.get("review_state") == "analyst-reviewed")
+    # Current corpus assignments may include final taxonomy adjudications that
+    # deliberately overturn an earlier supported/unsupported semantic queue
+    # decision. Compare dispositions after applying those final decisions,
+    # while leaving the original queue audit above unchanged.
+    semantic_by_id = {row.get("paper_id"): row for row in rows}
+    for adjudication in (taxonomy_adjudication or {}).get("rows", []):
+        if adjudication.get("venue") != "ICASSP 2026" or adjudication.get("taxonomy_review_state") != "taxonomy-adjudicated":
+            continue
+        original = semantic_by_id.get(adjudication.get("paper_id"), {}).get("decision")
+        if original in {"supported", "unsupported"}:
+            reviewed_decisions[original] -= 1
+        reviewed_decisions["supported" if adjudication.get("final_theme_id") else "unsupported"] += 1
     assignment_dispositions = Counter(row.get("semantic_disposition") for row in icassp_assignments)
     if assignment_dispositions.get("analyst-confirmed", 0) != reviewed_decisions.get("supported", 0) or assignment_dispositions.get("analyst-rejected", 0) != reviewed_decisions.get("unsupported", 0):
         errors.append("ICASSP corpus dispositions do not match reviewed queue decisions")
