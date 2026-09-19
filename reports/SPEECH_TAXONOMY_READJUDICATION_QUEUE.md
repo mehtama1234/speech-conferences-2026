@@ -2,7 +2,7 @@
 
 These memberships were previously semantically reviewed against an earlier taxonomy and then normalized to the current concept parents. They are not counted as final current-taxonomy adjudications until this queue is closed.
 
-Memberships: **1739**; adjudicated: **1506**; open: **233**.
+Memberships: **1739**; adjudicated: **1514**; open: **225**.
 
 Every row preserves the prior reasoning and evidence excerpt, names the current concept boundary, and asks whether the evidence supports the new parent rather than a neighboring subtheme.
 
