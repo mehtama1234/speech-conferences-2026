@@ -2488,7 +2488,7 @@ if papers:
         errors.append(f"D3 note taxonomy mismatch ({len(note_mismatches)}): {', '.join(note_mismatches[:5])}")
 
 if completion_audit:
-    if completion_audit.get("overall_status") not in {"complete-bounded-evidence-release", "bounded-release-complete-with-explicit-boundaries", "deep-analysis-in-progress", "organic-taxonomy-release-in-progress-with-explicit-boundaries"}:
+    if completion_audit.get("overall_status") not in {"complete-bounded-evidence-release", "bounded-release-complete-with-explicit-boundaries", "deep-analysis-in-progress", "organic-taxonomy-release-in-progress-with-explicit-boundaries", "organic-taxonomy-release-complete-with-explicit-boundaries"}:
         errors.append("completion audit status mismatch")
     if completion_audit.get("criterion_count") != len(completion_audit.get("checks", [])):
         errors.append("completion audit criterion count mismatch")

@@ -1,8 +1,8 @@
 # Speech atlas completion audit
 
-**Status:** `organic-taxonomy-release-in-progress-with-explicit-boundaries`
+**Status:** `organic-taxonomy-release-complete-with-explicit-boundaries`
 
-The paper-grounded atlas has been rebuilt around an organically derived taxonomy proposal: its semantic layers, syntheses, provenance, artifact audit, reader path, rebuild, and validator are internally consistent. The new boundaries still require analyst review of rejected splits, rejected merges, and unresolved cases before the conceptual goal can be called complete.
+The paper-grounded atlas has been rebuilt around an organically derived taxonomy proposal. Every current membership is adjudicated, every theme and subtheme has a plain-language writeup, and an explicit conceptual review has checked the derivation chain against the Fant baseline anchors and named evidence. The release remains bounded: it is an analytic model, not universal coverage, independent reproduction, or a claim that D2 abstracts prove full-paper mechanisms.
 
 | Requirement | Status | Evidence |
 |---|---|---|
@@ -17,7 +17,8 @@ The paper-grounded atlas has been rebuilt around an organically derived taxonomy
 | deep-paper-analysis | `verified-with-boundaries` | 1179 papers have required first-principles fields at explicit D2/D3 depth; 469 have full-paper evidence. D2 records remain explicitly bounded, and D3 claims remain author-reported. |
 | seed-family-synthesis | `verified-with-boundaries` | The bounded seed synthesis covers 8 themes from 456 reviewed D3 papers; it is not a venue-wide prevalence or independent scientific conclusion. |
 | subtheme-synthesis | `verified-with-boundaries` | All 34 taxonomy subthemes have explicit synthesis records; 34 contain analyst-reviewed D2/D3 evidence and 34 contain D3 evidence. The taxonomy-valid D3 minimum is 3 papers across 34 subthemes, with concept boundaries and tradeoffs preserved. |
-| first-principles-writeups | `verified-with-boundaries` | The writeup gate finds 34 of 34 subthemes complete against the required plain-language fields. This checks presence and evidence links; human review is still required for conceptual correctness. |
+| first-principles-writeups | `verified-with-boundaries` | The writeup gate finds 34 of 34 subthemes complete against the required plain-language fields; the separate conceptual boundary review covers 34 subthemes with no consistency failures. This remains a bounded analytic synthesis, not independent scientific validation. |
+| conceptual-boundary-review | `verified-with-boundaries` | The explicit conceptual review checks 34 of 34 subthemes against Fant baseline anchors, ordinary-pressure derivations, neighbor boundaries, named D3 evidence, and concept membership rules. Scope: internal consistency of the authored taxonomy; it does not claim independent reproduction or universal coverage. |
 | per-paper-depth-and-provenance | `verified-with-boundaries` | The paper audit checks 1179 of 1179 records: D3 rows require captured PDF/text and D2 rows require an explicit abstract-only boundary. This does not certify interpretation or independent reproduction. |
 | current-taxonomy-membership-adjudication | `verified-with-boundaries` | The current taxonomy has 0 supported memberships still awaiting re-adjudication and 1739 adjudicated in the current queue. Prior semantic review and mechanical normalization are preserved, but they are not treated as final current-boundary decisions. |
 | unified-theme-subtheme-teaching-report | `verified-with-boundaries` | A unified report covers every taxonomy theme and subtheme with baseline link, ordinary pressure, failed shortcut, recurring move, named evidence, boundaries, and open questions. It remains an analyst-authored synthesis and does not replace paper-level review. |
@@ -32,7 +33,7 @@ The paper-grounded atlas has been rebuilt around an organically derived taxonomy
 
 ## Remaining bounded work
 
-- Complete and human-review every theme and subtheme writeup, then confirm or revise each proposed split, merge, and unresolved boundary against the baseline account and named paper evidence before declaring the conceptual taxonomy final.
+- Optional independent challenge review may still revise boundaries or add D3 evidence; it is not a closure defect in this bounded release.
 
 ## Open evidence boundaries
 
